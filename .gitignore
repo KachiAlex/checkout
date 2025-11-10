@@ -4,8 +4,10 @@ node_modules/
 .pnp.js
 
 # Build outputs
-dist/
 build/
+dist/
+apps/frontend/dist/
+functions/backend-dist/
 *.tsbuildinfo
 
 # Environment variables
@@ -64,3 +66,6 @@ Thumbs.db
 !**/examples/*.pem
 !**/examples/*.key
 !**/examples/*.crt
+
+# Desktop releases
+apps/desktop/release/

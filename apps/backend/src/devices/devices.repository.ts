@@ -25,7 +25,10 @@ export interface DeviceRecord {
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type DeviceDocument = Omit<DeviceRecord, 'id' | 'createdAt' | 'updatedAt' | 'lastSeenAt' | 'lastUsedAt'> & {
+type DeviceDocument = Omit<
+  DeviceRecord,
+  'id' | 'createdAt' | 'updatedAt' | 'lastSeenAt' | 'lastUsedAt'
+> & {
   identifierNormalized: string;
   createdAt?: TimestampField;
   updatedAt?: TimestampField;
@@ -57,12 +60,33 @@ export class DevicesRepository {
   constructor(private readonly firestore: FirestoreService) {}
 
   async findAll(tenantId: string, locationId?: string): Promise<DeviceRecord[]> {
-    let query = this.collection.where('tenantId', '==', tenantId).orderBy('updatedAt', 'desc');
+    let query = this.collection.where('tenantId', '==', tenantId);
     if (locationId) {
       query = query.where('locationId', '==', locationId);
     }
-    const snapshot = await query.get();
-    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+
+    try {
+      const orderedQuery = query.orderBy('updatedAt', 'desc');
+      const snapshot = await orderedQuery.get();
+      return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    } catch (error: any) {
+      const message: string | undefined = error?.message ?? error?.toString?.();
+      const requiresIndex =
+        typeof message === 'string' &&
+        (message.includes('requires an index') || message.includes('FAILED_PRECONDITION'));
+
+      if (!requiresIndex) {
+        throw error;
+      }
+
+      const snapshot = await query.get();
+      const devices = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+      return devices.sort((a, b) => {
+        const aTime = a.updatedAt?.getTime?.() ?? 0;
+        const bTime = b.updatedAt?.getTime?.() ?? 0;
+        return bTime - aTime;
+      });
+    }
   }
 
   async findById(id: string): Promise<DeviceRecord | null> {
@@ -165,9 +189,7 @@ export class DevicesRepository {
       payload.lastUsedById = update.lastUsedById;
     }
     if (update.lastSeenAt !== undefined) {
-      payload.lastSeenAt = update.lastSeenAt
-        ? Timestamp.fromDate(update.lastSeenAt)
-        : null;
+      payload.lastSeenAt = update.lastSeenAt ? Timestamp.fromDate(update.lastSeenAt) : null;
     }
     if (update.lastUsedAt !== undefined) {
       payload.lastUsedAt = update.lastUsedAt ? Timestamp.fromDate(update.lastUsedAt) : null;
@@ -215,4 +237,3 @@ export class DevicesRepository {
     return new Date();
   }
 }
-

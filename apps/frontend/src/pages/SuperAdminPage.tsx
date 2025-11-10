@@ -8,6 +8,7 @@ import {
   resetTenantAdminPin,
   suspendTenant,
   activateTenant,
+  deleteTenant,
   UpdateSubscriptionPayload,
   TenantSummary,
   TenantProvisioningResult,
@@ -44,6 +45,7 @@ export function SuperAdminPage() {
     user: state.user,
     logout: state.logout,
   }));
+  const todayInputValue = () => new Date().toISOString().slice(0, 10);
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -59,7 +61,9 @@ export function SuperAdminPage() {
     seatLimit: '',
     adminName: '',
     adminEmail: '',
-    billingCycleStart: '',
+    adminPassword: '',
+    billingStartMode: 'immediate' as 'immediate' | 'scheduled',
+    billingCycleStart: todayInputValue(),
     billingCycleEnd: '',
   });
   const [actionKey, setActionKey] = useState<string | null>(null);
@@ -130,12 +134,27 @@ export function SuperAdminPage() {
     return date.toISOString().slice(0, 10);
   };
 
+  const addOneYear = (date: Date) => {
+    const next = new Date(date);
+    next.setFullYear(next.getFullYear() + 1);
+    return next;
+  };
+
   const openSubscriptionModal = (tenant: TenantSummary) => {
+    const startDateFormatted = formatDateInput(tenant.billingCycleStart);
     const initial = {
       plan: tenant.plan,
       seatLimit: tenant.seatLimit !== undefined ? String(tenant.seatLimit) : '',
-      billingCycleStart: formatDateInput(tenant.billingCycleStart),
-      billingCycleEnd: tenant.plan === 'lifetime' ? '' : formatDateInput(tenant.billingCycleEnd),
+      billingCycleStart: startDateFormatted,
+      billingCycleEnd:
+        tenant.plan === 'lifetime'
+          ? ''
+          : tenant.plan === 'annual'
+          ? (() => {
+              const startDate = tenant.billingCycleStart ? new Date(tenant.billingCycleStart) : null;
+              return startDate ? addOneYear(startDate).toISOString().slice(0, 10) : '';
+            })()
+          : formatDateInput(tenant.billingCycleEnd),
     };
     setSubscriptionForm(initial);
     setSubscriptionOriginal(initial);
@@ -152,11 +171,28 @@ export function SuperAdminPage() {
   const updateSubscriptionField = (field: keyof typeof subscriptionForm, value: string) => {
     setSubscriptionForm((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === 'plan' && value === 'lifetime') {
-        next.billingCycleEnd = '';
+      if (field === 'plan') {
+        if (value === 'lifetime') {
+          next.billingCycleEnd = '';
+        } else if (value === 'annual') {
+          const baseDate =
+            next.billingCycleStart && next.billingCycleStart.trim() !== ''
+              ? new Date(next.billingCycleStart)
+              : subscriptionOriginal?.billingCycleStart
+              ? new Date(subscriptionOriginal.billingCycleStart)
+              : new Date();
+          if (!next.billingCycleStart || next.billingCycleStart.trim() === '') {
+            next.billingCycleStart = baseDate.toISOString().slice(0, 10);
+          }
+          next.billingCycleEnd = addOneYear(baseDate).toISOString().slice(0, 10);
+        } else if (subscriptionOriginal?.billingCycleEnd) {
+          next.billingCycleEnd = subscriptionOriginal.billingCycleEnd;
+        } else {
+          next.billingCycleEnd = '';
+        }
       }
-      if (field === 'plan' && value !== 'lifetime' && subscriptionOriginal?.billingCycleEnd) {
-        next.billingCycleEnd = subscriptionOriginal.billingCycleEnd;
+      if (field === 'billingCycleStart' && prev.plan === 'annual') {
+        next.billingCycleEnd = value ? addOneYear(new Date(value)).toISOString().slice(0, 10) : '';
       }
       return next;
     });
@@ -165,6 +201,8 @@ export function SuperAdminPage() {
   const isActionBusy = (key: string) => actionKey === key;
   const actionButtonClasses =
     'rounded-full border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60';
+  const dangerActionButtonClasses =
+    'rounded-full border border-rose-500/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-200 transition hover:border-rose-400 disabled:cursor-not-allowed disabled:opacity-60';
 
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -176,9 +214,29 @@ export function SuperAdminPage() {
       toast.error('Tenant admin email is required');
       return;
     }
+    if (!form.adminPassword.trim()) {
+      toast.error('Tenant admin password is required');
+      return;
+    }
+    if (form.adminPassword.trim().length < 8) {
+      toast.error('Tenant admin password must be at least 8 characters');
+      return;
+    }
+
+    if (form.billingStartMode === 'scheduled' && !form.billingCycleStart) {
+      toast.error('Select a billing start date or activate immediately');
+      return;
+    }
 
     setCreating(true);
     try {
+      const activateImmediately = form.billingStartMode === 'immediate';
+      const startDate =
+        activateImmediately || form.billingCycleStart
+          ? activateImmediately
+            ? new Date()
+            : new Date(form.billingCycleStart)
+          : undefined;
       const payload = {
         name: form.name.trim(),
         slug: form.slug.trim().toLowerCase(),
@@ -186,22 +244,40 @@ export function SuperAdminPage() {
         seatLimit: form.seatLimit ? Number(form.seatLimit) : undefined,
         adminEmail: form.adminEmail.trim().toLowerCase(),
         adminName: form.adminName.trim() || undefined,
-        billingCycleStart: form.billingCycleStart ? new Date(form.billingCycleStart).toISOString() : undefined,
+        adminPassword: form.adminPassword.trim(),
+        billingCycleStart: startDate ? startDate.toISOString() : undefined,
         billingCycleEnd:
           form.plan === 'lifetime'
             ? undefined
+            : form.plan === 'annual' && startDate
+            ? addOneYear(startDate).toISOString()
             : form.billingCycleEnd
             ? new Date(form.billingCycleEnd).toISOString()
             : undefined,
       };
 
       const result = await createTenant(payload);
-      setTenants((prev) => [result.tenant, ...prev]);
-      setLastProvisioned(result);
-      toast.success(
-        `Tenant ${result.tenant.name} created. Admin PIN: ${result.admin.temporaryPin}`,
-        { duration: 6000 },
-      );
+      let tenantRecord: TenantSummary = result.tenant;
+
+      if (activateImmediately) {
+        try {
+          tenantRecord = await activateTenant(result.tenant.id);
+          toast.success(`${tenantRecord.name} activated immediately`, { duration: 6000 });
+        } catch (activateError: any) {
+          toast.error(
+            activateError?.response?.data?.message || `${result.tenant.name} created, but activation failed`,
+          );
+        }
+      }
+
+      setTenants((prev) => [tenantRecord, ...prev]);
+      setLastProvisioned({
+        tenant: tenantRecord,
+        admin: result.admin,
+      });
+      toast.success(`Tenant ${tenantRecord.name} created. Admin account ready for ${result.admin.email}`, {
+        duration: 6000,
+      });
       setForm({
         name: '',
         slug: '',
@@ -209,7 +285,9 @@ export function SuperAdminPage() {
         seatLimit: '',
         adminName: '',
         adminEmail: '',
-        billingCycleStart: '',
+        adminPassword: '',
+        billingStartMode: 'immediate',
+        billingCycleStart: todayInputValue(),
         billingCycleEnd: '',
       });
     } catch (error: any) {
@@ -321,9 +399,32 @@ export function SuperAdminPage() {
     try {
       const updatedTenant = await activateTenant(tenant.id);
       setTenants((prev) => prev.map((item) => (item.id === updatedTenant.id ? updatedTenant : item)));
-      toast.success(`${tenant.name} reactivated`);
+      toast.success(
+        tenant.status === 'suspended' ? `${tenant.name} reactivated` : `${tenant.name} activated`,
+      );
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to activate tenant');
+    } finally {
+      setActionKey(null);
+    }
+  };
+
+  const handleDelete = async (tenant: TenantSummary) => {
+    const confirmed = window.confirm(
+      `Delete ${tenant.name}? This removes the tenant and all associated user accounts.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setActionKey(`${tenant.id}:delete`);
+    try {
+      await deleteTenant(tenant.id);
+      setTenants((prev) => prev.filter((item) => item.id !== tenant.id));
+      setLastProvisioned((prev) => (prev?.tenant.id === tenant.id ? null : prev));
+      toast.success(`${tenant.name} deleted`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to delete tenant');
     } finally {
       setActionKey(null);
     }
@@ -336,10 +437,10 @@ export function SuperAdminPage() {
           <section className="theme-card border-l-4 border-l-emerald-400 px-6 py-5">
             <h2 className="theme-text-primary text-lg font-semibold">Tenant provisioned</h2>
             <p className="theme-text-secondary mt-1 text-sm">
-              Share the onboarding PIN{' '}
-              <span className="theme-text-primary font-semibold">{lastProvisioned.admin.temporaryPin}</span> with{' '}
-              <span className="theme-text-primary font-semibold">{lastProvisioned.admin.email}</span>. They can update it
-              after their first login.
+              Share the admin credentials with{' '}
+              <span className="theme-text-primary font-semibold">{lastProvisioned.admin.email}</span>. The tenant is{' '}
+              <span className="theme-text-primary font-semibold">{lastProvisioned.tenant.status}</span> and can update
+              their password after the first login.
             </p>
           </section>
         )}
@@ -435,11 +536,30 @@ export function SuperAdminPage() {
                 id="tenant-plan"
                 value={form.plan}
                 onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    plan: event.target.value,
-                    billingCycleEnd: event.target.value === 'lifetime' ? '' : prev.billingCycleEnd,
-                  }))
+                  setForm((prev) => {
+                    const nextPlan = event.target.value;
+                    const isAnnual = nextPlan === 'annual';
+                    const isLifetime = nextPlan === 'lifetime';
+                    const baseStart =
+                      prev.billingStartMode === 'immediate'
+                        ? new Date()
+                        : prev.billingCycleStart
+                        ? new Date(prev.billingCycleStart)
+                        : null;
+                    return {
+                      ...prev,
+                      plan: nextPlan,
+                      billingCycleEnd: isLifetime
+                        ? ''
+                        : isAnnual && baseStart
+                        ? addOneYear(baseStart).toISOString().slice(0, 10)
+                        : prev.billingCycleEnd && !isAnnual
+                        ? prev.billingCycleEnd
+                        : isAnnual
+                        ? ''
+                        : prev.billingCycleEnd,
+                    };
+                  })
                 }
                 className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
               >
@@ -489,16 +609,95 @@ export function SuperAdminPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
+              <label className="theme-text-secondary text-sm font-medium" htmlFor="tenant-admin-password">
+                Tenant admin password
+              </label>
+              <input
+                id="tenant-admin-password"
+                type="password"
+                value={form.adminPassword}
+                onChange={(event) => setForm((prev) => ({ ...prev, adminPassword: event.target.value }))}
+                className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                required
+                minLength={8}
+              />
+              <p className="theme-text-secondary text-[11px]">
+                Minimum 8 characters. Share these credentials with the tenant&apos;s primary contact.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
               <label className="theme-text-secondary text-sm font-medium" htmlFor="tenant-start">
                 Billing cycle start
               </label>
-              <input
-                id="tenant-start"
-                type="date"
-                value={form.billingCycleStart}
-                onChange={(event) => setForm((prev) => ({ ...prev, billingCycleStart: event.target.value }))}
-                className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] transition ${
+                    form.billingStartMode === 'immediate'
+                      ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60'
+                      : 'border border-white/15 text-slate-200 hover:border-white/30'
+                  }`}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      billingStartMode: 'immediate',
+                      billingCycleStart: todayInputValue(),
+                      billingCycleEnd:
+                        prev.plan === 'annual'
+                          ? addOneYear(new Date()).toISOString().slice(0, 10)
+                          : prev.billingCycleEnd,
+                    }))
+                  }
+                >
+                  Activate now
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] transition ${
+                    form.billingStartMode === 'scheduled'
+                      ? 'bg-sky-500/20 text-sky-200 border border-sky-400/60'
+                      : 'border border-white/15 text-slate-200 hover:border-white/30'
+                  }`}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      billingStartMode: 'scheduled',
+                      billingCycleStart: '',
+                      billingCycleEnd: prev.plan === 'annual' ? '' : prev.billingCycleEnd,
+                    }))
+                  }
+                >
+                  Schedule start
+                </button>
+              </div>
+              {form.billingStartMode === 'scheduled' && (
+                <input
+                  id="tenant-start"
+                  type="date"
+                  value={form.billingCycleStart}
+                  onChange={(event) =>
+                    setForm((prev) => {
+                      const value = event.target.value;
+                      return {
+                        ...prev,
+                        billingCycleStart: value,
+                        billingCycleEnd:
+                          prev.plan === 'annual' && value
+                            ? addOneYear(new Date(value)).toISOString().slice(0, 10)
+                            : prev.plan === 'annual'
+                            ? ''
+                            : prev.billingCycleEnd,
+                      };
+                    })
+                  }
+                  className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                />
+              )}
+              {form.plan === 'annual' && form.billingStartMode === 'scheduled' && !form.billingCycleStart && (
+                <p className="theme-text-secondary text-[11px]">
+                  Choose a start date to auto-calculate the annual billing window.
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <label className="theme-text-secondary text-sm font-medium" htmlFor="tenant-end">
@@ -510,8 +709,13 @@ export function SuperAdminPage() {
                 value={form.billingCycleEnd}
                 onChange={(event) => setForm((prev) => ({ ...prev, billingCycleEnd: event.target.value }))}
                 className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-60"
-                disabled={form.plan === 'lifetime'}
+                disabled={form.plan === 'lifetime' || form.plan === 'annual'}
               />
+              {form.plan === 'annual' && (
+                <p className="theme-text-secondary text-[11px]">
+                  Automatically set to one year after the billing start date.
+                </p>
+              )}
             </div>
             <div className="md:col-span-2">
               <button
@@ -583,9 +787,9 @@ export function SuperAdminPage() {
                       <td className="px-4 py-4 capitalize theme-text-secondary">{tenant.plan}</td>
                       <td className="px-4 py-4 text-xs uppercase">
                         <StatusBadge status={tenant.status} />
-                        {tenant.status === 'suspended' && tenant.metadata?.suspensionReason && (
+                        {tenant.status === 'suspended' && Boolean(tenant.metadata?.suspensionReason) && (
                           <p className="theme-text-secondary mt-2 text-[11px] italic">
-                            {String(tenant.metadata.suspensionReason)}
+                            {String(tenant.metadata?.suspensionReason ?? '')}
                           </p>
                         )}
                       </td>
@@ -602,7 +806,7 @@ export function SuperAdminPage() {
                           : '—'}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap justify-end gap-2">
+                        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
                           <button
                             type="button"
                             className={actionButtonClasses}
@@ -610,6 +814,16 @@ export function SuperAdminPage() {
                           >
                             Manage plan
                           </button>
+                          {tenant.status !== 'active' && tenant.status !== 'suspended' && (
+                            <button
+                              type="button"
+                              className={actionButtonClasses}
+                              onClick={() => handleActivate(tenant)}
+                              disabled={isActionBusy(`${tenant.id}:activate`)}
+                            >
+                              {isActionBusy(`${tenant.id}:activate`) ? 'Activating…' : 'Activate now'}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className={actionButtonClasses}
@@ -637,6 +851,14 @@ export function SuperAdminPage() {
                               {isActionBusy(`${tenant.id}:suspend`) ? 'Suspending…' : 'Suspend'}
                             </button>
                           )}
+                          <button
+                            type="button"
+                            className={dangerActionButtonClasses}
+                            onClick={() => handleDelete(tenant)}
+                            disabled={isActionBusy(`${tenant.id}:delete`)}
+                          >
+                            {isActionBusy(`${tenant.id}:delete`) ? 'Deleting…' : 'Delete'}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -646,6 +868,105 @@ export function SuperAdminPage() {
             </table>
           </div>
         </section>
+        {subscriptionModalOpen && subscriptionTenant && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4">
+            <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="theme-text-primary text-lg font-semibold">Manage subscription</h3>
+                  <p className="theme-text-secondary text-sm">{subscriptionTenant.name}</p>
+                </div>
+                <button
+                  type="button"
+                  className="text-slate-400 transition hover:text-slate-200"
+                  onClick={closeSubscriptionModal}
+                  aria-label="Close subscription modal"
+                >
+                  ✕
+                </button>
+              </div>
+              <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handleSubscriptionSubmit}>
+                <div className="flex flex-col gap-2">
+                  <label className="theme-text-secondary text-sm font-medium" htmlFor="subscription-plan">
+                    Plan
+                  </label>
+                  <select
+                    id="subscription-plan"
+                    value={subscriptionForm.plan}
+                    onChange={(event) => updateSubscriptionField('plan', event.target.value)}
+                    className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                  >
+                    {PLAN_OPTIONS.map((plan) => (
+                      <option key={plan.value} value={plan.value}>
+                        {plan.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="theme-text-secondary text-sm font-medium" htmlFor="subscription-seat-limit">
+                    Seat limit
+                  </label>
+                  <input
+                    id="subscription-seat-limit"
+                    type="number"
+                    min={0}
+                    value={subscriptionForm.seatLimit}
+                    onChange={(event) => updateSubscriptionField('seatLimit', event.target.value)}
+                    className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="theme-text-secondary text-sm font-medium" htmlFor="subscription-billing-start">
+                    Billing cycle start
+                  </label>
+                  <input
+                    id="subscription-billing-start"
+                    type="date"
+                    value={subscriptionForm.billingCycleStart}
+                    onChange={(event) => updateSubscriptionField('billingCycleStart', event.target.value)}
+                    className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="theme-text-secondary text-sm font-medium" htmlFor="subscription-billing-end">
+                    Billing cycle end
+                  </label>
+                  <input
+                    id="subscription-billing-end"
+                    type="date"
+                    value={subscriptionForm.billingCycleEnd}
+                    onChange={(event) => updateSubscriptionField('billingCycleEnd', event.target.value)}
+                    className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-60"
+                    disabled={subscriptionForm.plan === 'lifetime' || subscriptionForm.plan === 'annual'}
+                  />
+                {subscriptionForm.plan === 'annual' && (
+                  <p className="theme-text-secondary text-[11px]">
+                    Auto-adjusted to one year after the billing start.
+                  </p>
+                )}
+                </div>
+                <div className="md:col-span-2 flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-300 transition hover:border-white/30"
+                    onClick={closeSubscriptionModal}
+                    disabled={savingSubscription}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-950 shadow-[0_15px_40px_-20px_rgba(56,189,248,0.7)] transition hover:shadow-[0_18px_46px_-18px_rgba(16,185,129,0.7)] disabled:cursor-not-allowed disabled:opacity-70"
+                    disabled={savingSubscription}
+                  >
+                    {savingSubscription ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

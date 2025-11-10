@@ -23,6 +23,7 @@ export interface CreateTenantPayload {
   adminName?: string;
   billingCycleStart?: string;
   billingCycleEnd?: string;
+  adminPassword: string;
 }
 
 export interface TenantProvisioningResult {
@@ -30,7 +31,7 @@ export interface TenantProvisioningResult {
   admin: {
     id: string;
     email: string;
-    temporaryPin: string;
+    temporaryPin?: string;
   };
 }
 
@@ -50,6 +51,11 @@ export interface TenantAdminPinResetResponse {
   adminUserId: string;
   adminEmail?: string;
   temporaryPin: string;
+}
+
+export interface TenantDeleteResponse {
+  tenantId: string;
+  removedUsers: number;
 }
 
 export async function listTenants(): Promise<TenantSummary[]> {
@@ -79,7 +85,7 @@ export async function resetTenantAdminPin(
 ): Promise<TenantAdminPinResetResponse> {
   const { data } = await axios.post<TenantAdminPinResetResponse>(
     `${API_URL}/api/v1/platform/tenants/${tenantId}/reset-admin-pin`,
-    adminEmail ? { adminEmail } : undefined,
+    adminEmail ? { adminEmail } : {},
   );
   return data;
 }
@@ -94,6 +100,11 @@ export async function suspendTenant(tenantId: string, payload: SuspendTenantPayl
 
 export async function activateTenant(tenantId: string): Promise<TenantSummary> {
   const { data } = await axios.post<TenantSummary>(`${API_URL}/api/v1/platform/tenants/${tenantId}/activate`);
+  return data;
+}
+
+export async function deleteTenant(tenantId: string): Promise<TenantDeleteResponse> {
+  const { data } = await axios.delete<TenantDeleteResponse>(`${API_URL}/api/v1/platform/tenants/${tenantId}`);
   return data;
 }
 
