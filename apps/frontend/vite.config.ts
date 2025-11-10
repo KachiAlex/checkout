@@ -28,14 +28,22 @@ export default defineConfig({
         theme_color: '#1e40af',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'checkout-icon-192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any maskable',
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'checkout-icon-256.png',
+            sizes: '256x256',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
+          {
+            src: 'checkout-icon-512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any maskable',
           },
         ],
       },

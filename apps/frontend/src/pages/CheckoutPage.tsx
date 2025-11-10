@@ -5,6 +5,7 @@ import { CartSummary } from '../components/CartSummary';
 import { OnboardingBanner } from '../components/OnboardingBanner';
 import { ProductSearch } from '../components/ProductSearch';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { BrandMark } from '../components/BrandMark';
 import { useThemeStore } from '../stores/themeStore';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -209,15 +210,22 @@ export function CheckoutPage() {
         {/* Header */}
         <header className="mx-auto w-full max-w-7xl px-6 pt-12">
           <div className="theme-card flex flex-col gap-6 rounded-3xl border p-6 backdrop-blur-2xl md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <p className="theme-text-secondary text-xs uppercase tracking-[0.4em]">POS Checkout</p>
-              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">
-                {user?.name ? `Welcome back, ${user.name.split(' ')[0]}` : 'Welcome to Checkout'}
-              </h1>
-              <p className="theme-text-secondary text-sm">
-                {tenant?.name ? `${tenant.name} • ` : ''}
-                Keep the line moving—scan, search, and complete payments in seconds.
-              </p>
+            <div className="flex items-start gap-4">
+              <BrandMark
+                size={56}
+                backgroundClassName="bg-white/90 dark:bg-white/10"
+                className="ring-1 ring-slate-200/40 dark:ring-white/10"
+              />
+              <div className="space-y-2">
+                <p className="theme-text-secondary text-xs uppercase tracking-[0.4em]">POS Checkout</p>
+                <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">
+                  {user?.name ? `Welcome back, ${user.name.split(' ')[0]}` : 'Welcome to Checkout'}
+                </h1>
+                <p className="theme-text-secondary text-sm">
+                  {tenant?.name ? `${tenant.name} • ` : ''}
+                  Keep the line moving—scan, search, and complete payments in seconds.
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">

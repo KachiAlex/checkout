@@ -6,6 +6,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { API_URL } from '../config';
+import { BrandMark } from '../components/BrandMark';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 interface InventoryItem {
   id: string;
@@ -135,33 +137,40 @@ export function InventoryPage() {
   }, [user?.locationId, accessToken]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg">
-        <div className="px-6 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Inventory Management</h1>
-            <p className="text-sm text-green-100">Store: {user?.locationId || 'store-001'}</p>
+    <div className="theme-background min-h-screen">
+      <div className="relative mx-auto w-full max-w-7xl space-y-6 px-6 py-10">
+        <div className="theme-card flex flex-col gap-6 rounded-3xl border p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <BrandMark
+              size={56}
+              backgroundClassName="bg-white/90 dark:bg-white/10"
+              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+            />
+            <div>
+              <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Inventory</p>
+              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Inventory Management</h1>
+              <p className="theme-text-secondary text-sm">Store: {user?.locationId || 'store-001'}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Link
               to="/checkout"
-              className="px-4 py-2 bg-green-500 hover:bg-green-400 rounded-lg transition-colors"
+              className="theme-chip inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition hover:border-emerald-300/60 hover:text-emerald-100"
             >
               Checkout
             </Link>
             <button
               onClick={logout}
-              className="px-4 py-2 bg-green-500 hover:bg-green-400 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-400 via-pink-500 to-rose-500 px-5 py-2 text-sm font-semibold text-white shadow-[0_20px_45px_-25px_rgba(244,114,182,0.7)] transition hover:shadow-[0_26px_55px_-20px_rgba(244,114,182,0.85)]"
             >
               Logout
             </button>
+            <ThemeToggle />
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Scanner */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
           <BarcodeScanner onScan={handleScan} />
         </div>
 
@@ -170,36 +179,36 @@ export function InventoryPage() {
 
         {/* Adjust Inventory Form */}
         {selectedProduct && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Adjust Inventory</h2>
+          <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+            <h2 className="theme-text-primary text-xl font-semibold mb-4">Adjust Inventory</h2>
             <div className="space-y-4">
               <div>
-                <p className="font-semibold text-gray-800">{selectedProduct.name}</p>
-                <p className="text-sm text-gray-600">SKU: {selectedProduct.sku}</p>
+                <p className="theme-text-primary font-semibold">{selectedProduct.name}</p>
+                <p className="theme-text-secondary text-sm">SKU: {selectedProduct.sku}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="theme-text-secondary block text-sm font-medium mb-2">
                     Adjustment Type
                   </label>
                   <select
                     value={adjustType}
                     onChange={(e) => setAdjustType(e.target.value as 'adjust' | 'received')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full rounded-2xl border border-white/15 bg-transparent px-4 py-3 text-sm font-medium text-current outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/40"
                   >
                     <option value="adjust">Manual Adjustment</option>
                     <option value="received">Stock Received</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="theme-text-secondary block text-sm font-medium mb-2">
                     New Quantity
                   </label>
                   <input
                     type="number"
                     value={adjustQuantity}
                     onChange={(e) => setAdjustQuantity(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full rounded-2xl border border-white/15 bg-transparent px-4 py-3 text-sm font-medium text-current outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/40"
                     placeholder="Enter quantity"
                   />
                 </div>
@@ -207,7 +216,7 @@ export function InventoryPage() {
               <div className="flex gap-4">
                 <button
                   onClick={handleAdjustInventory}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 px-6 py-2.5 text-sm font-semibold text-emerald-950 shadow-[0_20px_45px_-25px_rgba(16,185,129,0.7)] transition hover:shadow-[0_24px_55px_-22px_rgba(16,185,129,0.8)]"
                 >
                   Update Inventory
                 </button>
@@ -216,7 +225,7 @@ export function InventoryPage() {
                     setSelectedProduct(null);
                     setAdjustQuantity('');
                   }}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  className="theme-chip rounded-full border px-5 py-2 text-sm font-semibold hover:border-white/25"
                 >
                   Cancel
                 </button>
@@ -226,43 +235,51 @@ export function InventoryPage() {
         )}
 
         {/* Inventory List */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Current Inventory</h2>
+        <div className="theme-card rounded-3xl border p-0 backdrop-blur-xl">
+          <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+            <h2 className="theme-text-primary text-xl font-semibold">Current Inventory</h2>
               <button
                 onClick={loadInventory}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="theme-chip rounded-full border px-4 py-2 text-xs font-semibold hover:border-sky-300/60 hover:text-sky-100"
               >
                 Refresh
               </button>
-            </div>
           </div>
           {loading ? (
             <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading inventory...</p>
+              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-sky-400"></div>
+              <p className="theme-text-secondary mt-4 text-sm">Loading inventory...</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-white/5">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barcode</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reorder Point</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Product
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      SKU
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Barcode
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Quantity
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Reorder Point
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-white/10">
                   {inventory.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                    <tr key={item.id} className="hover:bg-white/5 transition">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium theme-text-primary">
                         {item.product.name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">{item.product.sku}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-mono text-sm">
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">{item.product.sku}</td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary font-mono text-sm">
                         {item.product.barcode || '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -270,7 +287,7 @@ export function InventoryPage() {
                           {item.quantity}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
                         {item.reorderPoint || '—'}
                       </td>
                     </tr>

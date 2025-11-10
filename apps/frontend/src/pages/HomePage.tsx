@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { BrandMark } from '../components/BrandMark';
 import { useThemeStore } from '../stores/themeStore';
 
 const features = [
@@ -77,8 +78,14 @@ export function HomePage() {
       <header className="relative z-10">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-9">
           <Link to="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-100">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl">🛒</span>
-            Checkout
+            <BrandMark
+              size={44}
+              withPadding={false}
+              shadow={false}
+              backgroundClassName="bg-white/15"
+              className="ring-1 ring-white/20"
+            />
+            <span>Checkout</span>
           </Link>
           <nav className="hidden items-center gap-8 text-sm text-slate-300 md:flex">
             <a href="#features" className="hover:text-white">

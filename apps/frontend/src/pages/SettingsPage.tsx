@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { changePin } from '../services/userService';
 import { useAuthStore } from '../stores/authStore';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { BrandMark } from '../components/BrandMark';
 import {
   createTenantUser,
   fetchTenantUsers,
@@ -142,11 +143,18 @@ export function SettingsPage() {
   return (
     <div className="theme-background min-h-screen">
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-6 py-10">
-        <div className="space-y-2">
-          <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Settings</h1>
-          <p className="theme-text-secondary text-sm">
-            Manage your account, company profile, and workspace preferences.
-          </p>
+        <div className="flex items-start gap-4">
+          <BrandMark
+            size={56}
+            backgroundClassName="bg-white/90 dark:bg-white/10"
+            className="ring-1 ring-slate-200/40 dark:ring-white/10"
+          />
+          <div className="space-y-2">
+            <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Settings</h1>
+            <p className="theme-text-secondary text-sm">
+              Manage your account, company profile, and workspace preferences.
+            </p>
+          </div>
         </div>
 
         <SectionContainer

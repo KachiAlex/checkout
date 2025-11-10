@@ -15,6 +15,7 @@ import {
 } from '../services/platformTenantService';
 import { useAuthStore } from '../stores/authStore';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { BrandMark } from '../components/BrandMark';
 
 const PLAN_OPTIONS = [
   { label: 'Monthly', value: 'monthly' },
@@ -446,15 +447,22 @@ export function SuperAdminPage() {
         )}
 
         <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Platform control</p>
-            <h1 className="theme-text-primary mt-3 text-3xl font-semibold tracking-tight">
-              Super admin command center
-            </h1>
-            <p className="theme-text-secondary mt-2 text-sm md:max-w-xl">
-              Provision new tenant companies, assign plans, and monitor rollout progress. This workspace is isolated
-              from the tenant-facing POS.
-            </p>
+          <div className="flex items-start gap-4">
+            <BrandMark
+              size={60}
+              backgroundClassName="bg-white/90 dark:bg-white/10"
+              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+            />
+            <div>
+              <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Platform control</p>
+              <h1 className="theme-text-primary mt-3 text-3xl font-semibold tracking-tight">
+                Super admin command center
+              </h1>
+              <p className="theme-text-secondary mt-2 text-sm md:max-w-xl">
+                Provision new tenant companies, assign plans, and monitor rollout progress. This workspace is isolated
+                from the tenant-facing POS.
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />

@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { BrandMark } from '../components/BrandMark';
 import { useThemeStore } from '../stores/themeStore';
 
 type LoginVariant = 'tenant' | 'superadmin';
@@ -84,14 +85,23 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
           <ThemeToggle />
         </div>
         <div className="theme-card rounded-3xl border px-8 py-10 backdrop-blur-xl">
-          <h1 className="theme-text-primary text-3xl font-bold text-center">
-            {variant === 'superadmin' ? 'Checkout Platform Console' : 'POS Checkout MVP'}
-          </h1>
-          <p className="theme-text-secondary mt-2 text-center text-sm">
-            {variant === 'superadmin'
-              ? 'Access the multi-tenant command center to provision and manage companies.'
-              : 'Enter your company slug and secure PIN to access the checkout console.'}
-          </p>
+          <div className="flex flex-col items-center gap-4">
+            <BrandMark
+              size={84}
+              backgroundClassName={theme === 'light' ? 'bg-white' : 'bg-white/10'}
+              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+            />
+            <div className="space-y-2 text-center">
+              <h1 className="theme-text-primary text-3xl font-bold">
+                {variant === 'superadmin' ? 'Checkout Platform Console' : 'POS Checkout MVP'}
+              </h1>
+              <p className="theme-text-secondary text-sm">
+                {variant === 'superadmin'
+                  ? 'Access the multi-tenant command center to provision and manage companies.'
+                  : 'Enter your company slug and secure PIN to access the checkout console.'}
+              </p>
+            </div>
+          </div>
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             {variant === 'superadmin' ? (
               <>
