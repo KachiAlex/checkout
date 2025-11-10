@@ -4,6 +4,11 @@ import toast from 'react-hot-toast';
 import {
   listTenants,
   createTenant,
+  updateTenantSubscription,
+  resetTenantAdminPin,
+  suspendTenant,
+  activateTenant,
+  UpdateSubscriptionPayload,
   TenantSummary,
   TenantProvisioningResult,
 } from '../services/platformTenantService';
@@ -57,6 +62,17 @@ export function SuperAdminPage() {
     billingCycleStart: '',
     billingCycleEnd: '',
   });
+  const [actionKey, setActionKey] = useState<string | null>(null);
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [subscriptionTenant, setSubscriptionTenant] = useState<TenantSummary | null>(null);
+  const [subscriptionForm, setSubscriptionForm] = useState({
+    plan: 'monthly',
+    seatLimit: '',
+    billingCycleStart: '',
+    billingCycleEnd: '',
+  });
+  const [subscriptionOriginal, setSubscriptionOriginal] = useState<typeof subscriptionForm | null>(null);
+  const [savingSubscription, setSavingSubscription] = useState(false);
 
   useEffect(() => {
     if (!user?.isPlatformAdmin) {
@@ -102,6 +118,53 @@ export function SuperAdminPage() {
     const suspended = tenants.filter((tenant) => tenant.status === 'suspended').length;
     return { total, active, pending, suspended };
   }, [tenants]);
+
+  const formatDateInput = (value?: string) => {
+    if (!value) {
+      return '';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) {
+      return '';
+    }
+    return date.toISOString().slice(0, 10);
+  };
+
+  const openSubscriptionModal = (tenant: TenantSummary) => {
+    const initial = {
+      plan: tenant.plan,
+      seatLimit: tenant.seatLimit !== undefined ? String(tenant.seatLimit) : '',
+      billingCycleStart: formatDateInput(tenant.billingCycleStart),
+      billingCycleEnd: tenant.plan === 'lifetime' ? '' : formatDateInput(tenant.billingCycleEnd),
+    };
+    setSubscriptionForm(initial);
+    setSubscriptionOriginal(initial);
+    setSubscriptionTenant(tenant);
+    setSubscriptionModalOpen(true);
+  };
+
+  const closeSubscriptionModal = () => {
+    setSubscriptionModalOpen(false);
+    setSubscriptionTenant(null);
+    setSubscriptionOriginal(null);
+  };
+
+  const updateSubscriptionField = (field: keyof typeof subscriptionForm, value: string) => {
+    setSubscriptionForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'plan' && value === 'lifetime') {
+        next.billingCycleEnd = '';
+      }
+      if (field === 'plan' && value !== 'lifetime' && subscriptionOriginal?.billingCycleEnd) {
+        next.billingCycleEnd = subscriptionOriginal.billingCycleEnd;
+      }
+      return next;
+    });
+  };
+
+  const isActionBusy = (key: string) => actionKey === key;
+  const actionButtonClasses =
+    'rounded-full border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60';
 
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -153,6 +216,116 @@ export function SuperAdminPage() {
       toast.error(error?.response?.data?.message || 'Unable to create tenant');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleSubscriptionSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!subscriptionTenant || !subscriptionOriginal) {
+      return;
+    }
+
+    const updates: UpdateSubscriptionPayload = {};
+    let hasChanges = false;
+
+    if (subscriptionForm.plan !== subscriptionOriginal.plan) {
+      updates.plan = subscriptionForm.plan;
+      hasChanges = true;
+    }
+
+    if (subscriptionForm.seatLimit !== subscriptionOriginal.seatLimit) {
+      if (subscriptionForm.seatLimit.trim() === '') {
+        toast.error('Seat limit cannot be blank when updating');
+        return;
+      }
+      const seatLimitValue = Number(subscriptionForm.seatLimit);
+      if (Number.isNaN(seatLimitValue)) {
+        toast.error('Seat limit must be a number');
+        return;
+      }
+      updates.seatLimit = seatLimitValue;
+      hasChanges = true;
+    }
+
+    if (subscriptionForm.billingCycleStart !== subscriptionOriginal.billingCycleStart) {
+      updates.billingCycleStart = subscriptionForm.billingCycleStart
+        ? new Date(subscriptionForm.billingCycleStart).toISOString()
+        : null;
+      hasChanges = true;
+    }
+
+    if (subscriptionForm.plan === 'lifetime') {
+      if (subscriptionOriginal.plan !== 'lifetime' || subscriptionOriginal.billingCycleEnd !== '') {
+        updates.billingCycleEnd = null;
+        hasChanges = true;
+      }
+    } else if (subscriptionForm.billingCycleEnd !== subscriptionOriginal.billingCycleEnd) {
+      updates.billingCycleEnd = subscriptionForm.billingCycleEnd
+        ? new Date(subscriptionForm.billingCycleEnd).toISOString()
+        : null;
+      hasChanges = true;
+    }
+
+    if (!hasChanges) {
+      toast.success('No subscription changes detected');
+      closeSubscriptionModal();
+      return;
+    }
+
+    setSavingSubscription(true);
+    try {
+      const updatedTenant = await updateTenantSubscription(subscriptionTenant.id, updates);
+      setTenants((prev) => prev.map((tenant) => (tenant.id === updatedTenant.id ? updatedTenant : tenant)));
+      toast.success('Subscription updated');
+      closeSubscriptionModal();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to update subscription');
+    } finally {
+      setSavingSubscription(false);
+    }
+  };
+
+  const handleResetPin = async (tenant: TenantSummary) => {
+    setActionKey(`${tenant.id}:reset`);
+    try {
+      const response = await resetTenantAdminPin(tenant.id, tenant.contactEmail);
+      toast.success(
+        `Temporary PIN for ${response.adminEmail ?? tenant.contactEmail ?? 'tenant admin'}: ${
+          response.temporaryPin
+        }`,
+        { duration: 7000 },
+      );
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to reset admin PIN');
+    } finally {
+      setActionKey(null);
+    }
+  };
+
+  const handleSuspend = async (tenant: TenantSummary) => {
+    const reason = window.prompt(`Provide a suspension reason for ${tenant.name} (optional):`) || '';
+    setActionKey(`${tenant.id}:suspend`);
+    try {
+      const updatedTenant = await suspendTenant(tenant.id, { reason: reason.trim() || undefined });
+      setTenants((prev) => prev.map((item) => (item.id === updatedTenant.id ? updatedTenant : item)));
+      toast.success(`${tenant.name} suspended`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to suspend tenant');
+    } finally {
+      setActionKey(null);
+    }
+  };
+
+  const handleActivate = async (tenant: TenantSummary) => {
+    setActionKey(`${tenant.id}:activate`);
+    try {
+      const updatedTenant = await activateTenant(tenant.id);
+      setTenants((prev) => prev.map((item) => (item.id === updatedTenant.id ? updatedTenant : item)));
+      toast.success(`${tenant.name} reactivated`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to activate tenant');
+    } finally {
+      setActionKey(null);
     }
   };
 
@@ -377,18 +550,19 @@ export function SuperAdminPage() {
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 font-semibold">Seats</th>
                   <th className="px-4 py-3 font-semibold">Billing window</th>
+                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-300">
+                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-300">
                       Loading tenants…
                     </td>
                   </tr>
                 ) : filteredTenants.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-300">
+                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-300">
                       {tenants.length === 0 ? 'No tenants provisioned yet.' : 'No tenants match your search.'}
                     </td>
                   </tr>
@@ -409,6 +583,11 @@ export function SuperAdminPage() {
                       <td className="px-4 py-4 capitalize theme-text-secondary">{tenant.plan}</td>
                       <td className="px-4 py-4 text-xs uppercase">
                         <StatusBadge status={tenant.status} />
+                        {tenant.status === 'suspended' && tenant.metadata?.suspensionReason && (
+                          <p className="theme-text-secondary mt-2 text-[11px] italic">
+                            {String(tenant.metadata.suspensionReason)}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-4 theme-text-secondary">
                         {tenant.seatLimit !== undefined ? tenant.seatLimit : '—'}
@@ -421,6 +600,44 @@ export function SuperAdminPage() {
                                 : 'open'
                             }`
                           : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            className={actionButtonClasses}
+                            onClick={() => openSubscriptionModal(tenant)}
+                          >
+                            Manage plan
+                          </button>
+                          <button
+                            type="button"
+                            className={actionButtonClasses}
+                            onClick={() => handleResetPin(tenant)}
+                            disabled={isActionBusy(`${tenant.id}:reset`)}
+                          >
+                            {isActionBusy(`${tenant.id}:reset`) ? 'Resetting…' : 'Reset PIN'}
+                          </button>
+                          {tenant.status === 'suspended' ? (
+                            <button
+                              type="button"
+                              className={actionButtonClasses}
+                              onClick={() => handleActivate(tenant)}
+                              disabled={isActionBusy(`${tenant.id}:activate`)}
+                            >
+                              {isActionBusy(`${tenant.id}:activate`) ? 'Activating…' : 'Activate'}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className={actionButtonClasses}
+                              onClick={() => handleSuspend(tenant)}
+                              disabled={isActionBusy(`${tenant.id}:suspend`)}
+                            >
+                              {isActionBusy(`${tenant.id}:suspend`) ? 'Suspending…' : 'Suspend'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

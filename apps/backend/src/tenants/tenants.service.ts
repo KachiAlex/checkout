@@ -5,6 +5,9 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantsRepository, TenantRecord } from './tenants.repository';
 import { UsersRepository } from '../users/users.repository';
 import { TenantPlan, TenantStatus, UserRole } from '@pos-checkout/shared';
+import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { ResetTenantAdminPinDto } from './dto/reset-tenant-admin-pin.dto';
+import { SuspendTenantDto } from './dto/suspend-tenant.dto';
 
 const normalizeSlug = (value: string) => value.trim().toLowerCase();
 const generateDefaultPin = () => Math.floor(Math.random() * 900000 + 100000).toString();
@@ -126,6 +129,97 @@ export class TenantsService {
     }
 
     return this.tenantsRepository.update(id, updatePayload);
+  }
+
+  async updateSubscription(id: string, dto: UpdateSubscriptionDto): Promise<TenantRecord> {
+    const tenant = await this.findById(id);
+    const updatePayload: Partial<TenantRecord> = {};
+    const nextPlan = dto.plan ?? tenant.plan;
+
+    if (dto.plan) {
+      updatePayload.plan = dto.plan;
+    }
+
+    if (dto.seatLimit !== undefined) {
+      updatePayload.seatLimit = dto.seatLimit;
+    }
+
+    if (dto.billingCycleStart !== undefined) {
+      updatePayload.billingCycleStart = dto.billingCycleStart
+        ? new Date(dto.billingCycleStart)
+        : undefined;
+    }
+
+    if (dto.billingCycleEnd !== undefined || nextPlan === TenantPlan.LIFETIME) {
+      updatePayload.billingCycleEnd =
+        nextPlan === TenantPlan.LIFETIME
+          ? undefined
+          : dto.billingCycleEnd
+          ? new Date(dto.billingCycleEnd)
+          : undefined;
+    }
+
+    return this.tenantsRepository.update(id, updatePayload);
+  }
+
+  async resetAdminPin(
+    id: string,
+    dto: ResetTenantAdminPinDto,
+  ): Promise<{ tenantId: string; adminUserId: string; adminEmail?: string; temporaryPin: string }> {
+    const tenant = await this.findById(id);
+
+    let adminUser =
+      dto.adminEmail !== undefined ? await this.usersRepository.findByEmail(dto.adminEmail) : null;
+
+    if (adminUser && adminUser.tenantId !== tenant.id) {
+      throw new BadRequestException('Provided admin email does not belong to this tenant');
+    }
+
+    if (!adminUser) {
+      adminUser = await this.usersRepository.findByRole(UserRole.ADMIN, tenant.id);
+    }
+
+    if (!adminUser) {
+      throw new NotFoundException('No tenant admin found to reset PIN');
+    }
+
+    const temporaryPin = generateDefaultPin();
+    const pinHash = await bcrypt.hash(temporaryPin, 10);
+    await this.usersRepository.update(adminUser.id, { pinHash });
+
+    return {
+      tenantId: tenant.id,
+      adminUserId: adminUser.id,
+      adminEmail: adminUser.email ?? tenant.contactEmail,
+      temporaryPin,
+    };
+  }
+
+  async suspend(id: string, dto: SuspendTenantDto): Promise<TenantRecord> {
+    const tenant = await this.findById(id);
+
+    const metadata = {
+      ...(tenant.metadata ?? {}),
+      suspensionReason: dto.reason ?? 'Suspended by platform administrator',
+      suspendedAt: new Date().toISOString(),
+    };
+
+    return this.tenantsRepository.update(id, {
+      status: TenantStatus.SUSPENDED,
+      metadata,
+    });
+  }
+
+  async activate(id: string): Promise<TenantRecord> {
+    const tenant = await this.findById(id);
+    const metadata = { ...(tenant.metadata ?? {}) };
+    delete metadata.suspensionReason;
+    delete metadata.suspendedAt;
+
+    return this.tenantsRepository.update(id, {
+      status: TenantStatus.ACTIVE,
+      metadata,
+    });
   }
 }
 

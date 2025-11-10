@@ -14,6 +14,9 @@ import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { ResetTenantAdminPinDto } from './dto/reset-tenant-admin-pin.dto';
+import { SuspendTenantDto } from './dto/suspend-tenant.dto';
 
 @ApiTags('tenants')
 @ApiBearerAuth('JWT-auth')
@@ -61,22 +64,31 @@ export class TenantsController {
   async updateSubscription(
     @Request() req: any,
     @Param('id') id: string,
-    @Body() body: {
-      plan?: string;
-      status?: string;
-      seatLimit?: number;
-      billingCycleStart?: string;
-      billingCycleEnd?: string;
-    },
+    @Body() dto: UpdateSubscriptionDto,
   ) {
     this.ensurePlatformAdmin(req);
-    return this.tenantsService.update(id, {
-      plan: body.plan as any,
-      status: body.status as any,
-      seatLimit: body.seatLimit,
-      billingCycleStart: body.billingCycleStart,
-      billingCycleEnd: body.billingCycleEnd,
-    });
+    return this.tenantsService.updateSubscription(id, dto);
+  }
+
+  @Post(':id/reset-admin-pin')
+  @ApiOperation({ summary: 'Reset the primary tenant admin PIN' })
+  async resetAdminPin(@Request() req: any, @Param('id') id: string, @Body() dto: ResetTenantAdminPinDto) {
+    this.ensurePlatformAdmin(req);
+    return this.tenantsService.resetAdminPin(id, dto);
+  }
+
+  @Post(':id/suspend')
+  @ApiOperation({ summary: 'Suspend a tenant' })
+  async suspend(@Request() req: any, @Param('id') id: string, @Body() dto: SuspendTenantDto) {
+    this.ensurePlatformAdmin(req);
+    return this.tenantsService.suspend(id, dto);
+  }
+
+  @Post(':id/activate')
+  @ApiOperation({ summary: 'Reactivate a suspended tenant' })
+  async activate(@Request() req: any, @Param('id') id: string) {
+    this.ensurePlatformAdmin(req);
+    return this.tenantsService.activate(id);
   }
 }
 
