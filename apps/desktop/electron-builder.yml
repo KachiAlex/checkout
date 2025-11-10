@@ -1,0 +1,33 @@
+appId: com.poscheckout.app
+productName: Checkout POS
+artifactName: Checkout POS Setup ${version}.${ext}
+files:
+  - dist/**
+  - from: ../frontend/dist
+    to: frontend-dist
+    filter:
+      - '**/*'
+asar: true
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.png
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Checkout POS
+mac:
+  target: dmg
+linux:
+  target: AppImage
+directories:
+  output: release
+  buildResources: build
+
+

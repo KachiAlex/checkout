@@ -1,0 +1,353 @@
+import { Link } from 'react-router-dom';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { useThemeStore } from '../stores/themeStore';
+
+const features = [
+  {
+    title: 'Multi-tenant control plane',
+    description:
+      'Provision new brands or locations in seconds and keep every tenant separated, secure, and compliant—no extra infrastructure.',
+    icon: '🛰️',
+  },
+  {
+    title: 'Omnichannel inventory sync',
+    description:
+      'USB, Bluetooth, or camera scanners auto-register and stream data back to a unified catalog with real-time variance alerts.',
+    icon: '📦',
+  },
+  {
+    title: 'Granular roles & approvals',
+    description:
+      'Platform admins, store managers, and cashiers each get a tailored workspace with PIN-based, auditable access.',
+    icon: '🛡️',
+  },
+];
+
+const outcomes = [
+  { label: 'Locations managed', value: '120+' },
+  { label: 'Transactions/day', value: '75K' },
+  { label: 'Average uptime', value: '99.98%' },
+];
+
+const sellingPoints = [
+  {
+    title: 'Launch-ready in hours',
+    body: 'Onboard new tenants with pre-baked inventory templates, device provisioning, and automated training flows.',
+  },
+  {
+    title: 'Deep analytics without spreadsheets',
+    body: 'Live sales, tax summaries, and refund monitoring—all exportable to your finance stack or piped to Google BigQuery.',
+  },
+  {
+    title: 'Hardware flexibility',
+    body: 'Checkout speaks fluent WebUSB, Web Bluetooth, and QR. Roll out iPads, dedicated kiosks, or rugged devices with one console.',
+  },
+  {
+    title: 'Global-ready security',
+    body: 'Field-level encryption, audit trails, and regional data silos keep regulators (and your legal team) happy.',
+  },
+];
+
+const testimonials = [
+  {
+    quote:
+      '“Checkout let us standardise ten franchise brands on a single POS stack. Scanner sync and tenant licensing saved us thousands.”',
+    name: 'Ola Bamidele',
+    role: 'COO, Velocity Retail Group',
+  },
+  {
+    quote:
+      '“We spun up a seasonal pop-up chain in two afternoons. Device registration and user PIN management just worked out of the box.”',
+    name: 'Kemi Aluko',
+    role: 'VP Operations, OneCart Africa',
+  },
+];
+
+export function HomePage() {
+  const theme = useThemeStore((state) => state.theme);
+
+  return (
+    <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-sky-500/30 blur-[180px]" />
+        <div className="absolute bottom-[-180px] right-[-160px] h-[520px] w-[520px] rounded-full bg-violet-500/25 blur-[220px]" />
+        <div className="absolute top-1/3 right-1/4 h-56 w-56 rounded-full bg-emerald-500/20 blur-[140px]" />
+      </div>
+
+      <header className="relative z-10">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-9">
+          <Link to="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-100">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl">🛒</span>
+            Checkout
+          </Link>
+          <nav className="hidden items-center gap-8 text-sm text-slate-300 md:flex">
+            <a href="#features" className="hover:text-white">
+              Product
+            </a>
+            <a href="#platform" className="hover:text-white">
+              Platform
+            </a>
+            <a href="#pricing" className="hover:text-white">
+              Pricing
+            </a>
+            <a href="#stories" className="hover:text-white">
+              Customers
+            </a>
+          </nav>
+          <div className="flex items-center gap-4">
+            <ThemeToggle key={theme} />
+            <Link
+              to="/login"
+              className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+            >
+              Launch console
+            </Link>
+            <a
+              href="mailto:hello@checkouthq.com?subject=Book%20a%20Checkout%20demo"
+              className="hidden rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-500/30 transition hover:shadow-sky-500/40 md:inline-block"
+            >
+              Book a demo
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <main className="relative z-10">
+        <section className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 pb-24 pt-10 md:flex-row md:items-center">
+          <div className="md:w-7/12">
+            <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-400/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-sky-200">
+              POS for scale
+              <span className="text-sm">•</span>
+              Multi-tenant ready
+            </span>
+            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white md:text-5xl">
+              Checkout is the modern POS for growing retail platforms.
+            </h1>
+            <p className="mt-5 text-lg text-slate-300">
+              Launch branded checkout experiences in hours, not months. Checkout brings scanners, inventory,
+              analytics, and tenant licensing into one glassmorphism-inspired interface your teams love using.
+            </p>
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-7 py-3 text-base font-semibold text-emerald-950 shadow-[0_25px_50px_-25px_rgba(16,185,129,0.7)] transition hover:shadow-[0_30px_60px_-25px_rgba(16,185,129,0.8)]"
+              >
+                Enter the console
+                <span className="text-lg">→</span>
+              </Link>
+              <a
+                href="#features"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-3 text-base font-semibold text-white transition hover:border-white/40"
+              >
+                Explore features
+              </a>
+            </div>
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {outcomes.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+                >
+                  <p className="text-2xl font-semibold text-white">{item.value}</p>
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-400">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="md:w-5/12">
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-[0_40px_90px_-45px_rgba(56,189,248,0.65)] backdrop-blur-xl">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+                <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Live dashboard preview</p>
+                <h2 className="mt-4 text-xl font-semibold text-white">Everything operators need in one pane</h2>
+                <ul className="mt-6 space-y-4 text-sm text-slate-300">
+                  <li className="flex items-start gap-3">
+                    <span className="text-lg">⚡</span>
+                    Adaptive workflows let every cashier or franchise operate at full speed with smart product recall.
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-lg">🧾</span>
+                    Built-in audit logs, VAT/GST summaries, and digital receipt delivery keep compliance headaches away.
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-lg">🔐</span>
+                    Role-based PIN access with auto-rotations and SSO-ready APIs means zero shared passwords on shift.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="bg-white/5 py-20 backdrop-blur-xl">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 md:flex-row">
+            <div className="md:w-5/12">
+              <p className="text-xs uppercase tracking-[0.4em] text-sky-200">Why Checkout</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white">Built for operators, embraced by crews</h2>
+              <p className="mt-4 text-slate-300">
+                Checkout takes the friction out of multi-location retail. Turn on QR-based pop-ups, manage gift cards,
+                and sync devices without calling IT.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <span className="theme-chip rounded-full border border-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
+                  WebUSB / Web Bluetooth
+                </span>
+                <span className="theme-chip rounded-full border border-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
+                  Offline-first
+                </span>
+                <span className="theme-chip rounded-full border border-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
+                  Tenant RBAC
+                </span>
+              </div>
+            </div>
+            <div className="grid flex-1 gap-6 sm:grid-cols-2">
+              {features.map((feature) => (
+                <div
+                  key={feature.title}
+                  className="group rounded-3xl border border-white/10 bg-slate-950/60 p-6 transition hover:border-white/30 hover:bg-slate-900/60"
+                >
+                  <span className="text-2xl">{feature.icon}</span>
+                  <h3 className="mt-4 text-lg font-semibold text-white">{feature.title}</h3>
+                  <p className="mt-2 text-sm text-slate-300">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="platform" className="py-20">
+          <div className="mx-auto w-full max-w-6xl px-6">
+            <div className="rounded-[32px] border border-white/10 bg-gradient-to-br from-white/0 via-white/5 to-white/10 p-10 shadow-[0_40px_120px_-50px_rgba(14,165,233,0.6)] backdrop-blur-2xl">
+              <div className="grid gap-8 md:grid-cols-2">
+                {sellingPoints.map((point) => (
+                  <div key={point.title} className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
+                    <h3 className="text-lg font-semibold text-white">{point.title}</h3>
+                    <p className="mt-3 text-sm text-slate-300">{point.body}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-10 flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-white/10 bg-slate-950/70 px-6 py-5 text-sm text-slate-300">
+                <p>
+                  Checkout integrates with Clover, Stripe Terminal, Square, and on-prem fiscal printers. Prefer your own?
+                  Use our device SDK.
+                </p>
+                <Link
+                  to="/login"
+                  className="rounded-full border border-white/30 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/60"
+                >
+                  View operator console →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="stories" className="bg-white/5 py-20 backdrop-blur-xl">
+          <div className="mx-auto w-full max-w-6xl px-6">
+            <div className="mb-10 text-center">
+              <p className="text-xs uppercase tracking-[0.4em] text-sky-200">Customer spotlight</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white">Growing brands trust Checkout to run retail</h2>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              {testimonials.map((item) => (
+                <div key={item.name} className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
+                  <p className="text-lg text-white">{item.quote}</p>
+                  <div className="mt-4">
+                    <p className="font-semibold text-slate-200">{item.name}</p>
+                    <p className="text-sm text-slate-400">{item.role}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="py-20">
+          <div className="mx-auto w-full max-w-6xl px-6">
+            <div className="rounded-[32px] border border-white/10 bg-slate-950/70 p-10 shadow-[0_40px_120px_-50px_rgba(99,102,241,0.6)] backdrop-blur-2xl">
+              <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
+                <div className="md:w-2/3">
+                  <p className="text-xs uppercase tracking-[0.4em] text-sky-200">Pricing</p>
+                  <h2 className="mt-4 text-3xl font-semibold text-white">Flexible licensing for every stage</h2>
+                  <p className="mt-4 text-slate-300">
+                    Checkout’s licensing engine lets you assign monthly, annual, or lifetime plans per tenant. Scale up
+                    seat counts anytime and pay only for active locations.
+                  </p>
+                  <ul className="mt-6 space-y-3 text-sm text-slate-300">
+                    <li>• Platform fee includes tenant provisioning, user management, and device registration.</li>
+                    <li>• Optional add-ons: advanced analytics, fiscal compliance packs, dedicated success engineer.</li>
+                    <li>• Volume discounts kick in from the 5th tenant onwards.</li>
+                  </ul>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-center">
+                  <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Starter preview</p>
+                  <p className="mt-5 text-4xl font-semibold text-white">
+                    $249<span className="text-base font-normal text-slate-300">/tenant/mo</span>
+                  </p>
+                  <p className="mt-2 text-sm text-slate-400">Includes 3 locations and unlimited devices</p>
+                  <a
+                    href="mailto:hello@checkouthq.com?subject=Checkout%20Pricing"
+                    className="mt-6 inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-md shadow-white/40 transition hover:shadow-white/60"
+                  >
+                    Talk to sales
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="pb-24">
+          <div className="mx-auto w-full max-w-4xl rounded-[32px] border border-white/10 bg-gradient-to-br from-emerald-400/20 via-sky-500/10 to-white/10 p-10 text-center shadow-[0_45px_120px_-60px_rgba(56,189,248,0.6)] backdrop-blur-2xl">
+            <p className="text-xs uppercase tracking-[0.4em] text-emerald-200">Ready to modernise your POS?</p>
+            <h2 className="mt-4 text-3xl font-semibold text-white">Launch your next retail experience on Checkout</h2>
+            <p className="mt-4 text-slate-200">
+              Start with a single location or roll out a full franchise network. Checkout gives you the foundation—device
+              sync, inventory, reporting, and tenant billing—to scale without friction.
+            </p>
+            <div className="mt-7 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-white/30 transition hover:shadow-white/45"
+              >
+                Launch console
+              </Link>
+              <a
+                href="https://cal.com/checkouthq/demo"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/60"
+              >
+                Schedule a guided tour →
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="relative z-10 border-t border-white/10 bg-slate-950/80 py-10">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-base font-semibold text-slate-200">Checkout</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.25em]">Point-of-sale platform for ambitious retail teams</p>
+          </div>
+          <div className="flex flex-wrap gap-6">
+            <a href="mailto:hello@checkouthq.com" className="hover:text-white">
+              Contact
+            </a>
+            <a href="https://checkout-77d99.web.app/login" className="hover:text-white">
+              Console login
+            </a>
+            <a href="https://cal.com/checkouthq/demo" target="_blank" rel="noreferrer" className="hover:text-white">
+              Book demo
+            </a>
+            <Link to="/privacy" className="hover:text-white">
+              Privacy
+            </Link>
+          </div>
+          <p className="text-xs text-slate-500">&copy; {new Date().getFullYear()} Checkout. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
