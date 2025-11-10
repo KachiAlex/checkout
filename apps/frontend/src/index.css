@@ -27,17 +27,17 @@
 
 [data-theme='light'] {
   color-scheme: light;
-  --bg-gradient: linear-gradient(135deg, #f8fbff 0%, #f1f5ff 55%, #e9efff 100%);
+  --bg-gradient: linear-gradient(135deg, #ffffff 0%, #f5f7ff 55%, #eaf0ff 100%);
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --surface-card-bg: rgba(255, 255, 255, 0.86);
-  --surface-card-border: rgba(15, 23, 42, 0.08);
-  --surface-card-shadow: 0 30px 70px -45px rgba(148, 163, 184, 0.45);
-  --chip-bg: rgba(59, 130, 246, 0.12);
-  --chip-border: rgba(59, 130, 246, 0.22);
-  --chip-text: #0f172a;
-  --divider: rgba(15, 23, 42, 0.1);
+  --text-secondary: #334155;
+  --text-muted: #475569;
+  --surface-card-bg: rgba(255, 255, 255, 0.96);
+  --surface-card-border: rgba(15, 23, 42, 0.12);
+  --surface-card-shadow: 0 28px 65px -40px rgba(15, 23, 42, 0.22);
+  --chip-bg: rgba(59, 130, 246, 0.18);
+  --chip-border: rgba(59, 130, 246, 0.3);
+  --chip-text: #1d4ed8;
+  --divider: rgba(148, 163, 184, 0.22);
 }
 
 * {
@@ -68,6 +68,7 @@ body {
   background: var(--surface-card-bg);
   border-color: var(--surface-card-border);
   box-shadow: var(--surface-card-shadow);
+  backdrop-filter: saturate(175%) blur(18px);
   color: var(--text-primary);
 }
 
@@ -92,6 +93,7 @@ body {
 .theme-surface {
   background: var(--surface-card-bg);
   border-color: var(--surface-card-border);
+  backdrop-filter: saturate(175%) blur(16px);
   color: var(--text-primary);
 }
 
