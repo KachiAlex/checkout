@@ -1,0 +1,173 @@
+import { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { useAuthStore } from './stores/authStore';
+import { useThemeStore } from './stores/themeStore';
+import './App.css';
+
+const LoginPage = lazy(() =>
+  import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })),
+);
+const CheckoutPage = lazy(() =>
+  import('./pages/CheckoutPage').then((module) => ({ default: module.CheckoutPage })),
+);
+const ReportsPage = lazy(() =>
+  import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })),
+);
+const InventorySalesPage = lazy(() =>
+  import('./pages/InventorySalesPage').then((module) => ({ default: module.InventorySalesPage })),
+);
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+);
+const SuperAdminPage = lazy(() =>
+  import('./pages/SuperAdminPage').then((module) => ({ default: module.SuperAdminPage })),
+);
+const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+
+function LoadingScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 text-xs font-semibold uppercase tracking-[0.6em] text-slate-400">
+      Loading
+    </div>
+  );
+}
+
+function App() {
+  const { isAuthenticated, user } = useAuthStore((state) => ({
+    isAuthenticated: state.isAuthenticated,
+    user: state.user,
+  }));
+  const theme = useThemeStore((state) => state.theme);
+  const isAdmin = user?.role === 'admin';
+  const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
+  const isCompanyUser = isAuthenticated && !isPlatformAdmin;
+  const authenticatedLandingPath = isPlatformAdmin ? '/superadmin' : '/checkout';
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.theme = theme;
+    }
+  }, [theme]);
+
+  return (
+    <BrowserRouter>
+      <div className="app">
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route
+              path="/"
+              element={isAuthenticated ? <Navigate to={authenticatedLandingPath} replace /> : <HomePage />}
+            />
+            <Route
+              path="/login"
+              element={isAuthenticated ? <Navigate to={authenticatedLandingPath} replace /> : <LoginPage />}
+            />
+            <Route
+              path="/:tenantSlug/login"
+              element={isAuthenticated ? <Navigate to={authenticatedLandingPath} replace /> : <LoginPage />}
+            />
+            <Route
+              path="/checkout"
+              element={
+                isCompanyUser ? (
+                  <CheckoutPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                isCompanyUser ? (
+                  <ReportsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/inventory"
+              element={
+                isCompanyUser ? (
+                  <InventorySalesPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                isCompanyUser && isAdmin ? (
+                  <SettingsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/superadmin"
+              element={
+                isAuthenticated && isPlatformAdmin ? (
+                  <Navigate to="/superadmin/dashboard" replace />
+                ) : (
+                  <Navigate to="/superadmin/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/superadmin/login"
+              element={
+                isAuthenticated && isPlatformAdmin ? (
+                  <Navigate to="/superadmin/dashboard" replace />
+                ) : (
+                  <LoginPage variant="superadmin" />
+                )
+              }
+            />
+            <Route
+              path="/superadmin/dashboard"
+              element={
+                isAuthenticated && isPlatformAdmin ? <SuperAdminPage /> : <Navigate to="/superadmin/login" replace />
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                isAuthenticated && isPlatformAdmin ? (
+                  <Navigate to="/superadmin/dashboard" replace />
+                ) : (
+                  <Navigate to="/superadmin/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/admin/tenants"
+              element={
+                isAuthenticated && isPlatformAdmin ? (
+                  <Navigate to="/superadmin/dashboard" replace />
+                ) : (
+                  <Navigate to="/superadmin/login" replace />
+                )
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+        <Toaster position="top-right" />
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default App;

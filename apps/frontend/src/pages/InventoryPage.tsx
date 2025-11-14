@@ -1,0 +1,303 @@
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '../stores/authStore';
+import { BarcodeScanner } from '../components/BarcodeScanner';
+import { ScannerDeviceList } from '../components/ScannerDeviceList';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
+import { API_URL } from '../config';
+import { BrandMark } from '../components/BrandMark';
+import { ThemeToggle } from '../components/ThemeToggle';
+
+interface InventoryItem {
+  id: string;
+  productId: string;
+  product: {
+    id: string;
+    name: string;
+    sku: string;
+    barcode?: string;
+  };
+  quantity: number;
+  reorderPoint?: number;
+}
+
+export function InventoryPage() {
+  const { user, logout, accessToken } = useAuthStore();
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [adjustQuantity, setAdjustQuantity] = useState('');
+  const [adjustType, setAdjustType] = useState<'adjust' | 'received'>('adjust');
+
+  const loadInventory = async () => {
+    if (!accessToken || !user?.locationId) return;
+    
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
+      );
+      setInventory(response.data || []);
+    } catch (error) {
+      toast.error('Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScan = async (barcode: string) => {
+    if (!accessToken) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    try {
+      // Find product by barcode
+      const productResponse = await axios.get(
+        `${API_URL}/api/v1/products?query=${encodeURIComponent(barcode)}`,
+      );
+
+      if (productResponse.data && productResponse.data.length > 0) {
+        const product = productResponse.data[0];
+        setSelectedProduct(product);
+        
+        // Find inventory for this product
+        if (!user?.locationId) {
+          toast.error('Location not set');
+          return;
+        }
+        
+        const invResponse = await axios.get(
+          `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
+        );
+        
+        const invItem = invResponse.data.find((inv: any) => inv.productId === product.id);
+        if (invItem) {
+          setAdjustQuantity(invItem.quantity.toString());
+        } else {
+          setAdjustQuantity('0');
+        }
+      } else {
+        toast.error(`Product not found: ${barcode}`);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to find product');
+    }
+  };
+
+  const handleAdjustInventory = async () => {
+    if (!selectedProduct || !adjustQuantity || !accessToken || !user?.locationId) {
+      toast.error('Please select a product and enter quantity');
+      return;
+    }
+
+    try {
+      // Find current inventory
+      const invResponse = await axios.get(
+        `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
+      );
+      
+      const invItem = invResponse.data.find((inv: any) => inv.productId === selectedProduct.id);
+      const currentQty = invItem?.quantity || 0;
+      const newQty = parseInt(adjustQuantity, 10);
+      const delta = newQty - currentQty;
+
+      if (delta === 0) {
+        toast('No change needed', { icon: 'ℹ️' });
+        return;
+      }
+
+      await axios.post(
+        `${API_URL}/api/v1/inventory/adjust`,
+        {
+          productId: selectedProduct.id,
+          locationId: user.locationId,
+          delta,
+          type: adjustType,
+          userId: user.id,
+          notes: `Manual adjustment via POS`,
+        },
+      );
+
+      toast.success(`Inventory updated: ${selectedProduct.name} = ${newQty} units`);
+      setSelectedProduct(null);
+      setAdjustQuantity('');
+      loadInventory();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to adjust inventory');
+    }
+  };
+
+  // Load inventory on mount
+  useEffect(() => {
+    if (user?.locationId && accessToken) {
+      loadInventory();
+    }
+  }, [user?.locationId, accessToken]);
+
+  return (
+    <div className="theme-background min-h-screen">
+      <div className="relative mx-auto w-full max-w-7xl space-y-6 px-6 py-10">
+        <div className="theme-card flex flex-col gap-6 rounded-3xl border p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <BrandMark
+              size={56}
+              backgroundClassName="bg-white/90 dark:bg-white/10"
+              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+            />
+            <div>
+              <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Inventory</p>
+              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Inventory Management</h1>
+              <p className="theme-text-secondary text-sm">Store: {user?.locationId || 'store-001'}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/checkout"
+              className="theme-chip inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition hover:border-emerald-300/60 hover:text-emerald-100"
+            >
+              Checkout
+            </Link>
+            <button
+              onClick={logout}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-400 via-pink-500 to-rose-500 px-5 py-2 text-sm font-semibold text-white shadow-[0_20px_45px_-25px_rgba(244,114,182,0.7)] transition hover:shadow-[0_26px_55px_-20px_rgba(244,114,182,0.85)]"
+            >
+              Logout
+            </button>
+            <ThemeToggle />
+          </div>
+        </div>
+
+        {/* Scanner */}
+        <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+          <BarcodeScanner onScan={handleScan} />
+        </div>
+
+        {/* Registered Devices */}
+        <ScannerDeviceList />
+
+        {/* Adjust Inventory Form */}
+        {selectedProduct && (
+          <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+            <h2 className="theme-text-primary text-xl font-semibold mb-4">Adjust Inventory</h2>
+            <div className="space-y-4">
+              <div>
+                <p className="theme-text-primary font-semibold">{selectedProduct.name}</p>
+                <p className="theme-text-secondary text-sm">SKU: {selectedProduct.sku}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="theme-text-secondary block text-sm font-medium mb-2">
+                    Adjustment Type
+                  </label>
+                  <select
+                    value={adjustType}
+                    onChange={(e) => setAdjustType(e.target.value as 'adjust' | 'received')}
+                    className="w-full rounded-2xl border border-white/15 bg-transparent px-4 py-3 text-sm font-medium text-current outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/40"
+                  >
+                    <option value="adjust">Manual Adjustment</option>
+                    <option value="received">Stock Received</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="theme-text-secondary block text-sm font-medium mb-2">
+                    New Quantity
+                  </label>
+                  <input
+                    type="number"
+                    value={adjustQuantity}
+                    onChange={(e) => setAdjustQuantity(e.target.value)}
+                    className="w-full rounded-2xl border border-white/15 bg-transparent px-4 py-3 text-sm font-medium text-current outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/40"
+                    placeholder="Enter quantity"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleAdjustInventory}
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 px-6 py-2.5 text-sm font-semibold text-emerald-950 shadow-[0_20px_45px_-25px_rgba(16,185,129,0.7)] transition hover:shadow-[0_24px_55px_-22px_rgba(16,185,129,0.8)]"
+                >
+                  Update Inventory
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setAdjustQuantity('');
+                  }}
+                  className="theme-chip rounded-full border px-5 py-2 text-sm font-semibold hover:border-white/25"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Inventory List */}
+        <div className="theme-card rounded-3xl border p-0 backdrop-blur-xl">
+          <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+            <h2 className="theme-text-primary text-xl font-semibold">Current Inventory</h2>
+              <button
+                onClick={loadInventory}
+                className="theme-chip rounded-full border px-4 py-2 text-xs font-semibold hover:border-sky-300/60 hover:text-sky-100"
+              >
+                Refresh
+              </button>
+          </div>
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-sky-400"></div>
+              <p className="theme-text-secondary mt-4 text-sm">Loading inventory...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Product
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      SKU
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Barcode
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Quantity
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Reorder Point
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {inventory.map((item) => (
+                    <tr key={item.id} className="hover:bg-white/5 transition">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium theme-text-primary">
+                        {item.product.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">{item.product.sku}</td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary font-mono text-sm">
+                        {item.product.barcode || '—'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`font-bold ${item.quantity <= (item.reorderPoint || 0) ? 'text-red-600' : 'text-green-600'}`}>
+                          {item.quantity}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
+                        {item.reorderPoint || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

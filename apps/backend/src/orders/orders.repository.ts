@@ -1,0 +1,179 @@
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { v4 as uuid } from 'uuid';
+import { OrderStatus } from '@pos-checkout/shared';
+import { FirestoreService } from '../firestore/firestore.service';
+
+export interface OrderRecord {
+  id: string;
+  uuid: string;
+  orderNumber: string;
+  locationId: string;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    priceCents: number;
+    taxCents: number;
+    discountCents?: number;
+  }>;
+  subtotalCents: number;
+  taxCents: number;
+  discountCents: number;
+  totalCents: number;
+  status: OrderStatus;
+  createdBy: string;
+  deviceId?: string;
+  completedAt?: Date;
+  notes?: string;
+  synced: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type TimestampField = Timestamp | FieldValue | null | undefined;
+
+type OrderDocument = Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'> & {
+  createdAt?: TimestampField;
+  updatedAt?: TimestampField;
+  completedAt?: TimestampField;
+};
+
+@Injectable()
+export class OrdersRepository {
+  private readonly collection = this.firestore.collection<OrderDocument>('orders');
+
+  constructor(private readonly firestore: FirestoreService) {}
+
+  async findByUuid(uuidValue: string): Promise<OrderRecord | null> {
+    const snapshot = await this.collection.where('uuid', '==', uuidValue).limit(1).get();
+    if (snapshot.empty) {
+      return null;
+    }
+    const doc = snapshot.docs[0];
+    return this.toRecord(doc.id, doc.data());
+  }
+
+  async findById(id: string): Promise<OrderRecord | null> {
+    const doc = await this.collection.doc(id).get();
+    if (!doc.exists) {
+      return null;
+    }
+    return this.toRecord(doc.id, doc.data() as OrderDocument);
+  }
+
+  async list(params: {
+    locationId?: string;
+    from?: Date;
+    to?: Date;
+    status?: OrderStatus;
+    deviceId?: string;
+  }): Promise<OrderRecord[]> {
+    let query = this.collection.orderBy('createdAt', 'desc');
+
+    if (params.locationId) {
+      query = query.where('locationId', '==', params.locationId);
+    }
+    if (params.status) {
+      query = query.where('status', '==', params.status);
+    }
+    if (params.from) {
+      query = query.where('createdAt', '>=', Timestamp.fromDate(params.from));
+    }
+    if (params.to) {
+      query = query.where('createdAt', '<=', Timestamp.fromDate(params.to));
+    }
+    if (params.deviceId) {
+      query = query.where('deviceId', '==', params.deviceId);
+    }
+
+    const snapshot = await query.get();
+    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+  }
+
+  async create(data: Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<OrderRecord> {
+    const now = FieldValue.serverTimestamp();
+    const id = uuid();
+
+    const doc: OrderDocument = {
+      ...data,
+      completedAt: data.completedAt ? Timestamp.fromDate(data.completedAt) : undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.collection.doc(id).set(doc);
+    const created = await this.collection.doc(id).get();
+    return this.toRecord(id, created.data() as OrderDocument);
+  }
+
+  async update(id: string, update: Partial<OrderRecord>): Promise<OrderRecord> {
+    const docRef = this.collection.doc(id);
+    const existing = await docRef.get();
+    if (!existing.exists) {
+      throw new NotFoundException(`Order with id ${id} not found.`);
+    }
+
+    const data = existing.data() as OrderDocument;
+
+    if (update.uuid && update.uuid !== data.uuid) {
+      throw new ConflictException('Order UUID cannot be changed');
+    }
+
+    await docRef.set(
+      {
+        ...update,
+        completedAt: update.completedAt
+          ? Timestamp.fromDate(update.completedAt)
+          : data.completedAt,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    const updated = await docRef.get();
+    return this.toRecord(updated.id, updated.data() as OrderDocument);
+  }
+
+  private toRecord(id: string, data: OrderDocument | undefined): OrderRecord {
+    if (!data) {
+      throw new NotFoundException(`Order document ${id} has no data.`);
+    }
+
+    return {
+      id,
+      uuid: data.uuid,
+      orderNumber: data.orderNumber,
+      locationId: data.locationId,
+      items: data.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        priceCents: item.priceCents,
+        taxCents: item.taxCents,
+        discountCents: item.discountCents,
+      })),
+      subtotalCents: data.subtotalCents,
+      taxCents: data.taxCents,
+      discountCents: data.discountCents,
+      totalCents: data.totalCents,
+      status: data.status,
+      createdBy: data.createdBy,
+      deviceId: data.deviceId,
+      completedAt: this.timestampToDate(data.completedAt),
+      notes: data.notes,
+      synced: data.synced,
+      createdAt: this.timestampToDate(data.createdAt),
+      updatedAt: this.timestampToDate(data.updatedAt),
+    };
+  }
+
+  private timestampToDate(timestamp?: TimestampField): Date {
+    if (!timestamp) {
+      return new Date();
+    }
+    if (timestamp instanceof Timestamp) {
+      return timestamp.toDate();
+    }
+    return new Date();
+  }
+}
+

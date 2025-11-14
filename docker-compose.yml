@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Firebase Emulator Suite for local development
+  # Note: The backend uses Firestore (cloud database), but you can use the emulator for local testing
+  firebase-emulator:
+    image: ghcr.io/firebase/firebase-tools:latest
+    container_name: pos-firebase-emulator
+    ports:
+      - "4000:4000"  # Emulator UI
+      - "8080:8080"  # Firestore Emulator
+      - "9099:9099"  # Auth Emulator
+      - "5001:5001"  # Functions Emulator (if needed)
+    volumes:
+      - firebase_emulator_data:/home/node/.cache/firebase/emulators
+      - ./firebase.json:/home/node/firebase.json:ro
+      - ./firestore.indexes.json:/home/node/firestore.indexes.json:ro
+    command: firebase emulators:start --project demo-pos-checkout
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    container_name: pos-backend
+    environment:
+      NODE_ENV: development
+      # Firebase Emulator Configuration (for local development)
+      FIRESTORE_EMULATOR_HOST: firebase-emulator:8080
+      FIREBASE_AUTH_EMULATOR_HOST: firebase-emulator:9099
+      # Or use cloud Firestore by providing service account credentials:
+      # FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      # FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      # FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-in-production}
+      PORT: 3000
+      API_PREFIX: api/v1
+      CORS_ORIGIN: http://localhost:5173,http://localhost:5174
+    ports:
+      - "3000:3000"
+    depends_on:
+      firebase-emulator:
+        condition: service_healthy
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - ./packages:/app/packages
+    command: npm run dev --workspace=apps/backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
+    container_name: pos-frontend
+    environment:
+      VITE_API_URL: http://localhost:3000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - ./packages:/app/packages
+    command: npm run dev --workspace=apps/frontend
+
+volumes:
+  firebase_emulator_data:
