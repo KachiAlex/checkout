@@ -1,12 +1,17 @@
-import { useState, lazy, Suspense, useEffect } from 'react';
+import { useState, lazy, Suspense, useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useCartStore } from '../stores/cartStore';
 import { CartSummary } from '../components/CartSummary';
+import { PaymentModal } from '../components/PaymentModal';
+import { CustomerDisplay } from '../components/CustomerDisplay';
+import { ReceiptOptionsModal } from '../components/ReceiptOptionsModal';
 import { OnboardingBanner } from '../components/OnboardingBanner';
 import { ProductSearch } from '../components/ProductSearch';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
+import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
 import { useThemeStore } from '../stores/themeStore';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Link, Navigate } from 'react-router-dom';
@@ -69,6 +74,16 @@ export function CheckoutPage() {
   });
   const theme = useThemeStore((state) => state.theme);
   const isAdmin = user?.role === 'admin';
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const cartRef = useRef<HTMLDivElement>(null);
+  const [selectedCartIndex, setSelectedCartIndex] = useState<number | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash' | 'qr' | null>(null);
+  const [customerDisplayVisible, setCustomerDisplayVisible] = useState(false);
+  const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
+  const [lastCompletedOrderId, setLastCompletedOrderId] = useState<string | null>(null);
+  const [cashChange, setCashChange] = useState<number>(0);
+  const [displayCart, setDisplayCart] = useState<typeof cart>([]);
 
   // Update sync status periodically
   useEffect(() => {
@@ -82,6 +97,102 @@ export function CheckoutPage() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Manual sync handler
+  const handleManualSync = async () => {
+    try {
+      setSyncStatus((prev) => ({ ...prev, isSyncing: true }));
+      const result = await syncService.syncPendingChanges(accessToken || undefined);
+      const status = await syncService.getSyncStatus();
+      setSyncStatus(status);
+      if (result.success && result.synced > 0) {
+        toast.success(`Synced ${result.synced} item${result.synced > 1 ? 's' : ''} successfully`);
+      } else if (result.synced === 0 && result.failed === 0) {
+        toast.success('No pending items to sync');
+      } else if (result.failed > 0) {
+        toast.error(`Sync completed with ${result.failed} error${result.failed > 1 ? 's' : ''}`);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Sync failed. Please try again.');
+      const status = await syncService.getSyncStatus();
+      setSyncStatus(status);
+    } finally {
+      setSyncStatus((prev) => ({ ...prev, isSyncing: false }));
+    }
+  };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'F1',
+      action: () => {
+        searchInputRef.current?.focus();
+        toast.success('Focused search', { duration: 1000 });
+      },
+      description: 'Focus search input',
+    },
+    {
+      key: 'F2',
+      action: () => {
+        cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        toast.success('Focused cart', { duration: 1000 });
+      },
+      description: 'Focus cart',
+    },
+    {
+      key: 'F3',
+      action: () => {
+        if (cart.length > 0 && !isProcessing) {
+          handlePaymentClick('cash');
+        }
+      },
+      description: 'Pay with cash',
+    },
+    {
+      key: 'F4',
+      action: () => {
+        if (cart.length > 0 && !isProcessing) {
+          handlePaymentClick('card');
+        }
+      },
+      description: 'Pay with card',
+    },
+    {
+      key: 'F5',
+      action: () => {
+        if (cart.length > 0 && !isProcessing) {
+          handlePaymentClick('qr');
+        }
+      },
+      description: 'Pay with QR',
+    },
+    {
+      key: 'Delete',
+      action: () => {
+        if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+          removeItem(cart[selectedCartIndex].productId);
+          setSelectedCartIndex(null);
+          toast.success('Item removed');
+        } else if (cart.length > 0) {
+          removeItem(cart[cart.length - 1].productId);
+          toast.success('Last item removed');
+        }
+      },
+      description: 'Remove selected/last cart item',
+      preventDefault: false, // Allow default behavior when not in cart
+    },
+    {
+      key: 'Enter',
+      action: () => {
+        // Only trigger payment if cart is focused and has items
+        if (cart.length > 0 && !isProcessing && document.activeElement === cartRef.current) {
+          handlePaymentClick('cash');
+        }
+      },
+      description: 'Complete payment (when cart focused)',
+      preventDefault: false,
+    },
+  ]);
 
   const statusChips: StatusChip[] = [
     {
@@ -167,7 +278,10 @@ export function CheckoutPage() {
           taxRate: product.taxRate,
           quantity: 1,
         });
-        toast.success(`Added: ${product.name} (Stock: ${stock})`);
+        toast.success(`Added: ${product.name} (Stock: ${stock})`, {
+          icon: '✅',
+          duration: 2000,
+        });
       } else {
         toast.error(`Product not found: ${barcode}`);
       }
@@ -176,18 +290,28 @@ export function CheckoutPage() {
     }
   };
 
-  const handlePayment = async (method: 'card' | 'cash' | 'qr') => {
+  const handlePaymentClick = (method: 'card' | 'cash' | 'qr') => {
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+    setSelectedPaymentMethod(method);
+    setPaymentModalOpen(true);
+  };
+
+  const handlePayment = async (method: 'card' | 'cash' | 'qr', cashReceived?: number) => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
     }
 
     if (!accessToken || !user) {
-      toast.error('Not authenticated');
+      toast.error('Not authenticated. Please log in again.');
       return;
     }
 
     setIsProcessing(true);
+    setPaymentModalOpen(false);
 
     try {
       // Calculate totals
@@ -242,6 +366,13 @@ export function CheckoutPage() {
         if (payment.status === 'completed') {
           toast.success(`Payment successful! Order: ${order.orderNumber || orderUuid}`);
           
+          // Store cart state for customer display
+          setDisplayCart([...cart]);
+          
+          // Show customer display
+          setCustomerDisplayVisible(true);
+          setLastCompletedOrderId(order.id);
+          
           // Generate and print receipt
           try {
             // Try to print receipt automatically
@@ -267,7 +398,11 @@ export function CheckoutPage() {
             toast.error('Receipt generation failed');
           }
 
-          clearCart();
+          // Auto-hide customer display after 10 seconds
+          setTimeout(() => {
+            setCustomerDisplayVisible(false);
+            clearCart();
+          }, 10000);
         } else {
           toast.error(`Payment ${payment.status}: ${payment.error || 'Unknown error'}`);
         }
@@ -305,10 +440,33 @@ export function CheckoutPage() {
       }
     } catch (error: any) {
       if (!isOffline) {
-        toast.error(error.response?.data?.message || error.message || 'Payment failed');
+        const errorMessage = error.response?.data?.message || error.message || 'Payment failed';
+        
+        // User-friendly error messages
+        let friendlyMessage = errorMessage;
+        if (error.response?.status === 401) {
+          friendlyMessage = 'Session expired. Please log in again.';
+        } else if (error.response?.status === 403) {
+          friendlyMessage = 'You do not have permission to perform this action.';
+        } else if (error.response?.status === 404) {
+          friendlyMessage = 'Product or order not found. Please try again.';
+        } else if (error.response?.status === 422) {
+          friendlyMessage = 'Invalid payment information. Please check and try again.';
+        } else if (error.response?.status >= 500) {
+          friendlyMessage = 'Server error. Please try again in a moment.';
+        } else if (error.code === 'ERR_NETWORK') {
+          friendlyMessage = 'Network error. Check your connection and try again.';
+        }
+        
+        toast.error(friendlyMessage, {
+          duration: 5000,
+          icon: '❌',
+        });
       }
     } finally {
       setIsProcessing(false);
+      setPaymentModalOpen(false);
+      setSelectedPaymentMethod(null);
     }
   };
 
@@ -352,6 +510,16 @@ export function CheckoutPage() {
                   {label}
                 </span>
               ))}
+              {(syncStatus.pendingCount > 0 || !syncStatus.isOnline) && (
+                <button
+                  onClick={handleManualSync}
+                  disabled={syncStatus.isSyncing}
+                  className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-50"
+                >
+                  <span className="text-base">{syncStatus.isSyncing ? '🔄' : '🔄'}</span>
+                  {syncStatus.isSyncing ? 'Syncing...' : 'Sync Now'}
+                </button>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -398,6 +566,7 @@ export function CheckoutPage() {
                 Logout
               </button>
               <ThemeToggle />
+              <KeyboardShortcutsHelp />
             </div>
           </div>
         </header>
@@ -444,7 +613,7 @@ export function CheckoutPage() {
               </div>
             </div>
 
-            <ProductSearch onAddToCart={addItem} />
+            <ProductSearch onAddToCart={addItem} searchInputRef={searchInputRef} />
             <Suspense
               fallback={
                 <div className="theme-card rounded-3xl border p-6 text-xs uppercase tracking-[0.4em] text-slate-400/80">
@@ -457,18 +626,75 @@ export function CheckoutPage() {
           </div>
 
           {/* Right Panel - Cart */}
-          <div className="theme-card w-full rounded-3xl border p-6 backdrop-blur-xl xl:w-[360px]">
+          <div ref={cartRef} className="theme-card w-full rounded-3xl border p-6 backdrop-blur-xl xl:w-[360px]" tabIndex={-1}>
             <CartSummary
               cart={cart}
               total={total}
               onRemove={removeItem}
               onUpdateQuantity={updateQuantity}
-              onPayment={handlePayment}
+              onPayment={handlePaymentClick}
               isProcessing={isProcessing}
             />
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        method={selectedPaymentMethod}
+        total={total}
+        cart={cart}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedPaymentMethod(null);
+        }}
+        onComplete={async (change) => {
+          if (change !== undefined) {
+            setCashChange(change);
+          }
+          if (selectedPaymentMethod) {
+            await handlePayment(selectedPaymentMethod, change);
+          }
+        }}
+      />
+
+      {/* Customer Display */}
+      <CustomerDisplay
+        cart={displayCart}
+        total={displayCart.reduce((sum, item) => {
+          const subtotal = item.priceCents * item.quantity;
+          const tax = subtotal * item.taxRate;
+          return sum + subtotal + tax;
+        }, 0)}
+        isVisible={customerDisplayVisible}
+        paymentMethod={selectedPaymentMethod}
+        change={cashChange}
+      />
+
+      {/* Receipt Options Modal */}
+      {lastCompletedOrderId && (
+        <ReceiptOptionsModal
+          isOpen={receiptOptionsOpen}
+          orderId={lastCompletedOrderId}
+          onClose={() => {
+            setReceiptOptionsOpen(false);
+            setLastCompletedOrderId(null);
+          }}
+        />
+      )}
+
+      {/* Receipt Options Button */}
+      {lastCompletedOrderId && !customerDisplayVisible && (
+        <button
+          onClick={() => setReceiptOptionsOpen(true)}
+          className="fixed bottom-6 right-6 z-30 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 text-white shadow-lg transition hover:shadow-xl touch-manipulation"
+          aria-label="Receipt options"
+        >
+          <span className="text-xl">🧾</span>
+          <span className="ml-2 font-semibold">Receipt</span>
+        </button>
+      )}
     </div>
   );
 }

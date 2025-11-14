@@ -328,6 +328,13 @@ class SyncService {
       lastSyncAt: state?.lastSyncAt,
     };
   }
+
+  /**
+   * Sync pending changes (public method for manual sync)
+   */
+  async syncPendingChanges(accessToken?: string): Promise<SyncResult> {
+    return this.sync(accessToken);
+  }
 }
 
 export const syncService = new SyncService();

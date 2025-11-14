@@ -11,17 +11,20 @@ export interface CartItem {
 
 interface CartState {
   cart: CartItem[];
+  lastRemovedItem: CartItem | null;
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getTotal: () => number;
+  undoLastRemove: () => void;
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       cart: [],
+      lastRemovedItem: null,
 
       addItem: (item) => {
         const cart = get().cart;
@@ -34,18 +37,33 @@ export const useCartStore = create<CartState>()(
                 ? { ...i, quantity: i.quantity + (item.quantity || 1) }
                 : i,
             ),
+            lastRemovedItem: null,
           });
         } else {
           set({
             cart: [...cart, { ...item, quantity: item.quantity || 1 }],
+            lastRemovedItem: null,
           });
         }
       },
 
       removeItem: (productId) => {
+        const cart = get().cart;
+        const itemToRemove = cart.find((item) => item.productId === productId);
         set({
-          cart: get().cart.filter((item) => item.productId !== productId),
+          cart: cart.filter((item) => item.productId !== productId),
+          lastRemovedItem: itemToRemove || null,
         });
+      },
+
+      undoLastRemove: () => {
+        const { cart, lastRemovedItem } = get();
+        if (lastRemovedItem) {
+          set({
+            cart: [...cart, lastRemovedItem],
+            lastRemovedItem: null,
+          });
+        }
       },
 
       updateQuantity: (productId, quantity) => {
