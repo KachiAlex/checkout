@@ -45,6 +45,13 @@ export class UsersController {
     return { success: true };
   }
 
+  @Patch('me/location')
+  @ApiOperation({ summary: 'Update the authenticated user location' })
+  async updateMyLocation(@Request() req: any, @Body() body: { locationId?: string }) {
+    await this.usersService.updateUser(req.user.tenantId, req.user.sub, { locationId: body.locationId }, req.user);
+    return { success: true };
+  }
+
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a user from the tenant' })

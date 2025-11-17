@@ -80,6 +80,9 @@ export async function fetchRegisteredDevices(locationId?: string): Promise<Scann
 
 /**
  * Get USB device information if available
+ * Note: Most USB barcode scanners work as HID keyboards and don't need Web USB API.
+ * They automatically type into input fields. This function is for scanners that
+ * support Web USB API (less common).
  */
 export async function getUSBDeviceInfo(): Promise<{
   vendorId?: string;
@@ -91,13 +94,16 @@ export async function getUSBDeviceInfo(): Promise<{
   }
   const nav = navigator as Navigator & { usb?: any };
   if (!nav.usb) {
+    // Web USB API not available - this is normal for most browsers
+    // USB HID scanners work as keyboards and don't need this API
     return null;
   }
 
   try {
-    // Request access to USB devices
+    // Request access to USB devices (requires user permission)
     const devices = await nav.usb.getDevices();
     if (devices.length === 0) {
+      // No devices with permission yet - user needs to grant access
       return null;
     }
 
@@ -111,6 +117,49 @@ export async function getUSBDeviceInfo(): Promise<{
   } catch (error) {
     console.warn('Failed to get USB device info:', error);
     return null;
+  }
+}
+
+/**
+ * Request USB device access (for scanners that support Web USB API)
+ * Most USB scanners work as HID keyboards and don't need this.
+ */
+export async function requestUSBDeviceAccess(): Promise<{
+  vendorId?: string;
+  productId?: string;
+  deviceName?: string;
+} | null> {
+  if (typeof navigator === 'undefined') {
+    return null;
+  }
+  const nav = navigator as Navigator & { usb?: any };
+  if (!nav.usb) {
+    throw new Error('Web USB API not supported. Most USB scanners work automatically as keyboards.');
+  }
+
+  try {
+    // Request access to a USB device
+    // This will show a browser dialog for the user to select a device
+    const device = await nav.usb.requestDevice({
+      filters: [
+        // Common barcode scanner vendor IDs (optional - can be removed to show all devices)
+        // { vendorId: 0x05e0 }, // Symbol Technologies
+        // { vendorId: 0x0c2e }, // Honeywell
+      ],
+    });
+
+    return {
+      vendorId: device.vendorId?.toString(16).padStart(4, '0'),
+      productId: device.productId?.toString(16).padStart(4, '0'),
+      deviceName: device.productName || 'USB Scanner',
+    };
+  } catch (error: any) {
+    if (error.name === 'NotFoundError') {
+      throw new Error('No USB device selected.');
+    } else if (error.name === 'SecurityError') {
+      throw new Error('USB access denied. Most USB scanners work automatically as keyboards.');
+    }
+    throw error;
   }
 }
 
@@ -168,16 +217,34 @@ export function generateDeviceName(
 
 /**
  * Register a USB scanner device
+ * Note: Most USB scanners work as HID keyboards and are automatically detected
+ * when they scan. This function is for registering them in the system for tracking.
  */
 export async function registerUSBDevice(
   locationId?: string,
   userId?: string,
+  requestAccess: boolean = false,
 ): Promise<ScannerDevice> {
-  const usbInfo = await getUSBDeviceInfo();
+  let usbInfo: { vendorId?: string; productId?: string; deviceName?: string } | null = null;
   
+  if (requestAccess) {
+    // Try to request Web USB API access (for scanners that support it)
+    try {
+      usbInfo = await requestUSBDeviceAccess();
+    } catch (error: any) {
+      // If Web USB fails, that's okay - most scanners work as keyboards
+      console.log('Web USB access not available or denied:', error.message);
+    }
+  } else {
+    // Try to get already-permitted USB device info
+    usbInfo = await getUSBDeviceInfo();
+  }
+  
+  // Generate identifier - use USB info if available, otherwise use timestamp
+  // For HID keyboard scanners, we'll use a generic identifier since they work automatically
   const identifier = usbInfo?.vendorId && usbInfo?.productId
-    ? `${usbInfo.vendorId}:${usbInfo.productId}`.toLowerCase()
-    : `usb_${Date.now()}`;
+    ? `usb_${usbInfo.vendorId}:${usbInfo.productId}`.toLowerCase()
+    : `usb_hid_${Date.now()}`;
 
   const payload = {
     identifier,
@@ -190,7 +257,8 @@ export async function registerUSBDevice(
     registeredById: userId,
     metadata: {
       manufacturer: usbInfo?.deviceName?.split(' ')[0],
-      deviceName: usbInfo?.deviceName,
+      deviceName: usbInfo?.deviceName || 'USB HID Scanner (Keyboard Mode)',
+      note: 'Most USB scanners work automatically as keyboards. Just plug in and scan.',
     },
     isActive: true,
   };

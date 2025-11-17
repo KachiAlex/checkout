@@ -6,7 +6,24 @@ export declare class InventoryController {
     private readonly inventoryService;
     private readonly locationsRepository;
     constructor(inventoryService: InventoryService, locationsRepository: LocationsRepository);
-    getStock(locationId: string): Promise<import("./inventory.repository").InventoryRecord[]>;
+    getStock(locationId: string, req: any): Promise<{
+        product: {
+            id: string;
+            name: string;
+            sku: string;
+            barcode: string;
+            description: string;
+            priceCents: number;
+        };
+        id: string;
+        productId: string;
+        locationId: string;
+        quantity: number;
+        reorderPoint?: number;
+        maxStock?: number;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
     getBatchInventory(locationId: string, productId: string): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
     adjust(adjustDto: AdjustInventoryDto): Promise<import("./inventory.repository").InventoryTransactionRecord>;
     getTransactions(locationId: string, from?: string, to?: string): Promise<import("./inventory.repository").InventoryTransactionRecord[]>;

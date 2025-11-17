@@ -54,7 +54,8 @@ __decorate([
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "uuid", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Location ID' }),
+    (0, swagger_1.ApiProperty)({ description: 'Location ID', required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "locationId", void 0);

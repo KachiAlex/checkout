@@ -25,8 +25,40 @@ let InventoryService = class InventoryService {
         this.brandsService = brandsService;
         this.batchInventoryRepository = batchInventoryRepository;
     }
-    async getStock(locationId) {
-        return this.inventoryRepository.listStock(locationId);
+    async getStock(locationId, tenantId) {
+        const inventoryRecords = await this.inventoryRepository.listStock(locationId);
+        const enrichedRecords = await Promise.all(inventoryRecords.map(async (record) => {
+            try {
+                const product = tenantId
+                    ? await this.productsService.findOne(record.productId, tenantId)
+                    : null;
+                if (!product) {
+                    return {
+                        ...record,
+                        product: null,
+                    };
+                }
+                return {
+                    ...record,
+                    product: {
+                        id: product.id,
+                        name: product.name,
+                        sku: product.sku,
+                        barcode: product.barcode,
+                        description: product.description,
+                        priceCents: product.priceCents,
+                    },
+                };
+            }
+            catch (error) {
+                console.error(`Failed to fetch product ${record.productId}:`, error);
+                return {
+                    ...record,
+                    product: null,
+                };
+            }
+        }));
+        return enrichedRecords.filter((record) => record.product !== null);
     }
     async getBatchInventory(productId, locationId) {
         return this.batchInventoryRepository.findByProduct(productId, locationId);

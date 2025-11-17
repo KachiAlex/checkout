@@ -8,7 +8,7 @@ export interface OrderRecord {
   id: string;
   uuid: string;
   orderNumber: string;
-  locationId: string;
+  locationId: string; // Always set (derived if not provided)
   customerId?: string;
   items: Array<{
     productId: string;

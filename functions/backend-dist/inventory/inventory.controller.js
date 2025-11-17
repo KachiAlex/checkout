@@ -25,8 +25,9 @@ let InventoryController = class InventoryController {
         this.inventoryService = inventoryService;
         this.locationsRepository = locationsRepository;
     }
-    async getStock(locationId) {
-        return this.inventoryService.getStock(locationId);
+    async getStock(locationId, req) {
+        const tenantId = req.user?.tenantId;
+        return this.inventoryService.getStock(locationId, tenantId);
     }
     async getBatchInventory(locationId, productId) {
         return this.inventoryService.getBatchInventory(productId, locationId);
@@ -70,8 +71,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Get inventory stock for a location' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Inventory stock list' }),
     __param(0, (0, common_1.Param)('location_id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], InventoryController.prototype, "getStock", null);
 __decorate([

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { receiptService } from '../services/receiptService';
@@ -18,7 +18,16 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
   const [sendingSMS, setSendingSMS] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [printerAvailable, setPrinterAvailable] = useState<boolean | null>(null);
+  const [printing, setPrinting] = useState(false);
   const { accessToken } = useAuthStore();
+
+  // Check printer availability when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      receiptService.isAvailable().then(setPrinterAvailable).catch(() => setPrinterAvailable(false));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -94,22 +103,37 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
     }
   };
 
-  const handlePrint = async () => {
+  const handlePrint = async (useBrowser: boolean = false) => {
+    setPrinting(true);
     try {
-      const printAvailable = await receiptService.isAvailable();
-      if (printAvailable) {
-        const success = await receiptService.printReceipt(orderId);
+      if (useBrowser) {
+        // Use browser print dialog
+        const success = await receiptService.printReceiptBrowser(orderId);
         if (success) {
-          toast.success('Receipt sent to printer');
+          toast.success('Opening print dialog...');
           onClose();
         } else {
-          toast.error('Failed to print receipt');
+          toast.error('Failed to open print dialog');
         }
       } else {
-        toast.error('Printer not available');
+        // Try ESC/POS printer via print proxy
+        const printAvailable = await receiptService.isAvailable();
+        if (printAvailable) {
+          const success = await receiptService.printReceipt(orderId);
+          if (success) {
+            toast.success('Receipt sent to printer');
+            onClose();
+          } else {
+            toast.error('Failed to print receipt. Try browser print instead.');
+          }
+        } else {
+          toast.error('Printer not available. Use browser print instead.');
+        }
       }
     } catch (error: any) {
       toast.error('Failed to print receipt');
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -194,12 +218,52 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
           {/* Print Section */}
           <div className="theme-surface rounded-2xl border p-6">
             <h3 className="theme-text-primary mb-4 text-lg font-semibold">🖨️ Print Receipt</h3>
-            <button
-              onClick={handlePrint}
-              className="w-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-3 font-semibold text-white transition hover:shadow-lg touch-manipulation"
-            >
-              Print Receipt
-            </button>
+            {printerAvailable === null ? (
+              <div className="text-center py-4">
+                <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                <p className="theme-text-secondary mt-2 text-sm">Checking printer status...</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {printerAvailable ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 mb-3">
+                    <p className="theme-text-primary text-sm font-semibold text-emerald-400">
+                      ✓ ESC/POS Printer Connected
+                    </p>
+                    <p className="theme-text-secondary text-xs mt-1">
+                      Receipt will be sent to your configured printer
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 mb-3">
+                    <p className="theme-text-primary text-sm font-semibold text-amber-400">
+                      ⚠ ESC/POS Printer Not Available
+                    </p>
+                    <p className="theme-text-secondary text-xs mt-1">
+                      Configure printer in Settings or use browser print
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  {printerAvailable && (
+                    <button
+                      onClick={() => handlePrint(false)}
+                      disabled={printing}
+                      className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-3 font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                    >
+                      {printing ? 'Printing...' : 'Print to ESC/POS'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handlePrint(true)}
+                    disabled={printing}
+                    className="flex-1 rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-3 font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                  >
+                    {printing ? 'Opening...' : 'Browser Print'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

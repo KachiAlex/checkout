@@ -23,7 +23,7 @@ let OrdersController = class OrdersController {
         this.ordersService = ordersService;
     }
     async create(createOrderDto, req) {
-        return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId);
+        return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId, req.user.locationId);
     }
     async findOne(id) {
         return this.ordersService.findOne(id);

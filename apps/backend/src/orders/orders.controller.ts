@@ -27,7 +27,7 @@ export class OrdersController {
   @ApiResponse({ status: 201, description: 'Order created' })
   @ApiResponse({ status: 409, description: 'Insufficient inventory' })
   async create(@Body() createOrderDto: CreateOrderDto, @Request() req: any) {
-    return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId);
+    return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId, req.user.locationId);
   }
 
   @Get(':id')

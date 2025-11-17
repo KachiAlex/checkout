@@ -84,19 +84,24 @@ export function ScannerInput({ onScan, placeholder = "Scan barcode/QR with scann
     };
   }, [onScan, markDeviceUsed, user?.id]);
 
-  // Register USB scanner on mount
+  // Register USB scanner on first scan
+  // Most USB scanners work as HID keyboards and don't need explicit registration
+  // They automatically type into input fields when scanning
   const registerUSBScanner = useCallback(async () => {
     if (usbDeviceRegisteredRef.current) return;
     
     try {
-      const registeredDevice = await registerUSBDevice(user?.locationId, user?.id);
+      // Try to register without requesting Web USB access first
+      // Most scanners work as keyboards and don't need Web USB API
+      const registeredDevice = await registerUSBDevice(user?.locationId, user?.id, false);
       const deviceId = addDevice(registeredDevice);
       setActiveDevice(deviceId);
       usbDeviceRegisteredRef.current = true;
       console.log('USB scanner registered:', registeredDevice.name);
       await sendDeviceHeartbeat(deviceId, user?.id);
     } catch (error) {
-      console.warn('Failed to register USB scanner:', error);
+      // Registration failure is okay - scanner will still work as keyboard
+      console.log('USB scanner registration note:', error);
     }
   }, [user?.locationId, user?.id, addDevice, setActiveDevice]);
 
@@ -246,6 +251,11 @@ export function ScannerInput({ onScan, placeholder = "Scan barcode/QR with scann
       {activeDevice && (
         <p className="text-xs theme-text-secondary text-center">
           Active scanner: <span className="font-semibold text-sky-400">{activeDevice.name}</span>
+        </p>
+      )}
+      {!activeDevice && (
+        <p className="text-xs theme-text-secondary text-center">
+          💡 <strong className="theme-text-primary">Tip:</strong> USB scanners work automatically - just plug in and scan!
         </p>
       )}
       {input && (

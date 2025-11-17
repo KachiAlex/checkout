@@ -43,9 +43,10 @@ export class CreateOrderDto {
   @IsUUID()
   uuid: string;
 
-  @ApiProperty({ description: 'Location ID' })
+  @ApiProperty({ description: 'Location ID', required: false })
+  @IsOptional()
   @IsUUID()
-  locationId: string;
+  locationId?: string;
 
   @ApiProperty({ description: 'Customer ID', required: false })
   @IsOptional()

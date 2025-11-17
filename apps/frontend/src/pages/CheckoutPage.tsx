@@ -365,9 +365,15 @@ export function CheckoutPage() {
           return;
         }
       }
+      // Fallback to browser print if ESC/POS printer not available
+      const browserPrintSuccess = await receiptService.printReceiptBrowser(orderId);
+      if (browserPrintSuccess) {
+        toast.success('Opening print dialog...');
+      } else {
       const receipt = await receiptService.getReceipt(orderId);
       console.log('Receipt:', receipt);
       toast.success('Receipt generated');
+      }
     } catch (error) {
       console.warn('Failed to generate/print receipt:', error);
       toast.error('Receipt generation failed');
@@ -602,6 +608,8 @@ export function CheckoutPage() {
       return;
     }
 
+    // locationId is now optional - will be derived from user or tenant if not provided
+
     setIsProcessing(true);
     setPaymentModalOpen(false);
 
@@ -622,7 +630,7 @@ export function CheckoutPage() {
           `${API_URL}/api/v1/orders`,
           {
             uuid: orderUuid,
-            locationId: user.locationId,
+            locationId: user.locationId || undefined, // Optional - backend will derive if not provided
             customerId: selectedCustomer?.id,
             items: mapCartToOrderItems(cart),
             subtotalCents: subtotal,
@@ -632,6 +640,11 @@ export function CheckoutPage() {
             discountReason: discountReason || undefined,
             totalCents: totalAmount,
             deviceId,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
         );
 
@@ -643,6 +656,11 @@ export function CheckoutPage() {
           {
             method,
             amount: totalAmount,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
         );
 
@@ -725,7 +743,17 @@ export function CheckoutPage() {
         
         // User-friendly error messages
         let friendlyMessage = errorMessage;
-        if (error.response?.status === 401) {
+        if (error.response?.status === 400) {
+          // Check for validation errors
+          const validationErrors = error.response?.data?.message;
+          if (validationErrors?.includes('locationId') || validationErrors?.includes('location')) {
+            friendlyMessage = 'Location ID is required. Please set your location in Settings or contact your administrator.';
+          } else if (validationErrors?.includes('uuid') || validationErrors?.includes('UUID')) {
+            friendlyMessage = 'Invalid order ID. Please try again.';
+          } else {
+            friendlyMessage = validationErrors || 'Invalid request. Please check your input and try again.';
+          }
+        } else if (error.response?.status === 401) {
           friendlyMessage = 'Session expired. Please log in again.';
         } else if (error.response?.status === 403) {
           friendlyMessage = 'You do not have permission to perform this action.';

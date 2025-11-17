@@ -27,6 +27,15 @@ let ReportsController = class ReportsController {
     async getTopSellers(from, to, locationId, limit) {
         return this.reportsService.getTopSellers(from, to, locationId, limit);
     }
+    async getSalesAnalytics(period = 'daily', locationId) {
+        return this.reportsService.getSalesAnalytics(period, locationId);
+    }
+    async getInventoryAnalytics(period = 'daily', locationId) {
+        return this.reportsService.getInventoryAnalytics(period, locationId);
+    }
+    async getStaffPerformance(locationId, from, to) {
+        return this.reportsService.getStaffPerformance(locationId, from, to);
+    }
 };
 exports.ReportsController = ReportsController;
 __decorate([
@@ -52,6 +61,37 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, Number]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getTopSellers", null);
+__decorate([
+    (0, common_1.Get)('sales-analytics'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get sales analytics by period (daily/weekly/monthly)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Sales analytics data' }),
+    __param(0, (0, common_1.Query)('period')),
+    __param(1, (0, common_1.Query)('location_id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getSalesAnalytics", null);
+__decorate([
+    (0, common_1.Get)('inventory-analytics'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get inventory analytics by period (daily/weekly/monthly)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Inventory analytics data' }),
+    __param(0, (0, common_1.Query)('period')),
+    __param(1, (0, common_1.Query)('location_id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getInventoryAnalytics", null);
+__decorate([
+    (0, common_1.Get)('staff-performance'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get staff performance analytics (sales and inventory)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Staff performance data' }),
+    __param(0, (0, common_1.Query)('location_id')),
+    __param(1, (0, common_1.Query)('from')),
+    __param(2, (0, common_1.Query)('to')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getStaffPerformance", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, swagger_1.ApiTags)('reports'),
     (0, common_1.Controller)('reports'),

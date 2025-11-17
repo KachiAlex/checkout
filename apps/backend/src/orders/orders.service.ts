@@ -1,9 +1,10 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus } from '@pos-checkout/shared';
 import { InventoryService } from '../inventory/inventory.service';
 import { OrdersRepository, OrderRecord } from './orders.repository';
 import { CustomersService } from '../customers/customers.service';
+import { LocationsRepository } from '../locations/locations.repository';
 
 @Injectable()
 export class OrdersService {
@@ -11,24 +12,38 @@ export class OrdersService {
     private readonly ordersRepository: OrdersRepository,
     private readonly inventoryService: InventoryService,
     private readonly customersService: CustomersService,
+    private readonly locationsRepository: LocationsRepository,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto, userId: string, tenantId: string): Promise<OrderRecord> {
+  async create(createOrderDto: CreateOrderDto, userId: string, tenantId: string, userLocationId?: string): Promise<OrderRecord> {
     const existingOrder = await this.ordersRepository.findByUuid(createOrderDto.uuid);
 
     if (existingOrder) {
       return existingOrder;
     }
 
-    const orderNumber = await this.generateOrderNumber(createOrderDto.locationId);
+    // Resolve locationId: use provided, then user's locationId, then first location for tenant
+    let locationId = createOrderDto.locationId || userLocationId;
+    if (!locationId) {
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      if (locations.length === 0) {
+        // If no locations exist, use tenantId as fallback (for single-location businesses)
+        locationId = tenantId;
+      } else {
+        locationId = locations[0].id;
+      }
+    }
+
+    const orderNumber = await this.generateOrderNumber(locationId);
     
     // If order is held, don't decrement inventory yet
     if (!createOrderDto.isHeld) {
-      await this.validateAndDecrementInventory(createOrderDto);
+      await this.validateAndDecrementInventory({ ...createOrderDto, locationId });
     }
 
     const order = await this.ordersRepository.create({
       ...createOrderDto,
+      locationId,
       orderNumber,
       status: createOrderDto.isHeld ? OrderStatus.PENDING : OrderStatus.COMPLETED,
       createdBy: userId,
@@ -82,7 +97,8 @@ export class OrdersService {
   private async generateOrderNumber(locationId: string): Promise<string> {
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    const locationPrefix = locationId.substring(0, 4).toUpperCase();
+    // Use first 4 chars of locationId, or 'DEFT' if locationId is too short (e.g., tenantId fallback)
+    const locationPrefix = locationId.length >= 4 ? locationId.substring(0, 4).toUpperCase() : 'DEFT';
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
 
     const ordersToday = await this.ordersRepository.list({

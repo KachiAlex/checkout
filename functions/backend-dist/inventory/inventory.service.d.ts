@@ -12,7 +12,24 @@ export declare class InventoryService {
     private readonly brandsService;
     private readonly batchInventoryRepository;
     constructor(inventoryRepository: InventoryRepository, productsService: ProductsService, categoriesService: CategoriesService, brandsService: BrandsService, batchInventoryRepository: BatchInventoryRepository);
-    getStock(locationId: string): Promise<import("./inventory.repository").InventoryRecord[]>;
+    getStock(locationId: string, tenantId?: string): Promise<{
+        product: {
+            id: string;
+            name: string;
+            sku: string;
+            barcode: string;
+            description: string;
+            priceCents: number;
+        };
+        id: string;
+        productId: string;
+        locationId: string;
+        quantity: number;
+        reorderPoint?: number;
+        maxStock?: number;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
     getBatchInventory(productId: string, locationId: string): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
     getStockByProduct(productId: string, locationId: string): Promise<number>;
     adjust(adjustDto: AdjustInventoryDto): Promise<InventoryTransactionRecord>;

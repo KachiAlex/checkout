@@ -15,23 +15,36 @@ const shared_1 = require("@pos-checkout/shared");
 const inventory_service_1 = require("../inventory/inventory.service");
 const orders_repository_1 = require("./orders.repository");
 const customers_service_1 = require("../customers/customers.service");
+const locations_repository_1 = require("../locations/locations.repository");
 let OrdersService = class OrdersService {
-    constructor(ordersRepository, inventoryService, customersService) {
+    constructor(ordersRepository, inventoryService, customersService, locationsRepository) {
         this.ordersRepository = ordersRepository;
         this.inventoryService = inventoryService;
         this.customersService = customersService;
+        this.locationsRepository = locationsRepository;
     }
-    async create(createOrderDto, userId, tenantId) {
+    async create(createOrderDto, userId, tenantId, userLocationId) {
         const existingOrder = await this.ordersRepository.findByUuid(createOrderDto.uuid);
         if (existingOrder) {
             return existingOrder;
         }
-        const orderNumber = await this.generateOrderNumber(createOrderDto.locationId);
+        let locationId = createOrderDto.locationId || userLocationId;
+        if (!locationId) {
+            const locations = await this.locationsRepository.findByTenant(tenantId);
+            if (locations.length === 0) {
+                locationId = tenantId;
+            }
+            else {
+                locationId = locations[0].id;
+            }
+        }
+        const orderNumber = await this.generateOrderNumber(locationId);
         if (!createOrderDto.isHeld) {
-            await this.validateAndDecrementInventory(createOrderDto);
+            await this.validateAndDecrementInventory({ ...createOrderDto, locationId });
         }
         const order = await this.ordersRepository.create({
             ...createOrderDto,
+            locationId,
             orderNumber,
             status: createOrderDto.isHeld ? shared_1.OrderStatus.PENDING : shared_1.OrderStatus.COMPLETED,
             createdBy: userId,
@@ -67,7 +80,7 @@ let OrdersService = class OrdersService {
     async generateOrderNumber(locationId) {
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-        const locationPrefix = locationId.substring(0, 4).toUpperCase();
+        const locationPrefix = locationId.length >= 4 ? locationId.substring(0, 4).toUpperCase() : 'DEFT';
         const startOfDay = new Date(today.setHours(0, 0, 0, 0));
         const ordersToday = await this.ordersRepository.list({
             locationId,
@@ -164,6 +177,7 @@ exports.OrdersService = OrdersService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [orders_repository_1.OrdersRepository,
         inventory_service_1.InventoryService,
-        customers_service_1.CustomersService])
+        customers_service_1.CustomersService,
+        locations_repository_1.LocationsRepository])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

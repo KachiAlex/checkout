@@ -2,7 +2,9 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import { useAuthStore } from '../stores/authStore';
 
-const PRINT_PROXY_URL = import.meta.env.VITE_PRINT_PROXY_URL || 'ws://localhost:8080';
+const getPrintProxyUrl = (): string => {
+  return localStorage.getItem('printProxyUrl') || import.meta.env.VITE_PRINT_PROXY_URL || 'ws://localhost:8080';
+};
 
 export interface Printer {
   id: string;
@@ -78,7 +80,7 @@ export class ReceiptService {
 
     this.connectionPromise = new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(PRINT_PROXY_URL);
+        this.ws = new WebSocket(getPrintProxyUrl());
 
         this.ws.onopen = () => {
           console.log('Connected to print proxy');
@@ -237,7 +239,7 @@ export class ReceiptService {
   }
 
   /**
-   * Print receipt
+   * Print receipt using print proxy (ESC/POS printer)
    */
   async printReceipt(orderId: string, printerId?: string): Promise<boolean> {
     try {
@@ -297,6 +299,71 @@ export class ReceiptService {
       });
     } catch (error) {
       console.error('Failed to print receipt:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Print receipt using browser print dialog (fallback)
+   */
+  async printReceiptBrowser(orderId: string): Promise<boolean> {
+    try {
+      const receipt = await this.getReceipt(orderId);
+      
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Popup blocked. Please allow popups to print receipts.');
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Receipt - Order ${orderId}</title>
+            <style>
+              @media print {
+                @page {
+                  size: 80mm auto;
+                  margin: 0;
+                }
+                body {
+                  margin: 0;
+                  padding: 10mm;
+                  font-family: 'Courier New', monospace;
+                  font-size: 12px;
+                  line-height: 1.4;
+                }
+              }
+              body {
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                line-height: 1.4;
+                padding: 20px;
+                white-space: pre-wrap;
+                max-width: 80mm;
+                margin: 0 auto;
+              }
+            </style>
+          </head>
+          <body>
+            <pre>${receipt.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+            <script>
+              window.onload = function() {
+                window.print();
+                window.onafterprint = function() {
+                  window.close();
+                };
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+
+      return true;
+    } catch (error) {
+      console.error('Failed to print receipt via browser:', error);
       return false;
     }
   }
