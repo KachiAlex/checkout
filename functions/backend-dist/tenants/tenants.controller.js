@@ -19,6 +19,9 @@ const tenants_service_1 = require("./tenants.service");
 const create_tenant_dto_1 = require("./dto/create-tenant.dto");
 const update_tenant_dto_1 = require("./dto/update-tenant.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const update_subscription_dto_1 = require("./dto/update-subscription.dto");
+const reset_tenant_admin_pin_dto_1 = require("./dto/reset-tenant-admin-pin.dto");
+const suspend_tenant_dto_1 = require("./dto/suspend-tenant.dto");
 let TenantsController = class TenantsController {
     constructor(tenantsService) {
         this.tenantsService = tenantsService;
@@ -44,15 +47,21 @@ let TenantsController = class TenantsController {
         this.ensurePlatformAdmin(req);
         return this.tenantsService.update(id, dto);
     }
-    async updateSubscription(req, id, body) {
+    async updateSubscription(req, id, dto) {
         this.ensurePlatformAdmin(req);
-        return this.tenantsService.update(id, {
-            plan: body.plan,
-            status: body.status,
-            seatLimit: body.seatLimit,
-            billingCycleStart: body.billingCycleStart,
-            billingCycleEnd: body.billingCycleEnd,
-        });
+        return this.tenantsService.updateSubscription(id, dto);
+    }
+    async resetAdminPin(req, id, dto) {
+        this.ensurePlatformAdmin(req);
+        return this.tenantsService.resetAdminPin(id, dto);
+    }
+    async suspend(req, id, dto) {
+        this.ensurePlatformAdmin(req);
+        return this.tenantsService.suspend(id, dto);
+    }
+    async activate(req, id) {
+        this.ensurePlatformAdmin(req);
+        return this.tenantsService.activate(id);
     }
 };
 exports.TenantsController = TenantsController;
@@ -99,9 +108,38 @@ __decorate([
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:paramtypes", [Object, String, update_subscription_dto_1.UpdateSubscriptionDto]),
     __metadata("design:returntype", Promise)
 ], TenantsController.prototype, "updateSubscription", null);
+__decorate([
+    (0, common_1.Post)(':id/reset-admin-pin'),
+    (0, swagger_1.ApiOperation)({ summary: 'Reset the primary tenant admin PIN' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, reset_tenant_admin_pin_dto_1.ResetTenantAdminPinDto]),
+    __metadata("design:returntype", Promise)
+], TenantsController.prototype, "resetAdminPin", null);
+__decorate([
+    (0, common_1.Post)(':id/suspend'),
+    (0, swagger_1.ApiOperation)({ summary: 'Suspend a tenant' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, suspend_tenant_dto_1.SuspendTenantDto]),
+    __metadata("design:returntype", Promise)
+], TenantsController.prototype, "suspend", null);
+__decorate([
+    (0, common_1.Post)(':id/activate'),
+    (0, swagger_1.ApiOperation)({ summary: 'Reactivate a suspended tenant' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], TenantsController.prototype, "activate", null);
 exports.TenantsController = TenantsController = __decorate([
     (0, swagger_1.ApiTags)('tenants'),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),

@@ -12,6 +12,9 @@ import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
 
 @Injectable()
 export class AuthService {
+  // Simple in-memory cache per function instance to reduce Firestore reads
+  private readonly userCache = new Map<string, { users: UserRecord[]; fetchedAt: number }>();
+
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly tenantsRepository: TenantsRepository,
@@ -19,37 +22,60 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async validateUser(pin: string, tenantId: string, deviceId?: string): Promise<UserRecord | null> {
-    // For MVP: Simple PIN-based auth
-    // In production, PIN should be hashed in database
+  private async getTenantUsers(tenantId: string): Promise<UserRecord[]> {
+    const CACHE_TTL_MS = 60_000; // 60 seconds
+    const cached = this.userCache.get(tenantId);
+    const now = Date.now();
+
+    if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
+      return cached.users;
+    }
+
     const users = await this.usersRepository.findAll(tenantId);
-    
-    console.log(`[AuthService] Validating PIN for tenant ${tenantId}, found ${users.length} users`);
-    
+    this.userCache.set(tenantId, { users, fetchedAt: now });
+    return users;
+  }
+
+  async validateUser(pin: string, tenantId: string, deviceId?: string): Promise<UserRecord | null> {
+    // Fast path: if deviceId is known, try that user first
+    if (deviceId) {
+      try {
+        const deviceUser = await this.usersRepository.findByDeviceId(deviceId, tenantId);
+        if (deviceUser) {
+          const isValid = await bcrypt.compare(pin, deviceUser.pinHash);
+          if (isValid) {
+            return deviceUser;
+          }
+        }
+      } catch (error) {
+        console.warn('[AuthService] Device-based lookup failed, falling back to full scan:', (error as any)?.message);
+      }
+    }
+
+    // Fallback: scan tenant users, using a short-lived cache to avoid repeated Firestore reads
+    const users = await this.getTenantUsers(tenantId);
+
     for (const user of users) {
       try {
         const isValid = await bcrypt.compare(pin, user.pinHash);
-        console.log(`[AuthService] Testing PIN against user ${user.name}: ${isValid}`);
         if (isValid) {
           // Update device ID if provided
-          if (deviceId) {
+          if (deviceId && user.deviceId !== deviceId) {
             try {
               const updated = await this.usersRepository.update(user.id, { deviceId });
               user.deviceId = updated.deviceId;
             } catch (error) {
               // Log error but don't fail login if device ID save fails
-              console.warn(`[AuthService] Failed to save device ID: ${error.message}`);
+              console.warn('[AuthService] Failed to save device ID:', (error as any)?.message);
             }
           }
-          console.log(`[AuthService] PIN validated for user: ${user.name}`);
           return user;
         }
       } catch (error) {
-        console.error(`[AuthService] Error comparing PIN for user ${user.name}:`, error);
+        console.error('[AuthService] Error comparing PIN for user', user.id, (error as any)?.message);
       }
     }
-    
-    console.log(`[AuthService] No user found with matching PIN`);
+
     return null;
   }
 

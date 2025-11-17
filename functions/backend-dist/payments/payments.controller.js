@@ -31,6 +31,12 @@ let PaymentsController = class PaymentsController {
     async refund(paymentId, amountCents) {
         return this.paymentsService.refund(paymentId, amountCents);
     }
+    async getPayments(orderId) {
+        return this.paymentsService.getOrderPayments(orderId);
+    }
+    async getPaymentStatus(orderId) {
+        return this.paymentsService.getOrderPaymentStatus(orderId);
+    }
 };
 exports.PaymentsController = PaymentsController;
 __decorate([
@@ -62,6 +68,24 @@ __decorate([
     __metadata("design:paramtypes", [String, Number]),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "refund", null);
+__decorate([
+    (0, common_1.Get)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all payments for an order' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of payments' }),
+    __param(0, (0, common_1.Param)('orderId', common_1.ParseUUIDPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "getPayments", null);
+__decorate([
+    (0, common_1.Get)('status'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get payment status for an order' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Payment status' }),
+    __param(0, (0, common_1.Param)('orderId', common_1.ParseUUIDPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "getPaymentStatus", null);
 exports.PaymentsController = PaymentsController = __decorate([
     (0, swagger_1.ApiTags)('payments'),
     (0, common_1.Controller)('orders/:orderId/payments'),

@@ -107,6 +107,10 @@ let UsersService = class UsersService {
     async updateUser(tenantId, userId, dto, actor) {
         const user = await this.usersRepository.findById(userId);
         this.ensureTenant(user, tenantId);
+        const isActorAdmin = actor.role === shared_1.UserRole.ADMIN || actor.isPlatformAdmin;
+        if (!isActorAdmin && actor.id !== userId) {
+            throw new common_1.ForbiddenException('Only administrators can update other users');
+        }
         if (dto.isPlatformAdmin !== undefined && !actor.isPlatformAdmin) {
             throw new common_1.ForbiddenException('Only platform admins can modify platform permissions');
         }
@@ -126,6 +130,18 @@ let UsersService = class UsersService {
         }
         const updated = await this.usersRepository.update(userId, update);
         return this.toSafeUser(updated);
+    }
+    async deleteUser(tenantId, userId, actor) {
+        const isActorAdmin = actor.role === shared_1.UserRole.ADMIN || actor.isPlatformAdmin;
+        if (!isActorAdmin) {
+            throw new common_1.ForbiddenException('Only administrators can delete users');
+        }
+        if (actor.id === userId) {
+            throw new common_1.ForbiddenException('You cannot delete your own user');
+        }
+        const user = await this.usersRepository.findById(userId);
+        this.ensureTenant(user, tenantId);
+        await this.usersRepository.delete(userId);
     }
     async resetPin(tenantId, userId, newPin, actor) {
         if (actor.role !== shared_1.UserRole.ADMIN && !actor.isPlatformAdmin) {

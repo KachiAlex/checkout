@@ -168,14 +168,16 @@ export class ReceiptService {
 
         this.messageHandlers.set(`register-${printerId}`, handler);
 
-        this.ws.send(
-          JSON.stringify({
-            type: 'register-printer',
-            printerId,
-            type,
-            config,
-          }),
-        );
+        if (this.ws) {
+          this.ws.send(
+            JSON.stringify({
+              type: 'register-printer',
+              printerId,
+              printerType: type,
+              config,
+            }),
+          );
+        }
 
         // Timeout after 5 seconds
         setTimeout(() => {

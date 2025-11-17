@@ -9,6 +9,7 @@ export interface OrderRecord {
   uuid: string;
   orderNumber: string;
   locationId: string;
+  customerId?: string;
   items: Array<{
     productId: string;
     quantity: number;
@@ -26,13 +27,18 @@ export interface OrderRecord {
   completedAt?: Date;
   notes?: string;
   synced: boolean;
+  isHeld: boolean;
+  heldAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type OrderDocument = Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'> & {
+type OrderDocument = Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt' | 'completedAt' | 'heldAt'> & {
+  customerId?: string;
+  isHeld?: boolean;
+  heldAt?: TimestampField;
   createdAt?: TimestampField;
   updatedAt?: TimestampField;
   completedAt?: TimestampField;
@@ -67,6 +73,8 @@ export class OrdersRepository {
     to?: Date;
     status?: OrderStatus;
     deviceId?: string;
+    isHeld?: boolean;
+    customerId?: string;
   }): Promise<OrderRecord[]> {
     let query = this.collection.orderBy('createdAt', 'desc');
 
@@ -85,9 +93,19 @@ export class OrdersRepository {
     if (params.deviceId) {
       query = query.where('deviceId', '==', params.deviceId);
     }
+    if (params.isHeld !== undefined) {
+      query = query.where('isHeld', '==', params.isHeld);
+    }
+    if (params.customerId) {
+      query = query.where('customerId', '==', params.customerId);
+    }
 
     const snapshot = await query.get();
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+  }
+
+  async findHeldOrders(locationId?: string): Promise<OrderRecord[]> {
+    return this.list({ locationId, isHeld: true });
   }
 
   async create(data: Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<OrderRecord> {
@@ -96,6 +114,9 @@ export class OrdersRepository {
 
     const doc: OrderDocument = {
       ...data,
+      customerId: data.customerId,
+      isHeld: data.isHeld ?? false,
+      heldAt: data.heldAt ? Timestamp.fromDate(data.heldAt) : undefined,
       completedAt: data.completedAt ? Timestamp.fromDate(data.completedAt) : undefined,
       createdAt: now,
       updatedAt: now,
@@ -119,16 +140,29 @@ export class OrdersRepository {
       throw new ConflictException('Order UUID cannot be changed');
     }
 
-    await docRef.set(
-      {
-        ...update,
-        completedAt: update.completedAt
-          ? Timestamp.fromDate(update.completedAt)
-          : data.completedAt,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+    const updateDoc: Partial<OrderDocument> = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (update.completedAt !== undefined) {
+      updateDoc.completedAt = update.completedAt ? Timestamp.fromDate(update.completedAt) : undefined;
+    } else {
+      updateDoc.completedAt = data.completedAt;
+    }
+
+    if (update.heldAt !== undefined) {
+      updateDoc.heldAt = update.heldAt ? Timestamp.fromDate(update.heldAt) : undefined;
+    } else {
+      updateDoc.heldAt = data.heldAt;
+    }
+
+    // Copy other fields that can be updated
+    if (update.status !== undefined) updateDoc.status = update.status;
+    if (update.notes !== undefined) updateDoc.notes = update.notes;
+    if (update.customerId !== undefined) updateDoc.customerId = update.customerId;
+    if (update.isHeld !== undefined) updateDoc.isHeld = update.isHeld;
+    
+    await docRef.set(updateDoc, { merge: true });
 
     const updated = await docRef.get();
     return this.toRecord(updated.id, updated.data() as OrderDocument);
@@ -144,6 +178,7 @@ export class OrdersRepository {
       uuid: data.uuid,
       orderNumber: data.orderNumber,
       locationId: data.locationId,
+      customerId: data.customerId,
       items: data.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -161,6 +196,8 @@ export class OrdersRepository {
       completedAt: this.timestampToDate(data.completedAt),
       notes: data.notes,
       synced: data.synced,
+      isHeld: data.isHeld ?? false,
+      heldAt: this.timestampToDate(data.heldAt),
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),
     };

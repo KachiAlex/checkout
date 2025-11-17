@@ -52,3 +52,7 @@ export async function resetTenantUserPin(id: string, pin: string): Promise<void>
   await axios.patch(`${API_URL}/api/v1/users/${id}/reset-pin`, { pin });
 }
 
+export async function deleteTenantUser(id: string): Promise<void> {
+  await axios.delete(`${API_URL}/api/v1/users/${id}`);
+}
+

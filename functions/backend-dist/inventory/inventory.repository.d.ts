@@ -19,6 +19,7 @@ export interface InventoryTransactionRecord {
     referenceId?: string;
     userId?: string;
     notes?: string;
+    reason?: string;
     ts: Date;
     createdAt: Date;
     updatedAt: Date;
@@ -33,6 +34,16 @@ export declare class InventoryRepository {
     upsertInventory(record: Omit<InventoryRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryRecord>;
     createTransaction(record: Omit<InventoryTransactionRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryTransactionRecord>;
     listTransactions(locationId: string, from?: Date, to?: Date): Promise<InventoryTransactionRecord[]>;
+    getAllInventory(): Promise<InventoryRecord[]>;
+    findDuplicates(): Promise<{
+        key: string;
+        records: InventoryRecord[];
+    }[]>;
+    removeDuplicates(): Promise<{
+        removed: number;
+        kept: number;
+    }>;
+    clearAllInventory(): Promise<number>;
     private toInventoryRecord;
     private toTransactionRecord;
     private timestampToDate;

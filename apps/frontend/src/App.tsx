@@ -14,8 +14,23 @@ const CheckoutPage = lazy(() =>
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })),
 );
-const InventorySalesPage = lazy(() =>
-  import('./pages/InventorySalesPage').then((module) => ({ default: module.InventorySalesPage })),
+const InventoryManagementPage = lazy(() =>
+  import('./pages/InventoryManagementPage').then((module) => ({ default: module.InventoryManagementPage })),
+);
+const SuppliersPage = lazy(() =>
+  import('./pages/SuppliersPage').then((module) => ({ default: module.SuppliersPage })),
+);
+const PurchaseOrdersPage = lazy(() =>
+  import('./pages/PurchaseOrdersPage').then((module) => ({ default: module.PurchaseOrdersPage })),
+);
+const GRNPage = lazy(() =>
+  import('./pages/GRNPage').then((module) => ({ default: module.GRNPage })),
+);
+const CustomersPage = lazy(() =>
+  import('./pages/CustomersPage').then((module) => ({ default: module.CustomersPage })),
+);
+const ReturnsPage = lazy(() =>
+  import('./pages/ReturnsPage').then((module) => ({ default: module.ReturnsPage })),
 );
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
@@ -95,7 +110,67 @@ function App() {
               path="/inventory"
               element={
                 isCompanyUser ? (
-                  <InventorySalesPage />
+                  <InventoryManagementPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/suppliers"
+              element={
+                isCompanyUser ? (
+                  <SuppliersPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/purchase-orders"
+              element={
+                isCompanyUser ? (
+                  <PurchaseOrdersPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/grn"
+              element={
+                isCompanyUser ? (
+                  <GRNPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/customers"
+              element={
+                isCompanyUser ? (
+                  <CustomersPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/returns"
+              element={
+                isCompanyUser ? (
+                  <ReturnsPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
                 ) : (

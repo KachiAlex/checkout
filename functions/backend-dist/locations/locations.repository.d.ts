@@ -5,6 +5,7 @@ export interface LocationRecord {
     address?: string;
     timezone: string;
     defaultPrinter?: string;
+    tenantId?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -19,6 +20,7 @@ export declare class LocationsRepository {
     private readonly collection;
     constructor(firestore: FirestoreService);
     findAll(): Promise<LocationRecord[]>;
+    findByTenant(tenantId: string): Promise<LocationRecord[]>;
     findById(id: string): Promise<LocationRecord | null>;
     create(data: CreateLocationInput): Promise<LocationRecord>;
     update(id: string, update: Partial<CreateLocationInput>): Promise<LocationRecord>;

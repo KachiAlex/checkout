@@ -11,7 +11,9 @@ export declare class AuthService {
     private readonly tenantsRepository;
     private readonly jwtService;
     private readonly configService;
+    private readonly userCache;
     constructor(usersRepository: UsersRepository, tenantsRepository: TenantsRepository, jwtService: JwtService, configService: ConfigService);
+    private getTenantUsers;
     validateUser(pin: string, tenantId: string, deviceId?: string): Promise<UserRecord | null>;
     login(loginDto: LoginDto): Promise<AuthResponseDto>;
     loginSuperAdmin(dto: SuperAdminLoginDto): Promise<AuthResponseDto>;

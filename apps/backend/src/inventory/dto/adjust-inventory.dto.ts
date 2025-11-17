@@ -43,4 +43,9 @@ export class AdjustInventoryDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ description: 'Reason for adjustment', required: false, example: 'damaged' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

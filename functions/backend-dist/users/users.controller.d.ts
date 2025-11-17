@@ -19,4 +19,5 @@ export declare class UsersController {
     changePin(req: any, dto: ChangePinDto): Promise<{
         success: boolean;
     }>;
+    delete(id: string, req: any): Promise<void>;
 }

@@ -11,14 +11,20 @@ const common_1 = require("@nestjs/common");
 const inventory_controller_1 = require("./inventory.controller");
 const inventory_service_1 = require("./inventory.service");
 const inventory_repository_1 = require("./inventory.repository");
+const products_module_1 = require("../products/products.module");
+const locations_repository_1 = require("../locations/locations.repository");
+const categories_module_1 = require("../categories/categories.module");
+const brands_module_1 = require("../brands/brands.module");
+const batch_inventory_repository_1 = require("./batch-inventory.repository");
 let InventoryModule = class InventoryModule {
 };
 exports.InventoryModule = InventoryModule;
 exports.InventoryModule = InventoryModule = __decorate([
     (0, common_1.Module)({
+        imports: [products_module_1.ProductsModule, categories_module_1.CategoriesModule, brands_module_1.BrandsModule],
         controllers: [inventory_controller_1.InventoryController],
-        providers: [inventory_service_1.InventoryService, inventory_repository_1.InventoryRepository],
-        exports: [inventory_service_1.InventoryService, inventory_repository_1.InventoryRepository],
+        providers: [inventory_service_1.InventoryService, inventory_repository_1.InventoryRepository, locations_repository_1.LocationsRepository, batch_inventory_repository_1.BatchInventoryRepository],
+        exports: [inventory_service_1.InventoryService, inventory_repository_1.InventoryRepository, batch_inventory_repository_1.BatchInventoryRepository],
     })
 ], InventoryModule);
 //# sourceMappingURL=inventory.module.js.map

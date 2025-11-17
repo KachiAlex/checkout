@@ -10,4 +10,8 @@ export declare class OrdersController {
         notes?: string;
     }): Promise<import("./orders.repository").OrderRecord>;
     findAll(locationId?: string, from?: string, to?: string, status?: string): Promise<import("./orders.repository").OrderRecord[]>;
+    findHeldOrders(locationId?: string): Promise<import("./orders.repository").OrderRecord[]>;
+    holdOrder(id: string): Promise<import("./orders.repository").OrderRecord>;
+    recallOrder(id: string): Promise<import("./orders.repository").OrderRecord>;
+    completeHeldOrder(id: string, req: any): Promise<import("./orders.repository").OrderRecord>;
 }

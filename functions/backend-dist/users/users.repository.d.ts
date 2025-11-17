@@ -27,6 +27,7 @@ export declare class UsersRepository {
         id?: string;
     }): Promise<UserRecord>;
     update(id: string, update: Partial<UserRecord>): Promise<UserRecord>;
+    delete(id: string): Promise<void>;
     private toRecord;
     private timestampToDate;
 }

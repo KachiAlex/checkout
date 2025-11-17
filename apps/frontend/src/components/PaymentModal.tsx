@@ -1,19 +1,39 @@
 import { useEffect, useState } from 'react';
 import { CartItem } from '../stores/cartStore';
+import { PaymentService } from '../services/paymentService';
+import toast from 'react-hot-toast';
 
 interface PaymentModalProps {
   isOpen: boolean;
   method: 'card' | 'cash' | 'qr' | null;
   total: number;
   cart: CartItem[];
+  orderId?: string; // Order ID if order is already created
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
   onClose: () => void;
   onComplete: (change?: number) => void;
+  onOrderCreated?: (orderId: string) => void; // Callback when order is created for payment
 }
 
-export function PaymentModal({ isOpen, method, total, cart, onClose, onComplete }: PaymentModalProps) {
+export function PaymentModal({ 
+  isOpen, 
+  method, 
+  total, 
+  cart, 
+  orderId,
+  customerName,
+  customerEmail,
+  customerPhone,
+  onClose, 
+  onComplete,
+  onOrderCreated,
+}: PaymentModalProps) {
   const [cashAmount, setCashAmount] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [stage, setStage] = useState<'input' | 'processing' | 'success' | 'error'>('input');
+  const [stage, setStage] = useState<'input' | 'processing' | 'success' | 'error' | 'redirecting'>('input');
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -29,15 +49,139 @@ export function PaymentModal({ isOpen, method, total, cart, onClose, onComplete 
   const tax = cart.reduce((sum, item) => sum + item.priceCents * item.quantity * item.taxRate, 0);
   const change = method === 'cash' && cashAmount ? parseFloat(cashAmount) * 100 - total : 0;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (method === 'cash' && (!cashAmount || parseFloat(cashAmount) * 100 < total)) {
       return;
     }
-    setProcessing(true);
-    setStage('processing');
-    // Call onComplete immediately to trigger actual payment processing
-    // The modal will close when payment completes
-    onComplete(change);
+
+    // For cash payments, proceed with existing flow
+    if (method === 'cash') {
+      setProcessing(true);
+      setStage('processing');
+      onComplete(change);
+      return;
+    }
+
+    // For card/QR payments with Monnify, we need an order ID first
+    if (!orderId && onOrderCreated) {
+      // Order needs to be created first - this will be handled by parent
+      // For now, just trigger the order creation callback
+      toast.error('Order must be created before payment. Please try again.');
+      return;
+    }
+
+    if (!orderId) {
+      toast.error('Order ID is required for payment');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      setStage('processing');
+
+      // Initiate payment with Monnify
+      const paymentMethod = method === 'card' ? 'card' : 'qr';
+      
+      const payment = await PaymentService.initiatePayment(orderId, {
+        amount: total,
+        method: paymentMethod,
+        metadata: {
+          customerName: customerName || 'POS Customer',
+          customerEmail: customerEmail || 'customer@pos.local',
+          customerPhone: customerPhone,
+          redirectUrl: `${window.location.origin}/checkout/payment-callback`,
+        },
+      });
+
+      // Payment reference stored in payment.processorData for webhook processing
+
+      // If Monnify returned a checkout URL, redirect to it
+      if (payment.processorData?.checkoutUrl) {
+        setCheckoutUrl(payment.processorData.checkoutUrl as string);
+        setStage('redirecting');
+        
+        // Open Monnify checkout in new window/tab
+        const checkoutWindow = window.open(
+          payment.processorData.checkoutUrl as string,
+          'MonnifyCheckout',
+          'width=600,height=700,scrollbars=yes'
+        );
+
+        // Poll for payment status
+        pollPaymentStatus(payment.id, checkoutWindow);
+      } else {
+        // No checkout URL - might be a direct payment or error
+        toast.error('Payment initiation failed. Please try again.');
+        setStage('error');
+        setProcessing(false);
+      }
+    } catch (error: any) {
+      console.error('Payment initiation error:', error);
+      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+      setStage('error');
+      setProcessing(false);
+    }
+  };
+
+  const pollPaymentStatus = async (paymentId: string, checkoutWindow: Window | null) => {
+    const maxAttempts = 60; // Poll for up to 5 minutes (5 second intervals)
+    let attempts = 0;
+
+    const interval = setInterval(async () => {
+      attempts++;
+
+      try {
+        // Check if checkout window was closed (user might have completed payment)
+        if (checkoutWindow?.closed) {
+          // Give it a moment for webhook to process
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        // Get payment status from order
+        if (orderId) {
+          const status = await PaymentService.getOrderPaymentStatus(orderId);
+          
+          // Check if payment is completed
+          const payment = status.payments.find(p => p.id === paymentId);
+          if (payment?.status === 'completed') {
+            clearInterval(interval);
+            setStage('success');
+            setProcessing(false);
+            if (checkoutWindow && !checkoutWindow.closed) {
+              checkoutWindow.close();
+            }
+            // Wait a moment then call onComplete
+            setTimeout(() => {
+              onComplete();
+            }, 1500);
+            return;
+          }
+
+          if (payment?.status === 'failed') {
+            clearInterval(interval);
+            setStage('error');
+            setProcessing(false);
+            if (checkoutWindow && !checkoutWindow.closed) {
+              checkoutWindow.close();
+            }
+            toast.error(payment.error || 'Payment failed');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error polling payment status:', error);
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setStage('error');
+        setProcessing(false);
+        if (checkoutWindow && !checkoutWindow.closed) {
+          checkoutWindow.close();
+        }
+        toast.error('Payment timeout. Please check payment status manually.');
+      }
+    }, 5000); // Poll every 5 seconds
   };
 
   const getMethodIcon = () => {
@@ -128,7 +272,7 @@ export function PaymentModal({ isOpen, method, total, cart, onClose, onComplete 
               {method === 'card' && (
                 <div className="theme-surface rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
                   <p className="theme-text-secondary text-center text-sm">
-                    💳 Please insert or tap your card on the terminal
+                    💳 You will be redirected to Monnify checkout to complete your card payment
                   </p>
                 </div>
               )}
@@ -136,7 +280,7 @@ export function PaymentModal({ isOpen, method, total, cart, onClose, onComplete 
               {method === 'qr' && (
                 <div className="theme-surface rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4">
                   <p className="theme-text-secondary text-center text-sm">
-                    📱 Please scan the QR code with your mobile wallet
+                    📱 You will be redirected to Monnify checkout to complete your QR payment
                   </p>
                 </div>
               )}
@@ -172,6 +316,31 @@ export function PaymentModal({ isOpen, method, total, cart, onClose, onComplete 
             </div>
             <h3 className="theme-text-primary mb-2 text-xl font-semibold">Processing Payment...</h3>
             <p className="theme-text-secondary text-sm">Please wait while we process your payment</p>
+          </div>
+        )}
+
+        {stage === 'redirecting' && (
+          <div className="py-12 text-center">
+            <div className="mb-6 flex justify-center">
+              <div className="h-20 w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+            </div>
+            <h3 className="theme-text-primary mb-2 text-xl font-semibold">Redirecting to Payment...</h3>
+            <p className="theme-text-secondary text-sm mb-4">
+              A new window will open for you to complete your payment
+            </p>
+            {checkoutUrl && (
+              <a
+                href={checkoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block rounded-full bg-sky-500 px-6 py-3 font-semibold text-white hover:bg-sky-600"
+              >
+                Open Payment Page
+              </a>
+            )}
+            <p className="theme-text-secondary mt-4 text-xs">
+              Waiting for payment confirmation...
+            </p>
           </div>
         )}
 

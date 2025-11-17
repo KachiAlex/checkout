@@ -8,8 +8,15 @@ import {
   createTenantUser,
   fetchTenantUsers,
   resetTenantUserPin,
+  updateTenantUser,
+  deleteTenantUser,
   TenantUser,
 } from '../services/userManagementService';
+import {
+  PaymentSettingsService,
+  PaymentSettings,
+  UpdatePaymentSettingsRequest,
+} from '../services/paymentSettingsService';
 
 function SectionContainer({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -42,6 +49,16 @@ export function SettingsPage() {
     locationId: '',
     pin: '',
   });
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+  const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
+  const [savingPaymentSettings, setSavingPaymentSettings] = useState(false);
+  const [monnifyForm, setMonnifyForm] = useState({
+    apiKey: '',
+    secretKey: '',
+    contractCode: '',
+    webhookSecret: '',
+    enabled: false,
+  });
 
   const isTenantAdmin = useMemo(() => user?.role === 'admin' || user?.isPlatformAdmin, [user?.role, user?.isPlatformAdmin]);
 
@@ -62,6 +79,34 @@ export function SettingsPage() {
     };
 
     loadUsers();
+  }, [isTenantAdmin]);
+
+  useEffect(() => {
+    const loadPaymentSettings = async () => {
+      if (!isTenantAdmin) {
+        return;
+      }
+      setLoadingPaymentSettings(true);
+      try {
+        const settings = await PaymentSettingsService.getPaymentSettings();
+        setPaymentSettings(settings);
+        setMonnifyForm({
+          apiKey: settings.monnifyApiKey || '',
+          secretKey: settings.monnifySecretKey || '',
+          contractCode: settings.monnifyContractCode || '',
+          webhookSecret: settings.monnifyWebhookSecret || '',
+          enabled: settings.monnifyEnabled || false,
+        });
+      } catch (error: any) {
+        console.error('Failed to load payment settings:', error);
+        // Don't show error toast, just use defaults
+        setPaymentSettings({ monnifyEnabled: false });
+      } finally {
+        setLoadingPaymentSettings(false);
+      }
+    };
+
+    loadPaymentSettings();
   }, [isTenantAdmin]);
   const handleCreateUser = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -107,6 +152,30 @@ export function SettingsPage() {
       toast.success(`New PIN for ${tenantUser.name}: ${newPinValue}`);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to reset PIN');
+    }
+  };
+
+  const handleChangeUserRole = async (tenantUser: TenantUser, newRole: string) => {
+    if (tenantUser.role === newRole) return;
+    try {
+      const updated = await updateTenantUser(tenantUser.id, { role: newRole });
+      setTenantUsers((prev) => prev.map((u) => (u.id === tenantUser.id ? updated : u)));
+      toast.success(`Updated ${tenantUser.name} to ${newRole}`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to update role');
+    }
+  };
+
+  const handleDeleteUser = async (tenantUser: TenantUser) => {
+    if (!window.confirm(`Delete user ${tenantUser.name}? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteTenantUser(tenantUser.id);
+      setTenantUsers((prev) => prev.filter((u) => u.id !== tenantUser.id));
+      toast.success(`Deleted user ${tenantUser.name}`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to delete user');
     }
   };
 
@@ -389,15 +458,35 @@ export function SettingsPage() {
                             )}
                           </td>
                           <td className="px-4 py-2 theme-text-secondary lowercase">{tenantUser.email ?? '—'}</td>
-                          <td className="px-4 py-2 theme-text-secondary capitalize">{tenantUser.role}</td>
+                          <td className="px-4 py-2 theme-text-secondary capitalize">
+                            <select
+                              value={tenantUser.role}
+                              onChange={(e) => handleChangeUserRole(tenantUser, e.target.value)}
+                              className="rounded-full border border-white/20 bg-transparent px-2 py-1 text-xs"
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="manager">Manager</option>
+                              <option value="cashier">Cashier</option>
+                            </select>
+                          </td>
                           <td className="px-4 py-2 theme-text-secondary">{tenantUser.locationId ?? '—'}</td>
                           <td className="px-4 py-2">
-                            <button
-                              onClick={() => handleResetPin(tenantUser)}
-                              className="theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400 hover:text-sky-200"
-                            >
-                              Reset PIN
-                            </button>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                onClick={() => handleResetPin(tenantUser)}
+                                className="theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400 hover:text-sky-200"
+                              >
+                                Reset PIN
+                              </button>
+                              {!tenantUser.isPlatformAdmin && (
+                                <button
+                                  onClick={() => handleDeleteUser(tenantUser)}
+                                  className="theme-chip rounded-full border border-red-500/60 px-3 py-1 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -413,6 +502,169 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
+          </SectionContainer>
+        )}
+
+        {isTenantAdmin && (
+          <SectionContainer
+            title="Payment Gateway"
+            description="Configure Monnify payment integration for your tenant. Payments will use these credentials when enabled."
+          >
+            {loadingPaymentSettings ? (
+              <div className="py-8 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+                <p className="theme-text-secondary mt-2 text-sm">Loading payment settings...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <div>
+                    <h3 className="theme-text-primary text-sm font-semibold">Enable Monnify Payments</h3>
+                    <p className="theme-text-secondary text-xs">
+                      When enabled, card and QR payments will be processed through Monnify
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={monnifyForm.enabled}
+                      onChange={(e) => setMonnifyForm({ ...monnifyForm, enabled: e.target.checked })}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-sky-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300" />
+                  </label>
+                </div>
+
+                {monnifyForm.enabled && (
+                  <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div>
+                      <label className="theme-text-primary mb-2 block text-sm font-medium">
+                        Monnify API Key
+                      </label>
+                      <input
+                        type="text"
+                        value={monnifyForm.apiKey}
+                        onChange={(e) => setMonnifyForm({ ...monnifyForm, apiKey: e.target.value })}
+                        placeholder={paymentSettings?.monnifyApiKey || 'Enter your Monnify API Key'}
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                      />
+                      <p className="theme-text-secondary mt-1 text-xs">
+                        Get this from your Monnify dashboard → Settings → API Keys
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="theme-text-primary mb-2 block text-sm font-medium">
+                        Monnify Secret Key
+                      </label>
+                      <input
+                        type="password"
+                        value={monnifyForm.secretKey}
+                        onChange={(e) => setMonnifyForm({ ...monnifyForm, secretKey: e.target.value })}
+                        placeholder={paymentSettings?.monnifySecretKey || 'Enter your Monnify Secret Key'}
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                      />
+                      <p className="theme-text-secondary mt-1 text-xs">
+                        Keep this secure. It will be stored encrypted in your tenant settings.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="theme-text-primary mb-2 block text-sm font-medium">
+                        Monnify Contract Code
+                      </label>
+                      <input
+                        type="text"
+                        value={monnifyForm.contractCode}
+                        onChange={(e) => setMonnifyForm({ ...monnifyForm, contractCode: e.target.value })}
+                        placeholder={paymentSettings?.monnifyContractCode || 'Enter your Monnify Contract Code'}
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                      />
+                      <p className="theme-text-secondary mt-1 text-xs">
+                        Found in your Monnify merchant profile
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="theme-text-primary mb-2 block text-sm font-medium">
+                        Monnify Webhook Secret (Optional)
+                      </label>
+                      <input
+                        type="password"
+                        value={monnifyForm.webhookSecret}
+                        onChange={(e) => setMonnifyForm({ ...monnifyForm, webhookSecret: e.target.value })}
+                        placeholder={paymentSettings?.monnifyWebhookSecret || 'Enter webhook secret for verification'}
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                      />
+                      <p className="theme-text-secondary mt-1 text-xs">
+                        Used to verify webhook signatures from Monnify
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={async () => {
+                          if (!monnifyForm.apiKey || !monnifyForm.secretKey || !monnifyForm.contractCode) {
+                            toast.error('Please fill in API Key, Secret Key, and Contract Code');
+                            return;
+                          }
+
+                          setSavingPaymentSettings(true);
+                          try {
+                            const updateData: UpdatePaymentSettingsRequest = {
+                              monnifyEnabled: monnifyForm.enabled,
+                            };
+
+                            // Only update fields that have been changed (not masked values)
+                            if (monnifyForm.apiKey && !monnifyForm.apiKey.includes('...')) {
+                              updateData.monnifyApiKey = monnifyForm.apiKey;
+                            }
+                            if (monnifyForm.secretKey && !monnifyForm.secretKey.includes('...')) {
+                              updateData.monnifySecretKey = monnifyForm.secretKey;
+                            }
+                            if (monnifyForm.contractCode) {
+                              updateData.monnifyContractCode = monnifyForm.contractCode;
+                            }
+                            if (monnifyForm.webhookSecret && !monnifyForm.webhookSecret.includes('...')) {
+                              updateData.monnifyWebhookSecret = monnifyForm.webhookSecret;
+                            }
+
+                            const updated = await PaymentSettingsService.updatePaymentSettings(updateData);
+                            setPaymentSettings(updated);
+                            toast.success('Payment settings saved successfully');
+                            
+                            // Update form with masked values
+                            setMonnifyForm({
+                              apiKey: updated.monnifyApiKey || '',
+                              secretKey: updated.monnifySecretKey || '',
+                              contractCode: updated.monnifyContractCode || '',
+                              webhookSecret: updated.monnifyWebhookSecret || '',
+                              enabled: updated.monnifyEnabled,
+                            });
+                          } catch (error: any) {
+                            toast.error(error?.response?.data?.message || 'Failed to save payment settings');
+                          } finally {
+                            setSavingPaymentSettings(false);
+                          }
+                        }}
+                        disabled={savingPaymentSettings}
+                        className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-2 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {savingPaymentSettings ? 'Saving...' : 'Save Settings'}
+                      </button>
+                      <a
+                        href="https://developers.monnify.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="theme-chip rounded-full border px-6 py-2 font-semibold transition hover:border-sky-400 hover:text-sky-200"
+                      >
+                        View Monnify Docs
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </SectionContainer>
         )}
 

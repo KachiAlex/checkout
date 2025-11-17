@@ -23,7 +23,7 @@ let OrdersController = class OrdersController {
         this.ordersService = ordersService;
     }
     async create(createOrderDto, req) {
-        return this.ordersService.create(createOrderDto, req.user.sub);
+        return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId);
     }
     async findOne(id) {
         return this.ordersService.findOne(id);
@@ -33,6 +33,18 @@ let OrdersController = class OrdersController {
     }
     async findAll(locationId, from, to, status) {
         return this.ordersService.findAll(locationId, from, to, status);
+    }
+    async findHeldOrders(locationId) {
+        return this.ordersService.findHeldOrders(locationId);
+    }
+    async holdOrder(id) {
+        return this.ordersService.holdOrder(id);
+    }
+    async recallOrder(id) {
+        return this.ordersService.recallOrder(id);
+    }
+    async completeHeldOrder(id, req) {
+        return this.ordersService.completeHeldOrder(id, req.user.tenantId);
     }
 };
 exports.OrdersController = OrdersController;
@@ -79,6 +91,43 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('held'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all held/suspended orders' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of held orders' }),
+    __param(0, (0, common_1.Query)('location_id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "findHeldOrders", null);
+__decorate([
+    (0, common_1.Post)(':id/hold'),
+    (0, swagger_1.ApiOperation)({ summary: 'Hold/suspend an order' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Order held' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "holdOrder", null);
+__decorate([
+    (0, common_1.Post)(':id/recall'),
+    (0, swagger_1.ApiOperation)({ summary: 'Recall a held order' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Order recalled' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "recallOrder", null);
+__decorate([
+    (0, common_1.Post)(':id/complete-held'),
+    (0, swagger_1.ApiOperation)({ summary: 'Complete a held order (decrements inventory)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Held order completed' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "completeHeldOrder", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('orders'),

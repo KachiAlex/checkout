@@ -10,6 +10,10 @@ export interface ProductRecord {
   barcode?: string;
   name: string;
   description?: string;
+  categoryId?: string;
+  categoryName?: string;
+  brandId?: string;
+  brandName?: string;
   priceCents: number;
   costCents?: number;
   taxRate: number;
@@ -33,6 +37,10 @@ export type CreateProductInput = {
   barcode?: string;
   name: string;
   description?: string;
+  categoryId?: string;
+  categoryName?: string;
+  brandId?: string;
+  brandName?: string;
   priceCents: number;
   costCents?: number;
   taxRate?: number;
@@ -125,6 +133,10 @@ export class ProductsRepository {
       barcode: data.barcode,
       name: data.name,
       description: data.description,
+      categoryId: data.categoryId,
+      categoryName: data.categoryName,
+      brandId: data.brandId,
+      brandName: data.brandName,
       priceCents: data.priceCents,
       costCents: data.costCents,
       taxRate: data.taxRate ?? 0,
@@ -159,6 +171,10 @@ export class ProductsRepository {
 
     if (update.name !== undefined) payload.name = update.name;
     if (update.description !== undefined) payload.description = update.description;
+    if (update.categoryId !== undefined) payload.categoryId = update.categoryId;
+    if (update.categoryName !== undefined) payload.categoryName = update.categoryName;
+    if (update.brandId !== undefined) payload.brandId = update.brandId;
+    if (update.brandName !== undefined) payload.brandName = update.brandName;
     if (update.priceCents !== undefined) payload.priceCents = update.priceCents;
     if (update.costCents !== undefined) payload.costCents = update.costCents;
     if (update.taxRate !== undefined) payload.taxRate = update.taxRate;
@@ -186,6 +202,10 @@ export class ProductsRepository {
       barcode: data.barcode,
       name: data.name,
       description: data.description,
+      categoryId: data.categoryId,
+      categoryName: data.categoryName,
+      brandId: data.brandId,
+      brandName: data.brandName,
       priceCents: data.priceCents,
       costCents: data.costCents,
       taxRate: data.taxRate,

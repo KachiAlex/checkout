@@ -15,5 +15,6 @@ export declare class UsersService {
         temporaryPin?: string;
     }>;
     updateUser(tenantId: string, userId: string, dto: UpdateUserDto, actor: UserRecord): Promise<SafeUser>;
+    deleteUser(tenantId: string, userId: string, actor: UserRecord): Promise<void>;
     resetPin(tenantId: string, userId: string, newPin: string, actor: UserRecord): Promise<void>;
 }

@@ -59,6 +59,12 @@ __decorate([
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "locationId", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Customer ID', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "customerId", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ description: 'Order items', type: [OrderItemDto] }),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
@@ -78,12 +84,24 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateOrderDto.prototype, "taxCents", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Discount in cents', default: 0, example: 0 }),
+    (0, swagger_1.ApiProperty)({ description: 'Cart-level discount in cents', default: 0, example: 0 }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], CreateOrderDto.prototype, "discountCents", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Cart-level discount percentage (0-100)', required: false, example: 10 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateOrderDto.prototype, "discountPercent", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Discount reason/description', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "discountReason", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Total in cents', example: 1075 }),
     (0, class_validator_1.IsNumber)(),
@@ -101,4 +119,9 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "notes", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Whether this order is held/suspended', default: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], CreateOrderDto.prototype, "isHeld", void 0);
 //# sourceMappingURL=create-order.dto.js.map

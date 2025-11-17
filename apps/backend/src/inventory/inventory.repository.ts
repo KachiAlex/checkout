@@ -24,6 +24,7 @@ export interface InventoryTransactionRecord {
   referenceId?: string;
   userId?: string;
   notes?: string;
+  reason?: string;
   ts: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +41,7 @@ type InventoryTransactionDocument = Omit<
   InventoryTransactionRecord,
   'id' | 'createdAt' | 'updatedAt' | 'ts'
 > & {
+  reason?: string;
   createdAt?: TimestampField;
   updatedAt?: TimestampField;
   ts?: TimestampField;
@@ -139,6 +141,101 @@ export class InventoryRepository {
     return snapshot.docs.map((doc) => this.toTransactionRecord(doc.id, doc.data()));
   }
 
+  async getAllInventory(): Promise<InventoryRecord[]> {
+    const snapshot = await this.inventoryCollection.get();
+    return snapshot.docs.map((doc) => this.toInventoryRecord(doc.id, doc.data()));
+  }
+
+  async findDuplicates(): Promise<{ key: string; records: InventoryRecord[] }[]> {
+    const allInventory = await this.getAllInventory();
+    const groups = new Map<string, InventoryRecord[]>();
+
+    // Group by productId + locationId
+    for (const record of allInventory) {
+      const key = `${record.productId}:${record.locationId}`;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(record);
+    }
+
+    // Filter to only groups with duplicates
+    const duplicates: { key: string; records: InventoryRecord[] }[] = [];
+    for (const [key, records] of groups.entries()) {
+      if (records.length > 1) {
+        // Sort by createdAt to keep the first one
+        records.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        duplicates.push({ key, records });
+      }
+    }
+
+    return duplicates;
+  }
+
+  async removeDuplicates(): Promise<{ removed: number; kept: number }> {
+    const duplicates = await this.findDuplicates();
+    const batches: ReturnType<typeof this.firestore.batch>[] = [this.firestore.batch()];
+    let currentBatch = batches[0];
+    let currentBatchCount = 0;
+    let removedCount = 0;
+    let keptCount = 0;
+
+    for (const { records } of duplicates) {
+      // Keep the first one (oldest), remove the rest
+      const [keep, ...toRemove] = records;
+      keptCount++;
+
+      for (const record of toRemove) {
+        if (currentBatchCount >= 500) {
+          currentBatch = this.firestore.batch();
+          batches.push(currentBatch);
+          currentBatchCount = 0;
+        }
+        const docRef = this.inventoryCollection.doc(record.id);
+        currentBatch.delete(docRef);
+        currentBatchCount++;
+        removedCount++;
+      }
+    }
+
+    if (removedCount > 0) {
+      await Promise.all(batches.map((b) => b.commit()));
+    }
+
+    return { removed: removedCount, kept: keptCount };
+  }
+
+  async clearAllInventory(): Promise<number> {
+    const snapshot = await this.inventoryCollection.get();
+    
+    if (snapshot.empty) {
+      return 0;
+    }
+
+    let count = 0;
+
+    // Firestore batches are limited to 500 operations
+    const batches: ReturnType<typeof this.firestore.batch>[] = [this.firestore.batch()];
+    let currentBatch = batches[0];
+    let currentBatchCount = 0;
+
+    for (const doc of snapshot.docs) {
+      if (currentBatchCount >= 500) {
+        currentBatch = this.firestore.batch();
+        batches.push(currentBatch);
+        currentBatchCount = 0;
+      }
+      currentBatch.delete(doc.ref);
+      currentBatchCount++;
+      count++;
+    }
+
+    // Commit all batches
+    await Promise.all(batches.map((b) => b.commit()));
+
+    return count;
+  }
+
   private toInventoryRecord(id: string, data: InventoryDocument | undefined): InventoryRecord {
     if (!data) {
       throw new NotFoundException(`Inventory document ${id} has no data.`);
@@ -170,6 +267,7 @@ export class InventoryRepository {
       referenceId: data.referenceId,
       userId: data.userId,
       notes: data.notes,
+      reason: data.reason,
       ts: this.timestampToDate(data.ts),
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),

@@ -1,12 +1,15 @@
-import { useState, lazy, Suspense, useEffect, useRef } from 'react';
+import { useState, lazy, Suspense, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useCartStore } from '../stores/cartStore';
-import { CartSummary } from '../components/CartSummary';
+import { useCartStore, CartItem } from '../stores/cartStore';
 import { PaymentModal } from '../components/PaymentModal';
+import { SplitPaymentModal } from '../components/SplitPaymentModal';
+import { DiscountModal } from '../components/DiscountModal';
+import { PriceOverrideModal } from '../components/PriceOverrideModal';
 import { CustomerDisplay } from '../components/CustomerDisplay';
 import { ReceiptOptionsModal } from '../components/ReceiptOptionsModal';
 import { OnboardingBanner } from '../components/OnboardingBanner';
 import { ProductSearch } from '../components/ProductSearch';
+import { QuantitySelectorModal } from '../components/QuantitySelectorModal';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
 import { KeyboardShortcutsHelp } from '../components/KeyboardShortcutsHelp';
@@ -32,9 +35,15 @@ function generateUUID(): string {
   });
 }
 
-const BarcodeScanner = lazy(() =>
-  import('../components/BarcodeScanner').then((module) => ({
-    default: module.BarcodeScanner,
+const ScannerInput = lazy(() =>
+  import('../components/ScannerInput').then((module) => ({
+    default: module.ScannerInput,
+  })),
+);
+
+const CameraScanner = lazy(() =>
+  import('../components/CameraScanner').then((module) => ({
+    default: module.CameraScanner,
   })),
 );
 
@@ -58,7 +67,24 @@ export function CheckoutPage() {
   if (isPlatformAdmin) {
     return <Navigate to="/superadmin" replace />;
   }
-  const { cart, clearCart, addItem, removeItem, updateQuantity, getTotal } = useCartStore();
+  const {
+    cart,
+    clearCart,
+    addItem,
+    removeItem,
+    updateQuantity,
+    updateItemDiscount,
+    setCartDiscount,
+    getTotal,
+    cartDiscountCents,
+    cartDiscountPercent,
+    discountReason,
+    sessions,
+    activeSessionId,
+    createSession,
+    switchSession,
+    closeSession,
+  } = useCartStore();
   const total = getTotal();
   const [isProcessing, setIsProcessing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{
@@ -76,14 +102,67 @@ export function CheckoutPage() {
   const isAdmin = user?.role === 'admin';
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cartRef = useRef<HTMLDivElement>(null);
-  const [selectedCartIndex, setSelectedCartIndex] = useState<number | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [splitPaymentModalOpen, setSplitPaymentModalOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash' | 'qr' | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [customerDisplayVisible, setCustomerDisplayVisible] = useState(false);
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
   const [lastCompletedOrderId, setLastCompletedOrderId] = useState<string | null>(null);
   const [cashChange, setCashChange] = useState<number>(0);
-  const [displayCart, setDisplayCart] = useState<typeof cart>([]);
+  const [showCamera, setShowCamera] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string; phone?: string } | null>(null);
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState<Array<{ id: string; name: string; phone?: string }>>([]);
+  const [heldOrders, setHeldOrders] = useState<Array<{ id: string; orderNumber: string; items: any[]; totalCents: number; heldAt: string }>>([]);
+  const [showHeldOrders, setShowHeldOrders] = useState(false);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [discountingItem, setDiscountingItem] = useState<CartItem | null>(null);
+  const [priceOverrideModalOpen, setPriceOverrideModalOpen] = useState(false);
+  const [overridingProduct, setOverridingProduct] = useState<{ id: string; name: string; priceCents: number } | null>(null);
+  const [quantitySelectorOpen, setQuantitySelectorOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] } | null>(null);
+
+  // Search customers
+  useEffect(() => {
+    if (!customerSearchQuery || !accessToken) {
+      setCustomerSearchResults([]);
+      return;
+    }
+
+    const searchCustomers = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/v1/customers`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params: { search: customerSearchQuery },
+        });
+        setCustomerSearchResults(response.data.slice(0, 5) || []);
+      } catch (error) {
+        // Silently fail customer search
+      }
+    };
+
+    const timeoutId = setTimeout(searchCustomers, 300);
+    return () => clearTimeout(timeoutId);
+  }, [customerSearchQuery, accessToken]);
+
+  // Load held orders
+  useEffect(() => {
+    const loadHeldOrders = async () => {
+      if (!accessToken || !user?.locationId) return;
+      try {
+        const response = await axios.get(`${API_URL}/api/v1/orders/held`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params: { location_id: user.locationId },
+        });
+        setHeldOrders(response.data || []);
+      } catch (error) {
+        // Silently fail
+      }
+    };
+    loadHeldOrders();
+  }, [accessToken, user?.locationId]);
 
   // Update sync status periodically
   useEffect(() => {
@@ -127,7 +206,6 @@ export function CheckoutPage() {
       key: 'F1',
       action: () => {
         searchInputRef.current?.focus();
-        toast.success('Focused search', { duration: 1000 });
       },
       description: 'Focus search input',
     },
@@ -135,7 +213,6 @@ export function CheckoutPage() {
       key: 'F2',
       action: () => {
         cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        toast.success('Focused cart', { duration: 1000 });
       },
       description: 'Focus cart',
     },
@@ -169,17 +246,12 @@ export function CheckoutPage() {
     {
       key: 'Delete',
       action: () => {
-        if (selectedCartIndex !== null && cart[selectedCartIndex]) {
-          removeItem(cart[selectedCartIndex].productId);
-          setSelectedCartIndex(null);
-          toast.success('Item removed');
-        } else if (cart.length > 0) {
+        if (cart.length > 0) {
           removeItem(cart[cart.length - 1].productId);
-          toast.success('Last item removed');
         }
       },
-      description: 'Remove selected/last cart item',
-      preventDefault: false, // Allow default behavior when not in cart
+      description: 'Remove last cart item',
+      preventDefault: false,
     },
     {
       key: 'Enter',
@@ -194,7 +266,8 @@ export function CheckoutPage() {
     },
   ]);
 
-  const statusChips: StatusChip[] = [
+  // Memoize status chips
+  const statusChips = useMemo<StatusChip[]>(() => [
     {
       label: user?.locationId ? `Location • ${user.locationId}` : 'Location not set',
       tone: user?.locationId ? 'bg-emerald-500/15 text-emerald-200 border-emerald-400/40' : 'bg-amber-500/15 text-amber-200 border-amber-400/40',
@@ -233,11 +306,73 @@ export function CheckoutPage() {
           icon: '💼',
         }
       : null,
-  ].filter((chip): chip is StatusChip => Boolean(chip));
+  ].filter((chip): chip is StatusChip => Boolean(chip)), [user?.locationId, cart.length, syncStatus, tenant]);
 
-  const glowTopRight = theme === 'light' ? 'bg-sky-300/40' : 'bg-cyan-500/30';
-  const glowBottomLeft = theme === 'light' ? 'bg-indigo-200/35' : 'bg-indigo-500/25';
-  const glowCenter = theme === 'light' ? 'bg-emerald-200/30' : 'bg-emerald-400/10';
+  // Memoize glow styles
+  const glowStyles = useMemo(() => ({
+    topRight: theme === 'light' ? 'bg-sky-300/40' : 'bg-cyan-500/30',
+    bottomLeft: theme === 'light' ? 'bg-indigo-200/35' : 'bg-indigo-500/25',
+    center: theme === 'light' ? 'bg-emerald-200/30' : 'bg-emerald-400/10',
+  }), [theme]);
+
+  // Helper to map cart items to order items
+  const mapCartToOrderItems = useCallback((cartItems: typeof cart) => {
+    return cartItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      priceCents: item.priceCents,
+      taxCents: (item.priceCents * item.quantity - (item.discountCents || 0)) * item.taxRate,
+      discountCents: item.discountCents || 0,
+    }));
+  }, []);
+
+  // Helper to calculate totals from cart (for order creation)
+  const calculateOrderTotals = useCallback(() => {
+    const subtotal = cart.reduce((sum, item) => {
+      const itemSubtotal = item.priceCents * item.quantity;
+      const itemDiscount = item.discountCents || 0;
+      return sum + itemSubtotal - itemDiscount;
+    }, 0);
+    
+    const tax = cart.reduce((sum, item) => {
+      const itemSubtotal = item.priceCents * item.quantity;
+      const itemDiscount = item.discountCents || 0;
+      const discountedSubtotal = itemSubtotal - itemDiscount;
+      return sum + discountedSubtotal * item.taxRate;
+    }, 0);
+    
+    let finalSubtotal = subtotal;
+    if (cartDiscountPercent > 0) {
+      finalSubtotal = subtotal * (1 - cartDiscountPercent / 100);
+    } else if (cartDiscountCents > 0) {
+      finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
+    }
+    
+    const totalAmount = finalSubtotal + tax;
+    const totalDiscountCents = subtotal - finalSubtotal;
+    
+    return { subtotal, tax, finalSubtotal, totalAmount, totalDiscountCents };
+  }, [cart, cartDiscountPercent, cartDiscountCents]);
+
+  // Extract receipt printing logic
+  const handleReceiptPrint = useCallback(async (orderId: string) => {
+    try {
+      const printAvailable = await receiptService.isAvailable();
+      if (printAvailable) {
+        const printSuccess = await receiptService.printReceipt(orderId);
+        if (printSuccess) {
+          toast.success('✅ Receipt printed successfully');
+          return;
+        }
+      }
+      const receipt = await receiptService.getReceipt(orderId);
+      console.log('Receipt:', receipt);
+      toast.success('Receipt generated');
+    } catch (error) {
+      console.warn('Failed to generate/print receipt:', error);
+      toast.error('Receipt generation failed');
+    }
+  }, []);
 
   const handleScan = async (barcode: string) => {
     try {
@@ -271,22 +406,178 @@ export function CheckoutPage() {
           return;
         }
 
-        addItem({
-          productId: product.id,
+        // Open quantity selector modal
+        setSelectedProduct({
+          id: product.id,
+          sku: product.sku || '',
           name: product.name,
           priceCents: product.priceCents,
           taxRate: product.taxRate,
-          quantity: 1,
+          stock,
+          images: product.images,
         });
-        toast.success(`Added: ${product.name} (Stock: ${stock})`, {
-          icon: '✅',
-          duration: 2000,
-        });
+        setQuantitySelectorOpen(true);
       } else {
         toast.error(`Product not found: ${barcode}`);
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to find product');
+    }
+  };
+
+  const handleQuantityConfirm = (product: { id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] }, quantity: number) => {
+    addItem({
+      productId: product.id,
+      name: product.name,
+      priceCents: product.priceCents,
+      taxRate: product.taxRate,
+      quantity,
+    });
+    toast.success(`Added ${quantity} ${product.name}${quantity > 1 ? 's' : ''} to cart`, {
+      icon: '✅',
+      duration: 2000,
+    });
+    setQuantitySelectorOpen(false);
+    setSelectedProduct(null);
+  };
+
+  const handleHoldOrder = async () => {
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+
+    if (!accessToken || !user) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    try {
+      const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
+
+      const orderUuid = generateUUID();
+      const deviceId = localStorage.getItem('deviceId') || undefined;
+
+      await axios.post(
+        `${API_URL}/api/v1/orders`,
+        {
+          uuid: orderUuid,
+          locationId: user.locationId,
+          customerId: selectedCustomer?.id,
+          items: mapCartToOrderItems(cart),
+          subtotalCents: subtotal,
+          taxCents: tax,
+          discountCents: totalDiscountCents,
+          discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
+          discountReason: discountReason || undefined,
+          totalCents: totalAmount,
+          deviceId,
+          isHeld: true,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
+      toast.success('Order held successfully');
+      clearCart();
+      setSelectedCustomer(null);
+      
+      // Reload held orders
+      const response = await axios.get(`${API_URL}/api/v1/orders/held`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { location_id: user.locationId },
+      });
+      setHeldOrders(response.data || []);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to hold order');
+    }
+  };
+
+  const handleRecallOrder = async (orderId: string) => {
+    if (!accessToken) return;
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/v1/orders/${orderId}/recall`,
+        {},
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      const order = response.data;
+      
+      // Load order items into cart
+      clearCart();
+      for (const item of order.items) {
+        // We need product details - fetch them
+        try {
+          const productResponse = await axios.get(`${API_URL}/api/v1/products/${item.productId}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const product = productResponse.data;
+          addItem({
+            productId: product.id,
+            name: product.name,
+            priceCents: item.priceCents,
+            taxRate: item.taxCents / (item.priceCents * item.quantity),
+            quantity: item.quantity,
+          });
+        } catch (err) {
+          // Skip if product not found
+        }
+      }
+      
+      toast.success('Order recalled to cart');
+      setShowHeldOrders(false);
+      
+      // Reload held orders
+      const heldResponse = await axios.get(`${API_URL}/api/v1/orders/held`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { location_id: user?.locationId },
+      });
+      setHeldOrders(heldResponse.data || []);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to recall order');
+    }
+  };
+
+  const handleSplitPaymentClick = async () => {
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+
+    if (!accessToken || !user) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    // Create order first (without payment)
+    try {
+      const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
+
+      const orderUuid = generateUUID();
+      const deviceId = localStorage.getItem('deviceId') || undefined;
+
+      const orderResponse = await axios.post(
+        `${API_URL}/api/v1/orders`,
+        {
+          uuid: orderUuid,
+          locationId: user.locationId,
+          customerId: selectedCustomer?.id,
+          items: mapCartToOrderItems(cart),
+          subtotalCents: subtotal,
+          taxCents: tax,
+          discountCents: totalDiscountCents,
+          discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
+          discountReason: discountReason || undefined,
+          totalCents: totalAmount,
+          deviceId,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
+      const order = orderResponse.data;
+      setCurrentOrderId(order.id);
+      setSplitPaymentModalOpen(true);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to create order');
     }
   };
 
@@ -299,7 +590,8 @@ export function CheckoutPage() {
     setPaymentModalOpen(true);
   };
 
-  const handlePayment = async (method: 'card' | 'cash' | 'qr', cashReceived?: number) => {
+
+  const handlePayment = async (method: 'card' | 'cash' | 'qr') => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
@@ -313,14 +605,10 @@ export function CheckoutPage() {
     setIsProcessing(true);
     setPaymentModalOpen(false);
 
+    let isOffline = false;
     try {
-      // Calculate totals
-      const subtotal = cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
-      const tax = cart.reduce((sum, item) => {
-        const itemSubtotal = item.priceCents * item.quantity;
-        return sum + itemSubtotal * item.taxRate;
-      }, 0);
-      const totalAmount = subtotal + tax;
+      // Calculate totals with discounts
+      const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
 
       // Create order UUID
       const orderUuid = generateUUID();
@@ -328,7 +616,6 @@ export function CheckoutPage() {
 
       // Try to create order online first
       let order;
-      let isOffline = false;
 
       try {
         const orderResponse = await axios.post(
@@ -336,15 +623,13 @@ export function CheckoutPage() {
           {
             uuid: orderUuid,
             locationId: user.locationId,
-            items: cart.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              priceCents: item.priceCents,
-              taxCents: item.priceCents * item.quantity * item.taxRate,
-            })),
+            customerId: selectedCustomer?.id,
+            items: mapCartToOrderItems(cart),
             subtotalCents: subtotal,
             taxCents: tax,
-            discountCents: 0,
+            discountCents: totalDiscountCents,
+            discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
+            discountReason: discountReason || undefined,
             totalCents: totalAmount,
             deviceId,
           },
@@ -363,46 +648,47 @@ export function CheckoutPage() {
 
         const payment = paymentResponse.data;
 
-        if (payment.status === 'completed') {
-          toast.success(`Payment successful! Order: ${order.orderNumber || orderUuid}`);
-          
-          // Store cart state for customer display
-          setDisplayCart([...cart]);
+        // For cash payments, mark as completed immediately
+        // For card/QR, payment might be pending and need confirmation
+        if (payment.status === 'completed' || method === 'cash') {
+          // If cash, ensure payment is marked as completed
+          if (method === 'cash' && payment.status !== 'completed') {
+            try {
+              // Mark cash payment as completed (cash payments are auto-completed, but ensure it's captured)
+              await axios.post(
+                `${API_URL}/api/v1/orders/${order.id}/payments/capture`,
+                { paymentId: payment.id },
+                { headers: { Authorization: `Bearer ${accessToken}` } },
+              );
+            } catch (captureError) {
+              // Payment might already be completed, that's okay
+              console.log('Payment capture:', captureError);
+            }
+          }
+
+          toast.success(`Payment confirmed! Order: ${order.orderNumber || orderUuid}`);
           
           // Show customer display
           setCustomerDisplayVisible(true);
           setLastCompletedOrderId(order.id);
           
           // Generate and print receipt
-          try {
-            // Try to print receipt automatically
-            const printAvailable = await receiptService.isAvailable();
-            if (printAvailable) {
-              const printSuccess = await receiptService.printReceipt(order.id);
-              if (printSuccess) {
-                toast.success('Receipt printed');
-              } else {
-                // Fallback: just get receipt text
-                const receipt = await receiptService.getReceipt(order.id);
-                console.log('Receipt:', receipt);
-                toast.success('Receipt generated (print failed)');
-              }
-            } else {
-              // Print proxy not available, just get receipt
-              const receipt = await receiptService.getReceipt(order.id);
-              console.log('Receipt:', receipt);
-              toast.success('Receipt generated');
-            }
-          } catch (receiptError) {
-            console.warn('Failed to generate/print receipt:', receiptError);
-            toast.error('Receipt generation failed');
-          }
+          await handleReceiptPrint(order.id);
 
           // Auto-hide customer display after 10 seconds
           setTimeout(() => {
             setCustomerDisplayVisible(false);
             clearCart();
           }, 10000);
+        } else if (payment.status === 'pending' || payment.status === 'processing') {
+          // Payment is pending - show confirmation button
+          toast.loading('Payment processing...', { id: 'payment-processing' });
+          setLastCompletedOrderId(order.id);
+          // Wait a moment then show receipt options
+          setTimeout(() => {
+            toast.dismiss('payment-processing');
+            setReceiptOptionsOpen(true);
+          }, 2000);
         } else {
           toast.error(`Payment ${payment.status}: ${payment.error || 'Unknown error'}`);
         }
@@ -415,15 +701,10 @@ export function CheckoutPage() {
           await syncService.queueOrder({
             uuid: orderUuid,
             locationId: user.locationId!,
-            items: cart.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              priceCents: item.priceCents,
-              taxCents: item.priceCents * item.quantity * item.taxRate,
-            })),
+            items: mapCartToOrderItems(cart),
             subtotalCents: subtotal,
             taxCents: tax,
-            discountCents: 0,
+            discountCents: totalDiscountCents,
             totalCents: totalAmount,
             deviceId,
           });
@@ -473,9 +754,9 @@ export function CheckoutPage() {
   return (
     <div className="relative min-h-screen overflow-hidden theme-background">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${glowTopRight} blur-[160px]`} />
-        <div className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${glowBottomLeft} blur-[200px]`} />
-        <div className={`absolute top-1/2 left-[40%] h-64 w-64 -translate-y-1/2 rounded-full ${glowCenter} blur-[160px]`} />
+        <div className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${glowStyles.topRight} blur-[160px]`} />
+        <div className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${glowStyles.bottomLeft} blur-[200px]`} />
+        <div className={`absolute top-1/2 left-[40%] h-64 w-64 -translate-y-1/2 rounded-full ${glowStyles.center} blur-[160px]`} />
       </div>
 
       <div className="relative z-10 flex min-h-screen flex-col">
@@ -532,6 +813,22 @@ export function CheckoutPage() {
                 <span className="translate-x-0 text-xs transition-transform group-hover:translate-x-1">→</span>
               </Link>
               <Link
+                to="/customers"
+                className="theme-chip group inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-medium transition"
+              >
+                <span className="text-base">👥</span>
+                Customers
+                <span className="translate-x-0 text-xs transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+              <Link
+                to="/returns"
+                className="theme-chip group inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-medium transition"
+              >
+                <span className="text-base">↩️</span>
+                Returns
+                <span className="translate-x-0 text-xs transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+              <Link
                 to="/reports"
                 className="theme-chip group inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-medium transition"
               >
@@ -576,21 +873,24 @@ export function CheckoutPage() {
         </div>
 
         {/* Main Content */}
-        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 pb-12 pt-8 xl:flex-row">
-          {/* Left Panel - Scanner & Products */}
-          <div className="flex-1 space-y-6">
+        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 pb-12 pt-8">
+          {/* Product Search & Table */}
+          <div className="space-y-6">
+            {/* Product Search - Main Input */}
             <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
                 <div>
-                  <h2 className="theme-text-primary text-xl font-semibold">Scanner console</h2>
+                  <h2 className="theme-text-primary text-xl font-semibold">Search & Checkout</h2>
                   <p className="theme-text-secondary text-sm">
-                    Use your scanner or search catalogue to add items instantly. Camera and Bluetooth devices are supported.
+                    Search or scan products, set quantity in the table, then proceed to checkout below.
                   </p>
                 </div>
                 <div className="flex items-center gap-4 text-sm theme-text-secondary">
                   <div>
-                    <span className="theme-text-primary font-semibold">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>{' '}
-                    units in cart
+                    <span className="theme-text-primary font-semibold">
+                      {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                    </span>{' '}
+                    units in active cart
                   </div>
                   <div className="hidden h-6 w-px bg-white/10 md:block" />
                   <div className="theme-chip flex items-center gap-2 rounded-full border px-3 py-1">
@@ -600,20 +900,335 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950/40 p-5 shadow-inner shadow-black/40">
+              {/* Cart Sessions Strip */}
+              <div className="mb-6 flex flex-wrap items-center gap-2">
+                {sessions.map((session) => {
+                  const itemCount = session.cart.reduce(
+                    (sum, item) => sum + item.quantity,
+                    0,
+                  );
+                  const isActive = session.id === activeSessionId;
+                  return (
+                    <button
+                      key={session.id}
+                      type="button"
+                      onClick={() => switchSession(session.id)}
+                      className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        isActive
+                          ? 'border-sky-400/70 bg-sky-500/20 text-sky-50'
+                          : 'border-white/15 bg-white/5 text-white/70 hover:border-sky-300/50 hover:text-white'
+                      }`}
+                    >
+                      <span>{session.label}</span>
+                      <span className="rounded-full bg-black/30 px-2 py-0.5 text-[11px]">
+                        {itemCount}
+                      </span>
+                      {!isActive && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            closeSession(session.id);
+                          }}
+                          className="ml-1 cursor-pointer text-[11px] opacity-60 hover:opacity-100"
+                          title="Close cart"
+                        >
+                          ✕
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => createSession()}
+                  className="flex items-center gap-1 rounded-full border border-dashed border-white/20 bg-transparent px-3 py-1 text-xs font-medium text-white/70 hover:border-sky-300/70 hover:text-white"
+                >
+                  <span>＋</span>
+                  <span>New Cart</span>
+                </button>
+              </div>
+              
+              {/* Customer Selection & Held Orders - Compact */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Customer Selection */}
+                <div className="relative">
+                  <label className="block text-sm font-medium theme-text-secondary mb-2">
+                    Customer (Optional)
+                  </label>
+                  {selectedCustomer ? (
+                    <div className="flex items-center justify-between theme-surface rounded-lg border border-white/20 p-3">
+                      <div>
+                        <p className="theme-text-primary font-semibold text-sm">{selectedCustomer.name}</p>
+                        {selectedCustomer.phone && (
+                          <p className="theme-text-secondary text-xs">{selectedCustomer.phone}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedCustomer(null);
+                          setCustomerSearchQuery('');
+                        }}
+                        className="text-xs theme-text-secondary hover:theme-text-primary"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={customerSearchQuery}
+                        onChange={(e) => {
+                          setCustomerSearchQuery(e.target.value);
+                          setShowCustomerSearch(true);
+                        }}
+                        onFocus={() => setShowCustomerSearch(true)}
+                        placeholder="Search customer..."
+                        className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                      />
+                      {showCustomerSearch && customerSearchResults.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full theme-card rounded-lg border border-white/20 shadow-lg max-h-48 overflow-y-auto">
+                          {customerSearchResults.map((customer) => (
+                            <button
+                              key={customer.id}
+                              onClick={() => {
+                                setSelectedCustomer(customer);
+                                setCustomerSearchQuery('');
+                                setShowCustomerSearch(false);
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-white/5 transition"
+                            >
+                              <p className="theme-text-primary font-semibold text-sm">{customer.name}</p>
+                              {customer.phone && (
+                                <p className="theme-text-secondary text-xs">{customer.phone}</p>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Held Orders */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium theme-text-secondary">
+                      Held Orders ({heldOrders.length})
+                    </label>
+                    <button
+                      onClick={() => setShowHeldOrders(!showHeldOrders)}
+                      className="text-xs theme-text-secondary hover:theme-text-primary"
+                    >
+                      {showHeldOrders ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  {showHeldOrders && (
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {heldOrders.length === 0 ? (
+                        <p className="text-xs theme-text-secondary text-center py-2">No held orders</p>
+                      ) : (
+                        heldOrders.map((order) => (
+                          <div
+                            key={order.id}
+                            className="theme-surface rounded-lg border border-white/20 p-2 text-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="theme-text-primary font-semibold">{order.orderNumber}</p>
+                                <p className="theme-text-secondary">
+                                  {order.items.length} items • ₦{(order.totalCents / 100).toFixed(2)}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleRecallOrder(order.id)}
+                                className="rounded border border-white/20 bg-transparent px-2 py-1 text-xs font-semibold theme-text-primary transition hover:bg-white/5"
+                              >
+                                Recall
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <ProductSearch 
+                onAddToCart={addItem}
+                onUpdateQuantity={updateQuantity}
+                onRemoveFromCart={removeItem}
+                onItemDiscount={(item) => {
+                  const cartItem = cart.find(ci => ci.productId === item.productId);
+                  if (cartItem) {
+                    setDiscountingItem(cartItem);
+                    setDiscountModalOpen(true);
+                  }
+                }}
+                cartItems={cart.map(item => ({ productId: item.productId, quantity: item.quantity, discountCents: item.discountCents }))}
+                onPriceOverride={(product) => {
+                  setOverridingProduct({ id: product.id, name: product.name, priceCents: product.priceCents });
+                  setPriceOverrideModalOpen(true);
+                }}
+                searchInputRef={searchInputRef} 
+              />
+            </div>
+
+            {/* Totals & Checkout Section */}
+            {cart.length > 0 && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Totals */}
+                  <div className="lg:col-span-1">
+                    <h3 className="theme-text-primary text-lg font-semibold mb-4">Order Summary</h3>
+                    <div className="theme-surface space-y-3 rounded-2xl border p-5">
+                      <div className="flex justify-between text-sm theme-text-secondary">
+                        <span>Subtotal</span>
+                        <span className="theme-text-primary font-semibold">
+                          ₦{(cart.reduce((sum, item) => sum + (item.priceCents * item.quantity - (item.discountCents || 0)), 0) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      {cartDiscountCents > 0 && (
+                        <div className="flex justify-between text-sm text-emerald-400">
+                          <span>Cart Discount</span>
+                          <span className="font-semibold">-₦{(cartDiscountCents / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm theme-text-secondary">
+                        <span>Tax</span>
+                        <span className="theme-text-primary font-semibold">
+                          ₦{(cart.reduce((sum, item) => {
+                            const itemTotal = item.priceCents * item.quantity - (item.discountCents || 0);
+                            return sum + (itemTotal * item.taxRate);
+                          }, 0) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="theme-divider h-px" />
+                      <div className="flex items-center justify-between text-lg font-semibold theme-text-primary">
+                        <span>Total</span>
+                        <span className="text-2xl text-sky-400">₦{(total / 100).toFixed(2)}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setDiscountModalOpen(true);
+                            setDiscountingItem(null);
+                          }}
+                          className="flex-1 rounded-lg border border-sky-400/40 bg-sky-500/15 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/25"
+                        >
+                          🎫 Cart Discount
+                        </button>
+                        <button
+                          onClick={clearCart}
+                          className="flex-1 rounded-lg border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                        >
+                          🗑️ Clear
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Buttons */}
+                  <div className="lg:col-span-2">
+                    <h3 className="theme-text-primary text-lg font-semibold mb-4">Proceed to Payment</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <button
+                        onClick={() => handlePaymentClick('cash')}
+                        disabled={cart.length === 0 || isProcessing}
+                        className="rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-5 text-lg font-semibold text-emerald-950 shadow-lg shadow-emerald-900/50 transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation min-h-[56px]"
+                      >
+                        {isProcessing ? 'Processing...' : '💵 Cash'}
+                      </button>
+                      <button
+                        onClick={() => handlePaymentClick('card')}
+                        disabled={cart.length === 0 || isProcessing}
+                        className="rounded-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 px-6 py-5 text-lg font-semibold text-white shadow-lg shadow-slate-900/60 transition hover:shadow-slate-900/80 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation min-h-[56px]"
+                      >
+                        {isProcessing ? 'Processing...' : '💳 Card'}
+                      </button>
+                      <button
+                        onClick={() => handlePaymentClick('qr')}
+                        disabled={cart.length === 0 || isProcessing}
+                        className="rounded-full bg-gradient-to-r from-fuchsia-400 via-purple-500 to-indigo-500 px-6 py-5 text-lg font-semibold text-white shadow-lg shadow-purple-900/60 transition hover:shadow-purple-900/80 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation min-h-[56px]"
+                      >
+                        {isProcessing ? 'Processing...' : '📱 QR'}
+                      </button>
+                    </div>
+                    <div className="mt-4 flex gap-3">
+                      <button
+                        onClick={handleSplitPaymentClick}
+                        disabled={cart.length === 0 || isProcessing}
+                        className="flex-1 rounded-full border border-purple-400/40 bg-purple-500/15 px-4 py-3 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        💰 Split Payment
+                      </button>
+                      <button
+                        onClick={handleHoldOrder}
+                        disabled={cart.length === 0 || isProcessing}
+                        className="flex-1 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ⏸️ Hold Order
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Camera Scanner - Collapsible */}
+            <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="theme-text-primary text-xl font-semibold">Camera Scanner</h2>
+                  <p className="theme-text-secondary text-sm">
+                    Use your device camera to scan barcodes and QR codes
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCamera(!showCamera)}
+                  className={`theme-chip rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    showCamera
+                      ? 'border-rose-400/40 bg-rose-500/15 text-rose-200'
+                      : 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                  }`}
+                >
+                  {showCamera ? '📷 Hide Camera' : '📷 Show Camera'}
+                </button>
+              </div>
+              {showCamera && (
                 <Suspense
                   fallback={
                     <div className="flex h-36 items-center justify-center text-xs uppercase tracking-[0.4em] text-slate-400/80">
-                      Loading scanner…
+                      Loading camera…
                     </div>
                   }
                 >
-                  <BarcodeScanner onScan={handleScan} />
+                  <CameraScanner onScan={handleScan} isVisible={showCamera} />
                 </Suspense>
-              </div>
+              )}
             </div>
 
-            <ProductSearch onAddToCart={addItem} searchInputRef={searchInputRef} />
+            {/* USB/Bluetooth Scanner Console */}
+            <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between mb-4">
+                <div>
+                  <h2 className="theme-text-primary text-xl font-semibold">Barcode Scanner</h2>
+                  <p className="theme-text-secondary text-sm">
+                    Scan barcodes using USB/Bluetooth scanners or type barcode and press Enter.
+                  </p>
+                </div>
+              </div>
+              <Suspense
+                fallback={
+                  <div className="flex h-36 items-center justify-center text-xs uppercase tracking-[0.4em] text-slate-400/80">
+                    Loading scanner…
+                  </div>
+                }
+              >
+                <ScannerInput onScan={handleScan} />
+              </Suspense>
+            </div>
             <Suspense
               fallback={
                 <div className="theme-card rounded-3xl border p-6 text-xs uppercase tracking-[0.4em] text-slate-400/80">
@@ -623,18 +1238,6 @@ export function CheckoutPage() {
             >
               <ScannerDeviceList />
             </Suspense>
-          </div>
-
-          {/* Right Panel - Cart */}
-          <div ref={cartRef} className="theme-card w-full rounded-3xl border p-6 backdrop-blur-xl xl:w-[360px]" tabIndex={-1}>
-            <CartSummary
-              cart={cart}
-              total={total}
-              onRemove={removeItem}
-              onUpdateQuantity={updateQuantity}
-              onPayment={handlePaymentClick}
-              isProcessing={isProcessing}
-            />
           </div>
         </div>
       </div>
@@ -654,19 +1257,102 @@ export function CheckoutPage() {
             setCashChange(change);
           }
           if (selectedPaymentMethod) {
-            await handlePayment(selectedPaymentMethod, change);
+            await handlePayment(selectedPaymentMethod);
+          }
+        }}
+      />
+
+      {/* Split Payment Modal */}
+      <SplitPaymentModal
+        isOpen={splitPaymentModalOpen}
+        orderId={currentOrderId}
+        totalCents={total}
+        accessToken={accessToken}
+        onClose={() => {
+          setSplitPaymentModalOpen(false);
+          setCurrentOrderId(null);
+        }}
+        onComplete={async () => {
+            // Order is fully paid
+          if (currentOrderId) {
+            setLastCompletedOrderId(currentOrderId);
+            setCustomerDisplayVisible(true);
+            
+            // Generate and print receipt
+            await handleReceiptPrint(currentOrderId);
+            
+            clearCart();
+            setSelectedCustomer(null);
+            setSplitPaymentModalOpen(false);
+            setCurrentOrderId(null);
+          }
+        }}
+      />
+
+      {/* Discount Modal */}
+      <DiscountModal
+        isOpen={discountModalOpen}
+        item={discountingItem}
+        cartTotal={total}
+        onClose={() => {
+          setDiscountModalOpen(false);
+          setDiscountingItem(null);
+        }}
+        onApplyItemDiscount={(productId, discountCents) => {
+          updateItemDiscount(productId, discountCents);
+        }}
+        onApplyCartDiscount={(discountCents, discountPercent, reason) => {
+          setCartDiscount(discountCents, discountPercent, reason);
+        }}
+      />
+
+      {/* Price Override Modal */}
+      <PriceOverrideModal
+        isOpen={priceOverrideModalOpen}
+        productName={overridingProduct?.name || ''}
+        currentPriceCents={overridingProduct?.priceCents || 0}
+        onClose={() => {
+          setPriceOverrideModalOpen(false);
+          setOverridingProduct(null);
+        }}
+        onConfirm={async (newPriceCents: number, _managerPin: string) => {
+          if (!overridingProduct || !accessToken) return false;
+          
+          try {
+            // Update product price in backend
+            await axios.patch(
+              `${API_URL}/api/v1/products/${overridingProduct.id}`,
+              { priceCents: newPriceCents },
+              { headers: { Authorization: `Bearer ${accessToken}` } },
+            );
+            
+            // Update price in cart if item is already in cart
+            const cartItem = cart.find((item) => item.productId === overridingProduct.id);
+            if (cartItem) {
+              // Update the cart item with new price
+              removeItem(overridingProduct.id);
+              addItem({
+                productId: overridingProduct.id,
+                name: overridingProduct.name,
+                priceCents: newPriceCents,
+                taxRate: cartItem.taxRate,
+                quantity: cartItem.quantity,
+              });
+            }
+            
+            toast.success(`Price updated to ₦${(newPriceCents / 100).toFixed(2)}`);
+            return true;
+          } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to update price');
+            return false;
           }
         }}
       />
 
       {/* Customer Display */}
       <CustomerDisplay
-        cart={displayCart}
-        total={displayCart.reduce((sum, item) => {
-          const subtotal = item.priceCents * item.quantity;
-          const tax = subtotal * item.taxRate;
-          return sum + subtotal + tax;
-        }, 0)}
+        cart={cart}
+        total={total}
         isVisible={customerDisplayVisible}
         paymentMethod={selectedPaymentMethod}
         change={cashChange}
@@ -695,6 +1381,17 @@ export function CheckoutPage() {
           <span className="ml-2 font-semibold">Receipt</span>
         </button>
       )}
+
+      {/* Quantity Selector Modal */}
+      <QuantitySelectorModal
+        isOpen={quantitySelectorOpen}
+        product={selectedProduct}
+        onClose={() => {
+          setQuantitySelectorOpen(false);
+          setSelectedProduct(null);
+        }}
+        onConfirm={handleQuantityConfirm}
+      />
     </div>
   );
 }

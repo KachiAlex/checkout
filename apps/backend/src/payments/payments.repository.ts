@@ -80,6 +80,43 @@ export class PaymentsRepository {
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
   }
 
+  async findByPaymentReference(paymentReference: string): Promise<PaymentRecord | null> {
+    // Search by paymentReference in processorData
+    const snapshot = await this.collection
+      .where('processorData.paymentReference', '==', paymentReference)
+      .limit(1)
+      .get();
+    
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0];
+      return this.toRecord(doc.id, doc.data());
+    }
+
+    // Also check transactionReference
+    const snapshot2 = await this.collection
+      .where('processorData.transactionReference', '==', paymentReference)
+      .limit(1)
+      .get();
+    
+    if (!snapshot2.empty) {
+      const doc = snapshot2.docs[0];
+      return this.toRecord(doc.id, doc.data());
+    }
+
+    // Check transactionId field
+    const snapshot3 = await this.collection
+      .where('transactionId', '==', paymentReference)
+      .limit(1)
+      .get();
+    
+    if (!snapshot3.empty) {
+      const doc = snapshot3.docs[0];
+      return this.toRecord(doc.id, doc.data());
+    }
+
+    return null;
+  }
+
   async update(id: string, update: Partial<CreatePaymentInput>): Promise<PaymentRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();

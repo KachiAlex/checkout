@@ -8,6 +8,7 @@ export interface LocationRecord {
   address?: string;
   timezone: string;
   defaultPrinter?: string;
+  tenantId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +16,7 @@ export interface LocationRecord {
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
 type LocationDocument = Omit<LocationRecord, 'id' | 'createdAt' | 'updatedAt'> & {
+  tenantId?: string;
   createdAt?: TimestampField;
   updatedAt?: TimestampField;
 };
@@ -35,6 +37,30 @@ export class LocationsRepository {
   async findAll(): Promise<LocationRecord[]> {
     const snapshot = await this.collection.orderBy('createdAt', 'asc').get();
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+  }
+
+  async findByTenant(tenantId: string): Promise<LocationRecord[]> {
+    // Query locations by tenantId (if stored)
+    // Firestore requires an index for where + orderBy, so we'll query without orderBy first
+    try {
+      const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
+      if (!snapshot.empty) {
+        const locations = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        // Sort in memory
+        return locations.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      }
+    } catch (error) {
+      // If query fails (e.g., no index), fall through to fallback
+      console.warn('Failed to query locations by tenantId:', error);
+    }
+    
+    // Fallback: return all locations (for backward compatibility if tenantId isn't stored)
+    // In production, you'd want to ensure locations have tenantId and proper indexes
+    const allSnapshot = await this.collection.get();
+    const allLocations = allSnapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    // Filter by tenantId if it exists, otherwise return all
+    const filtered = allLocations.filter((loc) => !loc.tenantId || loc.tenantId === tenantId);
+    return filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
   async findById(id: string): Promise<LocationRecord | null> {
@@ -91,6 +117,7 @@ export class LocationsRepository {
       address: data.address,
       timezone: data.timezone,
       defaultPrinter: data.defaultPrinter,
+      tenantId: data.tenantId,
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),
     };

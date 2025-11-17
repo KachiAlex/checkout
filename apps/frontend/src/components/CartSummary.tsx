@@ -8,6 +8,8 @@ interface CartSummaryProps {
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onPayment: (method: 'card' | 'cash' | 'qr') => void;
+  onItemDiscount?: (item: CartItem) => void;
+  onCartDiscount?: () => void;
   isProcessing: boolean;
 }
 
@@ -17,14 +19,38 @@ export function CartSummary({
   onRemove,
   onUpdateQuantity,
   onPayment,
+  onItemDiscount,
+  onCartDiscount,
   isProcessing,
 }: CartSummaryProps) {
-  const { clearCart, undoLastRemove, lastRemovedItem } = useCartStore();
+  const { clearCart, undoLastRemove, lastRemovedItem, cartDiscountCents, cartDiscountPercent } = useCartStore();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [quantityInput, setQuantityInput] = useState('');
-  const subtotal = cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
-  const tax = cart.reduce((sum, item) => sum + item.priceCents * item.quantity * item.taxRate, 0);
+  
+  // Calculate totals with discounts
+  const subtotal = cart.reduce((sum, item) => {
+    const itemSubtotal = item.priceCents * item.quantity;
+    const itemDiscount = item.discountCents || 0;
+    return sum + itemSubtotal - itemDiscount;
+  }, 0);
+  
+  const tax = cart.reduce((sum, item) => {
+    const itemSubtotal = item.priceCents * item.quantity;
+    const itemDiscount = item.discountCents || 0;
+    const discountedSubtotal = itemSubtotal - itemDiscount;
+    return sum + discountedSubtotal * item.taxRate;
+  }, 0);
+  
+  // Apply cart-level discount
+  let finalSubtotal = subtotal;
+  if (cartDiscountPercent > 0) {
+    finalSubtotal = subtotal * (1 - cartDiscountPercent / 100);
+  } else if (cartDiscountCents > 0) {
+    finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
+  }
+  
+  const totalDiscount = subtotal - finalSubtotal;
 
   const handleClearCart = () => {
     if (showClearConfirm) {
@@ -111,18 +137,34 @@ export function CartSummary({
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="flex-1">
                   <h3 className="theme-text-primary text-sm font-semibold">{item.name}</h3>
                   <p className="theme-text-secondary mt-1 text-xs">₦{(item.priceCents / 100).toFixed(2)} each</p>
+                  {item.discountCents && item.discountCents > 0 && (
+                    <p className="theme-text-secondary mt-1 text-xs text-emerald-400">
+                      Discount: -₦{(item.discountCents / 100).toFixed(2)}
+                    </p>
+                  )}
                 </div>
-                <button
-                  onClick={() => onRemove(item.productId)}
-                  className="rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-semibold text-rose-200 transition hover:border-rose-400/70 hover:bg-rose-500/25 hover:text-rose-100 touch-manipulation min-h-[32px] min-w-[60px]"
-                  title="Remove item"
-                  aria-label={`Remove ${item.name} from cart`}
-                >
-                  Remove
-                </button>
+                <div className="flex flex-col gap-1">
+                  {onItemDiscount && (
+                    <button
+                      onClick={() => onItemDiscount(item)}
+                      className="rounded border border-sky-400/40 bg-sky-500/15 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/25 touch-manipulation"
+                      title="Apply discount"
+                    >
+                      Discount
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onRemove(item.productId)}
+                    className="rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-semibold text-rose-200 transition hover:border-rose-400/70 hover:bg-rose-500/25 hover:text-rose-100 touch-manipulation min-h-[32px] min-w-[60px]"
+                    title="Remove item"
+                    aria-label={`Remove ${item.name} from cart`}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
 
               <div className="mt-4 flex items-center justify-between">
@@ -172,8 +214,13 @@ export function CartSummary({
                 </div>
                 <div className="text-right">
                   <p className="text-base font-semibold text-sky-400">
-                    ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                    ₦{((item.priceCents * item.quantity - (item.discountCents || 0)) / 100).toFixed(2)}
                   </p>
+                  {item.discountCents && item.discountCents > 0 && (
+                    <p className="text-xs text-emerald-400 line-through">
+                      ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -187,6 +234,12 @@ export function CartSummary({
           <span>Subtotal</span>
           <span className="theme-text-primary font-semibold">₦{(subtotal / 100).toFixed(2)}</span>
         </div>
+        {totalDiscount > 0 && (
+          <div className="flex justify-between text-sm text-emerald-400">
+            <span>Discount</span>
+            <span className="font-semibold">-₦{(totalDiscount / 100).toFixed(2)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm theme-text-secondary">
           <span>Tax</span>
           <span className="theme-text-primary font-semibold">₦{(tax / 100).toFixed(2)}</span>
@@ -196,6 +249,14 @@ export function CartSummary({
           <span>Total due</span>
           <span className="text-2xl text-sky-400">₦{(total / 100).toFixed(2)}</span>
         </div>
+        {onCartDiscount && (
+          <button
+            onClick={onCartDiscount}
+            className="w-full rounded-lg border border-sky-400/40 bg-sky-500/15 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25"
+          >
+            🎫 Apply Cart Discount
+          </button>
+        )}
       </div>
 
       {/* Payment Buttons */}

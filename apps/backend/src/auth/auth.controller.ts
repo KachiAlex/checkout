@@ -1,19 +1,11 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { DeviceRegisterDto } from './dto/device-register.dto';
-import { AuthResponseDto } from './dto/auth-response.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
+import { VerifyManagerDto } from './dto/verify-manager.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { UserRole } from '@pos-checkout/shared';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -21,61 +13,60 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with PIN' })
-  @ApiResponse({
-    status: 200,
-    description: 'Login successful',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
+  @ApiOperation({ summary: 'Login with tenant slug and PIN' })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
   @Post('superadmin/login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Platform admin login with email and password' })
-  @ApiResponse({
-    status: 200,
-    description: 'Login successful',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async superAdminLogin(@Body() dto: SuperAdminLoginDto): Promise<AuthResponseDto> {
-    return this.authService.loginSuperAdmin(dto);
+  @ApiOperation({ summary: 'Super admin login' })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  async superAdminLogin(@Body() loginDto: SuperAdminLoginDto) {
+    return this.authService.loginSuperAdmin(loginDto);
+  }
+
+  @Post('verify-manager')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Verify manager PIN for price override authorization' })
+  @ApiResponse({ status: 200, description: 'Manager PIN verified' })
+  @ApiResponse({ status: 403, description: 'Invalid PIN or insufficient permissions' })
+  async verifyManager(@Body() verifyDto: VerifyManagerDto, @Request() req: any) {
+    const user = req.user;
+    
+    // Check if current user is already a manager/admin
+    if (user.role === UserRole.MANAGER || user.role === UserRole.ADMIN) {
+      return { authorized: true, message: 'User is already authorized' };
+    }
+
+    // Verify manager PIN
+    const manager = await this.authService.validateUser(verifyDto.pin, user.tenantId);
+    
+    if (!manager) {
+      return { authorized: false, message: 'Invalid manager PIN' };
+    }
+
+    if (manager.role !== UserRole.MANAGER && manager.role !== UserRole.ADMIN) {
+      return { authorized: false, message: 'PIN does not belong to a manager or admin' };
+    }
+
+    return {
+      authorized: true,
+      message: 'Manager authorization verified',
+      authorizedBy: {
+        id: manager.id,
+        name: manager.name,
+        role: manager.role,
+      },
+    };
   }
 
   @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh access token' })
-  @ApiResponse({
-    status: 200,
-    description: 'Token refreshed successfully',
-    type: AuthResponseDto,
-  })
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
-  async refresh(@Body() refreshTokenDto: RefreshTokenDto): Promise<AuthResponseDto> {
-    return this.authService.refreshToken(refreshTokenDto.refreshToken);
-  }
-
-  @Post('device-register')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Register device with public key' })
-  @ApiResponse({
-    status: 200,
-    description: 'Device registered successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-      },
-    },
-  })
-  async registerDevice(
-    @Body() deviceRegisterDto: DeviceRegisterDto,
-  ): Promise<{ success: boolean; message: string }> {
-    return this.authService.registerDevice(deviceRegisterDto);
+  async refresh(@Body() body: { refreshToken: string }) {
+    return this.authService.refreshToken(body.refreshToken);
   }
 }

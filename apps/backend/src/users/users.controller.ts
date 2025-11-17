@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards, Request } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
@@ -43,6 +43,13 @@ export class UsersController {
   async changePin(@Request() req: any, @Body() dto: ChangePinDto) {
     await this.usersService.changePin(req.user.sub, dto);
     return { success: true };
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a user from the tenant' })
+  async delete(@Param('id') id: string, @Request() req: any) {
+    await this.usersService.deleteUser(req.user.tenantId, id, req.user);
   }
 }
 

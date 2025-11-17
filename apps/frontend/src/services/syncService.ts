@@ -19,7 +19,7 @@ function generateUUID(): string {
   });
 }
 import axios from 'axios';
-import { db, OfflineOrder, SyncEvent } from '../db/offline-db';
+import { db, OfflineOrder } from '../db/offline-db';
 import { API_URL } from '../config';
 import toast from 'react-hot-toast';
 
@@ -83,7 +83,7 @@ class SyncService {
     const now = Date.now();
 
     // Store order locally
-    const orderId = await db.orders.add({
+    await db.orders.add({
       ...order,
       uuid: orderUuid,
       status: 'pending',

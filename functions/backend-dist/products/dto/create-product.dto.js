@@ -40,6 +40,30 @@ __decorate([
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "description", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Category ID', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "categoryId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Category Name (if creating new category)', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "categoryName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Brand ID', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "brandId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Brand Name (if creating new brand)', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "brandName", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ description: 'Price in cents', example: 150 }),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),

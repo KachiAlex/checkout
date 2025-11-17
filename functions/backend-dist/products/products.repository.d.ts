@@ -6,6 +6,10 @@ export interface ProductRecord {
     barcode?: string;
     name: string;
     description?: string;
+    categoryId?: string;
+    categoryName?: string;
+    brandId?: string;
+    brandName?: string;
     priceCents: number;
     costCents?: number;
     taxRate: number;
@@ -21,6 +25,10 @@ export type CreateProductInput = {
     barcode?: string;
     name: string;
     description?: string;
+    categoryId?: string;
+    categoryName?: string;
+    brandId?: string;
+    brandName?: string;
     priceCents: number;
     costCents?: number;
     taxRate?: number;

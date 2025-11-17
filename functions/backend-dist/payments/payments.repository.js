@@ -49,6 +49,33 @@ let PaymentsRepository = class PaymentsRepository {
         const snapshot = await this.collection.where('orderId', '==', orderId).get();
         return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
     }
+    async findByPaymentReference(paymentReference) {
+        const snapshot = await this.collection
+            .where('processorData.paymentReference', '==', paymentReference)
+            .limit(1)
+            .get();
+        if (!snapshot.empty) {
+            const doc = snapshot.docs[0];
+            return this.toRecord(doc.id, doc.data());
+        }
+        const snapshot2 = await this.collection
+            .where('processorData.transactionReference', '==', paymentReference)
+            .limit(1)
+            .get();
+        if (!snapshot2.empty) {
+            const doc = snapshot2.docs[0];
+            return this.toRecord(doc.id, doc.data());
+        }
+        const snapshot3 = await this.collection
+            .where('transactionId', '==', paymentReference)
+            .limit(1)
+            .get();
+        if (!snapshot3.empty) {
+            const doc = snapshot3.docs[0];
+            return this.toRecord(doc.id, doc.data());
+        }
+        return null;
+    }
     async update(id, update) {
         const docRef = this.collection.doc(id);
         const existing = await docRef.get();
