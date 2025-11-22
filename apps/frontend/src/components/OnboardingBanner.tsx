@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ensureCameraPermission, isBluetoothSupported } from '../services/scannerService';
@@ -12,6 +13,13 @@ interface OnboardingBannerProps {
 export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [bluetoothReady, setBluetoothReady] = useState(false);
+  const isNativeApp = useMemo(
+    () =>
+      typeof Capacitor?.isNativePlatform === 'function'
+        ? Capacitor.isNativePlatform()
+        : Capacitor?.getPlatform?.() !== 'web',
+    [],
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -47,6 +55,11 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
   };
 
   const handleBluetoothInfo = () => {
+    if (isNativeApp) {
+      toast.error('Bluetooth pairing is not supported in the mobile app yet. Use the camera scanner instead.');
+      return;
+    }
+
     if (bluetoothReady) {
       toast.success('Bluetooth is supported. Use the Bluetooth button in the scanner to pair.');
     } else {
@@ -95,21 +108,23 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
               </button>
             </div>
 
-            <div className="theme-surface rounded-2xl border p-5 shadow-inner shadow-black/20 transition">
-              <div className="theme-text-primary flex items-center gap-2 text-sm font-semibold">
-                <span>📡</span>
-                <span>Pair a scanner</span>
+            {!isNativeApp && (
+              <div className="theme-surface rounded-2xl border p-5 shadow-inner shadow-black/20 transition">
+                <div className="theme-text-primary flex items-center gap-2 text-sm font-semibold">
+                  <span>📡</span>
+                  <span>Pair a scanner</span>
+                </div>
+                <p className="theme-text-secondary mt-3 text-sm">
+                  Put your Bluetooth scanner in pairing mode and tap the Bluetooth option inside the scanner panel.
+                </p>
+                <button
+                  onClick={handleBluetoothInfo}
+                  className="theme-chip mt-4 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
+                >
+                  Check browser support
+                </button>
               </div>
-              <p className="theme-text-secondary mt-3 text-sm">
-                Put your Bluetooth scanner in pairing mode and tap the Bluetooth option inside the scanner panel.
-              </p>
-              <button
-                onClick={handleBluetoothInfo}
-                className="theme-chip mt-4 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
-              >
-                Check browser support
-              </button>
-            </div>
+            )}
 
             <div className="theme-surface rounded-2xl border p-5 shadow-inner shadow-black/20 transition">
               <div className="theme-text-primary flex items-center gap-2 text-sm font-semibold">

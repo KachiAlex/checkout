@@ -69,7 +69,11 @@ export const useAuthStore = create<AuthState>()(
           // Set default authorization header
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error: any) {
-          throw new Error(error.response?.data?.message || 'Login failed');
+          const message = error.response?.data?.message || 'Login failed';
+          if (error && typeof error === 'object') {
+            error.customMessage = message;
+          }
+          throw error;
         }
       },
 
@@ -93,7 +97,11 @@ export const useAuthStore = create<AuthState>()(
 
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error: any) {
-          throw new Error(error.response?.data?.message || 'Login failed');
+          const message = error.response?.data?.message || 'Login failed';
+          if (error && typeof error === 'object') {
+            error.customMessage = message;
+          }
+          throw error;
         }
       },
 

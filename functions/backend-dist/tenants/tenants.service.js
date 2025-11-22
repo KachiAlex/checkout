@@ -144,6 +144,75 @@ let TenantsService = class TenantsService {
         }
         return this.tenantsRepository.update(id, updatePayload);
     }
+    async updateSubscription(id, dto) {
+        const tenant = await this.findById(id);
+        const updatePayload = {};
+        const nextPlan = dto.plan ?? tenant.plan;
+        if (dto.plan) {
+            updatePayload.plan = dto.plan;
+        }
+        if (dto.seatLimit !== undefined) {
+            updatePayload.seatLimit = dto.seatLimit;
+        }
+        if (dto.billingCycleStart !== undefined) {
+            updatePayload.billingCycleStart = dto.billingCycleStart
+                ? new Date(dto.billingCycleStart)
+                : undefined;
+        }
+        if (dto.billingCycleEnd !== undefined || nextPlan === shared_1.TenantPlan.LIFETIME) {
+            updatePayload.billingCycleEnd =
+                nextPlan === shared_1.TenantPlan.LIFETIME
+                    ? undefined
+                    : dto.billingCycleEnd
+                        ? new Date(dto.billingCycleEnd)
+                        : undefined;
+        }
+        return this.tenantsRepository.update(id, updatePayload);
+    }
+    async resetAdminPin(id, dto) {
+        const tenant = await this.findById(id);
+        let adminUser = dto.adminEmail !== undefined ? await this.usersRepository.findByEmail(dto.adminEmail) : null;
+        if (adminUser && adminUser.tenantId !== tenant.id) {
+            throw new common_1.BadRequestException('Provided admin email does not belong to this tenant');
+        }
+        if (!adminUser) {
+            adminUser = await this.usersRepository.findByRole(shared_1.UserRole.ADMIN, tenant.id);
+        }
+        if (!adminUser) {
+            throw new common_1.NotFoundException('No tenant admin found to reset PIN');
+        }
+        const temporaryPin = generateDefaultPin();
+        const pinHash = await bcrypt.hash(temporaryPin, 10);
+        await this.usersRepository.update(adminUser.id, { pinHash });
+        return {
+            tenantId: tenant.id,
+            adminUserId: adminUser.id,
+            adminEmail: adminUser.email ?? tenant.contactEmail,
+            temporaryPin,
+        };
+    }
+    async suspend(id, dto) {
+        const tenant = await this.findById(id);
+        const metadata = {
+            ...(tenant.metadata ?? {}),
+            suspensionReason: dto.reason ?? 'Suspended by platform administrator',
+            suspendedAt: new Date().toISOString(),
+        };
+        return this.tenantsRepository.update(id, {
+            status: shared_1.TenantStatus.SUSPENDED,
+            metadata,
+        });
+    }
+    async activate(id) {
+        const tenant = await this.findById(id);
+        const metadata = { ...(tenant.metadata ?? {}) };
+        delete metadata.suspensionReason;
+        delete metadata.suspendedAt;
+        return this.tenantsRepository.update(id, {
+            status: shared_1.TenantStatus.ACTIVE,
+            metadata,
+        });
+    }
 };
 exports.TenantsService = TenantsService;
 exports.TenantsService = TenantsService = __decorate([

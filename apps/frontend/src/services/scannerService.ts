@@ -1,3 +1,7 @@
+import { Capacitor } from '@capacitor/core';
+import { Camera } from '@capacitor/camera';
+import { debugLog } from '../utils/debugLog';
+
 /**
  * Scanner Service
  * 
@@ -31,6 +35,16 @@ export const defaultScannerConfig: ScannerConfig = {
  */
 export function isBluetoothSupported(): boolean {
   if (typeof navigator === 'undefined') return false;
+
+  const isNative =
+    typeof Capacitor?.isNativePlatform === 'function'
+      ? Capacitor.isNativePlatform()
+      : Capacitor?.getPlatform?.() !== 'web';
+
+  if (isNative) {
+    return false;
+  }
+
   const nav = navigator as Navigator & { bluetooth?: any };
   return Boolean(nav.bluetooth);
 }
@@ -66,7 +80,53 @@ export async function requestCameraPermission(): Promise<boolean> {
  * Throws an error if the permission has been blocked.
  */
 export async function ensureCameraPermission(): Promise<void> {
+  const isNative =
+    typeof Capacitor?.isNativePlatform === 'function'
+      ? Capacitor.isNativePlatform()
+      : Capacitor?.getPlatform?.() !== 'web';
+
+  if (isNative) {
+    try {
+      debugLog('Checking native camera permissions');
+      const status = await Camera.checkPermissions();
+      debugLog('Native camera permission status', status);
+
+      if (status.camera === 'granted' || status.camera === 'limited') {
+        return;
+      }
+
+      if (status.camera === 'denied') {
+        debugLog('Native camera permission denied');
+        throw new Error(
+          'Camera access is blocked for this app. Enable the camera permission in Android Settings and try again.',
+        );
+      }
+
+      debugLog('Requesting native camera permissions');
+      const requestResult = await Camera.requestPermissions({ permissions: ['camera'] });
+      debugLog('Native camera permission request result', requestResult);
+
+      if (requestResult.camera === 'granted' || requestResult.camera === 'limited') {
+        return;
+      }
+
+      throw new Error(
+        'Camera permission was not granted on this device. Allow access in system settings and retry.',
+      );
+    } catch (error) {
+      console.warn('Capacitor camera permission request failed', error);
+      debugLog('Native camera permission request failed', {
+        errorName: (error as any)?.name,
+        message: (error as any)?.message,
+      });
+      throw error instanceof Error
+        ? error
+        : new Error('Unable to access camera. Check device permissions and try again.');
+    }
+  }
+
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    debugLog('Camera access not supported in this browser');
     throw new Error('Camera access is not supported in this browser.');
   }
 
@@ -77,6 +137,7 @@ export async function ensureCameraPermission(): Promise<void> {
       const status: PermissionStatus = await permissionsApi.query({
         name: 'camera',
       } as PermissionDescriptor);
+      debugLog('Web camera permission status', { state: status.state });
 
       if (status.state === 'granted') {
         return;
@@ -102,6 +163,7 @@ export async function ensureCameraPermission(): Promise<void> {
     }
   }
 
+  debugLog('Requesting camera permission via direct getUserMedia');
   const granted = await requestCameraPermission();
   if (!granted) {
     throw new Error(

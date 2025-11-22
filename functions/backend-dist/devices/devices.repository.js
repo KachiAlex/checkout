@@ -20,12 +20,30 @@ let DevicesRepository = class DevicesRepository {
         this.collection = this.firestore.collection('devices');
     }
     async findAll(tenantId, locationId) {
-        let query = this.collection.where('tenantId', '==', tenantId).orderBy('updatedAt', 'desc');
+        let query = this.collection.where('tenantId', '==', tenantId);
         if (locationId) {
             query = query.where('locationId', '==', locationId);
         }
-        const snapshot = await query.get();
-        return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        try {
+            const orderedQuery = query.orderBy('updatedAt', 'desc');
+            const snapshot = await orderedQuery.get();
+            return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        }
+        catch (error) {
+            const message = error?.message ?? error?.toString?.();
+            const requiresIndex = typeof message === 'string' &&
+                (message.includes('requires an index') || message.includes('FAILED_PRECONDITION'));
+            if (!requiresIndex) {
+                throw error;
+            }
+            const snapshot = await query.get();
+            const devices = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+            return devices.sort((a, b) => {
+                const aTime = a.updatedAt?.getTime?.() ?? 0;
+                const bTime = b.updatedAt?.getTime?.() ?? 0;
+                return bTime - aTime;
+            });
+        }
     }
     async findById(id) {
         const doc = await this.collection.doc(id).get();
@@ -120,9 +138,7 @@ let DevicesRepository = class DevicesRepository {
             payload.lastUsedById = update.lastUsedById;
         }
         if (update.lastSeenAt !== undefined) {
-            payload.lastSeenAt = update.lastSeenAt
-                ? firestore_1.Timestamp.fromDate(update.lastSeenAt)
-                : null;
+            payload.lastSeenAt = update.lastSeenAt ? firestore_1.Timestamp.fromDate(update.lastSeenAt) : null;
         }
         if (update.lastUsedAt !== undefined) {
             payload.lastUsedAt = update.lastUsedAt ? firestore_1.Timestamp.fromDate(update.lastUsedAt) : null;

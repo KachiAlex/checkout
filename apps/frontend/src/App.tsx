@@ -1,9 +1,11 @@
-import { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { Suspense, lazy, useEffect, useMemo } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, HashRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './stores/authStore';
 import { useThemeStore } from './stores/themeStore';
 import './App.css';
+import { NativeDebugPanel } from './components/NativeDebugPanel';
 
 const LoginPage = lazy(() =>
   import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })),
@@ -24,6 +26,7 @@ const SuperAdminPage = lazy(() =>
   import('./pages/SuperAdminPage').then((module) => ({ default: module.SuperAdminPage })),
 );
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+const GetAppPage = lazy(() => import('./pages/GetAppPage').then((module) => ({ default: module.GetAppPage })));
 
 function LoadingScreen() {
   return (
@@ -43,6 +46,9 @@ function App() {
   const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
   const isCompanyUser = isAuthenticated && !isPlatformAdmin;
   const authenticatedLandingPath = isPlatformAdmin ? '/superadmin' : '/checkout';
+  const isElectron =
+    typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron');
+  const isNativePlatform = isElectron || Capacitor.getPlatform() !== 'web';
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -50,14 +56,29 @@ function App() {
     }
   }, [theme]);
 
+  const Router = useMemo(() => {
+    if (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')) {
+      return HashRouter;
+    }
+    return BrowserRouter;
+  }, []);
+
   return (
-    <BrowserRouter>
+    <Router>
       <div className="app">
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route
               path="/"
-              element={isAuthenticated ? <Navigate to={authenticatedLandingPath} replace /> : <HomePage />}
+              element={
+                isAuthenticated ? (
+                  <Navigate to={authenticatedLandingPath} replace />
+                ) : isNativePlatform ? (
+                  <Navigate to="/login" replace />
+                ) : (
+                  <HomePage />
+                )
+              }
             />
             <Route
               path="/login"
@@ -66,6 +87,10 @@ function App() {
             <Route
               path="/:tenantSlug/login"
               element={isAuthenticated ? <Navigate to={authenticatedLandingPath} replace /> : <LoginPage />}
+            />
+            <Route
+              path="/get-app"
+              element={<GetAppPage />}
             />
             <Route
               path="/checkout"
@@ -165,8 +190,9 @@ function App() {
           </Routes>
         </Suspense>
         <Toaster position="top-right" />
+        <NativeDebugPanel />
       </div>
-    </BrowserRouter>
+    </Router>
   );
 }
 

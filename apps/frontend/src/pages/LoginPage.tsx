@@ -5,11 +5,29 @@ import toast from 'react-hot-toast';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
 import { useThemeStore } from '../stores/themeStore';
+import { debugLog } from '../utils/debugLog';
 
 type LoginVariant = 'tenant' | 'superadmin';
 
 interface LoginPageProps {
   variant?: LoginVariant;
+}
+
+interface DebugInfo {
+  timestamp: string;
+  message: string;
+  status?: number;
+  statusText?: string;
+  responseData?: unknown;
+  tenantSlug?: string;
+  deviceId?: string;
+  email?: string;
+  code?: string;
+  requestUrl?: string;
+  method?: string;
+  isNetworkError?: boolean;
+  headers?: Record<string, unknown>;
+  requestData?: unknown;
 }
 
 export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
@@ -18,19 +36,23 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const { login, loginSuperAdmin } = useAuthStore((state) => ({
     login: state.login,
     loginSuperAdmin: state.loginSuperAdmin,
   }));
   const navigate = useNavigate();
   const theme = useThemeStore((state) => state.theme);
-
   const glowPrimary = theme === 'light' ? 'bg-indigo-200/40' : 'bg-blue-600/40';
   const glowSecondary = theme === 'light' ? 'bg-cyan-200/35' : 'bg-cyan-500/30';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    let attemptedTenantSlug = '';
+    let attemptedDeviceId = '';
+    let attemptedEmail = '';
 
     try {
       if (variant === 'superadmin') {
@@ -41,7 +63,10 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
           throw new Error('Password is required');
         }
 
-        await loginSuperAdmin(email.trim().toLowerCase(), password);
+        attemptedEmail = email.trim().toLowerCase();
+
+        await loginSuperAdmin(attemptedEmail, password);
+        debugLog('Login success', { type: 'superadmin', email: attemptedEmail });
         toast.success('Welcome back');
         navigate('/superadmin/dashboard', { replace: true });
       } else {
@@ -50,14 +75,22 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
         }
 
         const normalizedSlug = tenantSlug.trim().toLowerCase();
+        attemptedTenantSlug = normalizedSlug;
 
         // Generate device ID (store in localStorage for persistence)
         const deviceId =
           localStorage.getItem('deviceId') || `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         localStorage.setItem('deviceId', deviceId);
+        attemptedDeviceId = deviceId;
 
         await login(normalizedSlug, pin, deviceId);
         const { user } = useAuthStore.getState();
+        debugLog('Login success', {
+          type: 'tenant',
+          tenantSlug: normalizedSlug,
+          userRole: user?.role,
+          locationId: user?.locationId,
+        });
 
         toast.success('Login successful');
         if (user?.isPlatformAdmin) {
@@ -67,24 +100,80 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
         }
       }
     } catch (error: any) {
-      toast.error(error.message || 'Login failed');
+      const status = error.response?.status ?? error.status;
+      const responseData = error.response?.data ?? error.data ?? null;
+      const message = error.customMessage || error.message || 'Login failed';
+      const code = error.code ?? error.response?.code;
+      const config = error.config ?? error.response?.config;
+      const requestUrl =
+        config?.baseURL && config?.url ? `${config.baseURL.replace(/\/+$/, '')}/${config.url.replace(/^\/+/, '')}` : config?.url;
+      const method = config?.method;
+      const isNetworkError = !error.response && !!error.request;
+      const headers = error.response?.headers;
+      const statusText = error.response?.statusText;
+      const requestData = config?.data;
+
+      toast.error(status ? `${message} (status ${status})` : message);
+      debugLog('Login failed', {
+        message,
+        status,
+        statusText,
+        code,
+        isNetworkError,
+        tenantSlug: attemptedTenantSlug || undefined,
+        deviceId: attemptedDeviceId || undefined,
+        email: attemptedEmail || undefined,
+      });
+      if (typeof console !== 'undefined') {
+        console.error('[LoginPage] login failed', {
+          message,
+          status,
+           statusText,
+          code,
+          isNetworkError,
+          tenantSlug: attemptedTenantSlug || undefined,
+          deviceId: attemptedDeviceId || undefined,
+          email: attemptedEmail || undefined,
+          responseData,
+          requestUrl,
+          method,
+          headers,
+          requestData,
+        });
+      }
+      setDebugInfo({
+        timestamp: new Date().toISOString(),
+        message,
+        status,
+        statusText,
+        responseData,
+        tenantSlug: attemptedTenantSlug || undefined,
+        deviceId: attemptedDeviceId || undefined,
+        email: attemptedEmail || undefined,
+        code,
+        requestUrl,
+        method,
+        isNetworkError,
+        headers,
+        requestData,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="theme-background relative flex min-h-screen items-center justify-center px-6 py-10">
+    <div className="theme-background relative flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
       <div className="pointer-events-none absolute inset-0">
         <div className={`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${glowPrimary} blur-[180px]`} />
         <div className={`absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${glowSecondary} blur-[200px]`} />
       </div>
 
-      <div className="relative z-10 flex w-full max-w-md flex-col gap-6">
-        <div className="flex justify-end">
+      <div className="relative z-10 flex w-full max-w-md flex-col gap-6 px-1 sm:px-0">
+        <div className="flex justify-end pr-1 sm:pr-0">
           <ThemeToggle />
         </div>
-        <div className="theme-card rounded-3xl border px-8 py-10 backdrop-blur-xl">
+        <div className="theme-card rounded-3xl border px-5 py-8 backdrop-blur-xl sm:px-8 sm:py-10">
           <div className="flex flex-col items-center gap-4">
             <BrandMark
               size={84}
@@ -92,7 +181,7 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
               className="ring-1 ring-slate-200/40 dark:ring-white/10"
             />
             <div className="space-y-2 text-center">
-              <h1 className="theme-text-primary text-3xl font-bold">
+              <h1 className="theme-text-primary text-2xl font-bold sm:text-3xl">
                 {variant === 'superadmin' ? 'Checkout Platform Console' : 'POS Checkout MVP'}
               </h1>
               <p className="theme-text-secondary text-sm">
@@ -102,7 +191,7 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
               </p>
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-5 sm:mt-8">
             {variant === 'superadmin' ? (
               <>
                 <div className="space-y-2">
@@ -148,7 +237,7 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
                     value={tenantSlug}
                     onChange={(e) => setTenantSlug(e.target.value)}
                     placeholder="acme-retail"
-                    className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
+                  className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
                     inputMode="text"
                     pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
                     title="Use lowercase letters, numbers, and hyphens only"
@@ -182,11 +271,28 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
                   ? !email.trim() || !password
                   : !pin || !tenantSlug.trim())
               }
-              className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-6 py-3 text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
+          {debugInfo && (
+            <div className="mt-6 space-y-2 rounded-3xl border border-red-400/40 bg-red-500/10 p-4 text-left text-[11px] text-red-100">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
+                <span>Debug Info (temporary)</span>
+                <button
+                  type="button"
+                  className="rounded-full border border-red-300/40 px-3 py-1 text-[10px] font-semibold text-red-200 transition hover:bg-red-400/10"
+                  onClick={() => setDebugInfo(null)}
+                >
+                  Clear
+                </button>
+              </div>
+              <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </div>
+          )}
           <div className="theme-text-secondary mt-6 text-center text-xs space-y-2">
             {variant === 'tenant' ? (
               <>

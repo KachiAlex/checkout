@@ -30,8 +30,10 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     : normalizedApiPrefix;
 
   const defaultCorsOrigins = [
+    'http://localhost',
     'http://localhost:5173',
     'http://localhost:5174',
+    'capacitor://localhost',
     'https://checkout-77d99.web.app',
     'https://checkout-77d99.firebaseapp.com',
   ];
@@ -65,9 +67,18 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
           if (!requestOrigin) {
             return callback(null, true);
           }
-          if ((corsOrigins as string[]).includes(requestOrigin)) {
+
+          const normalizedOrigin = requestOrigin.trim().toLowerCase();
+          const allowByPrefix =
+            normalizedOrigin.startsWith('capacitor://') ||
+            normalizedOrigin.startsWith('http://localhost') ||
+            normalizedOrigin.startsWith('https://localhost');
+
+          if (allowByPrefix || (corsOrigins as string[]).includes(requestOrigin)) {
             return callback(null, true);
           }
+
+          console.warn(`❌ CORS blocked origin: ${requestOrigin}`);
           callback(null, false);
         };
 

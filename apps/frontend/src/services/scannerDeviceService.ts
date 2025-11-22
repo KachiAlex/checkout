@@ -2,6 +2,7 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import { ScannerDevice } from '../stores/scannerDeviceStore';
 import { useAuthStore } from '../stores/authStore';
+import { NativeDeviceSummary } from '../types/nativeDevices';
 
 type WebBluetoothDevice = {
   id: string;
@@ -60,9 +61,11 @@ const getTenantSlug = (): string => {
 async function persistDevice(payload: Record<string, unknown>, fallbackDeviceId?: string): Promise<ScannerDevice> {
   const response = await axios.post<{ data?: DeviceResponse } | DeviceResponse>(
     `${API_URL}/api/v1/devices/register`,
+    payload,
     {
-      tenantSlug: getTenantSlug(),
-      ...payload,
+      headers: {
+        'X-Tenant-Slug': getTenantSlug(),
+      },
     },
   );
 
@@ -169,15 +172,77 @@ export function generateDeviceName(
 /**
  * Register a USB scanner device
  */
-export async function registerUSBDevice(
+function formatHex(value?: number): string | undefined {
+  if (typeof value !== 'number') {
+    return undefined;
+  }
+  return value.toString(16).padStart(4, '0');
+}
+
+function buildNativePayload(
+  device: NativeDeviceSummary,
+  locationId?: string,
+  userId?: string,
+): {
+  identifier: string;
+  name: string;
+  type: 'usb' | 'bluetooth';
+  hardwareId?: string;
+  vendorId?: string;
+  productId?: string;
+  locationId?: string;
+  registeredById?: string;
+  metadata?: Record<string, unknown>;
+  isActive: boolean;
+} {
+  const identifierSource = device.path || device.serialNumber || device.id;
+  const identifier = identifierSource ? identifierSource.toLowerCase() : `${device.type}_${Date.now()}`;
+
+  const vendorId = formatHex(device.vendorId);
+  const productId = formatHex(device.productId);
+
+  return {
+    identifier,
+    name: device.name || (device.type === 'usb' ? 'USB Scanner' : 'Bluetooth Scanner'),
+    type: device.type === 'bluetooth' ? 'bluetooth' : 'usb',
+    hardwareId: device.serialNumber || identifier,
+    vendorId,
+    productId,
+    locationId,
+    registeredById: userId,
+    metadata: {
+      manufacturer: device.manufacturer,
+      transport: device.transport,
+      source: 'native-bridge',
+    },
+    isActive: true,
+  };
+}
+
+export async function registerNativeDevice(
+  device: NativeDeviceSummary,
   locationId?: string,
   userId?: string,
 ): Promise<ScannerDevice> {
+  const payload = buildNativePayload(device, locationId, userId);
+  return persistDevice(payload, payload.identifier);
+}
+
+export async function registerUSBDevice(
+  locationId?: string,
+  userId?: string,
+  nativeDevice?: NativeDeviceSummary,
+): Promise<ScannerDevice> {
+  if (nativeDevice) {
+    return registerNativeDevice(nativeDevice, locationId, userId);
+  }
+
   const usbInfo = await getUSBDeviceInfo();
-  
-  const identifier = usbInfo?.vendorId && usbInfo?.productId
-    ? `${usbInfo.vendorId}:${usbInfo.productId}`.toLowerCase()
-    : `usb_${Date.now()}`;
+
+  const identifier =
+    usbInfo?.vendorId && usbInfo?.productId
+      ? `${usbInfo.vendorId}:${usbInfo.productId}`.toLowerCase()
+      : `usb_${Date.now()}`;
 
   const payload = {
     identifier,
@@ -202,13 +267,24 @@ export async function registerUSBDevice(
  * Register a Bluetooth scanner device
  */
 export async function registerBluetoothDevice(
-  bluetoothDevice: WebBluetoothDevice,
+  bluetoothDevice: WebBluetoothDevice | NativeDeviceSummary,
   locationId?: string,
   userId?: string,
 ): Promise<ScannerDevice> {
+  if ('type' in bluetoothDevice) {
+    return registerNativeDevice(
+      {
+        ...bluetoothDevice,
+        type: 'bluetooth',
+      },
+      locationId,
+      userId,
+    );
+  }
+
   const deviceInfo = getBluetoothDeviceInfo(bluetoothDevice);
   const identifier = deviceInfo.deviceId || `bluetooth_${Date.now()}`;
-  
+
   const payload = {
     identifier: identifier.toLowerCase(),
     name: deviceInfo.name,

@@ -199,7 +199,7 @@ export function CheckoutPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden theme-background">
+    <div className="relative min-h-screen overflow-x-hidden theme-background">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${glowTopRight} blur-[160px]`} />
         <div className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${glowBottomLeft} blur-[200px]`} />
@@ -208,27 +208,27 @@ export function CheckoutPage() {
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Header */}
-        <header className="mx-auto w-full max-w-7xl px-6 pt-12">
-          <div className="theme-card flex flex-col gap-6 rounded-3xl border p-6 backdrop-blur-2xl md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-4">
+        <header className="mx-auto w-full max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
+          <div className="theme-card flex flex-col gap-8 rounded-3xl border p-6 backdrop-blur-2xl lg:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
               <BrandMark
-                size={56}
+                size={52}
                 backgroundClassName="bg-white/90 dark:bg-white/10"
                 className="ring-1 ring-slate-200/40 dark:ring-white/10"
               />
-              <div className="space-y-2">
+              <div className="flex-1 space-y-3">
                 <p className="theme-text-secondary text-xs uppercase tracking-[0.4em]">POS Checkout</p>
-                <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">
+                <h1 className="theme-text-primary text-2xl font-semibold tracking-tight sm:text-3xl">
                   {user?.name ? `Welcome back, ${user.name.split(' ')[0]}` : 'Welcome to Checkout'}
                 </h1>
-                <p className="theme-text-secondary text-sm">
+                <p className="theme-text-secondary text-sm leading-relaxed">
                   {tenant?.name ? `${tenant.name} • ` : ''}
                   Keep the line moving—scan, search, and complete payments in seconds.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {statusChips.map(({ label, tone, icon }) => (
                 <span
                   key={label}
@@ -240,7 +240,7 @@ export function CheckoutPage() {
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <Link
                 to="/inventory"
                 className="theme-chip group inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-medium transition"
@@ -288,24 +288,24 @@ export function CheckoutPage() {
           </div>
         </header>
 
-        <div className="mx-auto mt-6 w-full max-w-7xl px-6">
+        <div className="mx-auto mt-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <OnboardingBanner locationId={user?.locationId} />
         </div>
 
         {/* Main Content */}
-        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 pb-12 pt-8 xl:flex-row">
+        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 pb-12 pt-6 sm:px-6 lg:px-8 xl:flex-row">
           {/* Left Panel - Scanner & Products */}
-          <div className="flex-1 space-y-6">
-            <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div className="order-2 flex-1 space-y-6 xl:order-1">
+            <div className="theme-card rounded-3xl border p-5 backdrop-blur-xl sm:p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <h2 className="theme-text-primary text-xl font-semibold">Scanner console</h2>
-                  <p className="theme-text-secondary text-sm">
+                  <h2 className="theme-text-primary text-xl font-semibold sm:text-2xl">Scanner console</h2>
+                  <p className="theme-text-secondary mt-2 text-sm leading-relaxed">
                     Use your scanner or search catalogue to add items instantly. Camera and Bluetooth devices are supported.
                   </p>
                 </div>
-                <div className="flex items-center gap-4 text-sm theme-text-secondary">
-                  <div>
+                <div className="flex flex-wrap items-center gap-3 text-sm theme-text-secondary">
+                  <div className="rounded-full border border-white/10 px-4 py-1">
                     <span className="theme-text-primary font-semibold">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>{' '}
                     units in cart
                   </div>
@@ -317,7 +317,7 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950/40 p-5 shadow-inner shadow-black/40">
+              <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/40 p-4 shadow-inner shadow-black/40 sm:p-5">
                 <Suspense
                   fallback={
                     <div className="flex h-36 items-center justify-center text-xs uppercase tracking-[0.4em] text-slate-400/80">
@@ -343,7 +343,7 @@ export function CheckoutPage() {
           </div>
 
           {/* Right Panel - Cart */}
-          <div className="theme-card w-full rounded-3xl border p-6 backdrop-blur-xl xl:w-[360px]">
+          <div className="order-1 theme-card w-full rounded-3xl border p-5 backdrop-blur-xl sm:p-6 xl:order-2 xl:w-[360px]">
             <CartSummary
               cart={cart}
               total={total}

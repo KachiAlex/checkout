@@ -53,6 +53,10 @@ body {
   color: var(--text-primary);
 }
 
+body.scanner-active {
+  background: transparent !important;
+}
+
 #root,
 .app {
   width: 100%;

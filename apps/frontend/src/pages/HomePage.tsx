@@ -100,14 +100,18 @@ export function HomePage() {
             <a href="#stories" className="hover:text-white">
               Customers
             </a>
+            <Link to="/get-app" className="hover:text-white">
+              Get the app
+            </Link>
           </nav>
           <div className="flex items-center gap-4">
             <ThemeToggle key={theme} />
             <Link
               to="/login"
-              className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-emerald-950 shadow-[0_20px_45px_-25px_rgba(56,189,248,0.7)] transition hover:shadow-[0_24px_55px_-20px_rgba(56,189,248,0.9)]"
             >
-              Launch console
+              <span>Launch console</span>
+              <span className="text-lg">→</span>
             </Link>
             <a
               href="mailto:hello@checkouthq.com?subject=Book%20a%20Checkout%20demo"
@@ -137,10 +141,10 @@ export function HomePage() {
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-7 py-3 text-base font-semibold text-emerald-950 shadow-[0_25px_50px_-25px_rgba(16,185,129,0.7)] transition hover:shadow-[0_30px_60px_-25px_rgba(16,185,129,0.8)]"
+                className="inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 px-8 py-3.5 text-base font-semibold text-emerald-950 shadow-[0_28px_60px_-30px_rgba(56,189,248,0.75)] transition hover:shadow-[0_30px_65px_-28px_rgba(56,189,248,0.9)]"
               >
-                Enter the console
-                <span className="text-lg">→</span>
+                <span className="text-lg">🔐</span>
+                <span>Sign in to console</span>
               </Link>
               <a
                 href="#features"
@@ -148,6 +152,12 @@ export function HomePage() {
               >
                 Explore features
               </a>
+              <Link
+                to="/get-app"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-400/20 px-7 py-3 text-base font-semibold text-emerald-100 shadow-[0_20px_50px_-28px_rgba(16,185,129,0.55)] transition hover:border-emerald-400/80 hover:bg-emerald-400/30"
+              >
+                Download the app
+              </Link>
             </div>
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
               {outcomes.map((item) => (
@@ -347,6 +357,9 @@ export function HomePage() {
             <a href="https://cal.com/checkouthq/demo" target="_blank" rel="noreferrer" className="hover:text-white">
               Book demo
             </a>
+              <Link to="/get-app" className="hover:text-white">
+                Get app
+              </Link>
             <Link to="/privacy" className="hover:text-white">
               Privacy
             </Link>

@@ -22,6 +22,18 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (function () {
+        const ua = navigator.userAgent?.toLowerCase?.() ?? '';
+        if (ua.includes('electron')) {
+          window.__IS_ELECTRON__ = true;
+          const manifestTag = document.querySelector('link[rel="manifest"]');
+          if (manifestTag) {
+            manifestTag.parentElement?.removeChild(manifestTag);
+          }
+        }
+      })();
+    </script>
     <title>POS Checkout MVP</title>
   </head>
   <body>

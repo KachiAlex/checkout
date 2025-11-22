@@ -24,14 +24,14 @@ export function CartSummary({
     <div className="flex h-full flex-col gap-6">
       {/* Cart Header */}
       <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-sky-500/35 via-blue-500/25 to-indigo-500/30 px-5 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Shopping cart</h2>
-            <p className="text-xs uppercase tracking-[0.35em] text-blue-100/80">
+            <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Shopping cart</h2>
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-blue-100/80 sm:text-xs">
               {cart.length} item{cart.length === 1 ? '' : 's'} selected
             </p>
           </div>
-          <div className="rounded-full border border-white/30 bg-white/30 px-3 py-1 text-xs font-medium text-white">
+          <div className="inline-flex w-max items-center gap-2 rounded-full border border-white/30 bg-white/30 px-3 py-1 text-xs font-medium text-white">
             ₦{(total / 100).toFixed(2)}
           </div>
         </div>
@@ -51,22 +51,22 @@ export function CartSummary({
               key={item.productId}
               className="theme-surface rounded-2xl border p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.5)] transition hover:border-white/25"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h3 className="theme-text-primary text-sm font-semibold">{item.name}</h3>
-                  <p className="theme-text-secondary mt-1 text-xs">₦{(item.priceCents / 100).toFixed(2)} each</p>
+                  <h3 className="theme-text-primary text-sm font-semibold sm:text-base">{item.name}</h3>
+                  <p className="theme-text-secondary mt-1 text-xs sm:text-sm">₦{(item.priceCents / 100).toFixed(2)} each</p>
                 </div>
                 <button
                   onClick={() => onRemove(item.productId)}
-                  className="rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-semibold text-rose-200 transition hover:border-rose-400/70 hover:bg-rose-500/25 hover:text-rose-100"
+                  className="self-start rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-semibold text-rose-200 transition hover:border-rose-400/70 hover:bg-rose-500/25 hover:text-rose-100"
                   title="Remove item"
                 >
                   Remove
                 </button>
               </div>
 
-              <div className="mt-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="mt-4 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-between gap-2 sm:justify-start">
                   <button
                     onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
                     className="theme-chip flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition hover:border-white/30 hover:bg-white/20 disabled:opacity-40"
@@ -83,7 +83,7 @@ export function CartSummary({
                   </button>
                 </div>
                 <div className="text-right">
-                  <p className="text-base font-semibold text-sky-400">
+                  <p className="text-base font-semibold text-sky-400 sm:text-lg">
                     ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
                   </p>
                 </div>

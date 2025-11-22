@@ -10,6 +10,10 @@ import {
 import { ensureCameraPermission } from '../services/scannerService';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
+import { debugLog } from '../utils/debugLog';
+import { isNativePlatform } from '../utils/nativePlatform';
+import { startNativeScan, stopNativeScan } from '../utils/nativeScanner';
+import { NativeDeviceSummary } from '../types/nativeDevices';
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
@@ -33,9 +37,73 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   const usbDeviceRegisteredRef = useRef(false);
   const bluetoothDeviceRef = useRef<any | null>(null);
   
-  const { addDevice, markDeviceUsed, setActiveDevice, getActiveDevice } = useScannerDeviceStore();
+  const { addDevice, markDeviceUsed, setActiveDevice, getActiveDevice, updateDevice } =
+    useScannerDeviceStore();
   const { user } = useAuthStore();
   const activeDevice = getActiveDevice();
+  const isNative = isNativePlatform();
+  const [nativeScanning, setNativeScanning] = useState<'live' | 'snap' | null>(null);
+
+  const selectNativeDevice = useCallback(async (type: 'usb' | 'bluetooth'): Promise<NativeDeviceSummary | null> => {
+    if (typeof window === 'undefined' || !window.__IS_ELECTRON__ || !window.posApp) {
+      return null;
+    }
+
+    if (typeof window.posApp.listNativeDevices !== 'function') {
+      toast.error(
+        'Native device bridge unavailable. Reinstall the desktop app and try again.',
+      );
+      return null;
+    }
+
+    const devices =
+      type === 'bluetooth' && typeof window.posApp.scanBluetoothDevices === 'function'
+        ? await window.posApp.scanBluetoothDevices(10_000)
+        : await window.posApp.listNativeDevices();
+
+    const filtered = devices.filter(
+      (device) => device.type === type || (type === 'bluetooth' && device.type === 'unknown'),
+    );
+
+    if (filtered.length === 0) {
+      toast.error(
+        type === 'usb'
+          ? 'No USB scanner detected from Windows. Connect your scanner and try again.'
+          : 'No Bluetooth scanners detected. Pair the device in Windows settings first.',
+      );
+      return null;
+    }
+
+    if (filtered.length === 1) {
+      return filtered[0];
+    }
+
+    const options = filtered
+      .map((device, index) => {
+        const vendor = device.vendorId ? device.vendorId.toString(16).padStart(4, '0') : '----';
+        const product = device.productId ? device.productId.toString(16).padStart(4, '0') : '----';
+        return `${index + 1}. ${device.name} (vendor: ${vendor}, product: ${product})`;
+      })
+      .join('\n');
+
+    const choice = window.prompt(
+      `Multiple devices detected. Enter the number of the ${type} device to use:\n${options}`,
+      '1',
+    );
+
+    if (!choice) {
+      toast('Cancelled selection');
+      return null;
+    }
+
+    const selectedIndex = Number.parseInt(choice, 10) - 1;
+    if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= filtered.length) {
+      toast.error('Invalid selection');
+      return null;
+    }
+
+    return filtered[selectedIndex];
+  }, []);
 
   // Handle rapid keyboard input from USB/Bluetooth scanners
   // Scanners typically send characters very quickly without Enter
@@ -99,7 +167,24 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     if (usbDeviceRegisteredRef.current) return;
     
     try {
-      const registeredDevice = await registerUSBDevice(user?.locationId, user?.id);
+      let nativeDevice: NativeDeviceSummary | undefined;
+      const canUseNative =
+        typeof window !== 'undefined' &&
+        Boolean(
+          window.__IS_ELECTRON__ &&
+            window.posApp &&
+            typeof window.posApp.listNativeDevices === 'function',
+        );
+
+      if (canUseNative) {
+        const selected = await selectNativeDevice('usb');
+        if (!selected) {
+          return;
+        }
+        nativeDevice = selected;
+      }
+
+      const registeredDevice = await registerUSBDevice(user?.locationId, user?.id, nativeDevice);
       const deviceId = addDevice(registeredDevice);
       setActiveDevice(deviceId);
       usbDeviceRegisteredRef.current = true;
@@ -109,7 +194,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       console.warn('Failed to register USB scanner:', error);
       toast.error('Unable to register USB scanner. Scans may still work as keyboard input.');
     }
-  }, [user?.locationId, user?.id, addDevice, setActiveDevice]);
+  }, [user?.locationId, user?.id, addDevice, setActiveDevice, selectNativeDevice]);
 
   // Auto-focus for keyboard scanners
   useEffect(() => {
@@ -136,12 +221,91 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   }, [scanMode]);
 
   // Camera-based QR scanning (live streaming mode)
+  const handleNativeScan = useCallback(
+    async (mode: 'live' | 'snap') => {
+      if (!isNative) return;
+      if (nativeScanning) {
+        debugLog('Native scan request ignored because scan already in progress', {
+          ongoingMode: nativeScanning,
+          requestedMode: mode,
+        });
+        return;
+      }
+
+      setNativeScanning(mode);
+      debugLog('Native scan requested', { mode });
+
+      try {
+        const deviceData = await registerCameraDevice(user?.locationId, user?.id);
+        const deviceId = addDevice({
+          ...deviceData,
+          isActive: true,
+        });
+        setActiveDevice(deviceId);
+        await sendDeviceHeartbeat(deviceId, user?.id);
+
+        const content = await startNativeScan();
+
+        if (content) {
+          toast.success(`Scanned: ${content}`);
+          debugLog('Native scan success', { content });
+          markDeviceUsed(deviceId);
+          sendDeviceHeartbeat(deviceId, user?.id).catch((err) =>
+            console.warn('Failed to send heartbeat', err),
+          );
+          onScan(content);
+        } else {
+          toast.error('No barcode detected');
+          debugLog('Native scan completed without content');
+        }
+      } catch (error: any) {
+        debugLog('Native scan error', { message: error?.message });
+        toast.error(error?.message || 'Unable to start native scan');
+      } finally {
+        await stopNativeScan().catch(() => undefined);
+        setNativeScanning(null);
+        const currentActive = useScannerDeviceStore.getState().getActiveDevice();
+        if (currentActive?.type === 'camera') {
+          updateDevice(currentActive.id, { isActive: false });
+        }
+      }
+    },
+    [
+      isNative,
+      nativeScanning,
+      user?.locationId,
+      user?.id,
+      addDevice,
+      setActiveDevice,
+      onScan,
+      markDeviceUsed,
+      updateDevice,
+      sendDeviceHeartbeat,
+    ],
+  );
+
   const startCameraScan = useCallback(async () => {
-    if (!videoRef.current) return;
+    if (isNative) {
+      handleNativeScan('live').catch(() => undefined);
+      return;
+    }
 
     try {
       setCameraError(null);
       setScanMode('camera');
+
+      await new Promise<void>((resolve) => {
+        if (typeof window !== 'undefined') {
+          window.requestAnimationFrame(() => resolve());
+        } else {
+          setTimeout(() => resolve(), 0);
+        }
+      });
+
+      if (!videoRef.current) {
+        debugLog('Camera live scan aborted: video element not ready');
+        throw new Error('Camera preview not ready. Please try again.');
+      }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access is not supported in this browser.');
@@ -175,6 +339,11 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         device.label.toLowerCase().includes('environment')
       );
       const selectedDeviceId = rearCamera?.deviceId || videoInputDevices[0].deviceId;
+      debugLog('Camera live scan initialised', {
+        mode: 'live',
+        selectedDeviceId,
+        deviceLabel: videoInputDevices.find((device) => device.deviceId === selectedDeviceId)?.label,
+      });
 
       // Start scanning
       const result = await codeReader.decodeFromVideoDevice(
@@ -194,6 +363,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
               }
               
               toast.success(`Scanned: ${text}`);
+              debugLog('Camera live scan decoded', { text });
               onScan(text);
               stopCameraScan();
             }
@@ -201,6 +371,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           if (error && error.name !== 'NotFoundException') {
             // NotFoundException is normal when scanning (no code found yet)
             console.warn('Camera scan error:', error);
+            debugLog('Camera live scan warning', { errorName: error.name, message: error.message });
           }
         },
       );
@@ -208,19 +379,48 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       console.log('Camera scanning started:', result);
     } catch (error: any) {
       console.error('Failed to start camera:', error);
+      debugLog('Camera live scan failed', {
+        errorName: error?.name,
+        message: error?.message,
+      });
       setCameraError(error.message || 'Failed to access camera');
       setScanMode('keyboard');
       toast.error(error.message || 'Failed to access camera');
     }
-  }, [onScan, user?.locationId, user?.id, addDevice, setActiveDevice, markDeviceUsed]);
+  }, [
+    onScan,
+    user?.locationId,
+    user?.id,
+    addDevice,
+    setActiveDevice,
+    markDeviceUsed,
+    handleNativeScan,
+    isNative,
+  ]);
 
   // Camera snap & decode mode (better for low light)
   const startCameraSnapMode = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (isNative) {
+      handleNativeScan('snap').catch(() => undefined);
+      return;
+    }
 
     try {
       setCameraError(null);
       setScanMode('camera-snap');
+
+      await new Promise<void>((resolve) => {
+        if (typeof window !== 'undefined') {
+          window.requestAnimationFrame(() => resolve());
+        } else {
+          setTimeout(() => resolve(), 0);
+        }
+      });
+
+      if (!videoRef.current || !canvasRef.current) {
+        debugLog('Camera snap mode aborted: video or canvas not ready');
+        throw new Error('Camera preview not ready. Please try again.');
+      }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access is not supported in this browser.');
@@ -253,6 +453,11 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         device.label.toLowerCase().includes('environment')
       );
       const selectedDeviceId = rearCamera?.deviceId || videoInputDevices[0].deviceId;
+      debugLog('Camera snap mode initialised', {
+        mode: 'snap',
+        selectedDeviceId,
+        deviceLabel: videoInputDevices.find((device) => device.deviceId === selectedDeviceId)?.label,
+      });
 
       // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -277,11 +482,22 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       console.log('Camera snap mode ready');
     } catch (error: any) {
       console.error('Failed to start camera snap mode:', error);
+      debugLog('Camera snap mode failed', {
+        errorName: error?.name,
+        message: error?.message,
+      });
       setCameraError(error.message || 'Failed to access camera');
       setScanMode('keyboard');
       toast.error(error.message || 'Failed to access camera');
     }
-  }, [user?.locationId, user?.id, addDevice, setActiveDevice]);
+  }, [
+    user?.locationId,
+    user?.id,
+    addDevice,
+    setActiveDevice,
+    handleNativeScan,
+    isNative,
+  ]);
 
   // Capture and decode a single frame
   const captureAndDecode = useCallback(async () => {
@@ -332,6 +548,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           
           toast.success(`Scanned: ${text}`);
           onScan(text);
+          debugLog('Camera snap capture decoded', { text });
           stopCameraScan();
         }
       }
@@ -339,6 +556,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       if (error.name !== 'NotFoundException') {
         console.error('Decode error:', error);
         toast.error('No barcode/QR code found in image. Try again.');
+        debugLog('Camera snap capture decode error', { errorName: error.name, message: error.message });
       } else {
         toast.error('No barcode/QR code found. Try again.');
       }
@@ -348,6 +566,12 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   }, [onScan, markDeviceUsed, user?.id]);
 
   const stopCameraScan = useCallback(() => {
+    if (isNative) {
+      stopNativeScan().catch(() => undefined);
+      setNativeScanning(null);
+      return;
+    }
+
     // Stop code reader
     if (codeReaderRef.current && videoRef.current) {
       codeReaderRef.current.reset();
@@ -378,12 +602,13 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     setScanMode('keyboard');
     setCameraError(null);
     setIsCapturing(false);
+    debugLog('Camera scan stopped');
     
     // Refocus keyboard input
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
-  }, [setActiveDevice]);
+  }, [setActiveDevice, isNative]);
 
   // Cleanup camera on unmount
   useEffect(() => {
@@ -399,6 +624,45 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     try {
       setIsConnectingBluetooth(true);
       setCameraError(null);
+
+      const nativeBridgeAvailable =
+        typeof window !== 'undefined' &&
+        Boolean(
+          window.__IS_ELECTRON__ &&
+            window.posApp &&
+            typeof window.posApp.listNativeDevices === 'function',
+        );
+
+      if (nativeBridgeAvailable && window.posApp) {
+        toast.loading('Checking Windows for Bluetooth scanners...', { id: 'bluetooth-connect' });
+        const selected = await selectNativeDevice('bluetooth');
+        if (!selected) {
+          toast.dismiss('bluetooth-connect');
+          return;
+        }
+
+        const deviceData = await registerBluetoothDevice(
+          {
+            ...selected,
+            type: 'bluetooth',
+          },
+          user?.locationId,
+          user?.id,
+        );
+
+        const deviceId = addDevice({
+          ...deviceData,
+          isActive: true,
+        });
+        setActiveDevice(deviceId);
+        usbDeviceRegisteredRef.current = true;
+        await sendDeviceHeartbeat(deviceId, user?.id);
+        toast.dismiss('bluetooth-connect');
+        toast.success(`Bluetooth scanner "${deviceData.name}" connected through Windows`);
+        setCameraError(null);
+        setScanMode('keyboard');
+        return;
+      }
 
       if (!(navigator as any).bluetooth) {
         throw new Error('Web Bluetooth API not supported. Use Chrome/Edge on desktop or Android.');
@@ -535,7 +799,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     } finally {
       setIsConnectingBluetooth(false);
     }
-  }, [user?.locationId, user?.id, addDevice, setActiveDevice, isConnectingBluetooth]);
+  }, [user?.locationId, user?.id, addDevice, setActiveDevice, isConnectingBluetooth, selectNativeDevice]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // If Enter is pressed and input has value, treat as barcode scan
@@ -553,36 +817,61 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 shadow-lg">
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex flex-col gap-4 mb-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="text-3xl">📷</div>
         <div className="flex-1">
           <label className="block text-lg font-bold text-gray-800 mb-1">
             Scan Barcode or QR Code
           </label>
           <p className="text-sm text-gray-600">
-            {scanMode === 'keyboard' && (
+            {isNative ? (
+              nativeScanning
+                ? 'Native camera active – point at a barcode to scan.'
+                : 'Tap a button below to launch the native camera scanner.'
+            ) : (
               <>
-                USB/Bluetooth scanner or type barcode
-                {activeDevice && (
-                  <span className="ml-2 text-blue-700 font-medium">
-                    • Active: {activeDevice.name}
-                  </span>
+                {scanMode === 'keyboard' && (
+                  <>
+                    USB/Bluetooth scanner or type barcode
+                    {activeDevice && (
+                      <span className="ml-2 text-blue-700 font-medium">
+                        • Active: {activeDevice.name}
+                      </span>
+                    )}
+                  </>
                 )}
+                {scanMode === 'camera' && 'Live camera scanning - point at QR code'}
+                {scanMode === 'camera-snap' && 'Snap mode - click "Capture" to scan'}
+                {scanMode === 'bluetooth' && 'Bluetooth scanner connected'}
               </>
             )}
-            {scanMode === 'camera' && 'Live camera scanning - point at QR code'}
-            {scanMode === 'camera-snap' && 'Snap mode - click "Capture" to scan'}
-            {scanMode === 'bluetooth' && 'Bluetooth scanner connected'}
           </p>
         </div>
-        <div className="flex gap-2">
-          {scanMode === 'camera' || scanMode === 'camera-snap' ? (
-            <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
+          {isNative ? (
+            <>
+              <button
+                onClick={() => handleNativeScan('live')}
+                disabled={nativeScanning !== null}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-60 sm:w-auto"
+              >
+                📷 Live Scan
+              </button>
+              <button
+                onClick={() => handleNativeScan('snap')}
+                disabled={nativeScanning !== null}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-60 sm:w-auto"
+              >
+                📸 Snap Mode
+              </button>
+            </>
+          ) : scanMode === 'camera' || scanMode === 'camera-snap' ? (
+            <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
               {scanMode === 'camera-snap' && (
                 <button
                   onClick={captureAndDecode}
                   disabled={isCapturing}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium"
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium sm:w-auto"
                   title="Capture and decode current frame"
                 >
                   {isCapturing ? '⏳ Decoding...' : '📸 Capture'}
@@ -590,7 +879,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
               )}
               <button
                 onClick={stopCameraScan}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+                className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium sm:w-auto"
               >
                 Stop Camera
               </button>
@@ -598,15 +887,29 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           ) : (
             <>
               <button
-                onClick={startCameraScan}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                onClick={() => {
+                  debugLog('Live scan button pressed', {
+                    hasMediaDevices: typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices),
+                    scanMode,
+                    platform: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+                  });
+                  startCameraScan();
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium sm:w-auto"
                 title="Live camera scanning (continuous)"
               >
                 📷 Live Scan
               </button>
               <button
-                onClick={startCameraSnapMode}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+                onClick={() => {
+                  debugLog('Snap mode button pressed', {
+                    hasMediaDevices: typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices),
+                    scanMode,
+                    platform: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+                  });
+                  startCameraSnapMode();
+                }}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium sm:w-auto"
                 title="Snap & decode mode (better for low light)"
               >
                 📸 Snap Mode
@@ -615,7 +918,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
                 <button
                   onClick={connectBluetoothScanner}
                   disabled={isConnectingBluetooth}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm font-medium"
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm font-medium sm:w-auto"
                   title="Connect Bluetooth scanner (will prompt for device selection)"
                 >
                   {isConnectingBluetooth ? '⏳ Connecting...' : '📡 Bluetooth'}
@@ -626,7 +929,17 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         </div>
       </div>
 
-      {scanMode === 'camera' || scanMode === 'camera-snap' ? (
+      {isNative ? (
+        <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-5 text-sm text-gray-600 shadow-inner shadow-black/40">
+          {nativeScanning ? (
+            <p className="text-center text-blue-600 font-semibold">Scanning…</p>
+          ) : (
+            <p className="text-center">
+              Native camera preview opens fullscreen when scanning starts.
+            </p>
+          )}
+        </div>
+      ) : scanMode === 'camera' || scanMode === 'camera-snap' ? (
         <div className="space-y-2">
           <div className="relative">
             <video

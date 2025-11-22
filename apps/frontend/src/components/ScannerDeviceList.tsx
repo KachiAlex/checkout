@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useScannerDeviceStore, ScannerDevice } from '../stores/scannerDeviceStore';
@@ -7,14 +7,26 @@ import {
   fetchRegisteredDevices,
   registerUSBDevice,
   registerBluetoothDevice,
+  registerNativeDevice,
 } from '../services/scannerDeviceService';
 import { connectBluetoothScanner } from '../services/scannerService';
+import { NativeDeviceSummary } from '../types/nativeDevices';
 
 export function ScannerDeviceList() {
   const { user } = useAuthStore();
   const { devices, removeDevice, setActiveDevice, activeDeviceId, addDevice } = useScannerDeviceStore();
   const [isRegisteringUsb, setIsRegisteringUsb] = useState(false);
   const [isPairingBluetooth, setIsPairingBluetooth] = useState(false);
+  const isNativeBridge = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      Boolean(
+        window.__IS_ELECTRON__ &&
+          window.posApp &&
+          typeof window.posApp.listNativeDevices === 'function',
+      ),
+    [],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -44,12 +56,75 @@ export function ScannerDeviceList() {
     };
   }, [addDevice, activeDeviceId, setActiveDevice, user?.locationId]);
 
+  const selectNativeDevice = useCallback(
+    async (type: 'usb' | 'bluetooth'): Promise<NativeDeviceSummary | null> => {
+      if (!window.posApp || typeof window.posApp.listNativeDevices !== 'function') {
+        toast.error(
+          'Native device bridge unavailable. Reinstall the desktop app and try again.',
+        );
+        return null;
+      }
+
+      const nativeDevices =
+        type === 'usb' || !window.posApp.scanBluetoothDevices
+          ? await window.posApp.listNativeDevices()
+          : await window.posApp.scanBluetoothDevices(10_000);
+
+      const filtered = nativeDevices.filter((device) => device.type === type || (type === 'bluetooth' && device.type === 'unknown'));
+
+      if (filtered.length === 0) {
+        toast.error(`No ${type === 'usb' ? 'USB' : 'Bluetooth'} devices detected.`);
+        return null;
+      }
+
+      if (filtered.length === 1) {
+        return filtered[0];
+      }
+
+      const options = filtered
+        .map((device, index) => {
+          const vendor = device.vendorId ? device.vendorId.toString(16).padStart(4, '0') : '----';
+          const product = device.productId ? device.productId.toString(16).padStart(4, '0') : '----';
+          return `${index + 1}. ${device.name} (vendor: ${vendor}, product: ${product})`;
+        })
+        .join('\n');
+
+      const choice = window.prompt(
+        `Multiple devices detected. Enter the number of the ${type} device to register:\n${options}`,
+        '1',
+      );
+
+      if (!choice) {
+        toast('Cancelled selection');
+        return null;
+      }
+
+      const selectedIndex = Number.parseInt(choice, 10) - 1;
+      if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= filtered.length) {
+        toast.error('Invalid selection');
+        return null;
+      }
+
+      return filtered[selectedIndex];
+    },
+    [],
+  );
+
   const handleRegisterUsb = useCallback(async () => {
     if (isRegisteringUsb) return;
     setIsRegisteringUsb(true);
 
     try {
-      const device = await registerUSBDevice(user?.locationId, user?.id);
+      let device;
+      if (isNativeBridge && window.posApp) {
+        const selected = await selectNativeDevice('usb');
+        if (!selected) {
+          return;
+        }
+        device = await registerUSBDevice(user?.locationId, user?.id, selected);
+      } else {
+        device = await registerUSBDevice(user?.locationId, user?.id);
+      }
       const deviceId = addDevice(device);
       setActiveDevice(deviceId);
       toast.success(`Registered ${device.name}`);
@@ -60,24 +135,41 @@ export function ScannerDeviceList() {
     } finally {
       setIsRegisteringUsb(false);
     }
-  }, [addDevice, setActiveDevice, user?.id, user?.locationId, isRegisteringUsb]);
+  }, [
+    addDevice,
+    setActiveDevice,
+    user?.id,
+    user?.locationId,
+    isRegisteringUsb,
+    isNativeBridge,
+    selectNativeDevice,
+  ]);
 
   const handlePairBluetooth = useCallback(async () => {
     if (isPairingBluetooth) return;
     setIsPairingBluetooth(true);
 
     try {
-      const bluetoothDevice = await connectBluetoothScanner();
-      if (!bluetoothDevice) {
-        toast.error('No Bluetooth device selected');
-        return;
-      }
+      let registered;
+      if (isNativeBridge && window.posApp) {
+        const selected = await selectNativeDevice('bluetooth');
+        if (!selected) {
+          return;
+        }
+        registered = await registerNativeDevice(selected, user?.locationId, user?.id);
+      } else {
+        const bluetoothDevice = await connectBluetoothScanner();
+        if (!bluetoothDevice) {
+          toast.error('No Bluetooth device selected');
+          return;
+        }
 
-      const registered = await registerBluetoothDevice(
-        bluetoothDevice,
-        user?.locationId,
-        user?.id,
-      );
+        registered = await registerBluetoothDevice(
+          bluetoothDevice,
+          user?.locationId,
+          user?.id,
+        );
+      }
       const deviceId = addDevice(registered);
       setActiveDevice(deviceId);
       toast.success(`Paired ${registered.name}`);
@@ -88,7 +180,15 @@ export function ScannerDeviceList() {
     } finally {
       setIsPairingBluetooth(false);
     }
-  }, [addDevice, setActiveDevice, user?.id, user?.locationId, isPairingBluetooth]);
+  }, [
+    addDevice,
+    setActiveDevice,
+    user?.id,
+    user?.locationId,
+    isPairingBluetooth,
+    isNativeBridge,
+    selectNativeDevice,
+  ]);
 
   const getDeviceTypeIcon = (type: ScannerDevice['type']) => {
     switch (type) {
