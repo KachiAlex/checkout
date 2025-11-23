@@ -2,21 +2,23 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { DataSource } from 'typeorm';
+import { configureApp } from '../src/app.bootstrap';
+import { setupFirestoreEmulator } from './setup-e2e';
 
 describe('Orders E2E', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
 
   beforeAll(async () => {
+    // Setup Firestore emulator
+    await setupFirestoreEmulator();
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    await configureApp(app, { enableSwagger: false });
     await app.init();
-
-    dataSource = moduleFixture.get<DataSource>(DataSource);
   });
 
   afterAll(async () => {
@@ -32,6 +34,7 @@ describe('Orders E2E', () => {
     // 4. Verify inventory decremented
     // 5. Test idempotency by creating same order twice
 
-    expect(true).toBe(true); // Placeholder
+    // Placeholder test - will be expanded in comprehensive E2E test
+    expect(true).toBe(true);
   });
 });

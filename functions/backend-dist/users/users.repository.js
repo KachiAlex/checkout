@@ -131,6 +131,14 @@ let UsersRepository = class UsersRepository {
         }
         return this.toRecord(doc.id, doc.data());
     }
+    async delete(id) {
+        const docRef = this.collection.doc(id);
+        const doc = await docRef.get();
+        if (!doc.exists) {
+            throw new common_1.NotFoundException(`User with id ${id} not found`);
+        }
+        await docRef.delete();
+    }
     toRecord(id, data) {
         if (!data) {
             throw new common_1.NotFoundException(`User document ${id} has no data.`);

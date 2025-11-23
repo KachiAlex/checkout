@@ -17,10 +17,10 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
-const device_register_dto_1 = require("./dto/device-register.dto");
-const auth_response_dto_1 = require("./dto/auth-response.dto");
-const refresh_token_dto_1 = require("./dto/refresh-token.dto");
 const super_admin_login_dto_1 = require("./dto/super-admin-login.dto");
+const verify_manager_dto_1 = require("./dto/verify-manager.dto");
+const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
+const shared_1 = require("@pos-checkout/shared");
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -28,27 +28,40 @@ let AuthController = class AuthController {
     async login(loginDto) {
         return this.authService.login(loginDto);
     }
-    async superAdminLogin(dto) {
-        return this.authService.loginSuperAdmin(dto);
+    async superAdminLogin(loginDto) {
+        return this.authService.loginSuperAdmin(loginDto);
     }
-    async refresh(refreshTokenDto) {
-        return this.authService.refreshToken(refreshTokenDto.refreshToken);
+    async verifyManager(verifyDto, req) {
+        const user = req.user;
+        if (user.role === shared_1.UserRole.MANAGER || user.role === shared_1.UserRole.ADMIN) {
+            return { authorized: true, message: 'User is already authorized' };
+        }
+        const manager = await this.authService.validateUser(verifyDto.pin, user.tenantId);
+        if (!manager) {
+            return { authorized: false, message: 'Invalid manager PIN' };
+        }
+        if (manager.role !== shared_1.UserRole.MANAGER && manager.role !== shared_1.UserRole.ADMIN) {
+            return { authorized: false, message: 'PIN does not belong to a manager or admin' };
+        }
+        return {
+            authorized: true,
+            message: 'Manager authorization verified',
+            authorizedBy: {
+                id: manager.id,
+                name: manager.name,
+                role: manager.role,
+            },
+        };
     }
-    async registerDevice(deviceRegisterDto) {
-        return this.authService.registerDevice(deviceRegisterDto);
+    async refresh(body) {
+        return this.authService.refreshToken(body.refreshToken);
     }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('login'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Login with PIN' }),
-    (0, swagger_1.ApiResponse)({
-        status: 200,
-        description: 'Login successful',
-        type: auth_response_dto_1.AuthResponseDto,
-    }),
-    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid credentials' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Login with tenant slug and PIN' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Login successful' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [login_dto_1.LoginDto]),
@@ -56,54 +69,36 @@ __decorate([
 ], AuthController.prototype, "login", null);
 __decorate([
     (0, common_1.Post)('superadmin/login'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Platform admin login with email and password' }),
-    (0, swagger_1.ApiResponse)({
-        status: 200,
-        description: 'Login successful',
-        type: auth_response_dto_1.AuthResponseDto,
-    }),
-    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid credentials' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Super admin login' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Login successful' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [super_admin_login_dto_1.SuperAdminLoginDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "superAdminLogin", null);
 __decorate([
+    (0, common_1.Post)('verify-manager'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify manager PIN for price override authorization' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Manager PIN verified' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Invalid PIN or insufficient permissions' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [verify_manager_dto_1.VerifyManagerDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyManager", null);
+__decorate([
     (0, common_1.Post)('refresh'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Refresh access token' }),
-    (0, swagger_1.ApiResponse)({
-        status: 200,
-        description: 'Token refreshed successfully',
-        type: auth_response_dto_1.AuthResponseDto,
-    }),
+    (0, swagger_1.ApiOperation)({ summary: 'Refresh access token using refresh token' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Token refreshed successfully' }),
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid refresh token' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [refresh_token_dto_1.RefreshTokenDto]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);
-__decorate([
-    (0, common_1.Post)('device-register'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Register device with public key' }),
-    (0, swagger_1.ApiResponse)({
-        status: 200,
-        description: 'Device registered successfully',
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean' },
-                message: { type: 'string' },
-            },
-        },
-    }),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [device_register_dto_1.DeviceRegisterDto]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "registerDevice", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('auth'),
     (0, common_1.Controller)('auth'),

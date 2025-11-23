@@ -1,4 +1,5 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
 import deviceManager, { NativeDeviceSummary } from './native/deviceManager';
 
@@ -154,6 +155,28 @@ app.on('activate', () => {
 // Ensure native resources are cleaned up
 app.on('before-quit', async () => {
   await deviceManager.dispose();
+});
+
+// Manual update check
+ipcMain.handle('app:check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, updateInfo: result?.updateInfo };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Download update
+ipcMain.handle('app:download-update', () => {
+  autoUpdater.downloadUpdate();
+  return { success: true };
+});
+
+// Install update
+ipcMain.handle('app:install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+  return { success: true };
 });
 
 

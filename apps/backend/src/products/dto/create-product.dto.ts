@@ -31,6 +31,26 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
+  @ApiProperty({ description: 'Category ID', required: false })
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
+
+  @ApiProperty({ description: 'Category Name (if creating new category)', required: false })
+  @IsOptional()
+  @IsString()
+  categoryName?: string;
+
+  @ApiProperty({ description: 'Brand ID', required: false })
+  @IsOptional()
+  @IsString()
+  brandId?: string;
+
+  @ApiProperty({ description: 'Brand Name (if creating new brand)', required: false })
+  @IsOptional()
+  @IsString()
+  brandName?: string;
+
   @ApiProperty({ description: 'Price in cents', example: 150 })
   @IsNumber()
   @Min(0)

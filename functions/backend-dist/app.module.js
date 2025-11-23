@@ -23,6 +23,14 @@ const receipts_module_1 = require("./receipts/receipts.module");
 const devices_module_1 = require("./devices/devices.module");
 const tenants_module_1 = require("./tenants/tenants.module");
 const firestore_module_1 = require("./firestore/firestore.module");
+const categories_module_1 = require("./categories/categories.module");
+const brands_module_1 = require("./brands/brands.module");
+const suppliers_module_1 = require("./suppliers/suppliers.module");
+const purchase_orders_module_1 = require("./purchase-orders/purchase-orders.module");
+const grn_module_1 = require("./grn/grn.module");
+const customers_module_1 = require("./customers/customers.module");
+const returns_module_1 = require("./returns/returns.module");
+const payment_settings_module_1 = require("./payment-settings/payment-settings.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -47,6 +55,14 @@ exports.AppModule = AppModule = __decorate([
             receipts_module_1.ReceiptsModule,
             devices_module_1.DevicesModule,
             tenants_module_1.TenantsModule,
+            categories_module_1.CategoriesModule,
+            brands_module_1.BrandsModule,
+            suppliers_module_1.SuppliersModule,
+            purchase_orders_module_1.PurchaseOrdersModule,
+            grn_module_1.GRNModule,
+            customers_module_1.CustomersModule,
+            returns_module_1.ReturnsModule,
+            payment_settings_module_1.PaymentSettingsModule,
         ],
     })
 ], AppModule);

@@ -14,6 +14,14 @@ import { ReceiptsModule } from './receipts/receipts.module';
 import { DevicesModule } from './devices/devices.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { FirestoreModule } from './firestore/firestore.module';
+import { CategoriesModule } from './categories/categories.module';
+import { BrandsModule } from './brands/brands.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
+import { GRNModule } from './grn/grn.module';
+import { CustomersModule } from './customers/customers.module';
+import { ReturnsModule } from './returns/returns.module';
+import { PaymentSettingsModule } from './payment-settings/payment-settings.module';
 
 @Module({
   imports: [
@@ -35,6 +43,14 @@ import { FirestoreModule } from './firestore/firestore.module';
     ReceiptsModule,
     DevicesModule,
     TenantsModule,
+    CategoriesModule,
+    BrandsModule,
+    SuppliersModule,
+    PurchaseOrdersModule,
+    GRNModule,
+    CustomersModule,
+    ReturnsModule,
+    PaymentSettingsModule,
   ],
 })
 export class AppModule {}

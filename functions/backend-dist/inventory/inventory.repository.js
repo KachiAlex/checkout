@@ -85,6 +85,78 @@ let InventoryRepository = class InventoryRepository {
         const snapshot = await query.get();
         return snapshot.docs.map((doc) => this.toTransactionRecord(doc.id, doc.data()));
     }
+    async getAllInventory() {
+        const snapshot = await this.inventoryCollection.get();
+        return snapshot.docs.map((doc) => this.toInventoryRecord(doc.id, doc.data()));
+    }
+    async findDuplicates() {
+        const allInventory = await this.getAllInventory();
+        const groups = new Map();
+        for (const record of allInventory) {
+            const key = `${record.productId}:${record.locationId}`;
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(record);
+        }
+        const duplicates = [];
+        for (const [key, records] of groups.entries()) {
+            if (records.length > 1) {
+                records.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+                duplicates.push({ key, records });
+            }
+        }
+        return duplicates;
+    }
+    async removeDuplicates() {
+        const duplicates = await this.findDuplicates();
+        const batches = [this.firestore.batch()];
+        let currentBatch = batches[0];
+        let currentBatchCount = 0;
+        let removedCount = 0;
+        let keptCount = 0;
+        for (const { records } of duplicates) {
+            const [keep, ...toRemove] = records;
+            keptCount++;
+            for (const record of toRemove) {
+                if (currentBatchCount >= 500) {
+                    currentBatch = this.firestore.batch();
+                    batches.push(currentBatch);
+                    currentBatchCount = 0;
+                }
+                const docRef = this.inventoryCollection.doc(record.id);
+                currentBatch.delete(docRef);
+                currentBatchCount++;
+                removedCount++;
+            }
+        }
+        if (removedCount > 0) {
+            await Promise.all(batches.map((b) => b.commit()));
+        }
+        return { removed: removedCount, kept: keptCount };
+    }
+    async clearAllInventory() {
+        const snapshot = await this.inventoryCollection.get();
+        if (snapshot.empty) {
+            return 0;
+        }
+        let count = 0;
+        const batches = [this.firestore.batch()];
+        let currentBatch = batches[0];
+        let currentBatchCount = 0;
+        for (const doc of snapshot.docs) {
+            if (currentBatchCount >= 500) {
+                currentBatch = this.firestore.batch();
+                batches.push(currentBatch);
+                currentBatchCount = 0;
+            }
+            currentBatch.delete(doc.ref);
+            currentBatchCount++;
+            count++;
+        }
+        await Promise.all(batches.map((b) => b.commit()));
+        return count;
+    }
     toInventoryRecord(id, data) {
         if (!data) {
             throw new common_1.NotFoundException(`Inventory document ${id} has no data.`);
@@ -113,6 +185,7 @@ let InventoryRepository = class InventoryRepository {
             referenceId: data.referenceId,
             userId: data.userId,
             notes: data.notes,
+            reason: data.reason,
             ts: this.timestampToDate(data.ts),
             createdAt: this.timestampToDate(data.createdAt),
             updatedAt: this.timestampToDate(data.updatedAt),

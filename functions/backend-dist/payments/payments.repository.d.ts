@@ -32,6 +32,7 @@ export declare class PaymentsRepository {
     create(data: CreatePaymentInput): Promise<PaymentRecord>;
     findById(id: string): Promise<PaymentRecord | null>;
     findByOrderId(orderId: string): Promise<PaymentRecord[]>;
+    findByPaymentReference(paymentReference: string): Promise<PaymentRecord | null>;
     update(id: string, update: Partial<CreatePaymentInput>): Promise<PaymentRecord>;
     private toRecord;
     private timestampToDate;

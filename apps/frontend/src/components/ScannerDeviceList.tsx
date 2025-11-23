@@ -127,11 +127,12 @@ export function ScannerDeviceList() {
       }
       const deviceId = addDevice(device);
       setActiveDevice(deviceId);
-      toast.success(`Registered ${device.name}`);
+      toast.success(`Registered ${device.name}. USB scanners work automatically - just plug in and scan!`);
     } catch (error: any) {
-      const message = error?.message || 'Unable to register USB scanner';
-      toast.error(message);
-      console.warn('USB registration failed', error);
+      // Even if registration fails, USB HID scanners still work as keyboards
+      const message = error?.message || 'USB scanner registration note';
+      toast.error(`${message}. Most USB scanners work automatically - just plug in and scan!`, { duration: 5000 });
+      console.log('USB registration note:', error);
     } finally {
       setIsRegisteringUsb(false);
     }
@@ -249,11 +250,47 @@ export function ScannerDeviceList() {
         </div>
       </div>
 
+      {/* Scanner Information */}
+      <div className="mt-6 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+        <h4 className="theme-text-primary mb-2 text-sm font-semibold text-sky-400">📋 How Scanners Work</h4>
+        <div className="space-y-2 text-xs theme-text-secondary">
+          <p>
+            <strong className="theme-text-primary">USB Scanners:</strong> Most USB barcode scanners work automatically as keyboards. 
+            Just plug in your scanner and start scanning - no setup needed! The scanner will type barcodes into the input field.
+          </p>
+          <p>
+            <strong className="theme-text-primary">Bluetooth Scanners:</strong> Click "Pair Bluetooth" to connect wireless scanners. 
+            Requires Chrome/Edge browser and HTTPS or localhost.
+          </p>
+          <p>
+            <strong className="theme-text-primary">Camera Scanner:</strong> Use the camera button to scan QR codes and barcodes with your device camera.
+          </p>
+        </div>
+      </div>
+
       {devices.length === 0 ? (
         <div className="theme-surface mt-6 rounded-2xl border border-dashed p-8 text-center">
-          <p className="theme-text-secondary text-sm">
-            No scanners registered yet. Pair a Bluetooth device or connect a USB scanner to see it here.
+          <div className="text-4xl mb-4">🔌</div>
+          <p className="theme-text-primary text-lg font-semibold mb-2">No Scanners Registered Yet</p>
+          <p className="theme-text-secondary text-sm mb-4">
+            USB scanners work automatically - just plug in and scan! Registration is optional for tracking purposes.
           </p>
+          <div className="flex flex-wrap justify-center gap-2 mt-4">
+            <button
+              onClick={handleRegisterUsb}
+              disabled={isRegisteringUsb}
+              className="theme-chip rounded-full border border-sky-400/40 bg-sky-500/15 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25 disabled:opacity-50"
+            >
+              {isRegisteringUsb ? 'Registering...' : '🔌 Register USB Scanner'}
+            </button>
+            <button
+              onClick={handlePairBluetooth}
+              disabled={isPairingBluetooth}
+              className="theme-chip rounded-full border border-purple-400/40 bg-purple-500/15 px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/25 disabled:opacity-50"
+            >
+              {isPairingBluetooth ? 'Pairing...' : '📡 Pair Bluetooth Scanner'}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="mt-6 space-y-4">

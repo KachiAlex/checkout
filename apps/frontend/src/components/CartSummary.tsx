@@ -1,4 +1,6 @@
-import { CartItem } from '../stores/cartStore';
+import { useState } from 'react';
+import { CartItem, useCartStore } from '../stores/cartStore';
+import toast from 'react-hot-toast';
 
 interface CartSummaryProps {
   cart: CartItem[];
@@ -6,6 +8,8 @@ interface CartSummaryProps {
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onPayment: (method: 'card' | 'cash' | 'qr') => void;
+  onItemDiscount?: (item: CartItem) => void;
+  onCartDiscount?: () => void;
   isProcessing: boolean;
 }
 
@@ -15,10 +19,68 @@ export function CartSummary({
   onRemove,
   onUpdateQuantity,
   onPayment,
+  onItemDiscount,
+  onCartDiscount,
   isProcessing,
 }: CartSummaryProps) {
-  const subtotal = cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
-  const tax = cart.reduce((sum, item) => sum + item.priceCents * item.quantity * item.taxRate, 0);
+  const { clearCart, undoLastRemove, lastRemovedItem, cartDiscountCents, cartDiscountPercent } = useCartStore();
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
+  const [quantityInput, setQuantityInput] = useState('');
+  
+  // Calculate totals with discounts
+  const subtotal = cart.reduce((sum, item) => {
+    const itemSubtotal = item.priceCents * item.quantity;
+    const itemDiscount = item.discountCents || 0;
+    return sum + itemSubtotal - itemDiscount;
+  }, 0);
+  
+  const tax = cart.reduce((sum, item) => {
+    const itemSubtotal = item.priceCents * item.quantity;
+    const itemDiscount = item.discountCents || 0;
+    const discountedSubtotal = itemSubtotal - itemDiscount;
+    return sum + discountedSubtotal * item.taxRate;
+  }, 0);
+  
+  // Apply cart-level discount
+  let finalSubtotal = subtotal;
+  if (cartDiscountPercent > 0) {
+    finalSubtotal = subtotal * (1 - cartDiscountPercent / 100);
+  } else if (cartDiscountCents > 0) {
+    finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
+  }
+  
+  const totalDiscount = subtotal - finalSubtotal;
+
+  const handleClearCart = () => {
+    if (showClearConfirm) {
+      clearCart();
+      setShowClearConfirm(false);
+      toast.success('Cart cleared');
+    } else {
+      setShowClearConfirm(true);
+      setTimeout(() => setShowClearConfirm(false), 3000);
+    }
+  };
+
+  const handleUndo = () => {
+    undoLastRemove();
+    toast.success('Item restored');
+  };
+
+  const handleQuantityEdit = (item: CartItem) => {
+    setEditingQuantity(item.productId);
+    setQuantityInput(item.quantity.toString());
+  };
+
+  const handleQuantitySave = (productId: string) => {
+    const qty = parseInt(quantityInput, 10);
+    if (qty > 0) {
+      onUpdateQuantity(productId, qty);
+      setEditingQuantity(null);
+      setQuantityInput('');
+    }
+  };
 
   return (
     <div className="flex h-full flex-col gap-6">
@@ -35,6 +97,28 @@ export function CartSummary({
             ₦{(total / 100).toFixed(2)}
           </div>
         </div>
+        {cart.length > 0 && (
+          <div className="mt-3 flex gap-2">
+            {lastRemovedItem && (
+              <button
+                onClick={handleUndo}
+                className="rounded-full border border-white/30 bg-white/20 px-3 py-1 text-xs font-medium text-white transition hover:bg-white/30"
+              >
+                ↶ Undo
+              </button>
+            )}
+            <button
+              onClick={handleClearCart}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                showClearConfirm
+                  ? 'border-rose-400 bg-rose-500/30 text-white'
+                  : 'border-white/30 bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              {showClearConfirm ? '✓ Confirm Clear' : '🗑️ Clear Cart'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cart Items */}
@@ -46,10 +130,11 @@ export function CartSummary({
             <p className="theme-text-secondary mt-1 text-sm">Scan or search for products to add them here.</p>
           </div>
         ) : (
-          cart.map((item) => (
+          cart.map((item, index) => (
             <div
               key={item.productId}
-              className="theme-surface rounded-2xl border p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.5)] transition hover:border-white/25"
+              className="theme-surface animate-in fade-in slide-in-from-right-4 rounded-2xl border p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.5)] transition hover:border-white/25"
+              style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -69,15 +154,43 @@ export function CartSummary({
                 <div className="flex items-center justify-between gap-2 sm:justify-start">
                   <button
                     onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
-                    className="theme-chip flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition hover:border-white/30 hover:bg-white/20 disabled:opacity-40"
+                    className="theme-chip flex h-12 w-12 items-center justify-center rounded-full border text-lg font-semibold transition hover:border-white/30 hover:bg-white/20 disabled:opacity-40 touch-manipulation"
                     disabled={item.quantity <= 1}
+                    aria-label="Decrease quantity"
                   >
                     −
                   </button>
-                  <span className="theme-text-primary w-12 text-center text-lg font-semibold">{item.quantity}</span>
+                  {editingQuantity === item.productId ? (
+                    <input
+                      type="number"
+                      value={quantityInput}
+                      onChange={(e) => setQuantityInput(e.target.value)}
+                      onBlur={() => handleQuantitySave(item.productId)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleQuantitySave(item.productId);
+                        } else if (e.key === 'Escape') {
+                          setEditingQuantity(null);
+                          setQuantityInput('');
+                        }
+                      }}
+                      className="theme-text-primary w-16 rounded-lg border border-white/20 bg-transparent px-2 py-1 text-center text-lg font-semibold focus:border-sky-400 focus:outline-none"
+                      autoFocus
+                      min="1"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => handleQuantityEdit(item)}
+                      className="theme-text-primary w-12 text-center text-lg font-semibold hover:text-sky-400"
+                      title="Click to edit quantity"
+                    >
+                      {item.quantity}
+                    </button>
+                  )}
                   <button
                     onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
-                    className="theme-chip flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition hover:border-white/30 hover:bg-white/20"
+                    className="theme-chip flex h-12 w-12 items-center justify-center rounded-full border text-lg font-semibold transition hover:border-white/30 hover:bg-white/20 touch-manipulation"
+                    aria-label="Increase quantity"
                   >
                     +
                   </button>
@@ -86,6 +199,11 @@ export function CartSummary({
                   <p className="text-base font-semibold text-sky-400 sm:text-lg">
                     ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
                   </p>
+                  {item.discountCents && item.discountCents > 0 && (
+                    <p className="text-xs text-emerald-400 line-through">
+                      ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -99,6 +217,12 @@ export function CartSummary({
           <span>Subtotal</span>
           <span className="theme-text-primary font-semibold">₦{(subtotal / 100).toFixed(2)}</span>
         </div>
+        {totalDiscount > 0 && (
+          <div className="flex justify-between text-sm text-emerald-400">
+            <span>Discount</span>
+            <span className="font-semibold">-₦{(totalDiscount / 100).toFixed(2)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm theme-text-secondary">
           <span>Tax</span>
           <span className="theme-text-primary font-semibold">₦{(tax / 100).toFixed(2)}</span>
@@ -108,6 +232,14 @@ export function CartSummary({
           <span>Total due</span>
           <span className="text-2xl text-sky-400">₦{(total / 100).toFixed(2)}</span>
         </div>
+        {onCartDiscount && (
+          <button
+            onClick={onCartDiscount}
+            className="w-full rounded-lg border border-sky-400/40 bg-sky-500/15 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25"
+          >
+            🎫 Apply Cart Discount
+          </button>
+        )}
       </div>
 
       {/* Payment Buttons */}
@@ -115,21 +247,21 @@ export function CartSummary({
         <button
           onClick={() => onPayment('cash')}
           disabled={cart.length === 0 || isProcessing}
-          className="w-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-4 text-lg font-semibold text-emerald-950 shadow-lg shadow-emerald-900/50 transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-5 text-lg font-semibold text-emerald-950 shadow-lg shadow-emerald-900/50 transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation min-h-[56px]"
         >
           {isProcessing ? 'Processing...' : '💵 Pay with Cash'}
         </button>
         <button
           onClick={() => onPayment('card')}
           disabled={cart.length === 0 || isProcessing}
-          className="w-full rounded-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 px-6 py-4 text-lg font-semibold text-white shadow-lg shadow-slate-900/60 transition hover:shadow-slate-900/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 px-6 py-5 text-lg font-semibold text-white shadow-lg shadow-slate-900/60 transition hover:shadow-slate-900/80 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation min-h-[56px]"
         >
           {isProcessing ? 'Processing...' : '💳 Pay with Card'}
         </button>
         <button
           onClick={() => onPayment('qr')}
           disabled={cart.length === 0 || isProcessing}
-          className="w-full rounded-full bg-gradient-to-r from-fuchsia-400 via-purple-500 to-indigo-500 px-6 py-4 text-lg font-semibold text-white shadow-lg shadow-purple-900/60 transition hover:shadow-purple-900/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-full bg-gradient-to-r from-fuchsia-400 via-purple-500 to-indigo-500 px-6 py-5 text-lg font-semibold text-white shadow-lg shadow-purple-900/60 transition hover:shadow-purple-900/80 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation min-h-[56px]"
         >
           {isProcessing ? 'Processing...' : '📱 Pay with QR'}
         </button>

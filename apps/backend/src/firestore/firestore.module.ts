@@ -45,10 +45,21 @@ const firestoreSettings: Settings = {
     },
     {
       provide: FIRESTORE,
-      inject: [FIREBASE_APP],
-      useFactory: (app: App): Firestore => {
+      inject: [FIREBASE_APP, ConfigService],
+      useFactory: (app: App, configService: ConfigService): Firestore => {
         const firestore = getFirestore(app);
         firestore.settings(firestoreSettings);
+        
+        // Check if using Firestore Emulator
+        const emulatorHost = configService.get<string>('FIRESTORE_EMULATOR_HOST');
+        if (emulatorHost) {
+          // The Admin SDK automatically connects to emulator when FIRESTORE_EMULATOR_HOST is set
+          // But we need to ensure the project ID is set for emulator
+          const projectId = configService.get<string>('FIREBASE_PROJECT_ID') || 'demo-pos-checkout';
+          process.env.FIRESTORE_EMULATOR_HOST = emulatorHost;
+          process.env.GCLOUD_PROJECT = projectId;
+        }
+        
         return firestore;
       },
     },

@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Get,
   Param,
   Body,
   UseGuards,
@@ -43,5 +44,19 @@ export class PaymentsController {
     @Body('amountCents') amountCents?: number,
   ) {
     return this.paymentsService.refund(paymentId, amountCents);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all payments for an order' })
+  @ApiResponse({ status: 200, description: 'List of payments' })
+  async getPayments(@Param('orderId', ParseUUIDPipe) orderId: string) {
+    return this.paymentsService.getOrderPayments(orderId);
+  }
+
+  @Get('status')
+  @ApiOperation({ summary: 'Get payment status for an order' })
+  @ApiResponse({ status: 200, description: 'Payment status' })
+  async getPaymentStatus(@Param('orderId', ParseUUIDPipe) orderId: string) {
+    return this.paymentsService.getOrderPaymentStatus(orderId);
   }
 }

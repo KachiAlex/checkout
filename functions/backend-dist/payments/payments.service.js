@@ -16,19 +16,52 @@ const orders_service_1 = require("../orders/orders.service");
 const payment_adapters_1 = require("@pos-checkout/payment-adapters");
 const config_1 = require("@nestjs/config");
 const payments_repository_1 = require("./payments.repository");
+const payment_settings_service_1 = require("../payment-settings/payment-settings.service");
+const users_repository_1 = require("../users/users.repository");
 let PaymentsService = class PaymentsService {
-    constructor(paymentsRepository, ordersService, configService) {
+    constructor(paymentsRepository, ordersService, configService, paymentSettingsService, usersRepository) {
         this.paymentsRepository = paymentsRepository;
         this.ordersService = ordersService;
         this.configService = configService;
-        const approveRate = this.configService.get('PAYMENT_MOCK_APPROVE_RATE', 0.95);
-        this.mockTerminal = new payment_adapters_1.MockTerminal(approveRate);
+        this.paymentSettingsService = paymentSettingsService;
+        this.usersRepository = usersRepository;
+        const monnifyApiKey = this.configService.get('MONNIFY_API_KEY');
+        const monnifySecretKey = this.configService.get('MONNIFY_SECRET_KEY');
+        const monnifyContractCode = this.configService.get('MONNIFY_CONTRACT_CODE');
+        if (monnifyApiKey && monnifySecretKey && monnifyContractCode) {
+            this.defaultPaymentAdapter = new payment_adapters_1.MonnifyAdapter({
+                apiKey: monnifyApiKey,
+                secretKey: monnifySecretKey,
+                contractCode: monnifyContractCode,
+                baseUrl: this.configService.get('MONNIFY_BASE_URL'),
+                webhookSecret: this.configService.get('MONNIFY_WEBHOOK_SECRET'),
+            });
+        }
+        else {
+            const approveRate = this.configService.get('PAYMENT_MOCK_APPROVE_RATE', 0.95);
+            this.defaultPaymentAdapter = new payment_adapters_1.MockTerminal(approveRate);
+        }
+    }
+    async getPaymentAdapter(tenantId) {
+        const tenantSettings = await this.paymentSettingsService.getFullPaymentSettings(tenantId);
+        if (tenantSettings) {
+            return new payment_adapters_1.MonnifyAdapter({
+                apiKey: tenantSettings.monnifyApiKey,
+                secretKey: tenantSettings.monnifySecretKey,
+                contractCode: tenantSettings.monnifyContractCode,
+                baseUrl: this.configService.get('MONNIFY_BASE_URL'),
+                webhookSecret: tenantSettings.monnifyWebhookSecret,
+            });
+        }
+        return this.defaultPaymentAdapter;
     }
     async initiatePayment(orderId, dto) {
         const order = await this.ordersService.findOne(orderId);
         if (order.status === shared_1.OrderStatus.COMPLETED) {
             throw new Error('Order already completed');
         }
+        const user = await this.usersRepository.findById(order.createdBy);
+        const tenantId = user?.tenantId || '';
         let payment = await this.paymentsRepository.create({
             orderId: order.id,
             amountCents: dto.amount,
@@ -46,12 +79,19 @@ let PaymentsService = class PaymentsService {
                 });
             }
             else {
-                const adapterResult = await this.mockTerminal.initiatePayment({
+                const paymentAdapter = await this.getPaymentAdapter(tenantId);
+                const adapterResult = await paymentAdapter.initiatePayment({
                     order_id: order.id,
                     amount_cents: dto.amount,
                     currency: 'NGN',
                     method: dto.method,
-                    metadata: dto.metadata,
+                    metadata: {
+                        ...dto.metadata,
+                        customerName: dto.metadata?.customerName,
+                        customerEmail: dto.metadata?.customerEmail,
+                        customerPhone: dto.metadata?.customerPhone,
+                        redirectUrl: dto.metadata?.redirectUrl || `${this.configService.get('FRONTEND_URL', 'http://localhost:5173')}/checkout/payment-callback`,
+                    },
                 });
                 result = await this.paymentsRepository.update(payment.id, {
                     status: adapterResult.status,
@@ -80,7 +120,11 @@ let PaymentsService = class PaymentsService {
         if (payment.status === shared_1.PaymentStatus.COMPLETED) {
             return payment;
         }
-        const result = await this.mockTerminal.capture(paymentId);
+        const order = await this.ordersService.findOne(payment.orderId);
+        const user = await this.usersRepository.findById(order.createdBy);
+        const tenantId = user?.tenantId || '';
+        const paymentAdapter = await this.getPaymentAdapter(tenantId);
+        const result = await paymentAdapter.capture(paymentId);
         return this.paymentsRepository.update(paymentId, {
             status: result.status,
             transactionId: result.transaction_id,
@@ -96,8 +140,12 @@ let PaymentsService = class PaymentsService {
         if (payment.status !== shared_1.PaymentStatus.COMPLETED) {
             throw new Error(`Cannot refund payment with status: ${payment.status}`);
         }
+        const order = await this.ordersService.findOne(payment.orderId);
+        const user = await this.usersRepository.findById(order.createdBy);
+        const tenantId = user?.tenantId || '';
         const refundAmount = amountCents || payment.amountCents;
-        const result = await this.mockTerminal.refund(paymentId, refundAmount);
+        const paymentAdapter = await this.getPaymentAdapter(tenantId);
+        const result = await paymentAdapter.refund(paymentId, refundAmount);
         return this.paymentsRepository.update(paymentId, {
             status: result.status,
             processorData: {
@@ -107,12 +155,48 @@ let PaymentsService = class PaymentsService {
             },
         });
     }
+    async getOrderPayments(orderId) {
+        return this.paymentsRepository.findByOrderId(orderId);
+    }
+    async getOrderPaymentStatus(orderId) {
+        const order = await this.ordersService.findOne(orderId);
+        const payments = await this.paymentsRepository.findByOrderId(orderId);
+        const totalPaid = payments
+            .filter(p => p.status === shared_1.PaymentStatus.COMPLETED)
+            .reduce((sum, p) => sum + p.amountCents, 0);
+        const totalDue = order.totalCents;
+        const isFullyPaid = totalPaid >= totalDue;
+        return {
+            totalPaid,
+            totalDue,
+            isFullyPaid,
+            payments,
+        };
+    }
+    async handleWebhookNotification(paymentReference, status, transactionData) {
+        const payment = await this.paymentsRepository.findByPaymentReference(paymentReference);
+        if (!payment) {
+            return null;
+        }
+        return this.paymentsRepository.update(payment.id, {
+            status,
+            transactionId: transactionData?.transactionReference || payment.transactionId,
+            processorData: {
+                ...(payment.processorData ?? {}),
+                ...transactionData,
+                webhookReceivedAt: new Date().toISOString(),
+            },
+            processedAt: status === shared_1.PaymentStatus.COMPLETED ? new Date() : payment.processedAt,
+        });
+    }
 };
 exports.PaymentsService = PaymentsService;
 exports.PaymentsService = PaymentsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [payments_repository_1.PaymentsRepository,
         orders_service_1.OrdersService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        payment_settings_service_1.PaymentSettingsService,
+        users_repository_1.UsersRepository])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

@@ -10,9 +10,13 @@
     "dev": "cross-env NODE_ENV=development ts-node --transpile-only src/main.ts",
     "build": "tsc -p tsconfig.json",
     "build:frontend": "npm run build --workspace=@pos-checkout/frontend",
+    "build:icon": "node scripts/convert-icon.js",
     "start": "electron .",
-    "prepackage": "npm run build:frontend && npm run build",
-    "package": "electron-builder --config electron-builder.yml"
+    "prepackage": "npm run build:frontend && npm run build && npm run copy:frontend",
+    "prepackage:installer": "npm run build:frontend && npm run build && npm run copy:frontend && npm run build:icon",
+    "copy:frontend": "xcopy /E /I /Y ..\\frontend\\dist frontend-dist",
+    "package": "electron-packager . \"Checkout POS\" --platform=win32 --arch=x64 --out=release --overwrite --asar --ignore=\"src|tsconfig.json|electron-builder.yml|node_modules\"",
+    "package:installer": "electron-builder --config electron-builder.yml --win nsis"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -20,6 +24,7 @@
     "cross-env": "^7.0.3",
     "electron": "30.0.0",
     "electron-builder": "^24.9.1",
+    "electron-packager": "^17.1.2",
     "png-to-ico": "^3.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"

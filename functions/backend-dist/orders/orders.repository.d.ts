@@ -5,6 +5,7 @@ export interface OrderRecord {
     uuid: string;
     orderNumber: string;
     locationId: string;
+    customerId?: string;
     items: Array<{
         productId: string;
         quantity: number;
@@ -22,6 +23,8 @@ export interface OrderRecord {
     completedAt?: Date;
     notes?: string;
     synced: boolean;
+    isHeld: boolean;
+    heldAt?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -37,7 +40,10 @@ export declare class OrdersRepository {
         to?: Date;
         status?: OrderStatus;
         deviceId?: string;
+        isHeld?: boolean;
+        customerId?: string;
     }): Promise<OrderRecord[]>;
+    findHeldOrders(locationId?: string): Promise<OrderRecord[]>;
     create(data: Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<OrderRecord>;
     update(id: string, update: Partial<OrderRecord>): Promise<OrderRecord>;
     private toRecord;

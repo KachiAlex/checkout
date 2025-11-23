@@ -19,7 +19,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@pos-checkout/shared": "*"
+    "@pos-checkout/shared": "*",
+    "axios": "^1.6.5"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",

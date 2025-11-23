@@ -53,10 +53,16 @@ exports.FirestoreModule = FirestoreModule = __decorate([
             },
             {
                 provide: firestore_constants_1.FIRESTORE,
-                inject: [firestore_constants_1.FIREBASE_APP],
-                useFactory: (app) => {
+                inject: [firestore_constants_1.FIREBASE_APP, config_1.ConfigService],
+                useFactory: (app, configService) => {
                     const firestore = (0, firestore_1.getFirestore)(app);
                     firestore.settings(firestoreSettings);
+                    const emulatorHost = configService.get('FIRESTORE_EMULATOR_HOST');
+                    if (emulatorHost) {
+                        const projectId = configService.get('FIREBASE_PROJECT_ID') || 'demo-pos-checkout';
+                        process.env.FIRESTORE_EMULATOR_HOST = emulatorHost;
+                        process.env.GCLOUD_PROJECT = projectId;
+                    }
                     return firestore;
                 },
             },

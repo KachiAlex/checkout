@@ -19,4 +19,10 @@ export declare class UsersController {
     changePin(req: any, dto: ChangePinDto): Promise<{
         success: boolean;
     }>;
+    updateMyLocation(req: any, body: {
+        locationId?: string;
+    }): Promise<{
+        success: boolean;
+    }>;
+    delete(id: string, req: any): Promise<void>;
 }

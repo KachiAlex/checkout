@@ -43,9 +43,15 @@ export class CreateOrderDto {
   @IsUUID()
   uuid: string;
 
-  @ApiProperty({ description: 'Location ID' })
+  @ApiProperty({ description: 'Location ID', required: false })
+  @IsOptional()
   @IsUUID()
-  locationId: string;
+  locationId?: string;
+
+  @ApiProperty({ description: 'Customer ID', required: false })
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
 
   @ApiProperty({ description: 'Order items', type: [OrderItemDto] })
   @IsArray()
@@ -63,11 +69,21 @@ export class CreateOrderDto {
   @Min(0)
   taxCents: number;
 
-  @ApiProperty({ description: 'Discount in cents', default: 0, example: 0 })
+  @ApiProperty({ description: 'Cart-level discount in cents', default: 0, example: 0 })
   @IsOptional()
   @IsNumber()
   @Min(0)
   discountCents?: number;
+
+  @ApiProperty({ description: 'Cart-level discount percentage (0-100)', required: false, example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountPercent?: number;
+
+  @ApiProperty({ description: 'Discount reason/description', required: false })
+  @IsOptional()
+  discountReason?: string;
 
   @ApiProperty({ description: 'Total in cents', example: 1075 })
   @IsNumber()
@@ -82,4 +98,8 @@ export class CreateOrderDto {
   @ApiProperty({ description: 'Notes', required: false })
   @IsOptional()
   notes?: string;
+
+  @ApiProperty({ description: 'Whether this order is held/suspended', default: false })
+  @IsOptional()
+  isHeld?: boolean;
 }

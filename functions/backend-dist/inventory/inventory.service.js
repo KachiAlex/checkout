@@ -13,19 +13,62 @@ exports.InventoryService = void 0;
 const common_1 = require("@nestjs/common");
 const shared_1 = require("@pos-checkout/shared");
 const inventory_repository_1 = require("./inventory.repository");
+const products_service_1 = require("../products/products.service");
+const categories_service_1 = require("../categories/categories.service");
+const brands_service_1 = require("../brands/brands.service");
+const batch_inventory_repository_1 = require("./batch-inventory.repository");
 let InventoryService = class InventoryService {
-    constructor(inventoryRepository) {
+    constructor(inventoryRepository, productsService, categoriesService, brandsService, batchInventoryRepository) {
         this.inventoryRepository = inventoryRepository;
+        this.productsService = productsService;
+        this.categoriesService = categoriesService;
+        this.brandsService = brandsService;
+        this.batchInventoryRepository = batchInventoryRepository;
     }
-    async getStock(locationId) {
-        return this.inventoryRepository.listStock(locationId);
+    async getStock(locationId, tenantId) {
+        const inventoryRecords = await this.inventoryRepository.listStock(locationId);
+        const enrichedRecords = await Promise.all(inventoryRecords.map(async (record) => {
+            try {
+                const product = tenantId
+                    ? await this.productsService.findOne(record.productId, tenantId)
+                    : null;
+                if (!product) {
+                    return {
+                        ...record,
+                        product: null,
+                    };
+                }
+                return {
+                    ...record,
+                    product: {
+                        id: product.id,
+                        name: product.name,
+                        sku: product.sku,
+                        barcode: product.barcode,
+                        description: product.description,
+                        priceCents: product.priceCents,
+                    },
+                };
+            }
+            catch (error) {
+                console.error(`Failed to fetch product ${record.productId}:`, error);
+                return {
+                    ...record,
+                    product: null,
+                };
+            }
+        }));
+        return enrichedRecords.filter((record) => record.product !== null);
+    }
+    async getBatchInventory(productId, locationId) {
+        return this.batchInventoryRepository.findByProduct(productId, locationId);
     }
     async getStockByProduct(productId, locationId) {
         const inventory = await this.inventoryRepository.getInventory(productId, locationId);
         return inventory?.quantity ?? 0;
     }
     async adjust(adjustDto) {
-        const { productId, locationId, delta, type, userId, referenceId, notes } = adjustDto;
+        const { productId, locationId, delta, type, userId, referenceId, notes, reason } = adjustDto;
         const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);
         const newQuantity = Math.max(0, (currentInventory?.quantity ?? 0) + delta);
         await this.inventoryRepository.upsertInventory({
@@ -43,6 +86,7 @@ let InventoryService = class InventoryService {
             userId,
             referenceId,
             notes,
+            reason,
             ts: new Date(),
         });
     }
@@ -56,15 +100,83 @@ let InventoryService = class InventoryService {
             userId,
         });
     }
+    async incrementForReturn(productId, locationId, quantity, returnId, userId) {
+        await this.adjust({
+            productId,
+            locationId,
+            delta: quantity,
+            type: shared_1.InventoryTransactionType.RETURN,
+            referenceId: returnId,
+            userId,
+            notes: `Returned from order`,
+        });
+    }
     async getTransactions(locationId, from, to) {
         const fromDate = from ? new Date(from) : undefined;
         const toDate = to ? new Date(to) : undefined;
         return this.inventoryRepository.listTransactions(locationId, fromDate, toDate);
     }
+    async createInventoryItem(createDto, locationId, tenantId, userId) {
+        const sku = createDto.sku || `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        let categoryId = createDto.categoryId;
+        if (!categoryId && createDto.categoryName) {
+            const category = await this.categoriesService.findOrCreateByName(createDto.categoryName, tenantId);
+            categoryId = category.id;
+        }
+        let brandId = createDto.brandId;
+        if (!brandId && createDto.brandName) {
+            const brand = await this.brandsService.findOrCreateByName(createDto.brandName, tenantId);
+            brandId = brand.id;
+        }
+        const product = await this.productsService.create({
+            sku,
+            name: createDto.name,
+            description: createDto.description,
+            barcode: createDto.barcode,
+            categoryId,
+            brandId,
+            priceCents: createDto.priceCents,
+            costCents: createDto.costCents,
+            taxRate: createDto.taxRate ?? 0.075,
+            active: true,
+        }, tenantId);
+        await this.inventoryRepository.upsertInventory({
+            productId: product.id,
+            locationId,
+            quantity: createDto.quantity,
+        });
+        const transaction = await this.inventoryRepository.createTransaction({
+            productId: product.id,
+            locationId,
+            delta: createDto.quantity,
+            type: shared_1.InventoryTransactionType.RECEIVED,
+            userId,
+            notes: `Initial inventory entry - ${createDto.quantity} units`,
+            ts: new Date(),
+        });
+        return {
+            product,
+            inventory: await this.inventoryRepository.getInventory(product.id, locationId),
+            transaction,
+        };
+    }
+    async findDuplicates() {
+        return this.inventoryRepository.findDuplicates();
+    }
+    async removeDuplicates() {
+        return this.inventoryRepository.removeDuplicates();
+    }
+    async clearAllInventory() {
+        return this.inventoryRepository.clearAllInventory();
+    }
 };
 exports.InventoryService = InventoryService;
 exports.InventoryService = InventoryService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [inventory_repository_1.InventoryRepository])
+    __metadata("design:paramtypes", [inventory_repository_1.InventoryRepository,
+        products_service_1.ProductsService,
+        categories_service_1.CategoriesService,
+        brands_service_1.BrandsService,
+        batch_inventory_repository_1.BatchInventoryRepository])
 ], InventoryService);
 //# sourceMappingURL=inventory.service.js.map

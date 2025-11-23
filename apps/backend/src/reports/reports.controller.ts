@@ -38,4 +38,35 @@ export class ReportsController {
   ) {
     return this.reportsService.getTopSellers(from, to, locationId, limit);
   }
+
+  @Get('sales-analytics')
+  @ApiOperation({ summary: 'Get sales analytics by period (daily/weekly/monthly)' })
+  @ApiResponse({ status: 200, description: 'Sales analytics data' })
+  async getSalesAnalytics(
+    @Query('period') period: 'daily' | 'weekly' | 'monthly' = 'daily',
+    @Query('location_id') locationId?: string,
+  ) {
+    return this.reportsService.getSalesAnalytics(period, locationId);
+  }
+
+  @Get('inventory-analytics')
+  @ApiOperation({ summary: 'Get inventory analytics by period (daily/weekly/monthly)' })
+  @ApiResponse({ status: 200, description: 'Inventory analytics data' })
+  async getInventoryAnalytics(
+    @Query('period') period: 'daily' | 'weekly' | 'monthly' = 'daily',
+    @Query('location_id') locationId?: string,
+  ) {
+    return this.reportsService.getInventoryAnalytics(period, locationId);
+  }
+
+  @Get('staff-performance')
+  @ApiOperation({ summary: 'Get staff performance analytics (sales and inventory)' })
+  @ApiResponse({ status: 200, description: 'Staff performance data' })
+  async getStaffPerformance(
+    @Query('location_id') locationId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.reportsService.getStaffPerformance(locationId, from, to);
+  }
 }

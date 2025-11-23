@@ -8,24 +8,50 @@ files:
     filter:
       - '**/*'
 asar: true
+
+# Auto-update configuration
+publish:
+  provider: github
+  owner: KachiAlex
+  repo: checkout
+  # For custom server, use:
+  # provider: generic
+  # url: https://your-update-server.com/updates
+
 win:
   target:
     - target: nsis
       arch:
         - x64
-  icon: build/icon.png
+  icon: build/icon.ico
+  sign: null
+  verifyUpdateCodeSignature: false
+  publisherName: Checkout POS
+
 nsis:
-  oneClick: true
+  oneClick: false
   perMachine: false
   allowElevation: true
-  allowToChangeInstallationDirectory: false
+  allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Checkout POS
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  deleteAppDataOnUninstall: false
+
 mac:
   target: dmg
+  icon: build/icon.icns
+  sign: null
+  category: public.app-category.business
+
 linux:
   target: AppImage
+  icon: build/icon.png
+  category: Office
+
 directories:
   output: release
   buildResources: build

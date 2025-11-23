@@ -66,6 +66,9 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
           });
 
+          // Store token in localStorage for sync service
+          localStorage.setItem('accessToken', accessToken);
+
           // Set default authorization header
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error: any) {
@@ -95,6 +98,9 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
           });
 
+          // Store token in localStorage for sync service
+          localStorage.setItem('accessToken', accessToken);
+
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error: any) {
           const message = error.response?.data?.message || 'Login failed';
@@ -114,6 +120,7 @@ export const useAuthStore = create<AuthState>()(
           tenantSlug: null,
           isAuthenticated: false,
         });
+        localStorage.removeItem('accessToken');
         delete axios.defaults.headers.common['Authorization'];
       },
 
@@ -139,6 +146,9 @@ export const useAuthStore = create<AuthState>()(
             tenantSlug: tenant?.slug ?? get().tenantSlug ?? null,
             isAuthenticated: true,
           });
+
+          // Store token in localStorage for sync service
+          localStorage.setItem('accessToken', accessToken);
 
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error) {

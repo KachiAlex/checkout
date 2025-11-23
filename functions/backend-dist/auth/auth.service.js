@@ -56,33 +56,55 @@ let AuthService = class AuthService {
         this.tenantsRepository = tenantsRepository;
         this.jwtService = jwtService;
         this.configService = configService;
+        this.userCache = new Map();
+    }
+    async getTenantUsers(tenantId) {
+        const CACHE_TTL_MS = 60_000;
+        const cached = this.userCache.get(tenantId);
+        const now = Date.now();
+        if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
+            return cached.users;
+        }
+        const users = await this.usersRepository.findAll(tenantId);
+        this.userCache.set(tenantId, { users, fetchedAt: now });
+        return users;
     }
     async validateUser(pin, tenantId, deviceId) {
-        const users = await this.usersRepository.findAll(tenantId);
-        console.log(`[AuthService] Validating PIN for tenant ${tenantId}, found ${users.length} users`);
+        if (deviceId) {
+            try {
+                const deviceUser = await this.usersRepository.findByDeviceId(deviceId, tenantId);
+                if (deviceUser) {
+                    const isValid = await bcrypt.compare(pin, deviceUser.pinHash);
+                    if (isValid) {
+                        return deviceUser;
+                    }
+                }
+            }
+            catch (error) {
+                console.warn('[AuthService] Device-based lookup failed, falling back to full scan:', error?.message);
+            }
+        }
+        const users = await this.getTenantUsers(tenantId);
         for (const user of users) {
             try {
                 const isValid = await bcrypt.compare(pin, user.pinHash);
-                console.log(`[AuthService] Testing PIN against user ${user.name}: ${isValid}`);
                 if (isValid) {
-                    if (deviceId) {
+                    if (deviceId && user.deviceId !== deviceId) {
                         try {
                             const updated = await this.usersRepository.update(user.id, { deviceId });
                             user.deviceId = updated.deviceId;
                         }
                         catch (error) {
-                            console.warn(`[AuthService] Failed to save device ID: ${error.message}`);
+                            console.warn('[AuthService] Failed to save device ID:', error?.message);
                         }
                     }
-                    console.log(`[AuthService] PIN validated for user: ${user.name}`);
                     return user;
                 }
             }
             catch (error) {
-                console.error(`[AuthService] Error comparing PIN for user ${user.name}:`, error);
+                console.error('[AuthService] Error comparing PIN for user', user.id, error?.message);
             }
         }
-        console.log(`[AuthService] No user found with matching PIN`);
         return null;
     }
     async login(loginDto) {

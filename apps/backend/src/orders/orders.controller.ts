@@ -27,7 +27,7 @@ export class OrdersController {
   @ApiResponse({ status: 201, description: 'Order created' })
   @ApiResponse({ status: 409, description: 'Insufficient inventory' })
   async create(@Body() createOrderDto: CreateOrderDto, @Request() req: any) {
-    return this.ordersService.create(createOrderDto, req.user.sub);
+    return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId, req.user.locationId);
   }
 
   @Get(':id')
@@ -58,5 +58,33 @@ export class OrdersController {
     @Query('status') status?: string,
   ) {
     return this.ordersService.findAll(locationId, from, to, status);
+  }
+
+  @Get('held')
+  @ApiOperation({ summary: 'Get all held/suspended orders' })
+  @ApiResponse({ status: 200, description: 'List of held orders' })
+  async findHeldOrders(@Query('location_id') locationId?: string) {
+    return this.ordersService.findHeldOrders(locationId);
+  }
+
+  @Post(':id/hold')
+  @ApiOperation({ summary: 'Hold/suspend an order' })
+  @ApiResponse({ status: 200, description: 'Order held' })
+  async holdOrder(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ordersService.holdOrder(id);
+  }
+
+  @Post(':id/recall')
+  @ApiOperation({ summary: 'Recall a held order' })
+  @ApiResponse({ status: 200, description: 'Order recalled' })
+  async recallOrder(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ordersService.recallOrder(id);
+  }
+
+  @Post(':id/complete-held')
+  @ApiOperation({ summary: 'Complete a held order (decrements inventory)' })
+  @ApiResponse({ status: 200, description: 'Held order completed' })
+  async completeHeldOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    return this.ordersService.completeHeldOrder(id, req.user.tenantId);
   }
 }

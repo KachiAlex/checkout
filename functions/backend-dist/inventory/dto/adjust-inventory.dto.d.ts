@@ -7,4 +7,5 @@ export declare class AdjustInventoryDto {
     userId?: string;
     referenceId?: string;
     notes?: string;
+    reason?: string;
 }

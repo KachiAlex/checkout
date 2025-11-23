@@ -152,6 +152,15 @@ export class UsersRepository {
     return this.toRecord(doc.id, doc.data() as UserDocument);
   }
 
+  async delete(id: string): Promise<void> {
+    const docRef = this.collection.doc(id);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    await docRef.delete();
+  }
+
   private toRecord(id: string, data: UserDocument | undefined): UserRecord {
     if (!data) {
       throw new NotFoundException(`User document ${id} has no data.`);

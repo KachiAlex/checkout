@@ -26,6 +26,7 @@
     "migration:run": "npm run migration:run --workspace=apps/backend",
     "seed": "npm run seed --workspace=apps/backend",
     "build:functions": "npm run build --workspace=@pos-checkout/shared && npm run build --workspace=@pos-checkout/payment-adapters && npm run build --workspace=@pos-checkout/backend && node ./scripts/copy-backend-dist.js && npm run build --workspace=functions",
+    "build:android": "npm run build:android --workspace=apps/frontend",
     "deploy:functions": "npx firebase deploy --only functions",
     "deploy:web": "npm run build --workspace=apps/frontend && npx firebase deploy --only hosting"
   },

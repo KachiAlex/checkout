@@ -22,6 +22,22 @@ let LocationsRepository = class LocationsRepository {
         const snapshot = await this.collection.orderBy('createdAt', 'asc').get();
         return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
     }
+    async findByTenant(tenantId) {
+        try {
+            const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
+            if (!snapshot.empty) {
+                const locations = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+                return locations.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+            }
+        }
+        catch (error) {
+            console.warn('Failed to query locations by tenantId:', error);
+        }
+        const allSnapshot = await this.collection.get();
+        const allLocations = allSnapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        const filtered = allLocations.filter((loc) => !loc.tenantId || loc.tenantId === tenantId);
+        return filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    }
     async findById(id) {
         const doc = await this.collection.doc(id).get();
         if (!doc.exists) {
@@ -66,6 +82,7 @@ let LocationsRepository = class LocationsRepository {
             address: data.address,
             timezone: data.timezone,
             defaultPrinter: data.defaultPrinter,
+            tenantId: data.tenantId,
             createdAt: this.timestampToDate(data.createdAt),
             updatedAt: this.timestampToDate(data.updatedAt),
         };

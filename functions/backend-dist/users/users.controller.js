@@ -41,6 +41,13 @@ let UsersController = class UsersController {
         await this.usersService.changePin(req.user.sub, dto);
         return { success: true };
     }
+    async updateMyLocation(req, body) {
+        await this.usersService.updateUser(req.user.tenantId, req.user.sub, { locationId: body.locationId }, req.user);
+        return { success: true };
+    }
+    async delete(id, req) {
+        await this.usersService.deleteUser(req.user.tenantId, id, req.user);
+    }
 };
 exports.UsersController = UsersController;
 __decorate([
@@ -89,6 +96,25 @@ __decorate([
     __metadata("design:paramtypes", [Object, change_pin_dto_1.ChangePinDto]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "changePin", null);
+__decorate([
+    (0, common_1.Patch)('me/location'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update the authenticated user location' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "updateMyLocation", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, common_1.HttpCode)(204),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a user from the tenant' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "delete", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('users'),
     (0, common_1.Controller)('users'),
