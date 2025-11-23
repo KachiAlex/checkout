@@ -69,3 +69,8 @@ Thumbs.db
 
 # Desktop releases
 apps/desktop/release/
+
+# Desktop build artifacts
+apps/desktop/prepackage/
+apps/desktop/prepackage-new/
+apps/desktop/release/
