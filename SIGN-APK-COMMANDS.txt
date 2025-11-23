@@ -1,0 +1,31 @@
+# APK Signing Commands for PowerShell
+# Run these commands one by one in PowerShell
+
+# Step 1: Navigate to APK directory
+cd D:\checkout\apps\frontend\android\app\build\outputs\apk\release
+
+# Step 2: Set variables
+$buildTools = "C:\Users\opdli\AppData\Local\Android\Sdk\build-tools\36.1.0"
+$keystorePath = "D:\checkout\apps\frontend\android\app\pos-checkout-release.keystore"
+$unsignedApk = "app-release-unsigned.apk"
+$signedApk = "app-release-signed.apk"
+
+# Step 3: Create keystore (if it doesn't exist)
+# First, find Java JDK:
+$javaHome = $env:JAVA_HOME
+if (-not $javaHome) {
+    $javaHome = (Get-ChildItem "C:\Program Files\Java" -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer -and $_.Name -match 'jdk' } | Sort-Object Name -Descending | Select-Object -First 1).FullName
+}
+
+# Create keystore (replace with your Java path if different):
+& "$javaHome\bin\keytool.exe" -genkey -v -keystore $keystorePath -alias pos-checkout -keyalg RSA -keysize 2048 -validity 10000 -storepass poscheckout123 -keypass poscheckout123 -dname "CN=POS Checkout, OU=Development, O=POS Checkout, L=City, ST=State, C=NG"
+
+# Step 4: Sign the APK
+& "$buildTools\apksigner.bat" sign --ks $keystorePath --ks-pass pass:poscheckout123 --ks-key-alias pos-checkout --key-pass pass:poscheckout123 --out $signedApk $unsignedApk
+
+# Step 5: Verify the signature
+& "$buildTools\apksigner.bat" verify $signedApk
+
+# Step 6: Check the signed APK
+Get-Item $signedApk | Select-Object Name, @{Name="Size(MB)";Expression={[math]::Round($_.Length/1MB,2)}}, LastWriteTime, FullName
+
