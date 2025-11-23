@@ -32,6 +32,41 @@ export const api = functions
     ingressSettings: 'ALLOW_ALL',
   })
   .https.onRequest(async (req, res) => {
+    const origin = req.headers.origin || '';
+    const allowedOrigins = [
+      'https://checkout-77d99.web.app',
+      'https://checkout-77d99.firebaseapp.com',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'capacitor://localhost',
+    ];
+    
+    const isAllowed = 
+      !origin ||
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('https://localhost') ||
+      origin.startsWith('capacitor://') ||
+      allowedOrigins.includes(origin);
+    
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      if (isAllowed) {
+        res.set('Access-Control-Allow-Origin', origin || '*');
+        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+        res.set('Access-Control-Allow-Credentials', 'true');
+        res.set('Access-Control-Max-Age', '3600');
+        return res.status(204).send('');
+      }
+      return res.status(403).send('CORS not allowed');
+    }
+    
+    // Add CORS headers to all responses
+    if (isAllowed) {
+      res.set('Access-Control-Allow-Origin', origin || '*');
+      res.set('Access-Control-Allow-Credentials', 'true');
+    }
+    
     const app = await getApp();
     return app(req, res);
   });
