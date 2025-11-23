@@ -56,8 +56,19 @@ export function ReturnsPage() {
     returnQuantity: number;
     refundAmountCents: number;
   }>>([]);
-  const [returnReason, setReturnReason] = useState('');
+  const [returnReason, setReturnReason] = useState<ReturnReason>('CUSTOMER_REQUEST');
   const [returnNotes, setReturnNotes] = useState('');
+
+  const RETURN_REASONS: Array<{ value: ReturnReason; label: string; description?: string }> = [
+    { value: 'CUSTOMER_REQUEST', label: 'Customer Request', description: 'Customer requested return' },
+    { value: 'DEFECTIVE', label: 'Defective Product', description: 'Product is defective or not working' },
+    { value: 'WRONG_ITEM', label: 'Wrong Item', description: 'Wrong item was delivered' },
+    { value: 'DAMAGED', label: 'Damaged', description: 'Product arrived damaged' },
+    { value: 'EXPIRED', label: 'Expired', description: 'Product is expired' },
+    { value: 'OTHER', label: 'Other', description: 'Other reason (specify in notes)' },
+  ];
+
+  type ReturnReason = 'DEFECTIVE' | 'WRONG_ITEM' | 'CUSTOMER_REQUEST' | 'EXPIRED' | 'DAMAGED' | 'OTHER';
 
   const loadReturns = async () => {
     if (!accessToken) return;
@@ -163,11 +174,11 @@ export function ReturnsPage() {
             productId: item.productId,
             quantity: item.returnQuantity,
             priceCents: selectedOrder.items.find((i) => i.id === item.orderItemId)?.priceCents || 0,
-            reason: returnReason || 'CUSTOMER_REQUEST',
+            reason: returnReason,
             notes: returnNotes,
           })),
           totalRefundCents: totalRefund,
-          reason: returnReason || 'CUSTOMER_REQUEST',
+          reason: returnReason,
           notes: returnNotes,
         },
         { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -177,7 +188,7 @@ export function ReturnsPage() {
       setShowCreateForm(false);
       setSelectedOrder(null);
       setReturnItems([]);
-      setReturnReason('');
+      setReturnReason('CUSTOMER_REQUEST');
       setReturnNotes('');
       loadReturns();
     } catch (error: any) {
@@ -429,15 +440,25 @@ export function ReturnsPage() {
 
                   <div>
                     <label className="block text-sm font-medium theme-text-secondary mb-2">
-                      Reason (Optional)
+                      Return Reason <span className="text-red-400">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={returnReason}
-                      onChange={(e) => setReturnReason(e.target.value)}
-                      placeholder="e.g., Defective, Wrong item, Customer request"
+                      onChange={(e) => setReturnReason(e.target.value as ReturnReason)}
                       className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-                    />
+                      required
+                    >
+                      {RETURN_REASONS.map((reason) => (
+                        <option key={reason.value} value={reason.value}>
+                          {reason.label} {reason.description ? `- ${reason.description}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {returnReason === 'OTHER' && (
+                      <p className="theme-text-secondary mt-2 text-xs">
+                        Please provide details in the notes field below
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -468,7 +489,7 @@ export function ReturnsPage() {
                         setShowCreateForm(false);
                         setSelectedOrder(null);
                         setReturnItems([]);
-                        setReturnReason('');
+                        setReturnReason('CUSTOMER_REQUEST');
                         setReturnNotes('');
                       }}
                       className="flex-1 rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5"

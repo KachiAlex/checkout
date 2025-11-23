@@ -8,7 +8,8 @@ import { PriceOverrideModal } from '../components/PriceOverrideModal';
 import { CustomerDisplay } from '../components/CustomerDisplay';
 import { ReceiptOptionsModal } from '../components/ReceiptOptionsModal';
 import { OnboardingBanner } from '../components/OnboardingBanner';
-import { ProductSearch } from '../components/ProductSearch';
+// import { ProductSearch } from '../components/ProductSearch';
+import { CartSummary } from '../components/CartSummary';
 import { QuantitySelectorModal } from '../components/QuantitySelectorModal';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
@@ -79,11 +80,11 @@ export function CheckoutPage() {
     cartDiscountCents,
     cartDiscountPercent,
     discountReason,
-    sessions,
-    activeSessionId,
-    createSession,
-    switchSession,
-    closeSession,
+    sessions: _sessions,
+    activeSessionId: _activeSessionId,
+    createSession: _createSession,
+    switchSession: _switchSession,
+    closeSession: _closeSession,
   } = useCartStore();
   const total = getTotal();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -112,11 +113,11 @@ export function CheckoutPage() {
   const [cashChange, setCashChange] = useState<number>(0);
   const [showCamera, setShowCamera] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string; phone?: string } | null>(null);
-  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [_showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerSearchResults, setCustomerSearchResults] = useState<Array<{ id: string; name: string; phone?: string }>>([]);
   const [heldOrders, setHeldOrders] = useState<Array<{ id: string; orderNumber: string; items: any[]; totalCents: number; heldAt: string }>>([]);
-  const [showHeldOrders, setShowHeldOrders] = useState(false);
+  const [_showHeldOrders, setShowHeldOrders] = useState(false);
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [discountingItem, setDiscountingItem] = useState<CartItem | null>(null);
   const [priceOverrideModalOpen, setPriceOverrideModalOpen] = useState(false);
@@ -447,7 +448,7 @@ export function CheckoutPage() {
     setSelectedProduct(null);
   };
 
-  const handleHoldOrder = async () => {
+  const _handleHoldOrder = async () => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
@@ -498,7 +499,7 @@ export function CheckoutPage() {
     }
   };
 
-  const handleRecallOrder = async (orderId: string) => {
+  const _handleRecallOrder = async (orderId: string) => {
     if (!accessToken) return;
     try {
       const response = await axios.post(
@@ -543,7 +544,7 @@ export function CheckoutPage() {
     }
   };
 
-  const handleSplitPaymentClick = async () => {
+  const _handleSplitPaymentClick = async () => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
@@ -925,16 +926,18 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/40 p-4 shadow-inner shadow-black/40 sm:p-5">
-                <Suspense
-                  fallback={
-                    <div className="flex h-36 items-center justify-center text-xs uppercase tracking-[0.4em] text-slate-400/80">
-                      Loading camera…
-                    </div>
-                  }
-                >
-                  <CameraScanner onScan={handleScan} isVisible={showCamera} />
-                </Suspense>
+              {showCamera && (
+                <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/40 p-4 shadow-inner shadow-black/40 sm:p-5">
+                  <Suspense
+                    fallback={
+                      <div className="flex h-36 items-center justify-center text-xs uppercase tracking-[0.4em] text-slate-400/80">
+                        Loading camera…
+                      </div>
+                    }
+                  >
+                    <CameraScanner onScan={handleScan} isOpen={showCamera} onClose={() => setShowCamera(false)} />
+                  </Suspense>
+                </div>
               )}
             </div>
 

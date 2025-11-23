@@ -6,9 +6,9 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import toast from 'react-hot-toast';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, subDays } from 'date-fns';
 
-type Period = 'daily' | 'weekly' | 'monthly';
+type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
 
 interface SalesAnalytics {
   period: Period;
@@ -73,6 +73,12 @@ interface StaffPerformance {
 export function ReportsPage() {
   const { logout, accessToken, user } = useAuthStore();
   const [period, setPeriod] = useState<Period>('daily');
+  const [customDateFrom, setCustomDateFrom] = useState<string>(
+    format(startOfDay(subDays(new Date(), 7)), 'yyyy-MM-dd')
+  );
+  const [customDateTo, setCustomDateTo] = useState<string>(
+    format(endOfDay(new Date()), 'yyyy-MM-dd')
+  );
   const [loading, setLoading] = useState(true);
   const [salesAnalytics, setSalesAnalytics] = useState<SalesAnalytics | null>(null);
   const [inventoryAnalytics, setInventoryAnalytics] = useState<InventoryAnalytics | null>(null);
@@ -84,10 +90,15 @@ export function ReportsPage() {
     setLoading(true);
     try {
       const headers = { Authorization: `Bearer ${accessToken}` };
-      const params = {
-        period,
+      const params: any = {
+        period: period === 'custom' ? 'daily' : period,
         location_id: user?.locationId,
       };
+      
+      if (period === 'custom') {
+        params.from = customDateFrom;
+        params.to = customDateTo;
+      }
 
       const [salesRes, inventoryRes, staffRes] = await Promise.all([
         axios.get(`${API_URL}/api/v1/reports/sales-analytics`, { headers, params }),
@@ -111,7 +122,7 @@ export function ReportsPage() {
 
   useEffect(() => {
     loadAnalytics();
-  }, [period, accessToken, user?.locationId]);
+  }, [period, accessToken, user?.locationId, customDateFrom, customDateTo]);
 
   const formatCurrency = (amount: number) => {
     return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -138,6 +149,60 @@ export function ReportsPage() {
 
   const getMaxValue = (data: any[], key: string) => {
     return Math.max(...data.map((d) => d[key]), 1);
+  };
+
+  const exportToCSV = (data: any[], filename: string) => {
+    if (!data || data.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+
+    // Get headers from first object
+    const headers = Object.keys(data[0]);
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => 
+        headers.map(header => {
+          const value = row[header];
+          // Handle values that might contain commas or quotes
+          if (value === null || value === undefined) return '';
+          const stringValue = String(value);
+          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          }
+          return stringValue;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Report exported successfully');
+  };
+
+  const handleExportSales = () => {
+    if (!salesAnalytics) return;
+    exportToCSV(salesAnalytics.data, 'sales_report');
+  };
+
+  const handleExportInventory = () => {
+    if (!inventoryAnalytics) return;
+    exportToCSV(inventoryAnalytics.data, 'inventory_report');
+  };
+
+  const handleExportStaff = () => {
+    if (!staffPerformance) return;
+    exportToCSV(staffPerformance.staffPerformance, 'staff_performance_report');
   };
 
   return (
@@ -181,20 +246,47 @@ export function ReportsPage() {
               <h2 className="theme-text-primary text-lg font-semibold">Time Period</h2>
               <p className="theme-text-secondary text-sm">Select the time period for analytics</p>
             </div>
-            <div className="flex gap-2">
-              {(['daily', 'weekly', 'monthly'] as Period[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    period === p
-                      ? 'border-sky-400/70 bg-sky-500/20 text-sky-50'
-                      : 'border-white/15 bg-white/5 text-white/70 hover:border-sky-300/50 hover:text-white'
-                  }`}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </button>
-              ))}
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                {(['daily', 'weekly', 'monthly', 'custom'] as Period[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                      period === p
+                        ? 'border-sky-400/70 bg-sky-500/20 text-sky-50'
+                        : 'border-white/15 bg-white/5 text-white/70 hover:border-sky-300/50 hover:text-white'
+                    }`}
+                  >
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {period === 'custom' && (
+                <div className="flex gap-3 items-center">
+                  <div>
+                    <label className="block text-xs theme-text-secondary mb-1">From</label>
+                    <input
+                      type="date"
+                      value={customDateFrom}
+                      onChange={(e) => setCustomDateFrom(e.target.value)}
+                      max={customDateTo}
+                      className="theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs theme-text-secondary mb-1">To</label>
+                    <input
+                      type="date"
+                      value={customDateTo}
+                      onChange={(e) => setCustomDateTo(e.target.value)}
+                      min={customDateFrom}
+                      max={format(new Date(), 'yyyy-MM-dd')}
+                      className="theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -209,7 +301,16 @@ export function ReportsPage() {
             {/* Sales Analytics */}
             {salesAnalytics && (
               <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary text-xl font-semibold mb-4">Sales Analytics</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="theme-text-primary text-xl font-semibold">Sales Analytics</h2>
+                  <button
+                    onClick={handleExportSales}
+                    disabled={!salesAnalytics || salesAnalytics.data.length === 0}
+                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    📥 Export CSV
+                  </button>
+                </div>
                 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -298,7 +399,16 @@ export function ReportsPage() {
             {/* Inventory Analytics */}
             {inventoryAnalytics && (
               <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary text-xl font-semibold mb-4">Inventory Analytics</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="theme-text-primary text-xl font-semibold">Inventory Analytics</h2>
+                  <button
+                    onClick={handleExportInventory}
+                    disabled={!inventoryAnalytics || inventoryAnalytics.data.length === 0}
+                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    📥 Export CSV
+                  </button>
+                </div>
                 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -389,7 +499,16 @@ export function ReportsPage() {
             {/* Staff Performance */}
             {staffPerformance && staffPerformance.staffPerformance.length > 0 && (
               <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary text-xl font-semibold mb-4">Staff Performance</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="theme-text-primary text-xl font-semibold">Staff Performance</h2>
+                  <button
+                    onClick={handleExportStaff}
+                    disabled={!staffPerformance || staffPerformance.staffPerformance.length === 0}
+                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    📥 Export CSV
+                  </button>
+                </div>
                 
                 <div className="space-y-4">
                   {staffPerformance.staffPerformance.map((staff) => (

@@ -19,7 +19,7 @@ export function CartSummary({
   onRemove,
   onUpdateQuantity,
   onPayment,
-  onItemDiscount,
+  onItemDiscount: _onItemDiscount,
   onCartDiscount,
   isProcessing,
 }: CartSummaryProps) {

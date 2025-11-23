@@ -7,6 +7,7 @@ import {
 } from '../services/scannerDeviceService';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
+import { CameraScanner } from './CameraScanner';
 
 interface ScannerInputProps {
   onScan: (barcode: string) => void;
@@ -17,6 +18,7 @@ interface ScannerInputProps {
 
 export function ScannerInput({ onScan, placeholder = "Scan barcode/QR with scanner, or type and press Enter...", autoFocus = true, className = "" }: ScannerInputProps) {
   const [input, setInput] = useState('');
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastScanTimeRef = useRef<number>(0);
@@ -93,7 +95,7 @@ export function ScannerInput({ onScan, placeholder = "Scan barcode/QR with scann
     try {
       // Try to register without requesting Web USB access first
       // Most scanners work as keyboards and don't need Web USB API
-      const registeredDevice = await registerUSBDevice(user?.locationId, user?.id, false);
+      const registeredDevice = await registerUSBDevice(user?.locationId, user?.id, undefined);
       const deviceId = addDevice(registeredDevice);
       setActiveDevice(deviceId);
       usbDeviceRegisteredRef.current = true;
@@ -222,32 +224,48 @@ export function ScannerInput({ onScan, placeholder = "Scan barcode/QR with scann
   };
 
   const isBluetoothSupported = typeof navigator !== 'undefined' && 'bluetooth' in (navigator as any);
+  const isCameraSupported = typeof navigator !== 'undefined' && 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices;
+
+  const handleCameraScan = (barcode: string) => {
+    onScan(barcode);
+    // Keep camera open for multiple scans
+  };
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      <div className="theme-surface flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4 shadow-inner shadow-black/40">
-        <span className="theme-text-secondary text-lg">📷</span>
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="flex-1 bg-transparent text-lg theme-text-primary placeholder:text-current/50 focus:outline-none font-mono"
-          autoFocus={autoFocus}
-          autoComplete="off"
-        />
-        {isBluetoothSupported && (
-          <button
-            onClick={connectBluetoothScanner}
-            className="theme-chip rounded-full border border-purple-400/40 bg-purple-500/15 px-3 py-2 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/25"
-            title="Connect Bluetooth scanner"
-          >
-            📡 Bluetooth
-          </button>
-        )}
-      </div>
+    <>
+      <div className={`space-y-3 ${className}`}>
+        <div className="theme-surface flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4 shadow-inner shadow-black/40">
+          <span className="theme-text-secondary text-lg">📷</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className="flex-1 bg-transparent text-lg theme-text-primary placeholder:text-current/50 focus:outline-none font-mono"
+            autoFocus={autoFocus}
+            autoComplete="off"
+          />
+          {isCameraSupported && (
+            <button
+              onClick={() => setShowCameraScanner(true)}
+              className="theme-chip rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+              title="Open camera scanner"
+            >
+              📷 Camera
+            </button>
+          )}
+          {isBluetoothSupported && (
+            <button
+              onClick={connectBluetoothScanner}
+              className="theme-chip rounded-full border border-purple-400/40 bg-purple-500/15 px-3 py-2 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/25"
+              title="Connect Bluetooth scanner"
+            >
+              📡 Bluetooth
+            </button>
+          )}
+        </div>
       {activeDevice && (
         <p className="text-xs theme-text-secondary text-center">
           Active scanner: <span className="font-semibold text-sky-400">{activeDevice.name}</span>
@@ -263,7 +281,15 @@ export function ScannerInput({ onScan, placeholder = "Scan barcode/QR with scann
           Press <kbd className="px-2 py-1 bg-white/10 rounded">Enter</kbd> or wait for auto-scan
         </p>
       )}
-    </div>
+      </div>
+      {showCameraScanner && (
+        <CameraScanner
+          isOpen={showCameraScanner}
+          onScan={handleCameraScan}
+          onClose={() => setShowCameraScanner(false)}
+        />
+      )}
+    </>
   );
 }
 

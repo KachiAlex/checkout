@@ -1,237 +1,99 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/library';
-import { useScannerDeviceStore } from '../stores/scannerDeviceStore';
-import {
-  registerCameraDevice,
-  sendDeviceHeartbeat,
-} from '../services/scannerDeviceService';
-import { ensureCameraPermission } from '../services/scannerService';
-import { useAuthStore } from '../stores/authStore';
+import { useState, useRef, useEffect } from 'react';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import toast from 'react-hot-toast';
 
 interface CameraScannerProps {
   onScan: (barcode: string) => void;
-  isVisible?: boolean;
+  onClose: () => void;
+  isOpen: boolean;
 }
 
-type ScanMode = 'camera' | 'camera-snap';
-
-export function CameraScanner({ onScan, isVisible = true }: CameraScannerProps) {
-  const [scanMode, setScanMode] = useState<ScanMode | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
+export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
-  
-  const { addDevice, markDeviceUsed, setActiveDevice } = useScannerDeviceStore();
-  const { user } = useAuthStore();
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Camera-based QR scanning (live streaming mode)
-  const startCameraScan = useCallback(async () => {
+  useEffect(() => {
+    if (!isOpen) {
+      stopScanning();
+      return;
+    }
+
+    startScanning();
+    return () => {
+      stopScanning();
+    };
+  }, [isOpen]);
+
+  const startScanning = async () => {
     if (!videoRef.current) return;
 
     try {
-      setCameraError(null);
-      setScanMode('camera');
+      setError(null);
+      setScanning(true);
 
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported in this browser.');
-      }
-
-      await ensureCameraPermission();
-
-      // Register camera device
-      const deviceData = await registerCameraDevice(user?.locationId, user?.id);
-      const deviceId = addDevice({
-        ...deviceData,
-        isActive: true,
-      });
-      setActiveDevice(deviceId);
-      await sendDeviceHeartbeat(deviceId, user?.id);
-
+      // Initialize ZXing reader
       const codeReader = new BrowserMultiFormatReader();
       codeReaderRef.current = codeReader;
 
-      // Get available video devices
+      // Get available video input devices
       const videoInputDevices = await codeReader.listVideoInputDevices();
       
       if (videoInputDevices.length === 0) {
         throw new Error('No camera devices found');
       }
 
-      // Prefer rear camera if available (usually better for scanning)
-      const rearCamera = videoInputDevices.find(device => 
+      // Use the first available camera (usually the default)
+      // For mobile devices, prefer back camera if available
+      const backCamera = videoInputDevices.find(device => 
         device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('rear') ||
-        device.label.toLowerCase().includes('environment')
+        device.label.toLowerCase().includes('rear')
       );
-      const selectedDeviceId = rearCamera?.deviceId || videoInputDevices[0].deviceId;
+      const selectedDeviceId = backCamera?.deviceId || videoInputDevices[0].deviceId;
 
-      // Start scanning
-      await codeReader.decodeFromVideoDevice(
+      // Start decoding from video stream
+      codeReader.decodeFromVideoDevice(
         selectedDeviceId,
         videoRef.current,
         (result, error) => {
           if (result) {
-            const text = result.getText();
-            if (text) {
-              // Mark camera device as used
-              const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
-              if (activeDevice) {
-                markDeviceUsed(activeDevice.id);
-                sendDeviceHeartbeat(activeDevice.id, user?.id).catch((err) =>
-                  console.warn('Failed to send heartbeat', err),
-                );
-              }
-              
-              toast.success(`Scanned: ${text}`);
-              onScan(text);
-              stopCameraScan();
+            const barcode = result.getText();
+            if (barcode) {
+              onScan(barcode);
+              // Don't stop scanning - allow multiple scans
             }
           }
-          if (error && error.name !== 'NotFoundException') {
-            console.warn('Camera scan error:', error);
+
+          if (error && !(error instanceof NotFoundException)) {
+            // NotFoundException is normal - it means no barcode found yet
+            console.warn('Scan error:', error);
           }
-        },
+        }
       );
-    } catch (error: any) {
-      console.error('Failed to start camera:', error);
-      setCameraError(error.message || 'Failed to access camera');
-      setScanMode(null);
-      toast.error(error.message || 'Failed to access camera');
-    }
-  }, [onScan, user?.locationId, user?.id, addDevice, setActiveDevice, markDeviceUsed]);
 
-  // Camera snap & decode mode (better for low light)
-  const startCameraSnapMode = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    try {
-      setCameraError(null);
-      setScanMode('camera-snap');
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported in this browser.');
+      // Get stream from video element
+      if (videoRef.current && videoRef.current.srcObject) {
+        streamRef.current = videoRef.current.srcObject as MediaStream;
       }
-
-      await ensureCameraPermission();
-
-      // Register camera device
-      const deviceData = await registerCameraDevice(user?.locationId, user?.id);
-      const deviceId = addDevice({
-        ...deviceData,
-        name: `${deviceData.name || 'Camera Scanner'} (Snap Mode)`,
-        isActive: true,
-      });
-      setActiveDevice(deviceId);
-      await sendDeviceHeartbeat(deviceId, user?.id);
-
-      // Get available video devices
-      const codeReader = new BrowserMultiFormatReader();
-      const videoInputDevices = await codeReader.listVideoInputDevices();
+    } catch (err: any) {
+      console.error('Failed to start camera scanner:', err);
+      setError(err.message || 'Failed to access camera');
+      setScanning(false);
       
-      if (videoInputDevices.length === 0) {
-        throw new Error('No camera devices found');
-      }
-
-      // Prefer rear camera if available
-      const rearCamera = videoInputDevices.find(device => 
-        device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('rear') ||
-        device.label.toLowerCase().includes('environment')
-      );
-      const selectedDeviceId = rearCamera?.deviceId || videoInputDevices[0].deviceId;
-
-      // Get camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId: { exact: selectedDeviceId },
-          facingMode: 'environment',
-        },
-      });
-
-      streamRef.current = stream;
-      videoRef.current.srcObject = stream;
-      videoRef.current.play();
-
-      // Set canvas dimensions to match video
-      videoRef.current.addEventListener('loadedmetadata', () => {
-        if (canvasRef.current && videoRef.current) {
-          canvasRef.current.width = videoRef.current.videoWidth;
-          canvasRef.current.height = videoRef.current.videoHeight;
-        }
-      });
-    } catch (error: any) {
-      console.error('Failed to start camera snap mode:', error);
-      setCameraError(error.message || 'Failed to access camera');
-      setScanMode(null);
-      toast.error(error.message || 'Failed to access camera');
-    }
-  }, [user?.locationId, user?.id, addDevice, setActiveDevice]);
-
-  // Capture and decode a single frame
-  const captureAndDecode = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || !streamRef.current) {
-      toast.error('Camera not ready');
-      return;
-    }
-
-    setIsCapturing(true);
-    try {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) {
-        throw new Error('Could not get canvas context');
-      }
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const imageDataUrl = canvas.toDataURL('image/png');
-      const img = new Image();
-      img.src = imageDataUrl;
-
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
-
-      const codeReader = new BrowserMultiFormatReader();
-      const result = await codeReader.decodeFromImageElement(img);
-
-      if (result) {
-        const text = result.getText();
-        if (text) {
-          const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
-          if (activeDevice) {
-            markDeviceUsed(activeDevice.id);
-            sendDeviceHeartbeat(activeDevice.id, user?.id).catch((err) =>
-              console.warn('Failed to send heartbeat', err),
-            );
-          }
-          
-          toast.success(`Scanned: ${text}`);
-          onScan(text);
-          stopCameraScan();
-        }
-      }
-    } catch (error: any) {
-      if (error.name !== 'NotFoundException') {
-        console.error('Decode error:', error);
-        toast.error('No barcode/QR code found in image. Try again.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        toast.error('Camera permission denied. Please allow camera access.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        toast.error('No camera found. Please connect a camera device.');
       } else {
-        toast.error('No barcode/QR code found. Try again.');
+        toast.error('Failed to start camera scanner: ' + err.message);
       }
-    } finally {
-      setIsCapturing(false);
     }
-  }, [onScan, markDeviceUsed, user?.id]);
+  };
 
-  const stopCameraScan = useCallback(() => {
-    if (codeReaderRef.current && videoRef.current) {
+  const stopScanning = () => {
+    if (codeReaderRef.current) {
       codeReaderRef.current.reset();
       codeReaderRef.current = null;
     }
@@ -241,133 +103,86 @@ export function CameraScanner({ onScan, isVisible = true }: CameraScannerProps) 
       streamRef.current = null;
     }
 
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    
-    const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
-    if (activeDevice && activeDevice.type === 'camera') {
-      useScannerDeviceStore.getState().updateDevice(activeDevice.id, { isActive: false });
-      sendDeviceHeartbeat(activeDevice.id, user?.id, { isActive: false }).catch((err) =>
-        console.warn('Failed to send heartbeat', err),
-      );
-      setActiveDevice(null);
-    }
-    
-    setScanMode(null);
-    setCameraError(null);
-    setIsCapturing(false);
-  }, [setActiveDevice, user?.id]);
+    setScanning(false);
+  };
 
-  // Cleanup camera on unmount
-  useEffect(() => {
-    return () => {
-      stopCameraScan();
-    };
-  }, [stopCameraScan]);
-
-  // Stop camera when component is hidden
-  useEffect(() => {
-    if (!isVisible && scanMode) {
-      stopCameraScan();
-    }
-  }, [isVisible, scanMode, stopCameraScan]);
-
-  if (!isVisible) return null;
+  if (!isOpen) return null;
 
   return (
-    <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="theme-text-primary text-xl font-semibold">Camera Scanner</h2>
-          <p className="theme-text-secondary text-sm">
-            Use your camera to scan barcodes and QR codes
-          </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="theme-card w-full max-w-2xl rounded-3xl border p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="theme-text-primary text-xl font-bold">Camera Scanner</h2>
+          <button
+            onClick={() => {
+              stopScanning();
+              onClose();
+            }}
+            className="theme-chip rounded-full border p-2 transition hover:bg-white/10"
+            aria-label="Close scanner"
+          >
+            ✕
+          </button>
         </div>
-        <div className="flex gap-2">
-          {scanMode ? (
-            <>
-              {scanMode === 'camera-snap' && (
-                <button
-                  onClick={captureAndDecode}
-                  disabled={isCapturing}
-                  className="theme-chip rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50"
-                >
-                  {isCapturing ? '⏳ Decoding...' : '📸 Capture'}
-                </button>
-              )}
-              <button
-                onClick={stopCameraScan}
-                className="theme-chip rounded-full border border-rose-400/40 bg-rose-500/15 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/25"
-              >
-                Stop Camera
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={startCameraScan}
-                className="theme-chip rounded-full border border-sky-400/40 bg-sky-500/15 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25"
-                title="Live camera scanning (continuous)"
-              >
-                📷 Live Scan
-              </button>
-              <button
-                onClick={startCameraSnapMode}
-                className="theme-chip rounded-full border border-indigo-400/40 bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-200 transition hover:bg-indigo-500/25"
-                title="Snap & decode mode (better for low light)"
-              >
-                📸 Snap Mode
-              </button>
-            </>
+
+        <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-2xl bg-black">
+          <video
+            ref={videoRef}
+            className="h-full w-full object-cover"
+            playsInline
+            autoPlay
+            muted
+          />
+          {!scanning && !error && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+            </div>
           )}
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+              <div className="text-center">
+                <p className="theme-text-primary mb-2 text-lg font-semibold">⚠️ {error}</p>
+                <button
+                  onClick={startScanning}
+                  className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-2 font-semibold text-white transition hover:shadow-lg"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Scanning overlay with guide lines */}
+          {scanning && !error && (
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 border-2 border-sky-400 border-dashed rounded-lg" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                <p className="theme-text-primary text-sm font-semibold bg-black/60 px-3 py-1 rounded">
+                  Position barcode/QR code here
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2 text-center">
+          <p className="theme-text-secondary text-sm">
+            {scanning && !error
+              ? 'Point your camera at a barcode or QR code'
+              : error
+                ? 'Camera scanner unavailable'
+                : 'Starting camera...'}
+          </p>
+          <button
+            onClick={() => {
+              stopScanning();
+              onClose();
+            }}
+            className="theme-chip w-full rounded-full border px-6 py-3 font-semibold transition hover:bg-white/10"
+          >
+            Close
+          </button>
         </div>
       </div>
-
-      {scanMode && (
-        <div className="space-y-2">
-          <div className="relative">
-            <video
-              ref={videoRef}
-              className="w-full rounded-2xl border-2 border-white/20 bg-black"
-              style={{ maxHeight: '400px', objectFit: 'contain' }}
-              playsInline
-              autoPlay
-              muted
-            />
-            <canvas
-              ref={canvasRef}
-              className="hidden"
-            />
-            {scanMode === 'camera-snap' && (
-              <div className="absolute top-2 right-2 bg-black/70 text-white px-3 py-1 rounded-full text-xs font-medium">
-                Snap Mode Active
-              </div>
-            )}
-          </div>
-          {cameraError && (
-            <p className="text-sm text-rose-400 bg-rose-500/15 border border-rose-400/40 p-3 rounded-xl">
-              {cameraError}
-            </p>
-          )}
-          <p className="text-xs theme-text-secondary text-center">
-            {scanMode === 'camera' 
-              ? 'Point your camera at a QR code or barcode (auto-detects)'
-              : 'Point camera at QR code, then click "Capture" to scan'}
-          </p>
-        </div>
-      )}
-
-      {!scanMode && (
-        <div className="theme-surface rounded-2xl border border-dashed p-12 text-center">
-          <div className="text-5xl mb-4">📷</div>
-          <p className="theme-text-primary text-lg font-semibold mb-2">Camera Scanner Ready</p>
-          <p className="theme-text-secondary text-sm">
-            Click "Live Scan" or "Snap Mode" to start scanning
-          </p>
-        </div>
-      )}
     </div>
   );
 }
-
