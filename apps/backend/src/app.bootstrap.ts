@@ -69,12 +69,14 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
           }
 
           const normalizedOrigin = requestOrigin.trim().toLowerCase();
+          const normalizedCorsOrigins = (corsOrigins as string[]).map(origin => origin.trim().toLowerCase());
+          
           const allowByPrefix =
             normalizedOrigin.startsWith('capacitor://') ||
             normalizedOrigin.startsWith('http://localhost') ||
             normalizedOrigin.startsWith('https://localhost');
 
-          if (allowByPrefix || (corsOrigins as string[]).includes(requestOrigin)) {
+          if (allowByPrefix || normalizedCorsOrigins.includes(normalizedOrigin)) {
             return callback(null, true);
           }
 
