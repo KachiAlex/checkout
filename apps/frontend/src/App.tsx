@@ -19,6 +19,9 @@ const ReportsPage = lazy(() =>
 const InventoryManagementPage = lazy(() =>
   import('./pages/InventoryManagementPage').then((module) => ({ default: module.InventoryManagementPage })),
 );
+const AddInventoryPage = lazy(() =>
+  import('./pages/AddInventoryPage').then((module) => ({ default: module.AddInventoryPage })),
+);
 const SuppliersPage = lazy(() =>
   import('./pages/SuppliersPage').then((module) => ({ default: module.SuppliersPage })),
 );
@@ -133,6 +136,18 @@ function App() {
             />
             <Route
               path="/inventory"
+              element={
+                isCompanyUser ? (
+                  <AddInventoryPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/inventory-management"
               element={
                 isCompanyUser ? (
                   <InventoryManagementPage />

@@ -141,6 +141,46 @@ export class InventoryRepository {
     return snapshot.docs.map((doc) => this.toTransactionRecord(doc.id, doc.data()));
   }
 
+  async getLastTransaction(productId: string, locationId: string): Promise<InventoryTransactionRecord | null> {
+    try {
+      // Try with orderBy first (requires composite index)
+      const snapshot = await this.transactionsCollection
+        .where('productId', '==', productId)
+        .where('locationId', '==', locationId)
+        .orderBy('ts', 'desc')
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        return null;
+      }
+
+      return this.toTransactionRecord(snapshot.docs[0].id, snapshot.docs[0].data());
+    } catch (error: any) {
+      // If index doesn't exist, fallback to fetching all and sorting in memory
+      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+        console.warn('Firestore index not found, falling back to in-memory sort');
+        const snapshot = await this.transactionsCollection
+          .where('productId', '==', productId)
+          .where('locationId', '==', locationId)
+          .get();
+
+        if (snapshot.empty) {
+          return null;
+        }
+
+        const transactions = snapshot.docs.map((doc) =>
+          this.toTransactionRecord(doc.id, doc.data()),
+        );
+        
+        // Sort by timestamp descending and return the first one
+        transactions.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+        return transactions[0];
+      }
+      throw error;
+    }
+  }
+
   async getAllInventory(): Promise<InventoryRecord[]> {
     const snapshot = await this.inventoryCollection.get();
     return snapshot.docs.map((doc) => this.toInventoryRecord(doc.id, doc.data()));

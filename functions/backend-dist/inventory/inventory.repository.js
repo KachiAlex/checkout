@@ -85,6 +85,36 @@ let InventoryRepository = class InventoryRepository {
         const snapshot = await query.get();
         return snapshot.docs.map((doc) => this.toTransactionRecord(doc.id, doc.data()));
     }
+    async getLastTransaction(productId, locationId) {
+        try {
+            const snapshot = await this.transactionsCollection
+                .where('productId', '==', productId)
+                .where('locationId', '==', locationId)
+                .orderBy('ts', 'desc')
+                .limit(1)
+                .get();
+            if (snapshot.empty) {
+                return null;
+            }
+            return this.toTransactionRecord(snapshot.docs[0].id, snapshot.docs[0].data());
+        }
+        catch (error) {
+            if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+                console.warn('Firestore index not found, falling back to in-memory sort');
+                const snapshot = await this.transactionsCollection
+                    .where('productId', '==', productId)
+                    .where('locationId', '==', locationId)
+                    .get();
+                if (snapshot.empty) {
+                    return null;
+                }
+                const transactions = snapshot.docs.map((doc) => this.toTransactionRecord(doc.id, doc.data()));
+                transactions.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+                return transactions[0];
+            }
+            throw error;
+        }
+    }
     async getAllInventory() {
         const snapshot = await this.inventoryCollection.get();
         return snapshot.docs.map((doc) => this.toInventoryRecord(doc.id, doc.data()));

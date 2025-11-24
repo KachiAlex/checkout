@@ -17,13 +17,15 @@ const products_service_1 = require("../products/products.service");
 const categories_service_1 = require("../categories/categories.service");
 const brands_service_1 = require("../brands/brands.service");
 const batch_inventory_repository_1 = require("./batch-inventory.repository");
+const users_repository_1 = require("../users/users.repository");
 let InventoryService = class InventoryService {
-    constructor(inventoryRepository, productsService, categoriesService, brandsService, batchInventoryRepository) {
+    constructor(inventoryRepository, productsService, categoriesService, brandsService, batchInventoryRepository, usersRepository) {
         this.inventoryRepository = inventoryRepository;
         this.productsService = productsService;
         this.categoriesService = categoriesService;
         this.brandsService = brandsService;
         this.batchInventoryRepository = batchInventoryRepository;
+        this.usersRepository = usersRepository;
     }
     async getStock(locationId, tenantId) {
         const inventoryRecords = await this.inventoryRepository.listStock(locationId);
@@ -36,7 +38,24 @@ let InventoryService = class InventoryService {
                     return {
                         ...record,
                         product: null,
+                        lastTransaction: null,
                     };
+                }
+                const lastTransaction = await this.inventoryRepository.getLastTransaction(record.productId, locationId);
+                let lastUpdatedBy = null;
+                if (lastTransaction?.userId && tenantId) {
+                    try {
+                        const user = await this.usersRepository.findById(lastTransaction.userId);
+                        if (user) {
+                            lastUpdatedBy = {
+                                id: user.id,
+                                name: user.name,
+                            };
+                        }
+                    }
+                    catch (error) {
+                        console.error(`Failed to fetch user ${lastTransaction.userId}:`, error);
+                    }
                 }
                 return {
                     ...record,
@@ -48,6 +67,14 @@ let InventoryService = class InventoryService {
                         description: product.description,
                         priceCents: product.priceCents,
                     },
+                    lastTransaction: lastTransaction
+                        ? {
+                            timestamp: lastTransaction.ts,
+                            userId: lastTransaction.userId,
+                            user: lastUpdatedBy,
+                            type: lastTransaction.type,
+                        }
+                        : null,
                 };
             }
             catch (error) {
@@ -55,6 +82,7 @@ let InventoryService = class InventoryService {
                 return {
                     ...record,
                     product: null,
+                    lastTransaction: null,
                 };
             }
         }));
@@ -177,6 +205,7 @@ exports.InventoryService = InventoryService = __decorate([
         products_service_1.ProductsService,
         categories_service_1.CategoriesService,
         brands_service_1.BrandsService,
-        batch_inventory_repository_1.BatchInventoryRepository])
+        batch_inventory_repository_1.BatchInventoryRepository,
+        users_repository_1.UsersRepository])
 ], InventoryService);
 //# sourceMappingURL=inventory.service.js.map

@@ -15,6 +15,12 @@ export declare class InventoryController {
             description: string;
             priceCents: number;
         };
+        lastTransaction: {
+            timestamp: Date;
+            userId: string;
+            user: any;
+            type: import("@pos-checkout/shared").InventoryTransactionType;
+        };
         id: string;
         productId: string;
         locationId: string;

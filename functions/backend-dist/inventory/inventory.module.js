@@ -16,12 +16,13 @@ const locations_repository_1 = require("../locations/locations.repository");
 const categories_module_1 = require("../categories/categories.module");
 const brands_module_1 = require("../brands/brands.module");
 const batch_inventory_repository_1 = require("./batch-inventory.repository");
+const users_module_1 = require("../users/users.module");
 let InventoryModule = class InventoryModule {
 };
 exports.InventoryModule = InventoryModule;
 exports.InventoryModule = InventoryModule = __decorate([
     (0, common_1.Module)({
-        imports: [products_module_1.ProductsModule, categories_module_1.CategoriesModule, brands_module_1.BrandsModule],
+        imports: [products_module_1.ProductsModule, categories_module_1.CategoriesModule, brands_module_1.BrandsModule, users_module_1.UsersModule],
         controllers: [inventory_controller_1.InventoryController],
         providers: [inventory_service_1.InventoryService, inventory_repository_1.InventoryRepository, locations_repository_1.LocationsRepository, batch_inventory_repository_1.BatchInventoryRepository],
         exports: [inventory_service_1.InventoryService, inventory_repository_1.InventoryRepository, batch_inventory_repository_1.BatchInventoryRepository],

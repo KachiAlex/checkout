@@ -1,17 +1,20 @@
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
+import { InventoryTransactionType } from '@pos-checkout/shared';
 import { InventoryRepository, InventoryTransactionRecord } from './inventory.repository';
 import { ProductsService } from '../products/products.service';
 import { CategoriesService } from '../categories/categories.service';
 import { BrandsService } from '../brands/brands.service';
 import { BatchInventoryRepository } from './batch-inventory.repository';
+import { UsersRepository } from '../users/users.repository';
 export declare class InventoryService {
     private readonly inventoryRepository;
     private readonly productsService;
     private readonly categoriesService;
     private readonly brandsService;
     private readonly batchInventoryRepository;
-    constructor(inventoryRepository: InventoryRepository, productsService: ProductsService, categoriesService: CategoriesService, brandsService: BrandsService, batchInventoryRepository: BatchInventoryRepository);
+    private readonly usersRepository;
+    constructor(inventoryRepository: InventoryRepository, productsService: ProductsService, categoriesService: CategoriesService, brandsService: BrandsService, batchInventoryRepository: BatchInventoryRepository, usersRepository: UsersRepository);
     getStock(locationId: string, tenantId?: string): Promise<{
         product: {
             id: string;
@@ -20,6 +23,12 @@ export declare class InventoryService {
             barcode: string;
             description: string;
             priceCents: number;
+        };
+        lastTransaction: {
+            timestamp: Date;
+            userId: string;
+            user: any;
+            type: InventoryTransactionType;
         };
         id: string;
         productId: string;

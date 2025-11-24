@@ -7,6 +7,7 @@ import { ProductsService } from '../products/products.service';
 import { CategoriesService } from '../categories/categories.service';
 import { BrandsService } from '../brands/brands.service';
 import { BatchInventoryRepository } from './batch-inventory.repository';
+import { UsersRepository } from '../users/users.repository';
 
 @Injectable()
 export class InventoryService {
@@ -16,12 +17,13 @@ export class InventoryService {
     private readonly categoriesService: CategoriesService,
     private readonly brandsService: BrandsService,
     private readonly batchInventoryRepository: BatchInventoryRepository,
+    private readonly usersRepository: UsersRepository,
   ) {}
 
   async getStock(locationId: string, tenantId?: string) {
     const inventoryRecords = await this.inventoryRepository.listStock(locationId);
     
-    // Enrich inventory records with product information
+    // Enrich inventory records with product information and last transaction
     const enrichedRecords = await Promise.all(
       inventoryRecords.map(async (record) => {
         try {
@@ -35,7 +37,30 @@ export class InventoryService {
             return {
               ...record,
               product: null,
+              lastTransaction: null,
             };
+          }
+
+          // Get last transaction for this inventory item
+          const lastTransaction = await this.inventoryRepository.getLastTransaction(
+            record.productId,
+            locationId,
+          );
+
+          // Get user info if transaction has userId
+          let lastUpdatedBy = null;
+          if (lastTransaction?.userId && tenantId) {
+            try {
+              const user = await this.usersRepository.findById(lastTransaction.userId);
+              if (user) {
+                lastUpdatedBy = {
+                  id: user.id,
+                  name: user.name,
+                };
+              }
+            } catch (error) {
+              console.error(`Failed to fetch user ${lastTransaction.userId}:`, error);
+            }
           }
 
           return {
@@ -48,6 +73,14 @@ export class InventoryService {
               description: product.description,
               priceCents: product.priceCents,
             },
+            lastTransaction: lastTransaction
+              ? {
+                  timestamp: lastTransaction.ts,
+                  userId: lastTransaction.userId,
+                  user: lastUpdatedBy,
+                  type: lastTransaction.type,
+                }
+              : null,
           };
         } catch (error) {
           // If product fetch fails, return record without product info
@@ -55,6 +88,7 @@ export class InventoryService {
           return {
             ...record,
             product: null,
+            lastTransaction: null,
           };
         }
       })
