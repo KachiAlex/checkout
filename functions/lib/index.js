@@ -77,13 +77,13 @@ async function getApp() {
 exports.api = functions
     .region(DEFAULT_REGION)
     .runWith({
-    memory: '128MB',
-    timeoutSeconds: 30,
-    minInstances: 0,
+    memory: '256MB', // Increased to help with performance
+    timeoutSeconds: 60, // Increased timeout to 60 seconds
+    minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
     maxInstances: MAX_INSTANCES,
     ingressSettings: 'ALLOW_ALL',
 })
-    .https.onRequest(async (req, res) => {
+    .https.onRequest((req, res) => {
     const origin = req.headers.origin || '';
     const allowedOrigins = [
         'https://checkout-77d99.web.app',
@@ -97,9 +97,9 @@ exports.api = functions
         origin.startsWith('https://localhost') ||
         origin.startsWith('capacitor://') ||
         allowedOrigins.includes(origin);
-    // Handle CORS preflight requests - MUST return immediately, don't pass to NestJS
+    // Handle CORS preflight requests - MUST be synchronous, no async/await
+    // This ensures OPTIONS requests are handled immediately without any delays
     if (req.method === 'OPTIONS') {
-        console.log('[Functions] Handling OPTIONS preflight request from origin:', origin);
         if (isAllowed) {
             res.set('Access-Control-Allow-Origin', origin || '*');
             res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
@@ -109,35 +109,37 @@ exports.api = functions
             res.status(204).end();
             return;
         }
-        console.warn('[Functions] CORS blocked origin:', origin);
         res.status(403).end('CORS not allowed');
         return;
     }
-    // Set CORS headers BEFORE passing to NestJS
-    // This ensures headers are set even if NestJS fails or times out
-    if (isAllowed) {
-        res.set('Access-Control-Allow-Origin', origin || '*');
-        res.set('Access-Control-Allow-Credentials', 'true');
-        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
-        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin');
-    }
-    try {
-        const app = await getApp();
-        // Pass request to NestJS - it will handle the actual request
-        app(req, res);
-    }
-    catch (error) {
-        console.error('[Functions] Error handling request:', error);
-        // Ensure CORS headers are set even on error
+    // For non-OPTIONS requests, handle asynchronously
+    (async () => {
+        // Set CORS headers BEFORE passing to NestJS
+        // This ensures headers are set even if NestJS fails or times out
         if (isAllowed) {
             res.set('Access-Control-Allow-Origin', origin || '*');
             res.set('Access-Control-Allow-Credentials', 'true');
+            res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+            res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin');
         }
-        if (!res.headersSent) {
-            res.status(500).json({
-                error: 'Internal server error',
-                message: error?.message || 'Failed to initialize backend',
-            });
+        try {
+            const app = await getApp();
+            // Pass request to NestJS - it will handle the actual request
+            app(req, res);
         }
-    }
+        catch (error) {
+            console.error('[Functions] Error handling request:', error);
+            // Ensure CORS headers are set even on error
+            if (isAllowed) {
+                res.set('Access-Control-Allow-Origin', origin || '*');
+                res.set('Access-Control-Allow-Credentials', 'true');
+            }
+            if (!res.headersSent) {
+                res.status(500).json({
+                    error: 'Internal server error',
+                    message: error?.message || 'Failed to initialize backend',
+                });
+            }
+        }
+    })();
 });

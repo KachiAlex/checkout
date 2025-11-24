@@ -23,24 +23,67 @@ interface InventoryItem {
 }
 
 export function InventoryPage() {
-  const { user, logout, accessToken } = useAuthStore();
+  const { user, logout, accessToken, tenant } = useAuthStore();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [adjustQuantity, setAdjustQuantity] = useState('');
   const [adjustType, setAdjustType] = useState<'adjust' | 'received'>('adjust');
+  const [effectiveLocationId, setEffectiveLocationId] = useState<string | null>(user?.locationId || null);
+
+  // Get the effective locationId (user's locationId or first location for tenant)
+  const getEffectiveLocationId = async (): Promise<string | null> => {
+    if (!accessToken || !user) return null;
+    
+    // If user has locationId, use it
+    if (user.locationId) {
+      return user.locationId;
+    }
+    
+    // Otherwise, get first location for tenant
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/locations`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const locations = response.data || [];
+      if (locations.length > 0) {
+        return locations[0].id;
+      }
+    } catch (error) {
+      console.error('Failed to fetch locations:', error);
+    }
+    
+    return null;
+  };
 
   const loadInventory = async () => {
-    if (!accessToken || !user?.locationId) return;
+    if (!accessToken || !user) return;
     
     setLoading(true);
     try {
+      // Get effective locationId
+      const locationId = await getEffectiveLocationId();
+      if (!locationId) {
+        setInventory([]);
+        toast.error('No location found. Please set your location in Settings.');
+        return;
+      }
+      
+      setEffectiveLocationId(locationId);
+      
       const response = await axios.get(
-        `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
+        `${API_URL}/api/v1/inventory/${locationId}/stock`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       setInventory(response.data || []);
-    } catch (error) {
-      toast.error('Failed to load inventory');
+    } catch (error: any) {
+      console.error('Failed to load inventory:', error);
+      if (error.response?.status === 401) {
+        toast.error('Authentication expired. Please log in again.');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to load inventory');
+      }
     } finally {
       setLoading(false);
     }
@@ -56,20 +99,23 @@ export function InventoryPage() {
       // Find product by barcode
       const productResponse = await axios.get(
         `${API_URL}/api/v1/products?query=${encodeURIComponent(barcode)}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
       );
 
       if (productResponse.data && productResponse.data.length > 0) {
         const product = productResponse.data[0];
         setSelectedProduct(product);
         
-        // Find inventory for this product
-        if (!user?.locationId) {
+        // Get effective locationId
+        const locationId = effectiveLocationId || await getEffectiveLocationId();
+        if (!locationId) {
           toast.error('Location not set');
           return;
         }
         
         const invResponse = await axios.get(
-          `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
+          `${API_URL}/api/v1/inventory/${locationId}/stock`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         
         const invItem = invResponse.data.find((inv: any) => inv.productId === product.id);
@@ -87,15 +133,23 @@ export function InventoryPage() {
   };
 
   const handleAdjustInventory = async () => {
-    if (!selectedProduct || !adjustQuantity || !accessToken || !user?.locationId) {
+    if (!selectedProduct || !adjustQuantity || !accessToken || !user) {
       toast.error('Please select a product and enter quantity');
       return;
     }
 
     try {
+      // Get effective locationId
+      const locationId = effectiveLocationId || await getEffectiveLocationId();
+      if (!locationId) {
+        toast.error('Location not set. Please set your location in Settings.');
+        return;
+      }
+      
       // Find current inventory
       const invResponse = await axios.get(
-        `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
+        `${API_URL}/api/v1/inventory/${locationId}/stock`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       
       const invItem = invResponse.data.find((inv: any) => inv.productId === selectedProduct.id);
@@ -112,12 +166,13 @@ export function InventoryPage() {
         `${API_URL}/api/v1/inventory/adjust`,
         {
           productId: selectedProduct.id,
-          locationId: user.locationId,
+          locationId,
           delta,
           type: adjustType,
           userId: user.id,
           notes: `Manual adjustment via POS`,
         },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
       );
 
       toast.success(`Inventory updated: ${selectedProduct.name} = ${newQty} units`);
@@ -131,10 +186,33 @@ export function InventoryPage() {
 
   // Load inventory on mount
   useEffect(() => {
-    if (user?.locationId && accessToken) {
+    if (user && accessToken) {
       loadInventory();
     }
-  }, [user?.locationId, accessToken]);
+  }, [user?.id, accessToken]);
+
+  // Auto-refresh when page comes into focus (e.g., after creating inventory elsewhere)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user && accessToken) {
+        loadInventory();
+      }
+    };
+
+    const handleFocus = () => {
+      if (user && accessToken) {
+        loadInventory();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user?.id, accessToken]);
 
   return (
     <div className="theme-background min-h-screen">
@@ -149,7 +227,12 @@ export function InventoryPage() {
             <div>
               <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Inventory</p>
               <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Inventory Management</h1>
-              <p className="theme-text-secondary text-sm">Store: {user?.locationId || 'store-001'}</p>
+              <p className="theme-text-secondary text-sm">
+                Store: {effectiveLocationId || user?.locationId || 'Loading...'}
+                {!user?.locationId && effectiveLocationId && (
+                  <span className="ml-2 text-xs text-amber-400">(Using tenant's first location)</span>
+                )}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">

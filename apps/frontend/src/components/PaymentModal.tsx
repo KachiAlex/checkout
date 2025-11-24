@@ -240,9 +240,19 @@ export function PaymentModal({
 
               {method === 'cash' && (
                 <div className="theme-surface rounded-2xl border p-4">
-                  <label className="theme-text-secondary mb-2 block text-sm font-medium">
-                    Cash Received
-                  </label>
+                  <div className="mb-3 flex items-center justify-between">
+                    <label className="theme-text-secondary block text-sm font-medium">
+                      Cash Received
+                    </label>
+                    <button
+                      onClick={() => {
+                        setCashAmount((total / 100).toFixed(2));
+                      }}
+                      className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+                    >
+                      Use Exact Amount
+                    </button>
+                  </div>
                   <input
                     type="number"
                     value={cashAmount}
@@ -286,25 +296,42 @@ export function PaymentModal({
               )}
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="theme-chip flex-1 rounded-full border px-6 py-3 font-semibold transition hover:bg-white/10 touch-manipulation"
-                aria-label="Cancel payment"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={
-                  (method === 'cash' && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
-                  processing
-                }
-                className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
-                aria-label="Confirm payment"
-              >
-                Confirm Payment
-              </button>
+            <div className="flex flex-col gap-3">
+              {method === 'cash' && (
+                <button
+                  onClick={() => {
+                    setCashAmount((total / 100).toFixed(2));
+                    // Auto-confirm after setting exact amount
+                    setTimeout(() => {
+                      handleConfirm();
+                    }, 100);
+                  }}
+                  className="w-full rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-3 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 touch-manipulation"
+                  aria-label="Confirm full payment received"
+                >
+                  ✓ Confirm Full Payment Received
+                </button>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="theme-chip flex-1 rounded-full border px-6 py-3 font-semibold transition hover:bg-white/10 touch-manipulation"
+                  aria-label="Cancel payment"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={
+                    (method === 'cash' && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
+                    processing
+                  }
+                  className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                  aria-label="Confirm payment"
+                >
+                  {method === 'cash' ? 'Confirm with Change' : 'Confirm Payment'}
+                </button>
+              </div>
             </div>
           </>
         )}

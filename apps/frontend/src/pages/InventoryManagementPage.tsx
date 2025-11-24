@@ -251,7 +251,10 @@ export function InventoryManagementPage() {
     }
 
     if (!accessToken || !user) {
-      toast.error('Not authenticated');
+      toast.error('Not authenticated. Please log in again.');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
       return;
     }
 
@@ -269,6 +272,7 @@ export function InventoryManagementPage() {
         return;
       }
 
+      // Note: create-item endpoint will use the first location for the tenant if user has no locationId
       const response = await axios.post(
         `${API_URL}/api/v1/inventory/create-item`,
         {
@@ -282,7 +286,12 @@ export function InventoryManagementPage() {
           brandId: inventoryForm.brandId || undefined,
           brandName: inventoryForm.brandName || undefined,
         },
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        { 
+          headers: { 
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          } 
+        },
       );
 
       // Only show success if we got a successful response
@@ -302,9 +311,18 @@ export function InventoryManagementPage() {
           brandName: '',
         });
 
-        // Reload inventory
-        await loadInventoryStock();
-        await loadInventoryTransactions();
+        // Reload inventory (will work if user has locationId, otherwise will show warning)
+        if (user.locationId) {
+          await loadInventoryStock();
+          await loadInventoryTransactions();
+        } else {
+          // If no locationId, still try to reload - backend might have assigned one
+          // Or user needs to set locationId in settings
+          toast('Inventory created. Please set your location in Settings to view inventory.', { 
+            icon: 'ℹ️',
+            duration: 5000 
+          });
+        }
       }
     } catch (error: any) {
       console.error('Failed to add inventory:', error);
@@ -314,6 +332,15 @@ export function InventoryManagementPage() {
         setTimeout(() => {
           window.location.href = '/login';
         }, 2000);
+      } else if (error.response?.status === 400) {
+        const message = error.response?.data?.message || 'Invalid request';
+        toast.error(message);
+        if (message.includes('location')) {
+          toast('Please set your location in Settings or contact your administrator.', {
+            icon: 'ℹ️',
+            duration: 5000,
+          });
+        }
       } else {
         toast.error(error.response?.data?.message || error.message || 'Failed to add inventory');
       }
@@ -337,6 +364,11 @@ export function InventoryManagementPage() {
               <p className="theme-text-secondary text-sm">
                 Store: {user?.locationId || 'N/A'} • Staff: {user?.name || 'N/A'}
               </p>
+              {!user?.locationId && (
+                <p className="theme-text-secondary mt-1 text-xs text-amber-400">
+                  ⚠️ No location set. Inventory will be assigned to your tenant's first location.
+                </p>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
