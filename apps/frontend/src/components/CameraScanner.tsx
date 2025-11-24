@@ -113,7 +113,7 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
       <div className="theme-card w-full max-w-2xl rounded-3xl border p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="theme-text-primary text-xl font-bold">Camera Scanner</h2>
-          <button
+                <button
             onClick={() => {
               stopScanning();
               onClose();
@@ -122,22 +122,22 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
             aria-label="Close scanner"
           >
             ✕
-          </button>
-        </div>
+              </button>
+      </div>
 
         <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-2xl bg-black">
-          <video
-            ref={videoRef}
+            <video
+              ref={videoRef}
             className="h-full w-full object-cover"
-            playsInline
-            autoPlay
-            muted
-          />
+              playsInline
+              autoPlay
+              muted
+            />
           {!scanning && !error && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-            </div>
-          )}
+              </div>
+            )}
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/80">
               <div className="text-center">
@@ -149,7 +149,7 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
                   Retry
                 </button>
               </div>
-            </div>
+          </div>
           )}
           {/* Scanning overlay with guide lines */}
           {scanning && !error && (
@@ -160,8 +160,8 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
                   Position barcode/QR code here
                 </p>
               </div>
-            </div>
-          )}
+        </div>
+      )}
         </div>
 
         <div className="space-y-2 text-center">
@@ -182,7 +182,7 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
             Close
           </button>
         </div>
-      </div>
+        </div>
     </div>
   );
 }

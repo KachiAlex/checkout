@@ -7,14 +7,37 @@ const maxInstancesEnv = Number(process.env.FUNCTION_MAX_INSTANCES ?? '1');
 const MAX_INSTANCES = Number.isFinite(maxInstancesEnv) && maxInstancesEnv > 0 ? maxInstancesEnv : 1;
 
 let cachedApp: Express | null = null;
+let appInitializationPromise: Promise<Express> | null = null;
 
 async function getApp(): Promise<Express> {
-  if (!cachedApp) {
-    const { createServer } = await import('../backend-dist/serverless');
-    cachedApp = await createServer();
+  // If already cached, return immediately
+  if (cachedApp) {
+    return cachedApp;
   }
 
-  return cachedApp;
+  // If initialization is in progress, wait for it
+  if (appInitializationPromise) {
+    return appInitializationPromise;
+  }
+
+  // Start initialization
+  appInitializationPromise = (async () => {
+    try {
+      console.log('[Functions] Loading backend serverless adapter...');
+      const { createServer } = await import('../backend-dist/serverless');
+      console.log('[Functions] Creating NestJS server...');
+      const app = await createServer();
+      console.log('[Functions] NestJS server created successfully');
+      cachedApp = app;
+      return app;
+    } catch (error) {
+      console.error('[Functions] Failed to initialize backend:', error);
+      appInitializationPromise = null; // Reset so we can retry
+      throw error;
+    }
+  })();
+
+  return appInitializationPromise;
 }
 
 // Cost-optimized configuration:
@@ -67,7 +90,15 @@ export const api = functions
       res.set('Access-Control-Allow-Credentials', 'true');
     }
     
-    const app = await getApp();
-    return app(req, res);
+    try {
+      const app = await getApp();
+      return app(req, res);
+    } catch (error: any) {
+      console.error('[Functions] Error handling request:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error?.message || 'Failed to initialize backend',
+      });
+    }
   });
 

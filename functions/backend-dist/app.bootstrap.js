@@ -54,10 +54,11 @@ async function configureApp(app, options) {
                 return callback(null, true);
             }
             const normalizedOrigin = requestOrigin.trim().toLowerCase();
+            const normalizedCorsOrigins = corsOrigins.map(origin => origin.trim().toLowerCase());
             const allowByPrefix = normalizedOrigin.startsWith('capacitor://') ||
                 normalizedOrigin.startsWith('http://localhost') ||
                 normalizedOrigin.startsWith('https://localhost');
-            if (allowByPrefix || corsOrigins.includes(requestOrigin)) {
+            if (allowByPrefix || normalizedCorsOrigins.includes(normalizedOrigin)) {
                 return callback(null, true);
             }
             console.warn(`❌ CORS blocked origin: ${requestOrigin}`);
