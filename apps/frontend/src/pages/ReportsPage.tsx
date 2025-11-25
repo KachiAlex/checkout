@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { format, parseISO, startOfDay, endOfDay, subDays } from 'date-fns';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
+type ReportTab = 'general' | 'staff' | 'credit';
 
 interface SalesAnalytics {
   period: Period;
@@ -24,26 +25,6 @@ interface SalesAnalytics {
     orders: number;
     items: number;
     averageOrderValue: number;
-  }>;
-}
-
-interface InventoryAnalytics {
-  period: Period;
-  from: string;
-  to: string;
-  locationId?: string;
-  totalReceived: number;
-  totalSold: number;
-  totalReturned: number;
-  netChange: number;
-  data: Array<{
-    period: string;
-    received: number;
-    sold: number;
-    returned: number;
-    adjusted: number;
-    transactions: number;
-    netChange: number;
   }>;
 }
 
@@ -70,8 +51,27 @@ interface StaffPerformance {
   }>;
 }
 
+interface CreditReport {
+  totalOutstanding: number;
+  totalOrders: number;
+  orders: Array<{
+    orderId: string;
+    orderNumber: string;
+    customerId?: string;
+    customerName?: string;
+    totalCents: number;
+    paidCents: number;
+    outstandingCents: number;
+    createdAt: string;
+    createdBy: string;
+    createdByName?: string;
+    status: string;
+  }>;
+}
+
 export function ReportsPage() {
   const { logout, accessToken, user } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<ReportTab>('general');
   const [period, setPeriod] = useState<Period>('daily');
   const [customDateFrom, setCustomDateFrom] = useState<string>(
     format(startOfDay(subDays(new Date(), 7)), 'yyyy-MM-dd')
@@ -81,10 +81,10 @@ export function ReportsPage() {
   );
   const [loading, setLoading] = useState(true);
   const [salesAnalytics, setSalesAnalytics] = useState<SalesAnalytics | null>(null);
-  const [inventoryAnalytics, setInventoryAnalytics] = useState<InventoryAnalytics | null>(null);
   const [staffPerformance, setStaffPerformance] = useState<StaffPerformance | null>(null);
+  const [creditReport, setCreditReport] = useState<CreditReport | null>(null);
 
-  const loadAnalytics = async () => {
+  const loadGeneralAnalytics = async () => {
     if (!accessToken) return;
 
     setLoading(true);
@@ -100,32 +100,176 @@ export function ReportsPage() {
         params.to = customDateTo;
       }
 
-      const [salesRes, inventoryRes, staffRes] = await Promise.all([
-        axios.get(`${API_URL}/api/v1/reports/sales-analytics`, { headers, params }),
-        axios.get(`${API_URL}/api/v1/reports/inventory-analytics`, { headers, params }),
-        axios.get(`${API_URL}/api/v1/reports/staff-performance`, {
-          headers,
-          params: { location_id: user?.locationId },
-        }),
-      ]);
-
-      setSalesAnalytics(salesRes.data);
-      setInventoryAnalytics(inventoryRes.data);
-      setStaffPerformance(staffRes.data);
+      const response = await axios.get(`${API_URL}/api/v1/reports/sales-analytics`, { headers, params });
+      setSalesAnalytics(response.data);
     } catch (error: any) {
-      console.error('Failed to load analytics:', error);
-      toast.error(error.response?.data?.message || 'Failed to load analytics');
+      console.error('Failed to load sales analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load sales analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStaffPerformance = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const params: any = {
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        params.from = customDateFrom;
+        params.to = customDateTo;
+      }
+
+      const response = await axios.get(`${API_URL}/api/v1/reports/staff-performance`, { headers, params });
+      setStaffPerformance(response.data);
+    } catch (error: any) {
+      console.error('Failed to load staff performance:', error);
+      toast.error(error.response?.data?.message || 'Failed to load staff performance');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCreditReport = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const params: any = {
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        params.from = customDateFrom;
+        params.to = customDateTo;
+      }
+
+      // Get all completed orders
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: {
+          location_id: user?.locationId,
+          status: 'completed',
+          from: period === 'custom' ? customDateFrom : undefined,
+          to: period === 'custom' ? customDateTo : undefined,
+        },
+      });
+
+      const orders = ordersResponse.data || [];
+      
+      // For each order, get payments to calculate outstanding
+      const creditOrders = [];
+      let totalOutstanding = 0;
+
+      for (const order of orders) {
+        try {
+          const paymentsResponse = await axios.get(
+            `${API_URL}/api/v1/orders/${order.id}/payments`,
+            { headers }
+          );
+          const payments = paymentsResponse.data || [];
+          
+          const paidAmount = payments
+            .filter((p: any) => p.status === 'completed')
+            .reduce((sum: number, p: any) => sum + (p.amountCents || 0), 0);
+          
+          const outstanding = order.totalCents - paidAmount;
+          
+          if (outstanding > 0) {
+            creditOrders.push({
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              customerId: order.customerId,
+              totalCents: order.totalCents,
+              paidCents: paidAmount,
+              outstandingCents: outstanding,
+              createdAt: order.createdAt,
+              createdBy: order.createdBy,
+              status: order.status,
+            });
+            totalOutstanding += outstanding;
+          }
+        } catch (error) {
+          // If payment fetch fails, assume full payment (skip)
+          console.warn(`Failed to fetch payments for order ${order.id}:`, error);
+        }
+      }
+
+      // Fetch user names and customer names (with error handling)
+      const enrichedOrders = await Promise.all(
+        creditOrders.map(async (order) => {
+          let createdByName = `User ${order.createdBy.substring(0, 8)}`;
+          let customerName = order.customerId ? `Customer ${order.customerId.substring(0, 8)}` : undefined;
+
+          // Try to fetch user name from users list
+          try {
+            if (order.createdBy) {
+              const usersResponse = await axios.get(`${API_URL}/api/v1/users`, { headers });
+              const users = usersResponse.data || [];
+              const user = users.find((u: any) => u.id === order.createdBy);
+              if (user?.name) {
+                createdByName = user.name;
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch users:`, error);
+          }
+
+          // Try to fetch customer name
+          try {
+            if (order.customerId) {
+              const customerResponse = await axios.get(`${API_URL}/api/v1/customers/${order.customerId}`, { headers });
+              if (customerResponse.data?.name) {
+                customerName = customerResponse.data.name;
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch customer ${order.customerId}:`, error);
+          }
+
+          return {
+            ...order,
+            createdByName,
+            customerName: customerName || 'Walk-in',
+          };
+        })
+      );
+
+      setCreditReport({
+        totalOutstanding,
+        totalOrders: enrichedOrders.length,
+        orders: enrichedOrders,
+      });
+    } catch (error: any) {
+      console.error('Failed to load credit report:', error);
+      toast.error(error.response?.data?.message || 'Failed to load credit report');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAnalytics();
-  }, [period, accessToken, user?.locationId, customDateFrom, customDateTo]);
+    if (!accessToken) return;
+
+    if (activeTab === 'general') {
+      loadGeneralAnalytics();
+    } else if (activeTab === 'staff') {
+      loadStaffPerformance();
+    } else if (activeTab === 'credit') {
+      loadCreditReport();
+    }
+  }, [activeTab, period, accessToken, user?.locationId, customDateFrom, customDateTo]);
 
   const formatCurrency = (amount: number) => {
-    return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // If amount is already in currency units (not cents), use as-is, otherwise divide by 100
+    const amountInCurrency = amount > 1000000 ? amount / 100 : amount;
+    return `₦${amountInCurrency.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatPeriod = (periodStr: string) => {
@@ -157,16 +301,12 @@ export function ReportsPage() {
       return;
     }
 
-    // Get headers from first object
     const headers = Object.keys(data[0]);
-    
-    // Create CSV content
     const csvContent = [
       headers.join(','),
       ...data.map(row => 
         headers.map(header => {
           const value = row[header];
-          // Handle values that might contain commas or quotes
           if (value === null || value === undefined) return '';
           const stringValue = String(value);
           if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
@@ -177,7 +317,6 @@ export function ReportsPage() {
       )
     ].join('\n');
 
-    // Create blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -190,19 +329,19 @@ export function ReportsPage() {
     toast.success('Report exported successfully');
   };
 
-  const handleExportSales = () => {
+  const handleExportGeneral = () => {
     if (!salesAnalytics) return;
-    exportToCSV(salesAnalytics.data, 'sales_report');
-  };
-
-  const handleExportInventory = () => {
-    if (!inventoryAnalytics) return;
-    exportToCSV(inventoryAnalytics.data, 'inventory_report');
+    exportToCSV(salesAnalytics.data, 'general_sales_report');
   };
 
   const handleExportStaff = () => {
     if (!staffPerformance) return;
     exportToCSV(staffPerformance.staffPerformance, 'staff_performance_report');
+  };
+
+  const handleExportCredit = () => {
+    if (!creditReport) return;
+    exportToCSV(creditReport.orders, 'credit_report');
   };
 
   return (
@@ -218,7 +357,7 @@ export function ReportsPage() {
             />
             <div>
               <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Insights</p>
-              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Analytics & Reports</h1>
+              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Business Reports</h1>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -236,6 +375,27 @@ export function ReportsPage() {
               Logout
             </button>
             <ThemeToggle />
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+          <div className="flex flex-wrap gap-3">
+            {(['general', 'staff', 'credit'] as ReportTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`rounded-full border px-6 py-3 text-sm font-semibold transition ${
+                  activeTab === tab
+                    ? 'border-sky-400/70 bg-sky-500/20 text-sky-50'
+                    : 'border-white/15 bg-white/5 text-white/70 hover:border-sky-300/50 hover:text-white'
+                }`}
+              >
+                {tab === 'general' && '📊 General Analytics'}
+                {tab === 'staff' && '👥 Staff Reports'}
+                {tab === 'credit' && '💳 Credit Reports'}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -294,17 +454,17 @@ export function ReportsPage() {
         {loading ? (
           <div className="theme-card rounded-3xl border p-12 backdrop-blur-xl text-center">
             <div className="text-4xl mb-4">⏳</div>
-            <p className="theme-text-secondary">Loading analytics...</p>
+            <p className="theme-text-secondary">Loading reports...</p>
           </div>
         ) : (
           <>
-            {/* Sales Analytics */}
-            {salesAnalytics && (
+            {/* General Business Analytics Tab */}
+            {activeTab === 'general' && salesAnalytics && (
               <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="theme-text-primary text-xl font-semibold">Sales Analytics</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">General Business Analytics</h2>
                   <button
-                    onClick={handleExportSales}
+                    onClick={handleExportGeneral}
                     disabled={!salesAnalytics || salesAnalytics.data.length === 0}
                     className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -396,111 +556,11 @@ export function ReportsPage() {
               </div>
             )}
 
-            {/* Inventory Analytics */}
-            {inventoryAnalytics && (
+            {/* Staff Performance Tab */}
+            {activeTab === 'staff' && staffPerformance && (
               <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="theme-text-primary text-xl font-semibold">Inventory Analytics</h2>
-                  <button
-                    onClick={handleExportInventory}
-                    disabled={!inventoryAnalytics || inventoryAnalytics.data.length === 0}
-                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    📥 Export CSV
-                  </button>
-                </div>
-                
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Items Received</p>
-                    <p className="theme-text-primary text-2xl font-bold text-emerald-400">
-                      {inventoryAnalytics.totalReceived.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Items Sold</p>
-                    <p className="theme-text-primary text-2xl font-bold text-rose-400">
-                      {inventoryAnalytics.totalSold.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Items Returned</p>
-                    <p className="theme-text-primary text-2xl font-bold text-amber-400">
-                      {inventoryAnalytics.totalReturned.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Net Change</p>
-                    <p className={`text-2xl font-bold ${inventoryAnalytics.netChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {inventoryAnalytics.netChange >= 0 ? '+' : ''}{inventoryAnalytics.netChange.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Inventory Movement Chart */}
-                <div>
-                  <h3 className="theme-text-primary text-sm font-semibold mb-3">Inventory Movement Over Time</h3>
-                  <div className="theme-surface rounded-xl border p-4">
-                    <div className="flex items-end justify-between gap-2 h-64">
-                      {inventoryAnalytics.data.map((item, idx) => {
-                        const maxValue = Math.max(
-                          ...inventoryAnalytics.data.map((d) => Math.max(d.received, d.sold, d.returned)),
-                          1
-                        );
-                        const receivedHeight = (item.received / maxValue) * 100;
-                        const soldHeight = (item.sold / maxValue) * 100;
-                        const returnedHeight = (item.returned / maxValue) * 100;
-                        return (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                            <div className="relative w-full flex items-end justify-center gap-0.5" style={{ height: '240px' }}>
-                              <div
-                                className="flex-1 rounded-t bg-gradient-to-t from-emerald-500 to-emerald-400"
-                                style={{ height: `${receivedHeight}%`, minHeight: '2px' }}
-                                title={`Received: ${item.received}`}
-                              />
-                              <div
-                                className="flex-1 rounded-t bg-gradient-to-t from-rose-500 to-rose-400"
-                                style={{ height: `${soldHeight}%`, minHeight: '2px' }}
-                                title={`Sold: ${item.sold}`}
-                              />
-                              <div
-                                className="flex-1 rounded-t bg-gradient-to-t from-amber-500 to-amber-400"
-                                style={{ height: `${returnedHeight}%`, minHeight: '2px' }}
-                                title={`Returned: ${item.returned}`}
-                              />
-                            </div>
-                            <p className="theme-text-secondary text-[10px] text-center transform -rotate-45 origin-top-left whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
-                              {formatPeriod(item.period)}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="flex gap-4 justify-center mt-4 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-emerald-400" />
-                        <span className="theme-text-secondary">Received</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-rose-400" />
-                        <span className="theme-text-secondary">Sold</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-amber-400" />
-                        <span className="theme-text-secondary">Returned</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Staff Performance */}
-            {staffPerformance && staffPerformance.staffPerformance.length > 0 && (
-              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="theme-text-primary text-xl font-semibold">Staff Performance</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Staff Performance Reports</h2>
                   <button
                     onClick={handleExportStaff}
                     disabled={!staffPerformance || staffPerformance.staffPerformance.length === 0}
@@ -510,83 +570,183 @@ export function ReportsPage() {
                   </button>
                 </div>
                 
-                <div className="space-y-4">
-                  {staffPerformance.staffPerformance.map((staff) => (
-                    <div key={staff.userId} className="theme-surface rounded-xl border p-4">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="theme-text-primary text-lg font-semibold">{staff.userName}</h3>
-                          <p className="theme-text-secondary text-sm">Staff ID: {staff.userId.substring(0, 8)}...</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Total Sales</p>
-                          <p className="theme-text-primary text-xl font-bold text-emerald-400">
-                            {formatCurrency(staff.sales.totalSales)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Orders</p>
-                          <p className="theme-text-primary text-lg font-semibold">{staff.sales.orderCount}</p>
-                        </div>
-                        <div>
-                          <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Items Sold</p>
-                          <p className="theme-text-primary text-lg font-semibold">{staff.sales.itemCount}</p>
-                        </div>
-                        <div>
-                          <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Avg Order</p>
-                          <p className="theme-text-primary text-lg font-semibold">
-                            {formatCurrency(staff.sales.averageOrderValue)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Inv Transactions</p>
-                          <p className="theme-text-primary text-lg font-semibold">{staff.inventory.transactions}</p>
-                        </div>
-                      </div>
-
-                      {staff.inventory.transactions > 0 && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
-                          <p className="theme-text-secondary text-xs uppercase tracking-wide mb-2">Inventory Activity</p>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <span className="theme-text-secondary">Received: </span>
-                              <span className="theme-text-primary font-semibold text-emerald-400">
-                                {staff.inventory.itemsReceived}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="theme-text-secondary">Sold: </span>
-                              <span className="theme-text-primary font-semibold text-rose-400">
-                                {staff.inventory.itemsSold}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="theme-text-secondary">Returned: </span>
-                              <span className="theme-text-primary font-semibold text-amber-400">
-                                {staff.inventory.itemsReturned}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="theme-text-secondary">Adjusted: </span>
-                              <span className="theme-text-primary font-semibold">
-                                {staff.inventory.itemsAdjusted}
-                              </span>
-                            </div>
+                {staffPerformance.staffPerformance.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="theme-text-secondary">No staff performance data available for the selected period.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {staffPerformance.staffPerformance.map((staff) => (
+                      <div key={staff.userId} className="theme-surface rounded-xl border p-4">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="theme-text-primary text-lg font-semibold">{staff.userName}</h3>
+                            <p className="theme-text-secondary text-sm">Staff ID: {staff.userId.substring(0, 8)}...</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Total Sales</p>
+                            <p className="theme-text-primary text-xl font-bold text-emerald-400">
+                              {formatCurrency(staff.sales.totalSales)}
+                            </p>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Orders</p>
+                            <p className="theme-text-primary text-lg font-semibold">{staff.sales.orderCount}</p>
+                          </div>
+                          <div>
+                            <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Items Sold</p>
+                            <p className="theme-text-primary text-lg font-semibold">{staff.sales.itemCount}</p>
+                          </div>
+                          <div>
+                            <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Avg Order</p>
+                            <p className="theme-text-primary text-lg font-semibold">
+                              {formatCurrency(staff.sales.averageOrderValue)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Inv Transactions</p>
+                            <p className="theme-text-primary text-lg font-semibold">{staff.inventory.transactions}</p>
+                          </div>
+                        </div>
+
+                        {staff.inventory.transactions > 0 && (
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                            <p className="theme-text-secondary text-xs uppercase tracking-wide mb-2">Inventory Activity</p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <span className="theme-text-secondary">Received: </span>
+                                <span className="theme-text-primary font-semibold text-emerald-400">
+                                  {staff.inventory.itemsReceived}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="theme-text-secondary">Sold: </span>
+                                <span className="theme-text-primary font-semibold text-rose-400">
+                                  {staff.inventory.itemsSold}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="theme-text-secondary">Returned: </span>
+                                <span className="theme-text-primary font-semibold text-amber-400">
+                                  {staff.inventory.itemsReturned}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="theme-text-secondary">Adjusted: </span>
+                                <span className="theme-text-primary font-semibold">
+                                  {staff.inventory.itemsAdjusted}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {staffPerformance && staffPerformance.staffPerformance.length === 0 && (
-              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl text-center">
-                <p className="theme-text-secondary">No staff performance data available for the selected period.</p>
+            {/* Credit Reports Tab */}
+            {activeTab === 'credit' && creditReport && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Credit Reports</h2>
+                  <button
+                    onClick={handleExportCredit}
+                    disabled={!creditReport || creditReport.orders.length === 0}
+                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    📥 Export CSV
+                  </button>
+                </div>
+
+                {/* Summary Card */}
+                <div className="theme-surface rounded-2xl border p-6 mb-6 bg-gradient-to-r from-amber-500/10 to-rose-500/10 border-amber-400/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Total Outstanding Credit</p>
+                      <p className="theme-text-primary text-3xl font-bold text-amber-400">
+                        {formatCurrency(creditReport.totalOutstanding)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Orders with Credit</p>
+                      <p className="theme-text-primary text-2xl font-bold text-rose-400">
+                        {creditReport.totalOrders}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Credit Orders Table */}
+                {creditReport.orders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="theme-text-secondary">No outstanding credit for the selected period.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-white/5">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            Order Number
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            Customer
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            Created By
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            Total Amount
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            Paid
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            Outstanding
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            Date
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/10">
+                        {creditReport.orders.map((order) => (
+                          <tr key={order.orderId} className="hover:bg-white/5 transition">
+                            <td className="px-6 py-4 whitespace-nowrap font-medium theme-text-primary">
+                              {order.orderNumber}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
+                              {order.customerName || 'Walk-in'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
+                              {order.createdByName || 'Unknown'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right theme-text-primary font-semibold">
+                              {formatCurrency(order.totalCents)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right theme-text-secondary">
+                              {formatCurrency(order.paidCents)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <span className="font-bold text-amber-400">
+                                {formatCurrency(order.outstandingCents)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap theme-text-secondary text-sm">
+                              {format(new Date(order.createdAt), 'MMM dd, yyyy HH:mm')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </>

@@ -71,7 +71,7 @@ export class LocationsRepository {
     return this.toRecord(doc.id, doc.data() as LocationDocument);
   }
 
-  async create(data: CreateLocationInput): Promise<LocationRecord> {
+  async create(data: CreateLocationInput & { tenantId?: string }): Promise<LocationRecord> {
     const now = FieldValue.serverTimestamp();
     const docRef = this.collection.doc();
     await docRef.set({
@@ -79,6 +79,7 @@ export class LocationsRepository {
       address: data.address,
       timezone: data.timezone ?? 'UTC',
       defaultPrinter: data.defaultPrinter,
+      tenantId: data.tenantId,
       createdAt: now,
       updatedAt: now,
     });
@@ -87,7 +88,7 @@ export class LocationsRepository {
     return this.toRecord(created.id, created.data() as LocationDocument);
   }
 
-  async update(id: string, update: Partial<CreateLocationInput>): Promise<LocationRecord> {
+  async update(id: string, update: Partial<CreateLocationInput & { tenantId?: string }>): Promise<LocationRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
     if (!existing.exists) {
@@ -104,6 +105,15 @@ export class LocationsRepository {
 
     const updated = await docRef.get();
     return this.toRecord(updated.id, updated.data() as LocationDocument);
+  }
+
+  async delete(id: string): Promise<void> {
+    const docRef = this.collection.doc(id);
+    const existing = await docRef.get();
+    if (!existing.exists) {
+      throw new NotFoundException(`Location ${id} not found`);
+    }
+    await docRef.delete();
   }
 
   private toRecord(id: string, data: LocationDocument | undefined): LocationRecord {

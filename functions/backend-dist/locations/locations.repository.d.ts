@@ -22,8 +22,13 @@ export declare class LocationsRepository {
     findAll(): Promise<LocationRecord[]>;
     findByTenant(tenantId: string): Promise<LocationRecord[]>;
     findById(id: string): Promise<LocationRecord | null>;
-    create(data: CreateLocationInput): Promise<LocationRecord>;
-    update(id: string, update: Partial<CreateLocationInput>): Promise<LocationRecord>;
+    create(data: CreateLocationInput & {
+        tenantId?: string;
+    }): Promise<LocationRecord>;
+    update(id: string, update: Partial<CreateLocationInput & {
+        tenantId?: string;
+    }>): Promise<LocationRecord>;
+    delete(id: string): Promise<void>;
     private toRecord;
     private timestampToDate;
 }

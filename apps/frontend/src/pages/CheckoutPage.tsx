@@ -373,6 +373,12 @@ export function CheckoutPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Link
+                to="/inventory"
+                className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-emerald-300/60 hover:text-emerald-100"
+              >
+                📦 Inventory
+              </Link>
               {isAdmin && (
                 <Link
                   to="/settings"

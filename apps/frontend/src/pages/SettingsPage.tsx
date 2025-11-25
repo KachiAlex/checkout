@@ -18,8 +18,11 @@ import {
   UpdatePaymentSettingsRequest,
 } from '../services/paymentSettingsService';
 import { receiptService, Printer } from '../services/receiptService';
+import { useScannerDeviceStore } from '../stores/scannerDeviceStore';
+import { fetchRegisteredDevices } from '../services/scannerDeviceService';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { format } from 'date-fns';
 
 function SectionContainer({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -78,10 +81,27 @@ export function SettingsPage() {
   });
   const [registeringPrinter, setRegisteringPrinter] = useState(false);
   const [printerAvailable, setPrinterAvailable] = useState<boolean | null>(null);
-  const [locations, setLocations] = useState<Array<{ id: string; name: string; address?: string }>>([]);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string; address?: string; timezone?: string }>>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState(user?.locationId || '');
   const [updatingLocation, setUpdatingLocation] = useState(false);
+  const [creatingLocation, setCreatingLocation] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<string | null>(null);
+  const [locationForm, setLocationForm] = useState({
+    name: '',
+    address: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  });
+  const { devices: scannerDevices, removeDevice: removeScannerDevice } = useScannerDeviceStore();
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [registeredDevices, setRegisteredDevices] = useState<Array<{
+    id: string;
+    name: string;
+    type: 'usb' | 'bluetooth' | 'camera';
+    connectedAt: Date;
+    lastUsedAt: Date;
+    isActive: boolean;
+  }>>([]);
 
   const isTenantAdmin = useMemo(() => user?.role === 'admin' || user?.isPlatformAdmin, [user?.role, user?.isPlatformAdmin]);
 
@@ -154,6 +174,22 @@ export function SettingsPage() {
     setSelectedLocationId(user?.locationId || '');
   }, [user?.locationId]);
 
+  useEffect(() => {
+    const loadDevices = async () => {
+      if (!accessToken) return;
+      setLoadingDevices(true);
+      try {
+        const devices = await fetchRegisteredDevices(user?.locationId);
+        setRegisteredDevices(devices);
+      } catch (error) {
+        console.error('Failed to load devices:', error);
+      } finally {
+        setLoadingDevices(false);
+      }
+    };
+    loadDevices();
+  }, [accessToken, user?.locationId]);
+
   const handleUpdateLocation = async () => {
     if (!accessToken) {
       toast.error('Not authenticated');
@@ -178,6 +214,109 @@ export function SettingsPage() {
     } finally {
       setUpdatingLocation(false);
     }
+  };
+
+  const handleCreateLocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessToken || !locationForm.name.trim()) {
+      toast.error('Location name is required');
+      return;
+    }
+    setCreatingLocation(true);
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/v1/locations`,
+        {
+          name: locationForm.name.trim(),
+          address: locationForm.address.trim() || undefined,
+          timezone: locationForm.timezone,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      toast.success(`Location "${locationForm.name}" created successfully`);
+      setLocationForm({ name: '', address: '', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' });
+      // Reload locations
+      const locationsResponse = await axios.get(`${API_URL}/api/v1/locations`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setLocations(locationsResponse.data || []);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to create location');
+    } finally {
+      setCreatingLocation(false);
+    }
+  };
+
+  const handleUpdateLocationDetails = async (locationId: string) => {
+    if (!accessToken || !locationForm.name.trim()) {
+      toast.error('Location name is required');
+      return;
+    }
+    setCreatingLocation(true);
+    try {
+      await axios.patch(
+        `${API_URL}/api/v1/locations/${locationId}`,
+        {
+          name: locationForm.name.trim(),
+          address: locationForm.address.trim() || undefined,
+          timezone: locationForm.timezone,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      toast.success('Location updated successfully');
+      setEditingLocation(null);
+      setLocationForm({ name: '', address: '', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' });
+      // Reload locations
+      const locationsResponse = await axios.get(`${API_URL}/api/v1/locations`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setLocations(locationsResponse.data || []);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update location');
+    } finally {
+      setCreatingLocation(false);
+    }
+  };
+
+  const handleDeleteLocation = async (locationId: string) => {
+    if (!window.confirm('Are you sure you want to delete this location? This action cannot be undone.')) {
+      return;
+    }
+    if (!accessToken) {
+      toast.error('Not authenticated');
+      return;
+    }
+    try {
+      await axios.delete(`${API_URL}/api/v1/locations/${locationId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      toast.success('Location deleted successfully');
+      // Reload locations
+      const locationsResponse = await axios.get(`${API_URL}/api/v1/locations`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setLocations(locationsResponse.data || []);
+      // If deleted location was selected, clear selection
+      if (selectedLocationId === locationId) {
+        setSelectedLocationId('');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete location');
+    }
+  };
+
+  const startEditingLocation = (location: { id: string; name: string; address?: string; timezone?: string }) => {
+    setEditingLocation(location.id);
+    setLocationForm({
+      name: location.name,
+      address: location.address || '',
+      timezone: location.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    });
+  };
+
+  const cancelEditingLocation = () => {
+    setEditingLocation(null);
+    setLocationForm({ name: '', address: '', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' });
   };
 
   useEffect(() => {
@@ -334,6 +473,17 @@ export function SettingsPage() {
     }
   };
 
+  const handleChangeUserLocation = async (tenantUser: TenantUser, locationId: string | undefined) => {
+    if (tenantUser.locationId === locationId) return;
+    try {
+      const updated = await updateTenantUser(tenantUser.id, { locationId });
+      setTenantUsers((prev) => prev.map((u) => (u.id === tenantUser.id ? updated : u)));
+      toast.success(`Updated ${tenantUser.name}'s location`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to update location');
+    }
+  };
+
 
   const handleChangePin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -380,6 +530,136 @@ export function SettingsPage() {
             </p>
           </div>
         </div>
+
+        {isTenantAdmin && (
+          <SectionContainer
+            title="Location Management"
+            description="Create and manage store locations. Users can be assigned to specific locations."
+          >
+            <div className="space-y-6">
+              {/* Create/Edit Location Form */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <h3 className="theme-text-primary mb-4 text-sm font-semibold">
+                  {editingLocation ? 'Edit Location' : 'Create New Location'}
+                </h3>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (editingLocation) {
+                      handleUpdateLocationDetails(editingLocation);
+                    } else {
+                      handleCreateLocation(e);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="theme-text-secondary mb-2 block text-xs font-medium">
+                        Location Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={locationForm.name}
+                        onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
+                        placeholder="e.g., Main Store, Downtown Branch"
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="theme-text-secondary mb-2 block text-xs font-medium">Timezone</label>
+                      <input
+                        type="text"
+                        value={locationForm.timezone}
+                        onChange={(e) => setLocationForm({ ...locationForm, timezone: e.target.value })}
+                        placeholder="UTC"
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary mb-2 block text-xs font-medium">Address</label>
+                    <textarea
+                      value={locationForm.address}
+                      onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })}
+                      placeholder="Street address, city, state, zip code"
+                      rows={2}
+                      className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={creatingLocation || !locationForm.name.trim()}
+                      className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-2 text-sm font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {creatingLocation ? 'Saving...' : editingLocation ? 'Update Location' : 'Create Location'}
+                    </button>
+                    {editingLocation && (
+                      <button
+                        type="button"
+                        onClick={cancelEditingLocation}
+                        className="theme-chip rounded-full border px-6 py-2 text-sm font-semibold transition hover:border-sky-400"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Locations List */}
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <h3 className="theme-text-primary mb-4 text-sm font-semibold">All Locations</h3>
+                {loadingLocations ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                    <p className="theme-text-secondary mt-2 text-sm">Loading locations...</p>
+                  </div>
+                ) : locations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="theme-text-secondary text-sm">No locations created yet. Create your first location above.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {locations.map((location) => (
+                      <div
+                        key={location.id}
+                        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3"
+                      >
+                        <div className="flex-1">
+                          <p className="theme-text-primary text-sm font-semibold">{location.name}</p>
+                          {location.address && (
+                            <p className="theme-text-secondary text-xs mt-1">{location.address}</p>
+                          )}
+                          <p className="theme-text-secondary text-xs mt-1">
+                            Timezone: {location.timezone || 'UTC'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => startEditingLocation(location)}
+                            disabled={editingLocation === location.id}
+                            className="theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400 disabled:opacity-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLocation(location.id)}
+                            className="theme-chip rounded-full border border-red-500/60 px-3 py-1 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </SectionContainer>
+        )}
 
         <SectionContainer
           title="My Location"
@@ -612,14 +892,19 @@ export function SettingsPage() {
                   <label className="theme-text-secondary text-sm font-medium" htmlFor="user-location">
                     Location (optional)
                   </label>
-                  <input
+                  <select
                     id="user-location"
-                    type="text"
                     value={userForm.locationId}
                     onChange={(e) => setUserForm((prev) => ({ ...prev, locationId: e.target.value }))}
                     className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
-                    placeholder="location UUID"
-                  />
+                  >
+                    <option value="">-- No Location --</option>
+                    {locations.map((location) => (
+                      <option key={location.id} value={location.id}>
+                        {location.name} {location.address ? `(${location.address})` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="theme-text-secondary text-sm font-medium" htmlFor="user-pin">
@@ -686,7 +971,23 @@ export function SettingsPage() {
                               <option value="cashier">Cashier</option>
                             </select>
                           </td>
-                          <td className="px-4 py-2 theme-text-secondary">{tenantUser.locationId ?? '—'}</td>
+                          <td className="px-4 py-2 theme-text-secondary">
+                            <select
+                              value={tenantUser.locationId || ''}
+                              onChange={(e) => {
+                                const newLocationId = e.target.value || undefined;
+                                handleChangeUserLocation(tenantUser, newLocationId);
+                              }}
+                              className="rounded-full border border-white/20 bg-transparent px-2 py-1 text-xs"
+                            >
+                              <option value="">-- No Location --</option>
+                              {locations.map((location) => (
+                                <option key={location.id} value={location.id}>
+                                  {location.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
                           <td className="px-4 py-2">
                             <div className="flex flex-wrap gap-2">
                               <button
@@ -912,17 +1213,17 @@ export function SettingsPage() {
                 <div className="text-3xl mb-2">📡</div>
                 <h4 className="theme-text-primary mb-2 text-sm font-semibold text-purple-400">Bluetooth Scanners</h4>
                 <p className="theme-text-secondary text-xs">
-                  Connect wireless Bluetooth scanners using the Web Bluetooth API. Click "Pair Bluetooth" in checkout.
+                  Pair Bluetooth scanners via your system's Bluetooth settings first. After pairing, they'll work automatically.
                 </p>
                 <div className="mt-3 pt-3 border-t border-purple-500/20">
                   <p className="theme-text-secondary text-xs">
                     <strong className="theme-text-primary">Works with:</strong> Bluetooth HID scanners
                   </p>
                   <p className="theme-text-secondary text-xs mt-1">
-                    <strong className="theme-text-primary">Browser:</strong> Chrome/Edge (desktop or Android)
+                    <strong className="theme-text-primary">Pairing:</strong> System Bluetooth (not browser)
                   </p>
                   <p className="theme-text-secondary text-xs mt-1">
-                    <strong className="theme-text-primary">Requires:</strong> HTTPS or localhost
+                    <strong className="theme-text-primary">Note:</strong> Pair in OS settings, then use in app
                   </p>
                 </div>
               </div>
@@ -958,8 +1259,8 @@ export function SettingsPage() {
                   It will work immediately - just scan barcodes and they'll appear in the checkout input field.
                 </li>
                 <li>
-                  <strong className="theme-text-primary">Bluetooth Scanner:</strong> Put your scanner in pairing mode, 
-                  then go to checkout and click the "📡 Bluetooth" button to pair.
+                  <strong className="theme-text-primary">Bluetooth Scanner:</strong> Pair via your system's Bluetooth settings first 
+                  (Windows Settings, macOS System Preferences, or Linux Bluetooth manager). After pairing, the scanner will work automatically.
                 </li>
                 <li>
                   <strong className="theme-text-primary">Camera Scanner:</strong> Click the camera button in checkout 
@@ -986,12 +1287,13 @@ export function SettingsPage() {
                   </ul>
                 </div>
                 <div>
-                  <strong className="theme-text-primary">Bluetooth scanner not pairing?</strong>
+                  <strong className="theme-text-primary">Bluetooth scanner not working?</strong>
                   <ul className="mt-1 ml-4 list-disc space-y-1">
-                    <li>Use Chrome or Edge browser (Web Bluetooth API required)</li>
-                    <li>Ensure you're on HTTPS or localhost</li>
+                    <li>Pair the scanner via your system's Bluetooth settings first (not browser)</li>
                     <li>Make sure scanner is in pairing/discoverable mode</li>
-                    <li>Check browser permissions for Bluetooth access</li>
+                    <li>Check that Bluetooth is enabled on your computer</li>
+                    <li>After system pairing, the scanner should appear in the Devices section</li>
+                    <li>If using HID mode, scanner will type into input fields automatically</li>
                   </ul>
                 </div>
                 <div>
@@ -1209,6 +1511,275 @@ export function SettingsPage() {
                 <li>Start the server: <code className="px-1 py-0.5 rounded bg-black/20">node server.js</code></li>
                 <li>Configure the printer above using the printer's port or network address</li>
               </ol>
+            </div>
+          </div>
+        </SectionContainer>
+
+        <SectionContainer
+          title="Devices"
+          description="View and manage connected devices including scanners, printers, and cash registers."
+        >
+          <div className="space-y-6">
+            {/* Device Types Info */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <div className="text-3xl mb-2">🔌</div>
+                <h4 className="theme-text-primary mb-2 text-sm font-semibold text-emerald-400">USB Devices</h4>
+                <p className="theme-text-secondary text-xs">
+                  USB scanners, printers, and cash registers connect automatically when plugged in. No pairing needed!
+                </p>
+                <div className="mt-3 pt-3 border-t border-emerald-500/20">
+                  <p className="theme-text-secondary text-xs">
+                    <strong className="theme-text-primary">Auto-connect:</strong> Yes
+                  </p>
+                  <p className="theme-text-secondary text-xs mt-1">
+                    <strong className="theme-text-primary">Setup:</strong> Plug and play
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
+                <div className="text-3xl mb-2">📡</div>
+                <h4 className="theme-text-primary mb-2 text-sm font-semibold text-purple-400">Bluetooth Devices</h4>
+                <p className="theme-text-secondary text-xs">
+                  Bluetooth scanners and printers must be paired via your system's Bluetooth settings first, then they'll appear here.
+                </p>
+                <div className="mt-3 pt-3 border-t border-purple-500/20">
+                  <p className="theme-text-secondary text-xs">
+                    <strong className="theme-text-primary">Pairing:</strong> System Bluetooth
+                  </p>
+                  <p className="theme-text-secondary text-xs mt-1">
+                    <strong className="theme-text-primary">Note:</strong> Pair in OS settings, not browser
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                <div className="text-3xl mb-2">🖨️</div>
+                <h4 className="theme-text-primary mb-2 text-sm font-semibold text-sky-400">Printers & Cash Registers</h4>
+                <p className="theme-text-secondary text-xs">
+                  Receipt printers and cash registers are managed via the print proxy. See Receipt Printer section below.
+                </p>
+                <div className="mt-3 pt-3 border-t border-sky-500/20">
+                  <p className="theme-text-secondary text-xs">
+                    <strong className="theme-text-primary">Connection:</strong> Print Proxy
+                  </p>
+                  <p className="theme-text-secondary text-xs mt-1">
+                    <strong className="theme-text-primary">Types:</strong> Serial/USB, Network
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bluetooth Pairing Instructions */}
+            <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
+              <h4 className="theme-text-primary mb-3 text-sm font-semibold text-purple-400">
+                📡 How to Pair Bluetooth Devices
+              </h4>
+              <div className="space-y-3 text-xs theme-text-secondary">
+                <div>
+                  <strong className="theme-text-primary">Important:</strong> Bluetooth devices must be paired via your operating system's Bluetooth settings, NOT through the browser.
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <strong className="theme-text-primary">Windows:</strong>
+                    <ol className="mt-1 ml-4 list-decimal space-y-1">
+                      <li>Open Settings → Devices → Bluetooth</li>
+                      <li>Put device in pairing mode</li>
+                      <li>Click "Add Bluetooth or other device"</li>
+                      <li>Select your scanner/printer</li>
+                      <li>Device will appear here after pairing</li>
+                    </ol>
+                  </div>
+                  <div>
+                    <strong className="theme-text-primary">macOS:</strong>
+                    <ol className="mt-1 ml-4 list-decimal space-y-1">
+                      <li>Open System Preferences → Bluetooth</li>
+                      <li>Put device in pairing mode</li>
+                      <li>Click device name when it appears</li>
+                      <li>Click "Pair"</li>
+                      <li>Device will appear here after pairing</li>
+                    </ol>
+                  </div>
+                  <div>
+                    <strong className="theme-text-primary">Linux:</strong>
+                    <ol className="mt-1 ml-4 list-decimal space-y-1">
+                      <li>Open Bluetooth settings</li>
+                      <li>Put device in pairing mode</li>
+                      <li>Scan for devices</li>
+                      <li>Select and pair your device</li>
+                      <li>Device will appear here after pairing</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Connected Devices List */}
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="theme-text-primary text-sm font-semibold">Connected Devices</h3>
+                <button
+                  onClick={async () => {
+                    setLoadingDevices(true);
+                    try {
+                      const devices = await fetchRegisteredDevices(user?.locationId);
+                      setRegisteredDevices(devices);
+                      toast.success('Devices refreshed');
+                    } catch (error) {
+                      toast.error('Failed to refresh devices');
+                    } finally {
+                      setLoadingDevices(false);
+                    }
+                  }}
+                  disabled={loadingDevices}
+                  className="theme-chip rounded-full border px-4 py-2 text-xs font-semibold transition hover:border-sky-400 disabled:opacity-50"
+                >
+                  {loadingDevices ? 'Loading...' : '🔄 Refresh'}
+                </button>
+              </div>
+
+              {loadingDevices ? (
+                <div className="text-center py-8">
+                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                  <p className="theme-text-secondary mt-2 text-sm">Loading devices...</p>
+                </div>
+              ) : registeredDevices.length === 0 && scannerDevices.length === 0 && printers.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-3">📱</div>
+                  <p className="theme-text-primary text-sm font-semibold mb-1">No devices connected</p>
+                  <p className="theme-text-secondary text-xs">
+                    Connect USB devices or pair Bluetooth devices via system settings to see them here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Registered Scanner Devices */}
+                  {registeredDevices.map((device) => (
+                    <div
+                      key={device.id}
+                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">
+                          {device.type === 'usb' && '🔌'}
+                          {device.type === 'bluetooth' && '📡'}
+                          {device.type === 'camera' && '📷'}
+                        </div>
+                        <div>
+                          <p className="theme-text-primary text-sm font-semibold">{device.name}</p>
+                          <p className="theme-text-secondary text-xs">
+                            {device.type === 'usb' && 'USB Scanner'}
+                            {device.type === 'bluetooth' && 'Bluetooth Scanner'}
+                            {device.type === 'camera' && 'Camera Scanner'}
+                            {' • '}
+                            Connected {format(new Date(device.connectedAt), 'MMM dd, yyyy')}
+                            {device.lastUsedAt && ` • Last used ${format(new Date(device.lastUsedAt), 'MMM dd, HH:mm')}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {device.isActive && (
+                          <span className="theme-chip rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
+                            Active
+                          </span>
+                        )}
+                        {device.type === 'bluetooth' && (
+                          <span className="theme-chip rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-400">
+                            System Paired
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Local Scanner Devices (from store) */}
+                  {scannerDevices
+                    .filter((d) => !registeredDevices.find((rd) => rd.id === d.id))
+                    .map((device) => (
+                      <div
+                        key={device.id}
+                        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">
+                            {device.type === 'usb' && '🔌'}
+                            {device.type === 'bluetooth' && '📡'}
+                            {device.type === 'camera' && '📷'}
+                          </div>
+                          <div>
+                            <p className="theme-text-primary text-sm font-semibold">{device.name}</p>
+                            <p className="theme-text-secondary text-xs">
+                              {device.type === 'usb' && 'USB Scanner'}
+                              {device.type === 'bluetooth' && 'Bluetooth Scanner'}
+                              {device.type === 'camera' && 'Camera Scanner'}
+                              {' • '}
+                              Connected {format(new Date(device.connectedAt), 'MMM dd, yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {device.isActive && (
+                            <span className="theme-chip rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
+                              Active
+                            </span>
+                          )}
+                          {device.type === 'bluetooth' && (
+                            <span className="theme-chip rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-400">
+                              System Paired
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Printers */}
+                  {printers.map((printer) => (
+                    <div
+                      key={printer.id}
+                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">🖨️</div>
+                        <div>
+                          <p className="theme-text-primary text-sm font-semibold">{printer.id}</p>
+                          <p className="theme-text-secondary text-xs">
+                            {printer.type === 'serial'
+                              ? `Serial/USB: ${printer.config.path} @ ${printer.config.baudRate} baud`
+                              : `Network: ${printer.config.host}:${printer.config.port}`}
+                            {' • '}
+                            Receipt Printer
+                          </p>
+                        </div>
+                      </div>
+                      <span className="theme-chip rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-400">
+                        {printer.type === 'serial' ? 'USB' : 'Network'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Device Management Info */}
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <h4 className="theme-text-primary mb-2 text-sm font-semibold text-amber-400">
+                ℹ️ Device Management Notes
+              </h4>
+              <ul className="theme-text-secondary space-y-1 text-xs list-disc list-inside">
+                <li>
+                  <strong className="theme-text-primary">USB Devices:</strong> Automatically detected when plugged in. No configuration needed.
+                </li>
+                <li>
+                  <strong className="theme-text-primary">Bluetooth Devices:</strong> Must be paired via system Bluetooth settings first. After pairing, they'll appear here automatically.
+                </li>
+                <li>
+                  <strong className="theme-text-primary">Printers:</strong> Configure in the Receipt Printer section below. Requires print proxy server.
+                </li>
+                <li>
+                  <strong className="theme-text-primary">Cash Registers:</strong> Configure as network printers in the Receipt Printer section.
+                </li>
+              </ul>
             </div>
           </div>
         </SectionContainer>

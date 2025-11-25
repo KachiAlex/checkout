@@ -53,6 +53,7 @@ let LocationsRepository = class LocationsRepository {
             address: data.address,
             timezone: data.timezone ?? 'UTC',
             defaultPrinter: data.defaultPrinter,
+            tenantId: data.tenantId,
             createdAt: now,
             updatedAt: now,
         });
@@ -71,6 +72,14 @@ let LocationsRepository = class LocationsRepository {
         }, { merge: true });
         const updated = await docRef.get();
         return this.toRecord(updated.id, updated.data());
+    }
+    async delete(id) {
+        const docRef = this.collection.doc(id);
+        const existing = await docRef.get();
+        if (!existing.exists) {
+            throw new common_1.NotFoundException(`Location ${id} not found`);
+        }
+        await docRef.delete();
     }
     toRecord(id, data) {
         if (!data) {
