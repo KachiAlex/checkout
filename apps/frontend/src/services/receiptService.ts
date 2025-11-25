@@ -80,7 +80,14 @@ export class ReceiptService {
 
     this.connectionPromise = new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(getPrintProxyUrl());
+        const proxyUrl = getPrintProxyUrl();
+        // Only attempt connection if URL is valid (not empty)
+        if (!proxyUrl || proxyUrl.trim() === '') {
+          this.connectionPromise = null;
+          reject(new Error('Print proxy URL not configured'));
+          return;
+        }
+        this.ws = new WebSocket(proxyUrl);
 
         this.ws.onopen = () => {
           console.log('Connected to print proxy');
@@ -89,13 +96,20 @@ export class ReceiptService {
         };
 
         this.ws.onerror = (error) => {
-          console.error('Print proxy connection error:', error);
+          // Silently handle connection errors - print proxy may not be running
+          // Only log in debug mode
+          if (import.meta.env.DEV) {
+            console.debug('Print proxy connection error (expected if server not running):', error);
+          }
           this.connectionPromise = null;
           reject(new Error('Failed to connect to print proxy'));
         };
 
         this.ws.onclose = () => {
-          console.log('Disconnected from print proxy');
+          // Silently handle disconnection - print proxy may not be running
+          if (import.meta.env.DEV) {
+            console.debug('Disconnected from print proxy');
+          }
           this.ws = null;
           this.connectionPromise = null;
         };

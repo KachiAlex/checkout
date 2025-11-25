@@ -153,21 +153,35 @@ export function SettingsPage() {
   }, [isTenantAdmin]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadLocations = async () => {
       if (!accessToken) return;
       setLoadingLocations(true);
       try {
         const response = await axios.get(`${API_URL}/api/v1/locations`, {
           headers: { Authorization: `Bearer ${accessToken}` },
+          timeout: 8000, // 8 second timeout
         });
-        setLocations(response.data || []);
-      } catch (error) {
-        console.error('Failed to load locations:', error);
+        if (!cancelled) {
+          setLocations(response.data || []);
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          console.error('Failed to load locations:', error);
+          // Don't show error toast for locations - it's not critical
+          // Just set empty array so UI doesn't break
+          setLocations([]);
+        }
       } finally {
-        setLoadingLocations(false);
+        if (!cancelled) {
+          setLoadingLocations(false);
+        }
       }
     };
     loadLocations();
+    return () => {
+      cancelled = true;
+    };
   }, [accessToken]);
 
   useEffect(() => {
@@ -322,12 +336,20 @@ export function SettingsPage() {
   useEffect(() => {
     const checkPrinterStatus = async () => {
       try {
-        const available = await receiptService.isAvailable();
+        // Use a timeout to prevent hanging
+        const timeoutPromise = new Promise<boolean>((resolve) => {
+          setTimeout(() => resolve(false), 3000); // 3 second timeout
+        });
+        
+        const availablePromise = receiptService.isAvailable().catch(() => false);
+        const available = await Promise.race([availablePromise, timeoutPromise]);
+        
         setPrinterAvailable(available);
         if (available) {
           loadPrinters();
         }
       } catch {
+        // Silently handle - print proxy may not be running
         setPrinterAvailable(false);
       }
     };
