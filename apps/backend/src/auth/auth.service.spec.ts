@@ -7,6 +7,10 @@ import { TenantsRepository, TenantRecord } from '../tenants/tenants.repository';
 import { TenantPlan, TenantStatus } from '@pos-checkout/shared';
 import * as bcrypt from 'bcrypt';
 
+jest.mock('bcrypt', () => ({
+  compare: jest.fn(),
+}));
+
 describe('AuthService', () => {
   let service: AuthService;
   let usersRepository: jest.Mocked<UsersRepository>;
@@ -91,7 +95,7 @@ describe('AuthService', () => {
     configService = module.get<ConfigService>(ConfigService);
 
     // Mock bcrypt
-    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true as never);
   });
 
   afterEach(() => {
@@ -115,7 +119,7 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException with invalid PIN', async () => {
       tenantsRepository.findBySlug.mockResolvedValue(mockTenant);
       usersRepository.findAll.mockResolvedValue([mockUser]);
-      jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false as never);
 
       await expect(service.login({ tenantSlug: 'acme', pin: 'wrong' })).rejects.toThrow('Invalid PIN');
     });
