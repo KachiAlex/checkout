@@ -71,15 +71,22 @@ export const api = functions
       origin.startsWith('capacitor://') ||
       allowedOrigins.includes(origin);
     
+    // Helper function to set CORS headers
+    const setCorsHeaders = () => {
+      if (isAllowed) {
+        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-Slug');
+      }
+    };
+    
     // Handle CORS preflight requests - MUST return immediately
     if (req.method === 'OPTIONS') {
       console.log('[Functions] Handling OPTIONS preflight request from origin:', origin);
+      setCorsHeaders();
       if (isAllowed) {
-        res.set('Access-Control-Allow-Origin', origin || '*');
-        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
-        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-Slug');
-        res.set('Access-Control-Allow-Credentials', 'true');
-        res.set('Access-Control-Max-Age', '3600');
+        res.setHeader('Access-Control-Max-Age', '3600');
         res.status(204).end();
         return;
       }
@@ -89,25 +96,17 @@ export const api = functions
     }
     
     // Set CORS headers BEFORE passing to NestJS
-    // This ensures headers are set even if NestJS fails or times out
-    if (isAllowed) {
-      res.set('Access-Control-Allow-Origin', origin || '*');
-      res.set('Access-Control-Allow-Credentials', 'true');
-      res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
-      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, X-Tenant-Slug');
-    }
+    setCorsHeaders();
     
     try {
       const app = await getApp();
       // Pass request to NestJS - it will handle the actual request
+      // NestJS also has CORS configured, but our headers should take precedence
       app(req, res);
     } catch (error: any) {
       console.error('[Functions] Error handling request:', error);
       // Ensure CORS headers are set even on error
-      if (isAllowed) {
-        res.set('Access-Control-Allow-Origin', origin || '*');
-        res.set('Access-Control-Allow-Credentials', 'true');
-      }
+      setCorsHeaders();
       if (!res.headersSent) {
         res.status(500).json({
           error: 'Internal server error',
