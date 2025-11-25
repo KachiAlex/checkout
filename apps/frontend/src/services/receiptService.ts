@@ -2,8 +2,38 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import { useAuthStore } from '../stores/authStore';
 
+const isLocalEnvironment = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const host = window.location.hostname;
+  return (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.endsWith('.local') ||
+    host === 'capacitor://localhost'
+  );
+};
+
 const getPrintProxyUrl = (): string => {
-  return localStorage.getItem('printProxyUrl') || import.meta.env.VITE_PRINT_PROXY_URL || 'ws://localhost:8080';
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  const stored = localStorage.getItem('printProxyUrl');
+  if (stored && stored.trim() !== '') {
+    return stored;
+  }
+
+  const defaultUrl = import.meta.env.VITE_PRINT_PROXY_URL || 'ws://localhost:8080';
+  // Only use default URL automatically in local environments
+  if (isLocalEnvironment()) {
+    return defaultUrl;
+  }
+
+  // On production domains, do not auto-connect unless user explicitly configures URL
+  return '';
 };
 
 export interface Printer {
@@ -387,11 +417,20 @@ export class ReceiptService {
    */
   async isAvailable(): Promise<boolean> {
     try {
+      const url = getPrintProxyUrl();
+      if (!url) {
+        return false;
+      }
       await this.connect();
       return this.ws?.readyState === WebSocket.OPEN;
     } catch (error) {
       return false;
     }
+  }
+
+  hasConfiguredProxy(): boolean {
+    const url = getPrintProxyUrl();
+    return Boolean(url && url.trim() !== '');
   }
 
   /**

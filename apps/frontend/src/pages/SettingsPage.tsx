@@ -189,6 +189,10 @@ export function SettingsPage() {
   }, [user?.locationId]);
 
   useEffect(() => {
+    if (!isTenantAdmin) {
+      setRegisteredDevices([]);
+      return;
+    }
     const loadDevices = async () => {
       if (!accessToken) return;
       setLoadingDevices(true);
@@ -202,7 +206,7 @@ export function SettingsPage() {
       }
     };
     loadDevices();
-  }, [accessToken, user?.locationId]);
+  }, [accessToken, user?.locationId, isTenantAdmin]);
 
   const handleUpdateLocation = async () => {
     if (!accessToken) {
@@ -334,6 +338,10 @@ export function SettingsPage() {
   };
 
   useEffect(() => {
+    if (!isTenantAdmin) {
+      setPrinterAvailable(null);
+      return;
+    }
     const checkPrinterStatus = async () => {
       try {
         // Use a timeout to prevent hanging
@@ -354,9 +362,12 @@ export function SettingsPage() {
       }
     };
     checkPrinterStatus();
-  }, [printProxyUrl]);
+  }, [printProxyUrl, isTenantAdmin]);
 
   const loadPrinters = async () => {
+    if (!isTenantAdmin) {
+      return;
+    }
     setLoadingPrinters(true);
     try {
       const printerList = await receiptService.listPrinters();
@@ -369,6 +380,7 @@ export function SettingsPage() {
   };
 
   const handleSavePrintProxyUrl = () => {
+    if (!isTenantAdmin) return;
     localStorage.setItem('printProxyUrl', printProxyUrl);
     toast.success('Print proxy URL saved. Reconnecting...');
     receiptService.disconnect();
@@ -378,6 +390,7 @@ export function SettingsPage() {
   };
 
   const handleRegisterPrinter = async (e: React.FormEvent) => {
+    if (!isTenantAdmin) return;
     e.preventDefault();
     setRegisteringPrinter(true);
     try {
@@ -681,6 +694,16 @@ export function SettingsPage() {
               </div>
             </div>
           </SectionContainer>
+        )}
+
+        {!isTenantAdmin && (
+          <div className="rounded-3xl border border-amber-500/40 bg-amber-500/10 p-5 backdrop-blur-xl">
+            <h2 className="theme-text-primary text-lg font-semibold">Limited access</h2>
+            <p className="theme-text-secondary text-sm mt-1">
+              You're signed in as staff. Company-wide settings (locations, user management, payment gateway, and device controls) are only available to tenant administrators.
+              Please contact an admin if you need something changed.
+            </p>
+          </div>
         )}
 
         <SectionContainer
@@ -1208,11 +1231,12 @@ export function SettingsPage() {
           </SectionContainer>
         )}
 
-        <SectionContainer
-          title="Barcode/QR Scanners"
-          description="Configure and manage barcode and QR code scanners for checkout."
-        >
-          <div className="space-y-6">
+        {isTenantAdmin && (
+          <SectionContainer
+            title="Barcode/QR Scanners"
+            description="Configure and manage barcode and QR code scanners for checkout."
+          >
+            <div className="space-y-6">
             {/* Scanner Types Info */}
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
@@ -1329,14 +1353,16 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </SectionContainer>
+            </div>
+          </SectionContainer>
+        )}
 
-        <SectionContainer
-          title="Receipt Printer"
-          description="Configure ESC/POS receipt printers for automatic printing. Requires print proxy server running locally."
-        >
-          <div className="space-y-6">
+        {isTenantAdmin && (
+          <SectionContainer
+            title="Receipt Printer"
+            description="Configure ESC/POS receipt printers for automatic printing. Requires print proxy server running locally."
+          >
+            <div className="space-y-6">
             {/* Print Proxy URL */}
             <div>
               <label className="theme-text-primary mb-2 block text-sm font-medium">
@@ -1534,14 +1560,16 @@ export function SettingsPage() {
                 <li>Configure the printer above using the printer's port or network address</li>
               </ol>
             </div>
-          </div>
-        </SectionContainer>
+            </div>
+          </SectionContainer>
+        )}
 
-        <SectionContainer
-          title="Devices"
-          description="View and manage connected devices including scanners, printers, and cash registers."
-        >
-          <div className="space-y-6">
+        {isTenantAdmin && (
+          <SectionContainer
+            title="Devices"
+            description="View and manage connected devices including scanners, printers, and cash registers."
+          >
+            <div className="space-y-6">
             {/* Device Types Info */}
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
@@ -1783,8 +1811,8 @@ export function SettingsPage() {
               )}
             </div>
 
-            {/* Device Management Info */}
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+              {/* Device Management Info */}
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
               <h4 className="theme-text-primary mb-2 text-sm font-semibold text-amber-400">
                 ℹ️ Device Management Notes
               </h4>
@@ -1803,8 +1831,9 @@ export function SettingsPage() {
                 </li>
               </ul>
             </div>
-          </div>
-        </SectionContainer>
+            </div>
+          </SectionContainer>
+        )}
 
         <SectionContainer
           title="Workspace"

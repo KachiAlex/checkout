@@ -379,6 +379,12 @@ export function CheckoutPage() {
               >
                 📦 Inventory
               </Link>
+              <Link
+                to="/reports"
+                className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-sky-300/60 hover:text-sky-100"
+              >
+                📊 Reports
+              </Link>
               {isAdmin && (
                 <Link
                   to="/settings"

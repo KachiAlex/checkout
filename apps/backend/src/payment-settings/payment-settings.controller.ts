@@ -5,7 +5,7 @@ import { UpdatePaymentSettingsDto } from './dto/update-payment-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('payment-settings')
-@Controller('api/v1/payment-settings')
+@Controller('payment-settings')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class PaymentSettingsController {
