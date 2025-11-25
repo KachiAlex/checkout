@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 interface PaymentModalProps {
   isOpen: boolean;
-  method: 'card' | 'cash' | 'qr' | null;
+  method: 'card' | 'cash' | 'qr' | 'transfer' | null;
   total: number;
   cart: CartItem[];
   orderId?: string; // Order ID if order is already created
@@ -31,6 +31,7 @@ export function PaymentModal({
   onOrderCreated,
 }: PaymentModalProps) {
   const [cashAmount, setCashAmount] = useState('');
+  const [transferReference, setTransferReference] = useState('');
   const [processing, setProcessing] = useState(false);
   const [stage, setStage] = useState<'input' | 'processing' | 'success' | 'error' | 'redirecting'>('input');
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export function PaymentModal({
     if (isOpen) {
       setStage('input');
       setCashAmount('');
+      setTransferReference('');
       setProcessing(false);
     }
   }, [isOpen]);
@@ -59,6 +61,17 @@ export function PaymentModal({
       setProcessing(true);
       setStage('processing');
       onComplete(change);
+      return;
+    }
+
+    if (method === 'transfer') {
+      if (!transferReference.trim()) {
+        toast.error('Enter transfer reference before confirming.');
+        return;
+      }
+      setProcessing(true);
+      setStage('processing');
+      onComplete();
       return;
     }
 
@@ -192,6 +205,8 @@ export function PaymentModal({
         return '💳';
       case 'qr':
         return '📱';
+      case 'transfer':
+        return '🏦';
       default:
         return '💰';
     }
@@ -205,6 +220,8 @@ export function PaymentModal({
         return 'Card Payment';
       case 'qr':
         return 'QR Payment';
+      case 'transfer':
+        return 'Bank Transfer';
       default:
         return 'Payment';
     }
@@ -294,6 +311,29 @@ export function PaymentModal({
                   </p>
                 </div>
               )}
+
+              {method === 'transfer' && (
+                <div className="theme-surface rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 space-y-3">
+                  <p className="theme-text-secondary text-sm">
+                    🏦 Share your business account details with the customer and confirm the incoming transfer before completing the sale.
+                  </p>
+                  <div>
+                    <label className="theme-text-secondary mb-2 block text-sm font-medium">
+                      Transfer Reference
+                    </label>
+                    <input
+                      type="text"
+                      value={transferReference}
+                      onChange={(e) => setTransferReference(e.target.value)}
+                      placeholder="e.g., TRANS123456"
+                      className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-base focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                    />
+                    <p className="theme-text-secondary mt-2 text-xs">
+                      Optional note to identify the customer's transfer. Only confirm once funds are visible.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-3">
@@ -324,12 +364,13 @@ export function PaymentModal({
                   onClick={handleConfirm}
                   disabled={
                     (method === 'cash' && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
+                    (method === 'transfer' && !transferReference.trim()) ||
                     processing
                   }
                   className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   aria-label="Confirm payment"
                 >
-                  {method === 'cash' ? 'Confirm with Change' : 'Confirm Payment'}
+                  {method === 'cash' ? 'Confirm with Change' : method === 'transfer' ? 'Confirm Transfer' : 'Confirm Payment'}
                 </button>
               </div>
             </div>

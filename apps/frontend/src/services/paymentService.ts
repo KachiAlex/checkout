@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 
 export interface InitiatePaymentRequest {
   amount: number; // in cents
-  method: 'card' | 'qr' | 'cash';
+  method: 'card' | 'qr' | 'cash' | 'transfer';
   metadata?: {
     customerName?: string;
     customerEmail?: string;
@@ -19,7 +19,7 @@ export interface PaymentResponse {
   orderId: string;
   amountCents: number;
   currency: string;
-  method: 'card' | 'qr' | 'cash';
+  method: 'card' | 'qr' | 'cash' | 'transfer';
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
   transactionId?: string;
   processorData?: {

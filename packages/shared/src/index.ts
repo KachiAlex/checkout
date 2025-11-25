@@ -10,6 +10,7 @@ export enum PaymentMethod {
   CARD = 'card',
   QR = 'qr',
   CASH = 'cash',
+  TRANSFER = 'transfer',
 }
 
 export enum PaymentStatus {

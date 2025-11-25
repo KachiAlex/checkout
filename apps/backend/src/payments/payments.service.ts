@@ -82,12 +82,14 @@ export class PaymentsService {
     try {
       let result;
       
-      if (dto.method === PaymentMethod.CASH) {
-        // Cash payment - auto approve
+      if (dto.method === PaymentMethod.CASH || dto.method === PaymentMethod.TRANSFER) {
+        // Cash or manual transfer payment - auto approve once cashier confirms funds
         result = await this.paymentsRepository.update(payment.id, {
           status: PaymentStatus.COMPLETED,
           processedAt: new Date(),
-          transactionId: `CASH_${Date.now()}`,
+          transactionId: `${
+            dto.method === PaymentMethod.CASH ? 'CASH' : 'TRANSFER'
+          }_${Date.now()}`,
         });
       } else {
         // Process via payment adapter (Monnify or MockTerminal)

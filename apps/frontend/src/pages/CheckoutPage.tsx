@@ -71,7 +71,7 @@ export function CheckoutPage() {
   const isAdmin = user?.role === 'admin';
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash' | 'qr' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash' | 'qr' | 'transfer' | null>(null);
   const [lastCompletedOrderId, setLastCompletedOrderId] = useState<string | null>(null);
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
   const [cashChange, setCashChange] = useState<number>(0);
@@ -229,7 +229,7 @@ export function CheckoutPage() {
     }
   }, []);
 
-  const handlePaymentClick = (method: 'card' | 'cash' | 'qr') => {
+  const handlePaymentClick = (method: 'card' | 'cash' | 'qr' | 'transfer') => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
@@ -238,7 +238,7 @@ export function CheckoutPage() {
     setPaymentModalOpen(true);
   };
 
-  const handlePayment = async (method: 'card' | 'cash' | 'qr') => {
+  const handlePayment = async (method: 'card' | 'cash' | 'qr' | 'transfer') => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
@@ -286,8 +286,8 @@ export function CheckoutPage() {
 
       const payment = paymentResponse.data;
 
-      if (payment.status === 'completed' || method === 'cash') {
-        if (method === 'cash' && payment.status !== 'completed') {
+      if (payment.status === 'completed' || method === 'cash' || method === 'transfer') {
+        if ((method === 'cash' || method === 'transfer') && payment.status !== 'completed') {
           try {
             await axios.post(
               `${API_URL}/api/v1/orders/${order.id}/payments/capture`,
@@ -605,6 +605,13 @@ export function CheckoutPage() {
                     className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     📱 Pay QR
+                  </button>
+                  <button
+                    onClick={() => handlePaymentClick('transfer')}
+                    disabled={cart.length === 0 || isProcessing}
+                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    🏦 Pay Transfer
                   </button>
                 </div>
 
