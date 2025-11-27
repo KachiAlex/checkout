@@ -189,6 +189,15 @@ export function SettingsPage() {
   }, [user?.locationId]);
 
   useEffect(() => {
+    if (locations.length === 0) {
+      return;
+    }
+    if (!userForm.locationId) {
+      setUserForm((prev) => ({ ...prev, locationId: locations[0].id }));
+    }
+  }, [locations, userForm.locationId]);
+
+  useEffect(() => {
     if (!isTenantAdmin) {
       setRegisteredDevices([]);
       return;

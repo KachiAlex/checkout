@@ -5,6 +5,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { OrdersRepository, OrderRecord } from './orders.repository';
 import { CustomersService } from '../customers/customers.service';
 import { LocationsRepository } from '../locations/locations.repository';
+import { UsersRepository } from '../users/users.repository';
 
 @Injectable()
 export class OrdersService {
@@ -13,6 +14,7 @@ export class OrdersService {
     private readonly inventoryService: InventoryService,
     private readonly customersService: CustomersService,
     private readonly locationsRepository: LocationsRepository,
+    private readonly usersRepository: UsersRepository,
   ) {}
 
   async create(createOrderDto: CreateOrderDto, userId: string, tenantId: string, userLocationId?: string): Promise<OrderRecord> {
@@ -23,7 +25,14 @@ export class OrdersService {
     }
 
     // Resolve locationId: use provided, then user's locationId, then first location for tenant
-    let locationId = createOrderDto.locationId || userLocationId;
+    let locationId = createOrderDto.locationId;
+    if (!locationId) {
+      const user = await this.usersRepository.findById(userId);
+      locationId = user?.locationId;
+    }
+    if (!locationId) {
+      locationId = userLocationId;
+    }
     if (!locationId) {
       const locations = await this.locationsRepository.findByTenant(tenantId);
       if (locations.length === 0) {

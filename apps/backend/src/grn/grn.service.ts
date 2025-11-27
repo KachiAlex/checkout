@@ -4,6 +4,8 @@ import { PurchaseOrdersRepository, PurchaseOrderStatus } from '../purchase-order
 import { InventoryRepository } from '../inventory/inventory.repository';
 import { BatchInventoryRepository } from '../inventory/batch-inventory.repository';
 import { InventoryTransactionType } from '@pos-checkout/shared';
+import { Timestamp } from 'firebase-admin/firestore';
+import type { FieldValue } from 'firebase-admin/firestore';
 
 @Injectable()
 export class GRNService {
@@ -64,7 +66,7 @@ export class GRNService {
             productId: item.productId,
             locationId: data.locationId,
             batchNumber: item.batchNumber,
-            expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
+            expiryDate: parseExpiryDate(item.expiryDate),
             quantity: item.receivedQuantity,
             unitCostCents: item.unitCostCents,
             purchaseOrderId: data.purchaseOrderId,
@@ -113,5 +115,23 @@ export class GRNService {
 
     return grn;
   }
+}
+
+type ExpiryDateInput = Date | Timestamp | FieldValue | string | number | undefined;
+
+function parseExpiryDate(value?: ExpiryDateInput): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    return new Date(value);
+  }
+  return undefined;
 }
 

@@ -54,8 +54,8 @@ function createWindow() {
     mainWindow.loadURL(devServerUrl).catch(() => undefined);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    const indexPath = path.join(__dirname, '../../frontend-dist/index.html');
-    mainWindow.loadFile(indexPath).catch((error) => {
+    const packagedIndexPath = path.join(process.resourcesPath, 'app.asar', 'frontend-dist', 'index.html');
+    mainWindow.loadFile(packagedIndexPath).catch((error) => {
       console.error('Failed to load index.html', error);
     });
   }

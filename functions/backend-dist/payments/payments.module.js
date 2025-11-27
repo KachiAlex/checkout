@@ -13,14 +13,13 @@ const payments_service_1 = require("./payments.service");
 const webhooks_controller_1 = require("./webhooks.controller");
 const orders_module_1 = require("../orders/orders.module");
 const payments_repository_1 = require("./payments.repository");
-const payment_settings_module_1 = require("../payment-settings/payment-settings.module");
 const users_module_1 = require("../users/users.module");
 let PaymentsModule = class PaymentsModule {
 };
 exports.PaymentsModule = PaymentsModule;
 exports.PaymentsModule = PaymentsModule = __decorate([
     (0, common_1.Module)({
-        imports: [orders_module_1.OrdersModule, payment_settings_module_1.PaymentSettingsModule, users_module_1.UsersModule],
+        imports: [orders_module_1.OrdersModule, users_module_1.UsersModule],
         controllers: [payments_controller_1.PaymentsController, webhooks_controller_1.WebhooksController],
         providers: [payments_service_1.PaymentsService, payments_repository_1.PaymentsRepository],
         exports: [payments_service_1.PaymentsService, payments_repository_1.PaymentsRepository],

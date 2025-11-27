@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsUUID,
   IsArray,
   ValidateNested,
   IsNumber,
   IsOptional,
   IsEnum,
   Min,
+  IsString,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderStatus } from '@pos-checkout/shared';
@@ -45,7 +46,7 @@ export class CreateOrderDto {
 
   @ApiProperty({ description: 'Location ID', required: false })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   locationId?: string;
 
   @ApiProperty({ description: 'Customer ID', required: false })

@@ -86,7 +86,20 @@ let InventoryService = class InventoryService {
                 };
             }
         }));
-        return enrichedRecords.filter((record) => record.product !== null);
+        const recordsWithFallback = enrichedRecords.map((record) => {
+            const isProductMissing = !record.product;
+            return {
+                ...record,
+                product: record.product ?? {
+                    id: record.productId,
+                    name: 'Unknown product',
+                    sku: '—',
+                    barcode: undefined,
+                },
+                isProductMissing,
+            };
+        });
+        return recordsWithFallback;
     }
     async getBatchInventory(productId, locationId) {
         return this.batchInventoryRepository.findByProduct(productId, locationId);

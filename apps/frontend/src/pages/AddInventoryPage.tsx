@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -50,9 +50,15 @@ export function AddInventoryPage() {
     brandId: '',
     brandName: '',
   });
+  const [categoryMode, setCategoryMode] = useState<'existing' | 'new'>('existing');
+  const [brandMode, setBrandMode] = useState<'existing' | 'new'>('existing');
+  const savedCategoryId = useRef<string>('');
+  const savedBrandId = useRef<string>('');
 
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([]);
+  const [editingQuantities, setEditingQuantities] = useState<Record<string, string>>({});
+  const [updatingQuantities, setUpdatingQuantities] = useState<Record<string, boolean>>({});
 
   // Get the effective locationId (user's locationId or first location for tenant)
   const getEffectiveLocationId = async (): Promise<string | null> => {
@@ -132,11 +138,123 @@ export function AddInventoryPage() {
     }
   };
 
+  const handleQuantityInputChange = (itemId: string, value: string) => {
+    setEditingQuantities((prev) => ({
+      ...prev,
+      [itemId]: value,
+    }));
+  };
+
+  const toggleCategoryMode = () => {
+    setCategoryMode((prevMode) => {
+      const nextMode = prevMode === 'existing' ? 'new' : 'existing';
+      setInventoryForm((form) => {
+        if (nextMode === 'new') {
+          savedCategoryId.current = form.categoryId;
+          return { ...form, categoryId: '' };
+        }
+        return { ...form, categoryId: savedCategoryId.current || '' };
+      });
+      return nextMode;
+    });
+  };
+
+  const toggleBrandMode = () => {
+    setBrandMode((prevMode) => {
+      const nextMode = prevMode === 'existing' ? 'new' : 'existing';
+      setInventoryForm((form) => {
+        if (nextMode === 'new') {
+          savedBrandId.current = form.brandId;
+          return { ...form, brandId: '' };
+        }
+        return { ...form, brandId: savedBrandId.current || '' };
+      });
+      return nextMode;
+    });
+  };
+
+  const handleUpdateQuantity = async (item: InventoryItem) => {
+    if (!user || !effectiveLocationId || !accessToken) {
+      toast.error('Please log in and ensure a location is selected before adjusting inventory.');
+      return;
+    }
+
+    const rawValue = editingQuantities[item.id] ?? item.quantity.toString();
+    const newQuantity = parseInt(rawValue, 10);
+    if (isNaN(newQuantity) || newQuantity < 0) {
+      toast.error('Quantity must be a non-negative number.');
+      return;
+    }
+
+    if (newQuantity === item.quantity) {
+      toast('Quantity already up to date.');
+      return;
+    }
+
+    const delta = newQuantity - item.quantity;
+    const type = delta > 0 ? 'received' : 'adjust';
+
+    setUpdatingQuantities((prev) => ({
+      ...prev,
+      [item.id]: true,
+    }));
+
+    try {
+      await axios.post(
+        `${API_URL}/api/v1/inventory/adjust`,
+        {
+          productId: item.product.id,
+          locationId: effectiveLocationId,
+          delta,
+          type,
+          userId: user.id,
+          notes: 'Updated via inventory management',
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      toast.success(`Updated ${item.product.name} quantity to ${newQuantity}`);
+      await loadInventory();
+      setEditingQuantities((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+    } catch (error: any) {
+      console.error('Failed to update quantity:', error);
+      const message = error.response?.data?.message || 'Failed to update inventory quantity';
+      toast.error(message);
+    } finally {
+      setUpdatingQuantities((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+    }
+  };
+
   const handleSubmitInventory = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedCategoryName = inventoryForm.categoryName.trim();
+    const trimmedBrandName = inventoryForm.brandName.trim();
     
     if (!inventoryForm.name || !inventoryForm.quantity || !inventoryForm.priceCents) {
       toast.error('Please fill in required fields: Name, Quantity, and Price');
+      return;
+    }
+    
+    if (categoryMode === 'new' && !trimmedCategoryName) {
+      toast.error('Enter a name for the new category or switch to an existing one.');
+      return;
+    }
+
+    if (brandMode === 'new' && !trimmedBrandName) {
+      toast.error('Enter a name for the new brand or switch to an existing one.');
       return;
     }
 
@@ -158,6 +276,9 @@ export function AddInventoryPage() {
         toast.error('Invalid price');
         return;
       }
+      
+      const categoryNamePayload = categoryMode === 'new' ? trimmedCategoryName : undefined;
+      const brandNamePayload = brandMode === 'new' ? trimmedBrandName : undefined;
 
       const response = await axios.post(
         `${API_URL}/api/v1/inventory/create-item`,
@@ -168,9 +289,9 @@ export function AddInventoryPage() {
           priceCents,
           barcode: inventoryForm.barcode || undefined,
           categoryId: inventoryForm.categoryId || undefined,
-          categoryName: inventoryForm.categoryName || undefined,
+          categoryName: categoryNamePayload,
           brandId: inventoryForm.brandId || undefined,
-          brandName: inventoryForm.brandName || undefined,
+          brandName: brandNamePayload,
         },
         { 
           headers: { 
@@ -195,6 +316,10 @@ export function AddInventoryPage() {
           brandId: '',
           brandName: '',
         });
+        setCategoryMode('existing');
+        setBrandMode('existing');
+        savedCategoryId.current = '';
+        savedBrandId.current = '';
 
         // Reload inventory
         await loadInventory();
@@ -340,34 +465,78 @@ export function AddInventoryPage() {
                 />
               </div>
               <div>
-                <label className="theme-text-secondary mb-2 block text-sm font-medium">Category</label>
-                <select
-                  value={inventoryForm.categoryId}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, categoryId: e.target.value })}
-                  className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-                >
-                  <option value="">Select category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between">
+                  <label className="theme-text-secondary mb-2 block text-sm font-medium">Category</label>
+                  <button
+                    type="button"
+                    onClick={toggleCategoryMode}
+                    className="text-xs font-semibold text-sky-400 transition hover:underline"
+                  >
+                    {categoryMode === 'existing' ? 'Need a new category?' : 'Choose existing category'}
+                  </button>
+                </div>
+                {categoryMode === 'existing' ? (
+                  <select
+                    value={inventoryForm.categoryId}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, categoryId: e.target.value })}
+                    className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                  >
+                    <option value="">Select category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={inventoryForm.categoryName}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, categoryName: e.target.value })}
+                    className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                    placeholder="Enter new category name"
+                  />
+                )}
+                {categoryMode === 'new' && (
+                  <p className="mt-1 text-xs text-slate-400">A new category will be created automatically.</p>
+                )}
               </div>
               <div>
-                <label className="theme-text-secondary mb-2 block text-sm font-medium">Brand</label>
-                <select
-                  value={inventoryForm.brandId}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, brandId: e.target.value })}
-                  className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-                >
-                  <option value="">Select brand</option>
-                  {brands.map((brand) => (
-                    <option key={brand.id} value={brand.id}>
-                      {brand.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between">
+                  <label className="theme-text-secondary mb-2 block text-sm font-medium">Brand</label>
+                  <button
+                    type="button"
+                    onClick={toggleBrandMode}
+                    className="text-xs font-semibold text-sky-400 transition hover:underline"
+                  >
+                    {brandMode === 'existing' ? 'Need a new brand?' : 'Choose existing brand'}
+                  </button>
+                </div>
+                {brandMode === 'existing' ? (
+                  <select
+                    value={inventoryForm.brandId}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, brandId: e.target.value })}
+                    className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                  >
+                    <option value="">Select brand</option>
+                    {brands.map((brand) => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={inventoryForm.brandName}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, brandName: e.target.value })}
+                    className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                    placeholder="Enter new brand name"
+                  />
+                )}
+                {brandMode === 'new' && (
+                  <p className="mt-1 text-xs text-slate-400">A new brand will be created automatically.</p>
+                )}
               </div>
             </div>
             <div>
@@ -453,6 +622,9 @@ export function AddInventoryPage() {
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
                       Updated By
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Adjust Qty
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -479,6 +651,25 @@ export function AddInventoryPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary text-sm">
                         {item.lastTransaction?.user?.name || item.lastTransaction?.userId || '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingQuantities[item.id] ?? item.quantity.toString()}
+                            onChange={(e) => handleQuantityInputChange(item.id, e.target.value)}
+                            className="theme-surface w-20 rounded-xl border px-3 py-2 text-[0.85rem] theme-text-primary focus:border-sky-400 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQuantity(item)}
+                            disabled={updatingQuantities[item.id]}
+                            className="rounded-full bg-gradient-to-r from-indigo-500 to-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:from-indigo-600 hover:to-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {updatingQuantities[item.id] ? 'Saving…' : 'Update'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

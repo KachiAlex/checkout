@@ -6,22 +6,11 @@
  * - Syncs to server when online
  * - Handles conflicts and retries
  */
-// UUID generator - using crypto.randomUUID() if available, fallback to simple generator
-function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  // Fallback for older browsers
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 import axios from 'axios';
 import { db, OfflineOrder } from '../db/offline-db';
 import { API_URL } from '../config';
 import toast from 'react-hot-toast';
+import { generateUUID } from '../utils/uuid';
 
 export interface SyncResult {
   success: boolean;

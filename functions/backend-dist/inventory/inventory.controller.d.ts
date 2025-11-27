@@ -14,7 +14,13 @@ export declare class InventoryController {
             barcode: string;
             description: string;
             priceCents: number;
+        } | {
+            id: string;
+            name: string;
+            sku: string;
+            barcode: any;
         };
+        isProductMissing: boolean;
         lastTransaction: {
             timestamp: Date;
             userId: string;

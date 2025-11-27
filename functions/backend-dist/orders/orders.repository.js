@@ -66,9 +66,17 @@ let OrdersRepository = class OrdersRepository {
     async create(data) {
         const now = firestore_1.FieldValue.serverTimestamp();
         const id = (0, uuid_1.v4)();
+        const serializedItems = data.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            priceCents: item.priceCents,
+            taxCents: item.taxCents,
+            discountCents: item.discountCents,
+        }));
         const doc = {
             ...data,
             customerId: data.customerId,
+            items: serializedItems,
             isHeld: data.isHeld ?? false,
             heldAt: data.heldAt ? firestore_1.Timestamp.fromDate(data.heldAt) : undefined,
             completedAt: data.completedAt ? firestore_1.Timestamp.fromDate(data.completedAt) : undefined,

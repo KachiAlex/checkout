@@ -16,19 +16,28 @@ const inventory_service_1 = require("../inventory/inventory.service");
 const orders_repository_1 = require("./orders.repository");
 const customers_service_1 = require("../customers/customers.service");
 const locations_repository_1 = require("../locations/locations.repository");
+const users_repository_1 = require("../users/users.repository");
 let OrdersService = class OrdersService {
-    constructor(ordersRepository, inventoryService, customersService, locationsRepository) {
+    constructor(ordersRepository, inventoryService, customersService, locationsRepository, usersRepository) {
         this.ordersRepository = ordersRepository;
         this.inventoryService = inventoryService;
         this.customersService = customersService;
         this.locationsRepository = locationsRepository;
+        this.usersRepository = usersRepository;
     }
     async create(createOrderDto, userId, tenantId, userLocationId) {
         const existingOrder = await this.ordersRepository.findByUuid(createOrderDto.uuid);
         if (existingOrder) {
             return existingOrder;
         }
-        let locationId = createOrderDto.locationId || userLocationId;
+        let locationId = createOrderDto.locationId;
+        if (!locationId) {
+            const user = await this.usersRepository.findById(userId);
+            locationId = user?.locationId;
+        }
+        if (!locationId) {
+            locationId = userLocationId;
+        }
         if (!locationId) {
             const locations = await this.locationsRepository.findByTenant(tenantId);
             if (locations.length === 0) {
@@ -178,6 +187,7 @@ exports.OrdersService = OrdersService = __decorate([
     __metadata("design:paramtypes", [orders_repository_1.OrdersRepository,
         inventory_service_1.InventoryService,
         customers_service_1.CustomersService,
-        locations_repository_1.LocationsRepository])
+        locations_repository_1.LocationsRepository,
+        users_repository_1.UsersRepository])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

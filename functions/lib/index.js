@@ -34,7 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.api = void 0;
-const functions = __importStar(require("firebase-functions"));
+const functions = __importStar(require("firebase-functions/v1"));
 const DEFAULT_REGION = process.env.FUNCTION_REGION ?? 'us-central1';
 // Default to 1 instance for cost control - increase only if needed
 const maxInstancesEnv = Number(process.env.FUNCTION_MAX_INSTANCES ?? '1');

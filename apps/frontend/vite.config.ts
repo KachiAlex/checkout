@@ -1,30 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
-import path from 'path';
 
 export default defineConfig({
   base: './',
-  plugins: [
-    react(),
-    VitePWA({
-      injectRegister: null,
-      registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\./,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
-            },
-          },
-        ],
-      },
-    }),
-  ],
+  plugins: [react()],
   build: {
     minify: 'terser',
     rollupOptions: {

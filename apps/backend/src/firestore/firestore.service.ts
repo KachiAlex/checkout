@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   CollectionReference,
+  DocumentData,
   DocumentReference,
   Firestore,
   Transaction,
@@ -14,11 +15,11 @@ export class FirestoreService {
 
   constructor(@Inject(FIRESTORE) private readonly firestore: Firestore) {}
 
-  collection<T = FirebaseFirestore.DocumentData>(path: string): CollectionReference<T> {
+  collection<T = DocumentData>(path: string): CollectionReference<T> {
     return this.firestore.collection(path) as CollectionReference<T>;
   }
 
-  doc<T = FirebaseFirestore.DocumentData>(path: string): DocumentReference<T> {
+  doc<T = DocumentData>(path: string): DocumentReference<T> {
     return this.firestore.doc(path) as DocumentReference<T>;
   }
 

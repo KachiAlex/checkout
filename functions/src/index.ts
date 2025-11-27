@@ -1,5 +1,5 @@
-import * as functions from 'firebase-functions';
-import type { Express } from 'express';
+import * as functions from 'firebase-functions/v1';
+import type { Express, Request, Response } from 'express';
 
 const DEFAULT_REGION = process.env.FUNCTION_REGION ?? 'us-central1';
 // Default to 1 instance for cost control - increase only if needed
@@ -54,7 +54,7 @@ export const api = functions
     maxInstances: MAX_INSTANCES,
     ingressSettings: 'ALLOW_ALL',
   })
-  .https.onRequest(async (req, res) => {
+  .https.onRequest(async (req: Request, res: Response) => {
     const origin = req.headers.origin || '';
     const allowedOrigins = [
       'https://checkout-77d99.web.app',

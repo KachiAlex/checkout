@@ -112,9 +112,18 @@ export class OrdersRepository {
     const now = FieldValue.serverTimestamp();
     const id = uuid();
 
+    const serializedItems = data.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      priceCents: item.priceCents,
+      taxCents: item.taxCents,
+      discountCents: item.discountCents,
+    }));
+
     const doc: OrderDocument = {
       ...data,
       customerId: data.customerId,
+      items: serializedItems,
       isHeld: data.isHeld ?? false,
       heldAt: data.heldAt ? Timestamp.fromDate(data.heldAt) : undefined,
       completedAt: data.completedAt ? Timestamp.fromDate(data.completedAt) : undefined,

@@ -20,6 +20,7 @@ interface InventoryItem {
   };
   quantity: number;
   reorderPoint?: number;
+  isProductMissing?: boolean;
 }
 
 export function InventoryPage() {
@@ -30,6 +31,7 @@ export function InventoryPage() {
   const [adjustQuantity, setAdjustQuantity] = useState('');
   const [adjustType, setAdjustType] = useState<'adjust' | 'received'>('adjust');
   const [effectiveLocationId, setEffectiveLocationId] = useState<string | null>(user?.locationId || null);
+  const hasMissingProducts = inventory.some((item) => item.isProductMissing);
 
   // Get the effective locationId (user's locationId or first location for tenant)
   const getEffectiveLocationId = async (): Promise<string | null> => {
@@ -328,6 +330,12 @@ export function InventoryPage() {
                 Refresh
               </button>
           </div>
+          {hasMissingProducts && (
+            <div className="px-6 py-4 text-xs font-semibold uppercase tracking-[0.3em] text-amber-300">
+              Some inventory items reference deleted or missing products. Quantities remain but you may need to recreate the product to restore the relationship.
+            </div>
+          )}
+
           {loading ? (
             <div className="p-8 text-center">
               <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-sky-400"></div>
@@ -358,9 +366,18 @@ export function InventoryPage() {
                 <tbody className="divide-y divide-white/10">
                   {inventory.map((item) => (
                     <tr key={item.id} className="hover:bg-white/5 transition">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium theme-text-primary">
-                        {item.product.name}
-                      </td>
+                    <td className="px-6 py-4 whitespace-nowrap font-medium theme-text-primary">
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`${item.isProductMissing ? 'text-amber-300' : ''}`}>
+                          {item.product.name}
+                        </span>
+                        {item.isProductMissing && (
+                          <span className="text-xs uppercase tracking-[0.2em] text-amber-400">
+                            Product record missing — recreate to sync
+                          </span>
+                        )}
+                      </div>
+                    </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">{item.product.sku}</td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary font-mono text-sm">
                         {item.product.barcode || '—'}

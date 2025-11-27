@@ -5,6 +5,7 @@ import { ChangePinDto } from './dto/change-pin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRole } from '@pos-checkout/shared';
+import { LocationsRepository } from '../locations/locations.repository';
 
 const hashPin = (pin: string) => bcrypt.hash(pin, 10);
 const generatePin = () => Math.floor(Math.random() * 900000 + 100000).toString();
@@ -13,7 +14,10 @@ export type SafeUser = Omit<UserRecord, 'pinHash'>;
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private readonly locationsRepository: LocationsRepository,
+  ) {}
 
   private ensureTenant(user: UserRecord | null, tenantId: string) {
     if (!user || user.tenantId !== tenantId) {
@@ -63,6 +67,7 @@ export class UsersService {
 
     const assignedPin = dto.pin ?? generatePin();
     const pinHash = await hashPin(assignedPin);
+    const locationId = await this.determineLocationIdForCreation(tenantId, dto.locationId, actor);
 
     const user = await this.usersRepository.save({
       name: dto.name.trim(),
@@ -70,7 +75,7 @@ export class UsersService {
       role: dto.role,
       pinHash,
       tenantId,
-      locationId: dto.locationId,
+      locationId,
       deviceId: undefined,
       isPlatformAdmin: dto.isPlatformAdmin ?? false,
     });
@@ -100,7 +105,9 @@ export class UsersService {
     if (dto.name !== undefined) update.name = dto.name.trim();
     if (dto.email !== undefined) update.email = dto.email.toLowerCase();
     if (dto.role !== undefined) update.role = dto.role;
-    if (dto.locationId !== undefined) update.locationId = dto.locationId;
+    if (dto.locationId !== undefined) {
+      update.locationId = await this.validateLocationOwnership(tenantId, dto.locationId);
+    }
     if (dto.isPlatformAdmin !== undefined) update.isPlatformAdmin = dto.isPlatformAdmin;
     if (dto.pin !== undefined) {
       update.pinHash = await hashPin(dto.pin);
@@ -108,6 +115,40 @@ export class UsersService {
 
     const updated = await this.usersRepository.update(userId, update);
     return this.toSafeUser(updated);
+  }
+
+  private async determineLocationIdForCreation(
+    tenantId: string,
+    requested?: string,
+    actor?: UserRecord,
+  ): Promise<string | undefined> {
+    const normalized = await this.validateLocationOwnership(tenantId, requested);
+    if (normalized) {
+      return normalized;
+    }
+
+    if (actor?.locationId) {
+      const actorLocation = await this.locationsRepository.findById(actor.locationId);
+      if (actorLocation && (!actorLocation.tenantId || actorLocation.tenantId === tenantId)) {
+        return actor.locationId;
+      }
+    }
+
+    const tenantLocations = await this.locationsRepository.findByTenant(tenantId);
+    return tenantLocations.length > 0 ? tenantLocations[0].id : undefined;
+  }
+
+  private async validateLocationOwnership(tenantId: string, locationId?: string | null): Promise<string | undefined> {
+    if (!locationId?.trim()) {
+      return undefined;
+    }
+
+    const location = await this.locationsRepository.findById(locationId.trim());
+    if (!location || (location.tenantId && location.tenantId !== tenantId)) {
+      throw new NotFoundException('Location not found');
+    }
+
+    return location.id;
   }
 
   async deleteUser(tenantId: string, userId: string, actor: UserRecord): Promise<void> {

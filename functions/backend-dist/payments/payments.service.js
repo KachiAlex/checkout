@@ -16,49 +16,23 @@ const orders_service_1 = require("../orders/orders.service");
 const payment_adapters_1 = require("@pos-checkout/payment-adapters");
 const config_1 = require("@nestjs/config");
 const payments_repository_1 = require("./payments.repository");
-const payment_settings_service_1 = require("../payment-settings/payment-settings.service");
 const users_repository_1 = require("../users/users.repository");
 let PaymentsService = class PaymentsService {
-    constructor(paymentsRepository, ordersService, configService, paymentSettingsService, usersRepository) {
+    constructor(paymentsRepository, ordersService, configService, usersRepository) {
         this.paymentsRepository = paymentsRepository;
         this.ordersService = ordersService;
         this.configService = configService;
-        this.paymentSettingsService = paymentSettingsService;
         this.usersRepository = usersRepository;
-        const monnifyApiKey = this.configService.get('MONNIFY_API_KEY');
-        const monnifySecretKey = this.configService.get('MONNIFY_SECRET_KEY');
-        const monnifyContractCode = this.configService.get('MONNIFY_CONTRACT_CODE');
-        if (monnifyApiKey && monnifySecretKey && monnifyContractCode) {
-            this.defaultPaymentAdapter = new payment_adapters_1.MonnifyAdapter({
-                apiKey: monnifyApiKey,
-                secretKey: monnifySecretKey,
-                contractCode: monnifyContractCode,
-                baseUrl: this.configService.get('MONNIFY_BASE_URL'),
-                webhookSecret: this.configService.get('MONNIFY_WEBHOOK_SECRET'),
-            });
-        }
-        else {
-            const approveRate = this.configService.get('PAYMENT_MOCK_APPROVE_RATE', 0.95);
-            this.defaultPaymentAdapter = new payment_adapters_1.MockTerminal(approveRate);
-        }
+        const approveRate = this.configService.get('PAYMENT_MOCK_APPROVE_RATE', 0.95);
+        this.defaultPaymentAdapter = new payment_adapters_1.MockTerminal(approveRate);
     }
-    async getPaymentAdapter(tenantId) {
-        const tenantSettings = await this.paymentSettingsService.getFullPaymentSettings(tenantId);
-        if (tenantSettings) {
-            return new payment_adapters_1.MonnifyAdapter({
-                apiKey: tenantSettings.monnifyApiKey,
-                secretKey: tenantSettings.monnifySecretKey,
-                contractCode: tenantSettings.monnifyContractCode,
-                baseUrl: this.configService.get('MONNIFY_BASE_URL'),
-                webhookSecret: tenantSettings.monnifyWebhookSecret,
-            });
-        }
+    async getPaymentAdapter() {
         return this.defaultPaymentAdapter;
     }
     async initiatePayment(orderId, dto) {
         const order = await this.ordersService.findOne(orderId);
         if (order.status === shared_1.OrderStatus.COMPLETED) {
-            throw new Error('Order already completed');
+            throw new common_1.ConflictException('Order already completed');
         }
         const user = await this.usersRepository.findById(order.createdBy);
         const tenantId = user?.tenantId || '';
@@ -71,15 +45,15 @@ let PaymentsService = class PaymentsService {
         });
         try {
             let result;
-            if (dto.method === shared_1.PaymentMethod.CASH) {
+            if (dto.method === shared_1.PaymentMethod.CASH || dto.method === shared_1.PaymentMethod.TRANSFER) {
                 result = await this.paymentsRepository.update(payment.id, {
                     status: shared_1.PaymentStatus.COMPLETED,
                     processedAt: new Date(),
-                    transactionId: `CASH_${Date.now()}`,
+                    transactionId: `${dto.method === shared_1.PaymentMethod.CASH ? 'CASH' : 'TRANSFER'}_${Date.now()}`,
                 });
             }
             else {
-                const paymentAdapter = await this.getPaymentAdapter(tenantId);
+                const paymentAdapter = await this.getPaymentAdapter();
                 const adapterResult = await paymentAdapter.initiatePayment({
                     order_id: order.id,
                     amount_cents: dto.amount,
@@ -123,7 +97,7 @@ let PaymentsService = class PaymentsService {
         const order = await this.ordersService.findOne(payment.orderId);
         const user = await this.usersRepository.findById(order.createdBy);
         const tenantId = user?.tenantId || '';
-        const paymentAdapter = await this.getPaymentAdapter(tenantId);
+        const paymentAdapter = await this.getPaymentAdapter();
         const result = await paymentAdapter.capture(paymentId);
         return this.paymentsRepository.update(paymentId, {
             status: result.status,
@@ -144,7 +118,7 @@ let PaymentsService = class PaymentsService {
         const user = await this.usersRepository.findById(order.createdBy);
         const tenantId = user?.tenantId || '';
         const refundAmount = amountCents || payment.amountCents;
-        const paymentAdapter = await this.getPaymentAdapter(tenantId);
+        const paymentAdapter = await this.getPaymentAdapter();
         const result = await paymentAdapter.refund(paymentId, refundAmount);
         return this.paymentsRepository.update(paymentId, {
             status: result.status,
@@ -196,7 +170,6 @@ exports.PaymentsService = PaymentsService = __decorate([
     __metadata("design:paramtypes", [payments_repository_1.PaymentsRepository,
         orders_service_1.OrdersService,
         config_1.ConfigService,
-        payment_settings_service_1.PaymentSettingsService,
         users_repository_1.UsersRepository])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

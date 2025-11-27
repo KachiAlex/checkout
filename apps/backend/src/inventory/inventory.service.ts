@@ -94,9 +94,21 @@ export class InventoryService {
       })
     );
 
-    // Filter out records where product is null (product was deleted or not found)
-    // Only return inventory records that have valid product information
-    return enrichedRecords.filter((record) => record.product !== null);
+    const recordsWithFallback = enrichedRecords.map((record) => {
+      const isProductMissing = !record.product;
+      return {
+        ...record,
+        product: record.product ?? {
+          id: record.productId,
+          name: 'Unknown product',
+          sku: '—',
+          barcode: undefined,
+        },
+        isProductMissing,
+      };
+    });
+
+    return recordsWithFallback;
   }
 
   async getBatchInventory(productId: string, locationId: string) {

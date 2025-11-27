@@ -47,11 +47,13 @@ const common_1 = require("@nestjs/common");
 const bcrypt = __importStar(require("bcrypt"));
 const users_repository_1 = require("./users.repository");
 const shared_1 = require("@pos-checkout/shared");
+const locations_repository_1 = require("../locations/locations.repository");
 const hashPin = (pin) => bcrypt.hash(pin, 10);
 const generatePin = () => Math.floor(Math.random() * 900000 + 100000).toString();
 let UsersService = class UsersService {
-    constructor(usersRepository) {
+    constructor(usersRepository, locationsRepository) {
         this.usersRepository = usersRepository;
+        this.locationsRepository = locationsRepository;
     }
     ensureTenant(user, tenantId) {
         if (!user || user.tenantId !== tenantId) {
@@ -89,13 +91,14 @@ let UsersService = class UsersService {
         }
         const assignedPin = dto.pin ?? generatePin();
         const pinHash = await hashPin(assignedPin);
+        const locationId = await this.determineLocationIdForCreation(tenantId, dto.locationId, actor);
         const user = await this.usersRepository.save({
             name: dto.name.trim(),
             email: dto.email.toLowerCase(),
             role: dto.role,
             pinHash,
             tenantId,
-            locationId: dto.locationId,
+            locationId,
             deviceId: undefined,
             isPlatformAdmin: dto.isPlatformAdmin ?? false,
         });
@@ -121,8 +124,9 @@ let UsersService = class UsersService {
             update.email = dto.email.toLowerCase();
         if (dto.role !== undefined)
             update.role = dto.role;
-        if (dto.locationId !== undefined)
-            update.locationId = dto.locationId;
+        if (dto.locationId !== undefined) {
+            update.locationId = await this.validateLocationOwnership(tenantId, dto.locationId);
+        }
         if (dto.isPlatformAdmin !== undefined)
             update.isPlatformAdmin = dto.isPlatformAdmin;
         if (dto.pin !== undefined) {
@@ -130,6 +134,30 @@ let UsersService = class UsersService {
         }
         const updated = await this.usersRepository.update(userId, update);
         return this.toSafeUser(updated);
+    }
+    async determineLocationIdForCreation(tenantId, requested, actor) {
+        const normalized = await this.validateLocationOwnership(tenantId, requested);
+        if (normalized) {
+            return normalized;
+        }
+        if (actor?.locationId) {
+            const actorLocation = await this.locationsRepository.findById(actor.locationId);
+            if (actorLocation && (!actorLocation.tenantId || actorLocation.tenantId === tenantId)) {
+                return actor.locationId;
+            }
+        }
+        const tenantLocations = await this.locationsRepository.findByTenant(tenantId);
+        return tenantLocations.length > 0 ? tenantLocations[0].id : undefined;
+    }
+    async validateLocationOwnership(tenantId, locationId) {
+        if (!locationId?.trim()) {
+            return undefined;
+        }
+        const location = await this.locationsRepository.findById(locationId.trim());
+        if (!location || (location.tenantId && location.tenantId !== tenantId)) {
+            throw new common_1.NotFoundException('Location not found');
+        }
+        return location.id;
     }
     async deleteUser(tenantId, userId, actor) {
         const isActorAdmin = actor.role === shared_1.UserRole.ADMIN || actor.isPlatformAdmin;
@@ -156,6 +184,7 @@ let UsersService = class UsersService {
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [users_repository_1.UsersRepository])
+    __metadata("design:paramtypes", [users_repository_1.UsersRepository,
+        locations_repository_1.LocationsRepository])
 ], UsersService);
 //# sourceMappingURL=users.service.js.map

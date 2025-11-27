@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Query, Timestamp } from 'firebase-admin/firestore';
 import { UserRole } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 
@@ -32,7 +32,7 @@ export class UsersRepository {
   constructor(private readonly firestore: FirestoreService) {}
 
   async findAll(tenantId?: string): Promise<UserRecord[]> {
-    let query = this.collection as FirebaseFirestore.Query<UserDocument>;
+    let query = this.collection as Query<UserDocument>;
     if (tenantId) {
       query = query.where('tenantId', '==', tenantId);
     }

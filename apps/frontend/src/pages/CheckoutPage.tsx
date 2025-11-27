@@ -11,19 +11,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Link, Navigate } from 'react-router-dom';
 import { API_URL } from '../config';
+import { generateUUID } from '../utils/uuid';
 import { receiptService } from '../services/receiptService';
-
-// UUID generator
-function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 interface Product {
   id: string;
@@ -278,6 +267,11 @@ export function CheckoutPage() {
       const order = orderResponse.data;
 
       // Process payment
+      if (lastCompletedOrderId === order.id) {
+        toast.success(`Payment already confirmed for order ${order.orderNumber || orderUuid}`);
+        return;
+      }
+
       const paymentResponse = await axios.post(
         `${API_URL}/api/v1/orders/${order.id}/payments/initiate`,
         { method, amount: totalAmount },
@@ -304,9 +298,7 @@ export function CheckoutPage() {
         await handleReceiptPrint(order.id);
         clearCart();
         setSelectedCustomer(null);
-        setTimeout(() => {
-          setLastCompletedOrderId(null);
-        }, 10000);
+        setLastCompletedOrderId(null);
       } else if (payment.status === 'pending' || payment.status === 'processing') {
         toast.loading('Payment processing...', { id: 'payment-processing' });
         setLastCompletedOrderId(order.id);

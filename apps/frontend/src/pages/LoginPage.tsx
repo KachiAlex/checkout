@@ -6,6 +6,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
 import { useThemeStore } from '../stores/themeStore';
 import { debugLog } from '../utils/debugLog';
+import { generateUUID } from '../utils/uuid';
 
 type LoginVariant = 'tenant' | 'superadmin';
 
@@ -78,8 +79,7 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
         attemptedTenantSlug = normalizedSlug;
 
         // Generate device ID (store in localStorage for persistence)
-        const deviceId =
-          localStorage.getItem('deviceId') || `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const deviceId = localStorage.getItem('deviceId') ?? generateUUID();
         localStorage.setItem('deviceId', deviceId);
         attemptedDeviceId = deviceId;
 

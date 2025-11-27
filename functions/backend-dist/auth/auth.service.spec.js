@@ -41,6 +41,9 @@ const users_repository_1 = require("../users/users.repository");
 const tenants_repository_1 = require("../tenants/tenants.repository");
 const shared_1 = require("@pos-checkout/shared");
 const bcrypt = __importStar(require("bcrypt"));
+jest.mock('bcrypt', () => ({
+    compare: jest.fn(),
+}));
 describe('AuthService', () => {
     let service;
     let usersRepository;
@@ -119,7 +122,7 @@ describe('AuthService', () => {
         tenantsRepository = module.get(tenants_repository_1.TenantsRepository);
         jwtService = module.get(jwt_1.JwtService);
         configService = module.get(config_1.ConfigService);
-        jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
+        bcrypt.compare.mockResolvedValue(true);
     });
     afterEach(() => {
         jest.clearAllMocks();
@@ -138,7 +141,7 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException with invalid PIN', async () => {
             tenantsRepository.findBySlug.mockResolvedValue(mockTenant);
             usersRepository.findAll.mockResolvedValue([mockUser]);
-            jest.spyOn(bcrypt, 'compare').mockResolvedValue(false);
+            bcrypt.compare.mockResolvedValue(false);
             await expect(service.login({ tenantSlug: 'acme', pin: 'wrong' })).rejects.toThrow('Invalid PIN');
         });
     });

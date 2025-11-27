@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { FirestoreService } from '../firestore/firestore.service';
+import { isMissingIndexError } from '../firestore/firestore.util';
 
 export interface CategoryRecord {
   id: string;
@@ -33,11 +34,20 @@ export class CategoriesRepository {
   constructor(private readonly firestore: FirestoreService) {}
 
   async findAll(tenantId: string): Promise<CategoryRecord[]> {
-    const snapshot = await this.collection
-      .where('tenantId', '==', tenantId)
-      .orderBy('name', 'asc')
-      .get();
-    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    try {
+      const snapshot = await this.collection
+        .where('tenantId', '==', tenantId)
+        .orderBy('name', 'asc')
+        .get();
+      return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    } catch (error) {
+      if (isMissingIndexError(error)) {
+        const fallback = await this.collection.where('tenantId', '==', tenantId).get();
+        const records = fallback.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        return this.sortRecordsByName(records);
+      }
+      throw error;
+    }
   }
 
   async findById(id: string, tenantId: string): Promise<CategoryRecord | null> {
@@ -122,6 +132,10 @@ export class CategoriesRepository {
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),
     };
+  }
+
+  private sortRecordsByName(records: CategoryRecord[]): CategoryRecord[] {
+    return records.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private timestampToDate(timestamp?: TimestampField): Date {

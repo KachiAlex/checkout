@@ -8,6 +8,8 @@ export enum GRNStatus {
   CANCELLED = 'cancelled',
 }
 
+type TimestampField = Timestamp | FieldValue | null | undefined;
+
 export interface GRNItem {
   productId: string;
   productName: string;
@@ -15,7 +17,7 @@ export interface GRNItem {
   orderedQuantity: number;
   receivedQuantity: number;
   batchNumber?: string;
-  expiryDate?: Date;
+  expiryDate?: Date | TimestampField | string;
   unitCostCents: number;
   totalCostCents: number;
 }
@@ -40,8 +42,6 @@ export interface GRNRecord {
   createdAt: Date;
   updatedAt: Date;
 }
-
-type TimestampField = Timestamp | FieldValue | null | undefined;
 
 type GRNDocument = Omit<GRNRecord, 'id' | 'createdAt' | 'updatedAt' | 'receivedAt'> & {
   receivedAt?: TimestampField;
