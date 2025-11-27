@@ -266,49 +266,12 @@ export function CheckoutPage() {
 
       const order = orderResponse.data;
 
-      // Process payment
-      if (lastCompletedOrderId === order.id) {
-        toast.success(`Payment already confirmed for order ${order.orderNumber || orderUuid}`);
-        return;
-      }
-
-      const paymentResponse = await axios.post(
-        `${API_URL}/api/v1/orders/${order.id}/payments/initiate`,
-        { method, amount: totalAmount },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-
-      const payment = paymentResponse.data;
-
-      if (payment.status === 'completed' || method === 'cash' || method === 'transfer') {
-        if ((method === 'cash' || method === 'transfer') && payment.status !== 'completed') {
-          try {
-            await axios.post(
-              `${API_URL}/api/v1/orders/${order.id}/payments/capture`,
-              { paymentId: payment.id },
-              { headers: { Authorization: `Bearer ${accessToken}` } }
-            );
-          } catch (captureError) {
-            console.log('Payment capture:', captureError);
-          }
-        }
-
-        toast.success(`Payment confirmed! Order: ${order.orderNumber || orderUuid}`);
-        setLastCompletedOrderId(order.id);
-        await handleReceiptPrint(order.id);
-        clearCart();
-        setSelectedCustomer(null);
-        setLastCompletedOrderId(null);
-      } else if (payment.status === 'pending' || payment.status === 'processing') {
-        toast.loading('Payment processing...', { id: 'payment-processing' });
-        setLastCompletedOrderId(order.id);
-        setTimeout(() => {
-          toast.dismiss('payment-processing');
-          setReceiptOptionsOpen(true);
-        }, 2000);
-      } else {
-        toast.error(`Payment ${payment.status}: ${payment.error || 'Unknown error'}`);
-      }
+      toast.success(`Payment confirmed! Order: ${order.orderNumber || orderUuid}`);
+      setLastCompletedOrderId(order.id);
+      await handleReceiptPrint(order.id);
+      clearCart();
+      setSelectedCustomer(null);
+      setLastCompletedOrderId(null);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Payment failed';
       toast.error(errorMessage, { duration: 5000, icon: '❌' });

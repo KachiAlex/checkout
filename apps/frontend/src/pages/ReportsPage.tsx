@@ -291,9 +291,71 @@ export function ReportsPage() {
     }
   };
 
-  const getMaxValue = (data: any[], key: string) => {
-    return Math.max(...data.map((d) => d[key]), 1);
-  };
+const SimpleLineChart = ({
+  data,
+  metric,
+  color,
+  labelFormatter,
+}: {
+  data: SalesAnalytics['data'];
+  metric: 'sales' | 'orders';
+  color: string;
+  labelFormatter: (period: string) => string;
+}) => {
+  if (!data || data.length === 0) {
+    return <p className="text-sm theme-text-secondary">No data available</p>;
+  }
+
+  const maxValue = Math.max(...data.map((item) => item[metric]), 1);
+  const step = data.length > 1 ? 100 / (data.length - 1) : 100;
+
+  const points = data
+    .map((item, idx) => {
+      const x = step * idx;
+      const value = item[metric];
+      const y = 100 - (value / maxValue) * 100;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  return (
+    <div className="relative h-48">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+        {[20, 40, 60, 80].map((y) => (
+          <line
+            key={`grid-${y}`}
+            x1="0"
+            y1={y}
+            x2="100"
+            y2={y}
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="0.5"
+          />
+        ))}
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+        />
+        {data.map((item, idx) => {
+          const x = step * idx;
+          const y = 100 - (item[metric] / maxValue) * 100;
+          return <circle key={idx} cx={x} cy={y} r="1.8" fill={color} />;
+        })}
+      </svg>
+      <div className="absolute inset-x-0 bottom-0 mt-1 flex justify-between text-[10px] text-white/70">
+        {data.map((item, idx) => (
+          <span key={idx} className="whitespace-nowrap" style={{ width: `${100 / data.length}%`, textAlign: 'center' }}>
+            {labelFormatter(item.period)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
 
   const exportToCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) {
@@ -500,56 +562,28 @@ export function ReportsPage() {
                   </div>
                 </div>
 
-                {/* Sales Chart */}
-                <div className="mb-6">
-                  <h3 className="theme-text-primary text-sm font-semibold mb-3">Sales Over Time</h3>
-                  <div className="theme-surface rounded-xl border p-4">
-                    <div className="flex items-end justify-between gap-2 h-64">
-                      {salesAnalytics.data.map((item, idx) => {
-                        const maxSales = getMaxValue(salesAnalytics.data, 'sales');
-                        const height = (item.sales / maxSales) * 100;
-                        return (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                            <div className="relative w-full flex items-end justify-center" style={{ height: '240px' }}>
-                              <div
-                                className="w-full rounded-t bg-gradient-to-t from-emerald-500 to-emerald-400 transition hover:from-emerald-400 hover:to-emerald-300"
-                                style={{ height: `${height}%`, minHeight: '4px' }}
-                                title={`${formatPeriod(item.period)}: ${formatCurrency(item.sales)}`}
-                              />
-                            </div>
-                            <p className="theme-text-secondary text-[10px] text-center transform -rotate-45 origin-top-left whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
-                              {formatPeriod(item.period)}
-                            </p>
-                          </div>
-                        );
-                      })}
+                {/* Sales chart */}
+                <div className="mb-8 space-y-4">
+                  <div>
+                    <h3 className="theme-text-primary text-sm font-semibold mb-3">Sales Over Time</h3>
+                    <div className="theme-surface rounded-xl border p-4 bg-white/5">
+                      <SimpleLineChart
+                        data={salesAnalytics.data}
+                        metric="sales"
+                        color="#10b981"
+                        labelFormatter={(period) => formatPeriod(period)}
+                      />
                     </div>
                   </div>
-                </div>
-
-                {/* Orders Chart */}
-                <div>
-                  <h3 className="theme-text-primary text-sm font-semibold mb-3">Orders Over Time</h3>
-                  <div className="theme-surface rounded-xl border p-4">
-                    <div className="flex items-end justify-between gap-2 h-64">
-                      {salesAnalytics.data.map((item, idx) => {
-                        const maxOrders = getMaxValue(salesAnalytics.data, 'orders');
-                        const height = (item.orders / maxOrders) * 100;
-                        return (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                            <div className="relative w-full flex items-end justify-center" style={{ height: '240px' }}>
-                              <div
-                                className="w-full rounded-t bg-gradient-to-t from-sky-500 to-sky-400 transition hover:from-sky-400 hover:to-sky-300"
-                                style={{ height: `${height}%`, minHeight: '4px' }}
-                                title={`${formatPeriod(item.period)}: ${item.orders} orders`}
-                              />
-                            </div>
-                            <p className="theme-text-secondary text-[10px] text-center transform -rotate-45 origin-top-left whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
-                              {formatPeriod(item.period)}
-                            </p>
-                          </div>
-                        );
-                      })}
+                  <div>
+                    <h3 className="theme-text-primary text-sm font-semibold mb-3">Orders Over Time</h3>
+                    <div className="theme-surface rounded-xl border p-4 bg-white/5">
+                      <SimpleLineChart
+                        data={salesAnalytics.data}
+                        metric="orders"
+                        color="#3b82f6"
+                        labelFormatter={(period) => formatPeriod(period)}
+                      />
                     </div>
                   </div>
                 </div>

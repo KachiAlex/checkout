@@ -701,7 +701,6 @@ export function SettingsPage() {
                   </div>
                 )}
               </div>
-            </div>
           </SectionContainer>
         )}
 
@@ -1578,102 +1577,6 @@ export function SettingsPage() {
             title="Devices"
             description="View and manage connected devices including scanners, printers, and cash registers."
           >
-            <div className="space-y-6">
-            {/* Device Types Info */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                <div className="text-3xl mb-2">🔌</div>
-                <h4 className="theme-text-primary mb-2 text-sm font-semibold text-emerald-400">USB Devices</h4>
-                <p className="theme-text-secondary text-xs">
-                  USB scanners, printers, and cash registers connect automatically when plugged in. No pairing needed!
-                </p>
-                <div className="mt-3 pt-3 border-t border-emerald-500/20">
-                  <p className="theme-text-secondary text-xs">
-                    <strong className="theme-text-primary">Auto-connect:</strong> Yes
-                  </p>
-                  <p className="theme-text-secondary text-xs mt-1">
-                    <strong className="theme-text-primary">Setup:</strong> Plug and play
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
-                <div className="text-3xl mb-2">📡</div>
-                <h4 className="theme-text-primary mb-2 text-sm font-semibold text-purple-400">Bluetooth Devices</h4>
-                <p className="theme-text-secondary text-xs">
-                  Bluetooth scanners and printers must be paired via your system's Bluetooth settings first, then they'll appear here.
-                </p>
-                <div className="mt-3 pt-3 border-t border-purple-500/20">
-                  <p className="theme-text-secondary text-xs">
-                    <strong className="theme-text-primary">Pairing:</strong> System Bluetooth
-                  </p>
-                  <p className="theme-text-secondary text-xs mt-1">
-                    <strong className="theme-text-primary">Note:</strong> Pair in OS settings, not browser
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
-                <div className="text-3xl mb-2">🖨️</div>
-                <h4 className="theme-text-primary mb-2 text-sm font-semibold text-sky-400">Printers & Cash Registers</h4>
-                <p className="theme-text-secondary text-xs">
-                  Receipt printers and cash registers are managed via the print proxy. See Receipt Printer section below.
-                </p>
-                <div className="mt-3 pt-3 border-t border-sky-500/20">
-                  <p className="theme-text-secondary text-xs">
-                    <strong className="theme-text-primary">Connection:</strong> Print Proxy
-                  </p>
-                  <p className="theme-text-secondary text-xs mt-1">
-                    <strong className="theme-text-primary">Types:</strong> Serial/USB, Network
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Bluetooth Pairing Instructions */}
-            <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
-              <h4 className="theme-text-primary mb-3 text-sm font-semibold text-purple-400">
-                📡 How to Pair Bluetooth Devices
-              </h4>
-              <div className="space-y-3 text-xs theme-text-secondary">
-                <div>
-                  <strong className="theme-text-primary">Important:</strong> Bluetooth devices must be paired via your operating system's Bluetooth settings, NOT through the browser.
-                </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div>
-                    <strong className="theme-text-primary">Windows:</strong>
-                    <ol className="mt-1 ml-4 list-decimal space-y-1">
-                      <li>Open Settings → Devices → Bluetooth</li>
-                      <li>Put device in pairing mode</li>
-                      <li>Click "Add Bluetooth or other device"</li>
-                      <li>Select your scanner/printer</li>
-                      <li>Device will appear here after pairing</li>
-                    </ol>
-                  </div>
-                  <div>
-                    <strong className="theme-text-primary">macOS:</strong>
-                    <ol className="mt-1 ml-4 list-decimal space-y-1">
-                      <li>Open System Preferences → Bluetooth</li>
-                      <li>Put device in pairing mode</li>
-                      <li>Click device name when it appears</li>
-                      <li>Click "Pair"</li>
-                      <li>Device will appear here after pairing</li>
-                    </ol>
-                  </div>
-                  <div>
-                    <strong className="theme-text-primary">Linux:</strong>
-                    <ol className="mt-1 ml-4 list-decimal space-y-1">
-                      <li>Open Bluetooth settings</li>
-                      <li>Put device in pairing mode</li>
-                      <li>Scan for devices</li>
-                      <li>Select and pair your device</li>
-                      <li>Device will appear here after pairing</li>
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Connected Devices List */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between mb-4">
