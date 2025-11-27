@@ -6,6 +6,7 @@ import { ReceiptOptionsModal } from '../components/ReceiptOptionsModal';
 import { QuantitySelectorModal } from '../components/QuantitySelectorModal';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
+import { ScannerInput } from '../components/ScannerInput';
 import { useThemeStore } from '../stores/themeStore';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -101,6 +102,32 @@ export function CheckoutPage() {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery, accessToken]);
+
+  // Handle barcode scan
+  const handleBarcodeScan = async (barcode: string) => {
+    if (!barcode.trim() || !accessToken) return;
+
+    try {
+      // Search for product by barcode
+      const response = await axios.get(
+        `${API_URL}/api/v1/products?query=${encodeURIComponent(barcode)}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      
+      const products = response.data || [];
+      // Try to find exact barcode match first
+      const product = products.find((p: Product) => p.barcode === barcode) || products[0];
+      
+      if (product) {
+        await handleProductSelect(product);
+      } else {
+        toast.error(`Product not found for barcode: ${barcode}`);
+      }
+    } catch (error: any) {
+      console.error('Barcode scan failed:', error);
+      toast.error('Failed to search product by barcode');
+    }
+  };
 
   // Handle product selection
   const handleProductSelect = async (product: Product) => {
@@ -306,60 +333,61 @@ export function CheckoutPage() {
   const totalDiscount = subtotal - finalSubtotal;
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden theme-background">
+    <div className="relative min-h-screen w-full overflow-x-hidden theme-background">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${theme === 'light' ? 'bg-sky-300/40' : 'bg-cyan-500/30'} blur-[160px]`} />
         <div className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${theme === 'light' ? 'bg-indigo-200/35' : 'bg-indigo-500/25'} blur-[200px]`} />
       </div>
 
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="relative z-10 flex min-h-screen flex-col overflow-x-hidden w-full">
         {/* Header */}
-        <header className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-          <div className="theme-card flex items-center justify-between rounded-2xl border p-4 backdrop-blur-xl">
-            <div className="flex items-center gap-4">
+        <header className="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-8 pt-3 sm:pt-6 sticky top-0 z-20 bg-slate-950/80 backdrop-blur-sm">
+          <div className="theme-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-xl sm:rounded-2xl border p-3 sm:p-4 backdrop-blur-xl">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               <BrandMark
-                size={40}
+                size={32}
                 backgroundClassName="bg-white/90 dark:bg-white/10"
-                className="ring-1 ring-slate-200/40 dark:ring-white/10"
+                className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0"
               />
-              <div>
-                <h1 className="theme-text-primary text-xl font-semibold">Checkout</h1>
-                <p className="theme-text-secondary text-xs">{tenant?.name || 'POS System'}</p>
+              <div className="min-w-0">
+                <h1 className="theme-text-primary text-lg sm:text-xl font-semibold truncate">Checkout</h1>
+                <p className="theme-text-secondary text-xs truncate">{tenant?.name || 'POS System'}</p>
               </div>
             </div>
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/inventory"
-                  className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-emerald-300/60 hover:text-emerald-100"
-                >
-                  📦 Inventory
-                </Link>
-                <Link
-                  to="/reports"
-                  className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-sky-300/60 hover:text-sky-100"
-                >
-                  📊 Reports
-                </Link>
-                <Link
-                  to="/settings#devices"
-                  className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-indigo-300/60 hover:text-indigo-100"
-                  title="Connected devices"
-                >
-                  🧾 Devices
-                </Link>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+              <Link
+                to="/inventory"
+                className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-emerald-300/60 hover:text-emerald-100"
+              >
+                📦 <span className="hidden sm:inline">Inventory</span>
+              </Link>
+              <Link
+                to="/reports"
+                className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-sky-300/60 hover:text-sky-100"
+              >
+                📊 <span className="hidden sm:inline">Reports</span>
+              </Link>
+              <Link
+                to="/settings#devices"
+                className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-indigo-300/60 hover:text-indigo-100"
+                title="Connected devices"
+              >
+                🧾 <span className="hidden sm:inline">Devices</span>
+              </Link>
               {isAdmin && (
                 <Link
                   to="/settings"
-                  className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition"
+                  className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition"
                 >
-                  ⚙️ Settings
+                  ⚙️ <span className="hidden sm:inline">Settings</span>
                 </Link>
               )}
               <button
                 onClick={logout}
-                className="rounded-full bg-gradient-to-r from-rose-400 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl"
+                className="rounded-full bg-gradient-to-r from-rose-400 to-pink-500 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition hover:shadow-xl"
               >
-                Logout
+                <span className="hidden sm:inline">Logout</span>
+                <span className="sm:hidden">Out</span>
               </button>
               <ThemeToggle />
             </div>
@@ -367,29 +395,37 @@ export function CheckoutPage() {
         </header>
 
         {/* Main Content */}
-        <div className="mx-auto mt-6 w-full max-w-7xl flex-1 px-4 pb-12 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="mx-auto mt-4 w-full max-w-7xl flex-1 px-2 sm:px-4 lg:px-8 pb-4 sm:pb-12 overflow-y-auto">
+          <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row">
             {/* Left: Product Search & Cart Table */}
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-4 sm:space-y-6 min-w-0">
               {/* Product Search */}
-              <div className="theme-card rounded-2xl border p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary mb-4 text-lg font-semibold">Search Products</h2>
+              <div className="theme-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
+                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Search Products</h2>
                 <div className="relative">
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => searchQuery && setShowResults(true)}
-                    placeholder="Type product name, SKU, or barcode..."
-                    className="theme-surface w-full rounded-xl border px-4 py-3 text-base theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
-                    autoFocus
+                  <ScannerInput
+                    onScan={handleBarcodeScan}
+                    placeholder="Scan barcode/QR or type product name, SKU..."
+                    autoFocus={false}
                   />
-                  {isSearching && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-                    </div>
-                  )}
+                  
+                  {/* Text Search Input (for manual typing) */}
+                  <div className="mt-3">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => searchQuery && setShowResults(true)}
+                      placeholder="Or type product name, SKU..."
+                      className="theme-surface w-full rounded-xl border px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
+                    />
+                    {isSearching && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Search Results Dropdown */}
                   {showResults && searchResults.length > 0 && (
@@ -400,12 +436,12 @@ export function CheckoutPage() {
                           onClick={() => handleProductSelect(product)}
                           className="w-full border-b border-white/10 px-4 py-3 text-left transition hover:bg-white/10 first:rounded-t-xl last:rounded-b-xl last:border-b-0"
                         >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="theme-text-primary font-medium">{product.name}</p>
-                              <p className="theme-text-secondary text-sm">SKU: {product.sku || 'N/A'}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="theme-text-primary font-medium truncate">{product.name}</p>
+                              <p className="theme-text-secondary text-xs sm:text-sm">SKU: {product.sku || 'N/A'}</p>
                             </div>
-                            <p className="theme-text-primary font-semibold">₦{(product.priceCents / 100).toFixed(2)}</p>
+                            <p className="theme-text-primary font-semibold text-sm sm:text-base whitespace-nowrap">₦{(product.priceCents / 100).toFixed(2)}</p>
                           </div>
                         </button>
                       ))}
@@ -415,16 +451,16 @@ export function CheckoutPage() {
               </div>
 
               {/* Cart Tabs */}
-              <div className="theme-card rounded-2xl border backdrop-blur-xl">
-                <div className="border-b border-white/10 p-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="theme-text-primary text-lg font-semibold">Cart</h2>
-                    <div className="flex items-center gap-2">
+              <div className="theme-card rounded-xl sm:rounded-2xl border backdrop-blur-xl">
+                <div className="border-b border-white/10 p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <h2 className="theme-text-primary text-base sm:text-lg font-semibold">Cart</h2>
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                       {sessions.map((session) => (
                         <button
                           key={session.id}
                           onClick={() => switchSession(session.id)}
-                          className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                          className={`rounded-lg border px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition ${
                             activeSessionId === session.id
                               ? 'border-sky-400 bg-sky-500/20 text-sky-200'
                               : 'border-white/20 bg-white/5 text-white/70 hover:border-white/30 hover:text-white'
@@ -432,7 +468,7 @@ export function CheckoutPage() {
                         >
                           {session.label}
                           {session.cart.length > 0 && (
-                            <span className="ml-2 rounded-full bg-white/20 px-1.5 text-xs">
+                            <span className="ml-1 sm:ml-2 rounded-full bg-white/20 px-1 sm:px-1.5 text-xs">
                               {session.cart.length}
                             </span>
                           )}
@@ -440,7 +476,7 @@ export function CheckoutPage() {
                       ))}
                       <button
                         onClick={createSession}
-                        className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-sm font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+                        className="rounded-lg border border-white/20 bg-white/5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-white/70 transition hover:border-white/30 hover:text-white"
                         title="New cart"
                       >
                         + New
@@ -450,70 +486,113 @@ export function CheckoutPage() {
                 </div>
 
                 {/* Cart Table */}
-                <div className="p-6">
+                <div className="p-3 sm:p-6">
                   {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <div className="text-4xl">🛒</div>
-                      <p className="theme-text-primary mt-3 text-lg font-semibold">Cart is empty</p>
-                      <p className="theme-text-secondary mt-1 text-sm">Search for products to add them here.</p>
+                    <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+                      <div className="text-3xl sm:text-4xl">🛒</div>
+                      <p className="theme-text-primary mt-3 text-base sm:text-lg font-semibold">Cart is empty</p>
+                      <p className="theme-text-secondary mt-1 text-xs sm:text-sm">Search for products to add them here.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-white/10">
-                            <th className="theme-text-secondary px-4 py-3 text-left text-sm font-semibold">Product</th>
-                            <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Price</th>
-                            <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Quantity</th>
-                            <th className="theme-text-secondary px-4 py-3 text-right text-sm font-semibold">Total</th>
-                            <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cart.map((item) => (
-                            <tr key={item.productId} className="border-b border-white/5">
-                              <td className="px-4 py-3">
-                                <p className="theme-text-primary font-medium">{item.name}</p>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <p className="theme-text-primary">₦{(item.priceCents / 100).toFixed(2)}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-center gap-2">
-                                  <button
-                                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                                    className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
-                                    disabled={item.quantity <= 1}
-                                  >
-                                    −
-                                  </button>
-                                  <span className="theme-text-primary w-12 text-center font-semibold">{item.quantity}</span>
-                                  <button
-                                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                                    className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <p className="theme-text-primary font-semibold">
-                                  ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
-                                </p>
-                              </td>
-                              <td className="px-4 py-3 text-center">
+                    <>
+                      {/* Mobile Card View */}
+                      <div className="block sm:hidden space-y-3">
+                        {cart.map((item) => (
+                          <div key={item.productId} className="theme-surface rounded-xl border p-3 space-y-2">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="theme-text-primary font-medium text-sm truncate">{item.name}</p>
+                                <p className="theme-text-secondary text-xs mt-1">₦{(item.priceCents / 100).toFixed(2)} each</p>
+                              </div>
+                              <button
+                                onClick={() => removeItem(item.productId)}
+                                className="rounded border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 flex-shrink-0 ml-2"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => removeItem(item.productId)}
-                                  className="rounded border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                                  onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                  className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
+                                  disabled={item.quantity <= 1}
                                 >
-                                  Remove
+                                  −
                                 </button>
-                              </td>
+                                <span className="theme-text-primary w-10 text-center font-semibold text-sm">{item.quantity}</span>
+                                <button
+                                  onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                  className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <p className="theme-text-primary font-semibold text-sm">
+                                ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Desktop Table View */}
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-white/10">
+                              <th className="theme-text-secondary px-4 py-3 text-left text-sm font-semibold">Product</th>
+                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Price</th>
+                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Quantity</th>
+                              <th className="theme-text-secondary px-4 py-3 text-right text-sm font-semibold">Total</th>
+                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Action</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {cart.map((item) => (
+                              <tr key={item.productId} className="border-b border-white/5">
+                                <td className="px-4 py-3">
+                                  <p className="theme-text-primary font-medium">{item.name}</p>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <p className="theme-text-primary">₦{(item.priceCents / 100).toFixed(2)}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                      className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
+                                      disabled={item.quantity <= 1}
+                                    >
+                                      −
+                                    </button>
+                                    <span className="theme-text-primary w-12 text-center font-semibold">{item.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                      className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <p className="theme-text-primary font-semibold">
+                                    ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                                  </p>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <button
+                                    onClick={() => removeItem(item.productId)}
+                                    className="rounded border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -521,57 +600,57 @@ export function CheckoutPage() {
 
             {/* Right: Summary & Checkout */}
             <div className="w-full lg:w-80">
-              <div className="theme-card sticky top-6 rounded-2xl border p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary mb-4 text-lg font-semibold">Summary</h2>
+              <div className="theme-card sticky top-20 sm:top-6 rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
+                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Summary</h2>
                 
-                <div className="space-y-3 border-b border-white/10 pb-4">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-2 sm:space-y-3 border-b border-white/10 pb-3 sm:pb-4">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="theme-text-secondary">Subtotal</span>
                     <span className="theme-text-primary">₦{(finalSubtotal / 100).toFixed(2)}</span>
                   </div>
                   {totalDiscount > 0 && (
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-xs sm:text-sm">
                       <span className="theme-text-secondary">Discount</span>
                       <span className="theme-text-primary text-emerald-400">-₦{(totalDiscount / 100).toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="theme-text-secondary">Tax</span>
                     <span className="theme-text-primary">₦{(tax / 100).toFixed(2)}</span>
                   </div>
                 </div>
 
-                <div className="mt-4 mb-6 flex justify-between border-t border-white/10 pt-4">
-                  <span className="theme-text-primary text-lg font-semibold">Total</span>
-                  <span className="theme-text-primary text-xl font-bold">₦{(total / 100).toFixed(2)}</span>
+                <div className="mt-3 sm:mt-4 mb-4 sm:mb-6 flex justify-between border-t border-white/10 pt-3 sm:pt-4">
+                  <span className="theme-text-primary text-base sm:text-lg font-semibold">Total</span>
+                  <span className="theme-text-primary text-lg sm:text-xl font-bold">₦{(total / 100).toFixed(2)}</span>
                 </div>
 
                 <div className="space-y-2">
                   <button
                     onClick={() => handlePaymentClick('cash')}
                     disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
                     {isProcessing ? 'Processing...' : '💵 Pay Cash'}
                   </button>
                   <button
                     onClick={() => handlePaymentClick('card')}
                     disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
                     💳 Pay Card
                   </button>
                   <button
                     onClick={() => handlePaymentClick('qr')}
                     disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
                     📱 Pay QR
                   </button>
                   <button
                     onClick={() => handlePaymentClick('transfer')}
                     disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
                     🏦 Pay Transfer
                   </button>
@@ -580,7 +659,7 @@ export function CheckoutPage() {
                 {cart.length > 0 && (
                   <button
                     onClick={clearCart}
-                    className="mt-4 w-full rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+                    className="mt-3 sm:mt-4 w-full rounded-xl border border-white/20 bg-white/5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white touch-manipulation"
                   >
                     Clear Cart
                   </button>
