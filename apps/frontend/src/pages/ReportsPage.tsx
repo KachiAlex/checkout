@@ -69,6 +69,15 @@ interface CreditReport {
   }>;
 }
 
+interface ProductAnalytics {
+  productId: string;
+  productName: string;
+  sku: string;
+  quantitySold: number;
+  revenue: number;
+  averagePrice: number;
+}
+
 export function ReportsPage() {
   const { logout, accessToken, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ReportTab>('general');
@@ -83,6 +92,8 @@ export function ReportsPage() {
   const [salesAnalytics, setSalesAnalytics] = useState<SalesAnalytics | null>(null);
   const [staffPerformance, setStaffPerformance] = useState<StaffPerformance | null>(null);
   const [creditReport, setCreditReport] = useState<CreditReport | null>(null);
+  const [productAnalytics, setProductAnalytics] = useState<ProductAnalytics[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
   const loadGeneralAnalytics = async () => {
     if (!accessToken) return;
@@ -102,11 +113,102 @@ export function ReportsPage() {
 
       const response = await axios.get(`${API_URL}/api/v1/reports/sales-analytics`, { headers, params });
       setSalesAnalytics(response.data);
+      
+      // Also load product analytics
+      await loadProductAnalytics(headers, params);
     } catch (error: any) {
       console.error('Failed to load sales analytics:', error);
       toast.error(error.response?.data?.message || 'Failed to load sales analytics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProductAnalytics = async (headers: any, params: any) => {
+    setLoadingProducts(true);
+    try {
+      // Fetch completed orders for the period
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        // Calculate date range based on period
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+
+      const orders = ordersResponse.data || [];
+      
+      // Aggregate product sales
+      const productMap: Record<string, { quantity: number; revenue: number }> = {};
+      const productIds = new Set<string>();
+
+      orders.forEach((order: any) => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            const productId = item.productId;
+            if (!productId) return;
+            
+            productIds.add(productId);
+            
+            if (!productMap[productId]) {
+              productMap[productId] = { quantity: 0, revenue: 0 };
+            }
+            
+            const itemTotal = (item.priceCents || 0) * (item.quantity || 0);
+            productMap[productId].quantity += item.quantity || 0;
+            productMap[productId].revenue += itemTotal;
+          });
+        }
+      });
+
+      // Fetch product details
+      const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
+      const products = productsResponse.data || [];
+      const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      // Build analytics array
+      const analytics: ProductAnalytics[] = Array.from(productIds)
+        .map((productId) => {
+          const stats = productMap[productId];
+          const product = productsMap.get(productId) as any;
+          
+          return {
+            productId,
+            productName: product?.name || `Product ${productId.substring(0, 8)}`,
+            sku: product?.sku || 'N/A',
+            quantitySold: stats.quantity,
+            revenue: stats.revenue / 100, // Convert cents to currency
+            averagePrice: stats.quantity > 0 ? (stats.revenue / 100) / stats.quantity : 0,
+          };
+        })
+        .sort((a, b) => b.quantitySold - a.quantitySold); // Sort by quantity sold
+
+      setProductAnalytics(analytics);
+    } catch (error: any) {
+      console.error('Failed to load product analytics:', error);
+      // Don't show error toast for product analytics, just log it
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
@@ -560,6 +662,82 @@ const SimpleLineChart = ({
                       {salesAnalytics.data.reduce((sum, d) => sum + d.items, 0).toLocaleString()}
                     </p>
                   </div>
+                </div>
+
+                {/* Product Sales Analytics Table */}
+                <div className="mb-8">
+                  <h3 className="theme-text-primary text-lg font-semibold mb-4">Product Sales Performance</h3>
+                  {loadingProducts ? (
+                    <div className="theme-surface rounded-xl border p-8 text-center">
+                      <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent mb-2" />
+                      <p className="theme-text-secondary text-sm">Loading product analytics...</p>
+                    </div>
+                  ) : productAnalytics.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-8 text-center">
+                      <p className="theme-text-secondary">No product sales data available for the selected period.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Rank
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Product Name
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                SKU
+                              </th>
+                              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Quantity Sold
+                              </th>
+                              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Revenue
+                              </th>
+                              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Avg Price
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {productAnalytics.map((product, index) => (
+                              <tr key={product.productId} className="hover:bg-white/5 transition">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-semibold">
+                                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{product.productName}</span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-secondary text-sm">{product.sku}</span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {product.quantitySold.toLocaleString()}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-emerald-400">
+                                    {formatCurrency(product.revenue)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-secondary">
+                                    {formatCurrency(product.averagePrice)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Sales chart */}
