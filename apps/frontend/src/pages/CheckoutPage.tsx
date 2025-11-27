@@ -327,19 +327,26 @@ export function CheckoutPage() {
                 <p className="theme-text-secondary text-xs">{tenant?.name || 'POS System'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Link
-                to="/inventory"
-                className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-emerald-300/60 hover:text-emerald-100"
-              >
-                📦 Inventory
-              </Link>
-              <Link
-                to="/reports"
-                className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-sky-300/60 hover:text-sky-100"
-              >
-                📊 Reports
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/inventory"
+                  className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-emerald-300/60 hover:text-emerald-100"
+                >
+                  📦 Inventory
+                </Link>
+                <Link
+                  to="/reports"
+                  className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-sky-300/60 hover:text-sky-100"
+                >
+                  📊 Reports
+                </Link>
+                <Link
+                  to="/settings#devices"
+                  className="theme-chip rounded-full border px-4 py-2 text-sm font-medium transition hover:border-indigo-300/60 hover:text-indigo-100"
+                  title="Connected devices"
+                >
+                  🧾 Devices
+                </Link>
               {isAdmin && (
                 <Link
                   to="/settings"

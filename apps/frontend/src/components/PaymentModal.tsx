@@ -31,7 +31,6 @@ export function PaymentModal({
   onOrderCreated,
 }: PaymentModalProps) {
   const [cashAmount, setCashAmount] = useState('');
-  const [transferReference, setTransferReference] = useState('');
   const [processing, setProcessing] = useState(false);
   const [stage, setStage] = useState<'input' | 'processing' | 'success' | 'error' | 'redirecting'>('input');
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
@@ -40,7 +39,6 @@ export function PaymentModal({
     if (isOpen) {
       setStage('input');
       setCashAmount('');
-      setTransferReference('');
       setProcessing(false);
     }
   }, [isOpen]);
@@ -49,29 +47,19 @@ export function PaymentModal({
 
   const subtotal = cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
   const tax = cart.reduce((sum, item) => sum + item.priceCents * item.quantity * item.taxRate, 0);
-  const change = method === 'cash' && cashAmount ? parseFloat(cashAmount) * 100 - total : 0;
+  const isCashLike = method === 'cash' || method === 'transfer';
+  const change = isCashLike && cashAmount ? parseFloat(cashAmount) * 100 - total : 0;
 
   const handleConfirm = async () => {
-    if (method === 'cash' && (!cashAmount || parseFloat(cashAmount) * 100 < total)) {
+    if (isCashLike && (!cashAmount || parseFloat(cashAmount) * 100 < total)) {
+      toast.error('Enter amount received before confirming payment.');
       return;
     }
 
-    // For cash payments, proceed with existing flow
-    if (method === 'cash') {
+    if (isCashLike) {
       setProcessing(true);
       setStage('processing');
       onComplete(change);
-      return;
-    }
-
-    if (method === 'transfer') {
-      if (!transferReference.trim()) {
-        toast.error('Enter transfer reference before confirming.');
-        return;
-      }
-      setProcessing(true);
-      setStage('processing');
-      onComplete();
       return;
     }
 
@@ -255,8 +243,73 @@ export function PaymentModal({
                 </div>
               </div>
 
-              {method === 'cash' && (
+              {(method === 'cash' || method === 'transfer') && (
                 <div className="theme-surface rounded-2xl border p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <label className="theme-text-secondary block text-sm font-medium">
+                      {method === 'cash' ? 'Cash Received' : 'Transfer Amount Received'}
+                    </label>
+                    <button
+                      onClick={() => {
+                        setCashAmount((total / 100).toFixed(2));
+                      }}
+                      className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+                    >
+                      Use Exact Amount
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-2xl font-semibold focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                    autoFocus
+                    min={total / 100}
+                    step="0.01"
+                  />
+                  {cashAmount && parseFloat(cashAmount) * 100 >= total && (
+                    <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2">
+                      <span className="text-sm font-medium text-emerald-200">Change</span>
+                      <span className="text-lg font-bold text-emerald-100">
+                        ₦{change > 0 ? (change / 100).toFixed(2) : '0.00'}
+                      </span>
+                    </div>
+                  )}
+                  {cashAmount && parseFloat(cashAmount) * 100 < total && (
+                    <p className="mt-2 text-sm text-rose-400">
+                      Insufficient amount. Need ₦{((total - parseFloat(cashAmount) * 100) / 100).toFixed(2)} more.
+                    </p>
+                  )}
+                  {method === 'transfer' && (
+                    <p className="mt-2 text-xs theme-text-secondary">
+                      Confirm the transfer once funds arrive before hitting “Confirm Transfer.”
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {method === 'card' && (
+                <div className="theme-surface rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+                  <p className="theme-text-secondary text-center text-sm">
+                    💳 You will be redirected to Monnify checkout to complete your card payment
+                  </p>
+                </div>
+              )}
+
+              {method === 'qr' && (
+                <div className="theme-surface rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4">
+                  <p className="theme-text-secondary text-center text-sm">
+                    📱 You will be redirected to Monnify checkout to complete your QR payment
+                  </p>
+                </div>
+              )}
+
+              {method === 'transfer' && (
+                <div className="theme-surface rounded-2xl border p-4">
+                  <p className="theme-text-secondary mb-3 text-sm">
+                    🏦 Share your business account details with the customer and confirm the incoming transfer before completing the sale.
+                  </p>
                   <div className="mb-3 flex items-center justify-between">
                     <label className="theme-text-secondary block text-sm font-medium">
                       Cash Received
@@ -293,45 +346,9 @@ export function PaymentModal({
                       Insufficient amount. Need ₦{((total - parseFloat(cashAmount) * 100) / 100).toFixed(2)} more.
                     </p>
                   )}
-                </div>
-              )}
-
-              {method === 'card' && (
-                <div className="theme-surface rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
-                  <p className="theme-text-secondary text-center text-sm">
-                    💳 You will be redirected to Monnify checkout to complete your card payment
+                  <p className="theme-text-secondary mt-3 text-xs">
+                    Only confirm once funds are visible in your account.
                   </p>
-                </div>
-              )}
-
-              {method === 'qr' && (
-                <div className="theme-surface rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4">
-                  <p className="theme-text-secondary text-center text-sm">
-                    📱 You will be redirected to Monnify checkout to complete your QR payment
-                  </p>
-                </div>
-              )}
-
-              {method === 'transfer' && (
-                <div className="theme-surface rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 space-y-3">
-                  <p className="theme-text-secondary text-sm">
-                    🏦 Share your business account details with the customer and confirm the incoming transfer before completing the sale.
-                  </p>
-                  <div>
-                    <label className="theme-text-secondary mb-2 block text-sm font-medium">
-                      Transfer Reference
-                    </label>
-                    <input
-                      type="text"
-                      value={transferReference}
-                      onChange={(e) => setTransferReference(e.target.value)}
-                      placeholder="e.g., TRANS123456"
-                      className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-base focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
-                    />
-                    <p className="theme-text-secondary mt-2 text-xs">
-                      Optional note to identify the customer's transfer. Only confirm once funds are visible.
-                    </p>
-                  </div>
                 </div>
               )}
             </div>
@@ -362,11 +379,10 @@ export function PaymentModal({
                 </button>
                 <button
                   onClick={handleConfirm}
-                  disabled={
-                    (method === 'cash' && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
-                    (method === 'transfer' && !transferReference.trim()) ||
-                    processing
-                  }
+                disabled={
+                  ((method === 'cash' || method === 'transfer') && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
+                  processing
+                }
                   className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   aria-label="Confirm payment"
                 >

@@ -22,6 +22,7 @@ import { useScannerDeviceStore } from '../stores/scannerDeviceStore';
 import { fetchRegisteredDevices } from '../services/scannerDeviceService';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
 function SectionContainer({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
@@ -701,6 +702,7 @@ export function SettingsPage() {
                   </div>
                 )}
               </div>
+            </div>
           </SectionContainer>
         )}
 
@@ -1577,6 +1579,14 @@ export function SettingsPage() {
             title="Devices"
             description="View and manage connected devices including scanners, printers, and cash registers."
           >
+            <div className="flex justify-end">
+              <Link
+                to="/checkout"
+                className="theme-chip rounded-full border px-4 py-2 text-xs font-semibold transition hover:border-emerald-300/60 hover:text-emerald-100"
+              >
+                ← Back to Checkout
+              </Link>
+            </div>
             {/* Connected Devices List */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between mb-4">
@@ -1723,8 +1733,8 @@ export function SettingsPage() {
               )}
             </div>
 
-              {/* Device Management Info */}
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+            {/* Device Management Info */}
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 mt-4">
               <h4 className="theme-text-primary mb-2 text-sm font-semibold text-amber-400">
                 ℹ️ Device Management Notes
               </h4>
@@ -1742,7 +1752,6 @@ export function SettingsPage() {
                   <strong className="theme-text-primary">Cash Registers:</strong> Configure as network printers in the Receipt Printer section.
                 </li>
               </ul>
-            </div>
             </div>
           </SectionContainer>
         )}
