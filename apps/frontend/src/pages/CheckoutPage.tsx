@@ -367,13 +367,6 @@ export function CheckoutPage() {
               >
                 📊 <span className="hidden sm:inline">Reports</span>
               </Link>
-              <Link
-                to="/settings#devices"
-                className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-indigo-300/60 hover:text-indigo-100"
-                title="Connected devices"
-              >
-                🧾 <span className="hidden sm:inline">Devices</span>
-              </Link>
               {isAdmin && (
                 <Link
                   to="/settings"

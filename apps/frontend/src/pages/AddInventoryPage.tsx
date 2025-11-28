@@ -369,28 +369,28 @@ export function AddInventoryPage() {
   }, [user?.id, accessToken]);
 
   return (
-    <div className="theme-background min-h-screen">
-      <div className="relative mx-auto w-full max-w-7xl space-y-6 px-6 py-10">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+      <div className="relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         {/* Header */}
-        <div className="theme-card flex flex-col gap-6 rounded-3xl border p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
+        <div className="theme-card flex flex-col gap-4 sm:gap-6 rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4 min-w-0">
             <BrandMark
-              size={56}
+              size={40}
               backgroundClassName="bg-white/90 dark:bg-white/10"
-              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+              className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0 sm:w-[56px] sm:h-[56px]"
             />
-            <div>
-              <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Inventory</p>
-              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Add Inventory</h1>
-              <p className="theme-text-secondary text-sm">
+            <div className="min-w-0 flex-1">
+              <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-[0.35em]">Inventory</p>
+              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">Add Inventory</h1>
+              <p className="theme-text-secondary text-xs sm:text-sm">
                 Store: {effectiveLocationId || user?.locationId || 'Loading...'}
                 {!user?.locationId && effectiveLocationId && (
-                  <span className="ml-2 text-xs text-amber-400">(Using tenant's first location)</span>
+                  <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs text-amber-400">(Using tenant's first location)</span>
                 )}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Link
               to="/checkout"
               className="theme-chip inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition hover:border-emerald-300/60 hover:text-emerald-100"

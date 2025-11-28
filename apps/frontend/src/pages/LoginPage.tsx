@@ -163,35 +163,35 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
   };
 
   return (
-    <div className="theme-background relative flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
+    <div className="theme-background relative flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-10 overflow-x-hidden w-full">
       <div className="pointer-events-none absolute inset-0">
         <div className={`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${glowPrimary} blur-[180px]`} />
         <div className={`absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${glowSecondary} blur-[200px]`} />
       </div>
 
-      <div className="relative z-10 flex w-full max-w-md flex-col gap-6 px-1 sm:px-0">
+      <div className="relative z-10 flex w-full max-w-md flex-col gap-4 sm:gap-6 px-1 sm:px-0">
         <div className="flex justify-end pr-1 sm:pr-0">
           <ThemeToggle />
         </div>
-        <div className="theme-card rounded-3xl border px-5 py-8 backdrop-blur-xl sm:px-8 sm:py-10">
-          <div className="flex flex-col items-center gap-4">
+        <div className="theme-card rounded-2xl sm:rounded-3xl border px-4 py-6 sm:px-5 sm:py-8 lg:px-8 lg:py-10 backdrop-blur-xl">
+          <div className="flex flex-col items-center gap-3 sm:gap-4">
             <BrandMark
-              size={84}
+              size={64}
               backgroundClassName={theme === 'light' ? 'bg-white' : 'bg-white/10'}
-              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+              className="ring-1 ring-slate-200/40 dark:ring-white/10 sm:w-[84px] sm:h-[84px]"
             />
-            <div className="space-y-2 text-center">
-              <h1 className="theme-text-primary text-2xl font-bold sm:text-3xl">
+            <div className="space-y-1.5 sm:space-y-2 text-center">
+              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">
                 {variant === 'superadmin' ? 'Checkout Platform Console' : 'POS Checkout MVP'}
               </h1>
-              <p className="theme-text-secondary text-sm">
+              <p className="theme-text-secondary text-xs sm:text-sm px-2">
                 {variant === 'superadmin'
                   ? 'Access the multi-tenant command center to provision and manage companies.'
                   : 'Enter your company slug and secure PIN to access the checkout console.'}
               </p>
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="mt-6 space-y-5 sm:mt-8">
+          <form onSubmit={handleSubmit} className="mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5">
             {variant === 'superadmin' ? (
               <>
                 <div className="space-y-2">
@@ -271,7 +271,7 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
                   ? !email.trim() || !password
                   : !pin || !tenantSlug.trim())
               }
-              className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
+              className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base lg:text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 touch-manipulation"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>

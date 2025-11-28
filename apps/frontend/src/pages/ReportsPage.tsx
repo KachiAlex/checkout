@@ -509,22 +509,22 @@ const SimpleLineChart = ({
   };
 
   return (
-    <div className="theme-background min-h-screen">
-      <div className="relative mx-auto w-full max-w-7xl space-y-6 px-6 py-10">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+      <div className="relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         {/* Header */}
-        <div className="theme-card flex flex-col gap-4 rounded-3xl border p-6 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+        <div className="theme-card flex flex-col gap-3 sm:gap-4 rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <BrandMark
-              size={52}
+              size={40}
               backgroundClassName="bg-white/90 dark:bg-white/10"
-              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+              className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0 sm:w-[52px] sm:h-[52px]"
             />
-            <div>
-              <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Insights</p>
-              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Business Reports</h1>
+            <div className="min-w-0">
+              <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-[0.35em]">Insights</p>
+              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight truncate">Business Reports</h1>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Link
               to="/checkout"
               className="theme-chip group inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-medium transition"
@@ -543,13 +543,13 @@ const SimpleLineChart = ({
         </div>
 
         {/* Tabs */}
-        <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-          <div className="flex flex-wrap gap-3">
+        <div className="theme-card rounded-xl sm:rounded-2xl lg:rounded-3xl border p-3 sm:p-4 lg:p-6 backdrop-blur-xl">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {(['general', 'staff', 'credit'] as ReportTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`rounded-full border px-6 py-3 text-sm font-semibold transition ${
+                className={`rounded-full border px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm font-semibold transition touch-manipulation ${
                   activeTab === tab
                     ? 'border-sky-400/70 bg-sky-500/20 text-sky-50'
                     : 'border-white/15 bg-white/5 text-white/70 hover:border-sky-300/50 hover:text-white'
@@ -564,19 +564,19 @@ const SimpleLineChart = ({
         </div>
 
         {/* Period Selector */}
-        <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
+        <div className="theme-card rounded-xl sm:rounded-2xl lg:rounded-3xl border p-3 sm:p-4 lg:p-6 backdrop-blur-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
-              <h2 className="theme-text-primary text-lg font-semibold">Time Period</h2>
-              <p className="theme-text-secondary text-sm">Select the time period for analytics</p>
+              <h2 className="theme-text-primary text-base sm:text-lg font-semibold">Time Period</h2>
+              <p className="theme-text-secondary text-xs sm:text-sm">Select the time period for analytics</p>
             </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:gap-3">
+              <div className="flex flex-wrap gap-2">
                 {(['daily', 'weekly', 'monthly', 'custom'] as Period[]).map((p) => (
                   <button
                     key={p}
                     onClick={() => setPeriod(p)}
-                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    className={`rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition touch-manipulation ${
                       period === p
                         ? 'border-sky-400/70 bg-sky-500/20 text-sky-50'
                         : 'border-white/15 bg-white/5 text-white/70 hover:border-sky-300/50 hover:text-white'
@@ -637,106 +637,147 @@ const SimpleLineChart = ({
                 </div>
                 
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Total Sales</p>
-                    <p className="theme-text-primary text-2xl font-bold text-emerald-400">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
+                  <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Sales</p>
+                    <p className="theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold text-emerald-400 truncate">
                       {formatCurrency(salesAnalytics.totalSales)}
                     </p>
                   </div>
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Total Orders</p>
-                    <p className="theme-text-primary text-2xl font-bold text-sky-400">
+                  <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Orders</p>
+                    <p className="theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold text-sky-400">
                       {salesAnalytics.totalOrders.toLocaleString()}
                     </p>
                   </div>
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Avg Order Value</p>
-                    <p className="theme-text-primary text-2xl font-bold text-purple-400">
+                  <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Avg Order Value</p>
+                    <p className="theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold text-purple-400 truncate">
                       {formatCurrency(salesAnalytics.averageOrderValue)}
                     </p>
                   </div>
-                  <div className="theme-surface rounded-2xl border p-4">
-                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Total Items</p>
-                    <p className="theme-text-primary text-2xl font-bold text-amber-400">
+                  <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Items</p>
+                    <p className="theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold text-amber-400">
                       {salesAnalytics.data.reduce((sum, d) => sum + d.items, 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
 
                 {/* Product Sales Analytics Table */}
-                <div className="mb-8">
-                  <h3 className="theme-text-primary text-lg font-semibold mb-4">Product Sales Performance</h3>
+                <div className="mb-6 sm:mb-8">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-3 sm:mb-4">Product Sales Performance</h3>
                   {loadingProducts ? (
-                    <div className="theme-surface rounded-xl border p-8 text-center">
+                    <div className="theme-surface rounded-xl border p-6 sm:p-8 text-center">
                       <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent mb-2" />
-                      <p className="theme-text-secondary text-sm">Loading product analytics...</p>
+                      <p className="theme-text-secondary text-xs sm:text-sm">Loading product analytics...</p>
                     </div>
                   ) : productAnalytics.length === 0 ? (
-                    <div className="theme-surface rounded-xl border p-8 text-center">
-                      <p className="theme-text-secondary">No product sales data available for the selected period.</p>
+                    <div className="theme-surface rounded-xl border p-6 sm:p-8 text-center">
+                      <p className="theme-text-secondary text-xs sm:text-sm">No product sales data available for the selected period.</p>
                     </div>
                   ) : (
-                    <div className="theme-surface rounded-xl border overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-white/5">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                                Rank
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                                Product Name
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                                SKU
-                              </th>
-                              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                                Quantity Sold
-                              </th>
-                              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                                Revenue
-                              </th>
-                              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                                Avg Price
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/10">
-                            {productAnalytics.map((product, index) => (
-                              <tr key={product.productId} className="hover:bg-white/5 transition">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="theme-text-primary font-semibold">
+                    <>
+                      {/* Mobile Card View */}
+                      <div className="block sm:hidden space-y-3">
+                        {productAnalytics.map((product, index) => (
+                          <div key={product.productId} className="theme-surface rounded-xl border p-3 space-y-2">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="theme-text-primary font-semibold text-sm">
                                     {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                                   </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="theme-text-primary font-medium">{product.productName}</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="theme-text-secondary text-sm">{product.sku}</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                  <span className="theme-text-primary font-semibold text-sky-400">
-                                    {product.quantitySold.toLocaleString()}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                  <span className="theme-text-primary font-semibold text-emerald-400">
-                                    {formatCurrency(product.revenue)}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                  <span className="theme-text-secondary">
-                                    {formatCurrency(product.averagePrice)}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                  <span className="theme-text-primary font-medium text-sm truncate">{product.productName}</span>
+                                </div>
+                                <p className="theme-text-secondary text-xs">SKU: {product.sku}</p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10">
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Qty</p>
+                                <p className="theme-text-primary font-semibold text-sm text-sky-400">
+                                  {product.quantitySold.toLocaleString()}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Revenue</p>
+                                <p className="theme-text-primary font-semibold text-sm text-emerald-400 truncate">
+                                  {formatCurrency(product.revenue)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Avg</p>
+                                <p className="theme-text-secondary text-xs truncate">
+                                  {formatCurrency(product.averagePrice)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                      {/* Desktop Table View */}
+                      <div className="hidden sm:block theme-surface rounded-xl border overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-white/5">
+                              <tr>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Rank
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Product Name
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  SKU
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Quantity Sold
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Revenue
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Avg Price
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                              {productAnalytics.map((product, index) => (
+                                <tr key={product.productId} className="hover:bg-white/5 transition">
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-primary font-semibold">
+                                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-primary font-medium">{product.productName}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-secondary text-sm">{product.sku}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-sky-400">
+                                      {product.quantitySold.toLocaleString()}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-emerald-400">
+                                      {formatCurrency(product.revenue)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-secondary">
+                                      {formatCurrency(product.averagePrice)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 

@@ -348,24 +348,24 @@ export function InventoryManagementPage() {
   };
 
   return (
-    <div className="theme-background min-h-screen">
-      <div className="relative mx-auto w-full max-w-7xl space-y-6 px-6 py-10">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+      <div className="relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         {/* Header */}
-        <div className="theme-card flex flex-col gap-6 rounded-3xl border p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
+        <div className="theme-card flex flex-col gap-4 sm:gap-6 rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4 min-w-0">
             <BrandMark
-              size={56}
+              size={40}
               backgroundClassName="bg-white/90 dark:bg-white/10"
-              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+              className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0 sm:w-[56px] sm:h-[56px]"
             />
-            <div>
-              <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Inventory Management</p>
-              <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Add Inventory</h1>
-              <p className="theme-text-secondary text-sm">
+            <div className="min-w-0 flex-1">
+              <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-[0.35em]">Inventory Management</p>
+              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">Add Inventory</h1>
+              <p className="theme-text-secondary text-xs sm:text-sm">
                 Store: {user?.locationId || 'N/A'} • Staff: {user?.name || 'N/A'}
               </p>
               {!user?.locationId && (
-                <p className="theme-text-secondary mt-1 text-xs text-amber-400">
+                <p className="theme-text-secondary mt-1 text-[10px] sm:text-xs text-amber-400">
                   ⚠️ No location set. Inventory will be assigned to your tenant's first location.
                 </p>
               )}

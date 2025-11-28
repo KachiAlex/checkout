@@ -33,6 +33,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    minWidth: 1024,
+    minHeight: 768,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -40,9 +42,10 @@ function createWindow() {
       sandbox: false,
       experimentalFeatures: true,
     },
-    title: 'POS Checkout',
+    title: 'Checkout POS',
     icon: resolveAppIcon(),
     show: false,
+    backgroundColor: '#0f172a', // slate-900 background to match app theme
   });
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
@@ -51,9 +54,11 @@ function createWindow() {
   const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
 
   if (isDev) {
+    // In development, load from dev server - routing will handle login redirect
     mainWindow.loadURL(devServerUrl).catch(() => undefined);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
+    // In production, load the packaged frontend - routing will handle login redirect
     const packagedIndexPath = path.join(process.resourcesPath, 'app.asar', 'frontend-dist', 'index.html');
     mainWindow.loadFile(packagedIndexPath).catch((error) => {
       console.error('Failed to load index.html', error);

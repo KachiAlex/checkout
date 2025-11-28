@@ -27,10 +27,10 @@ import { format } from 'date-fns';
 
 function SectionContainer({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-      <header className="mb-4 space-y-1">
-        <h2 className="theme-text-primary text-xl font-semibold">{title}</h2>
-        {description && <p className="theme-text-secondary text-sm">{description}</p>}
+    <section className="theme-card rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl">
+      <header className="mb-3 sm:mb-4 space-y-1">
+        <h2 className="theme-text-primary text-base sm:text-lg lg:text-xl font-semibold">{title}</h2>
+        {description && <p className="theme-text-secondary text-xs sm:text-sm">{description}</p>}
       </header>
       {children}
     </section>
@@ -560,17 +560,17 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="theme-background min-h-screen">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-6 py-10">
-        <div className="flex items-start gap-4">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
+        <div className="flex items-start gap-3 sm:gap-4">
           <BrandMark
-            size={56}
+            size={40}
             backgroundClassName="bg-white/90 dark:bg-white/10"
-            className="ring-1 ring-slate-200/40 dark:ring-white/10"
+            className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0 sm:w-[56px] sm:h-[56px]"
           />
-          <div className="space-y-2">
-            <h1 className="theme-text-primary text-3xl font-semibold tracking-tight">Settings</h1>
-            <p className="theme-text-secondary text-sm">
+          <div className="space-y-1 sm:space-y-2 min-w-0 flex-1">
+            <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">Settings</h1>
+            <p className="theme-text-secondary text-xs sm:text-sm">
               Manage your account, company profile, and workspace preferences.
             </p>
           </div>
@@ -581,10 +581,10 @@ export function SettingsPage() {
             title="Location Management"
             description="Create and manage store locations. Users can be assigned to specific locations."
           >
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Create/Edit Location Form */}
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="theme-text-primary mb-4 text-sm font-semibold">
+              <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
+                <h3 className="theme-text-primary mb-3 sm:mb-4 text-xs sm:text-sm font-semibold">
                   {editingLocation ? 'Edit Location' : 'Create New Location'}
                 </h3>
                 <form
@@ -596,11 +596,11 @@ export function SettingsPage() {
                       handleCreateLocation(e);
                     }
                   }}
-                  className="space-y-4"
+                  className="space-y-3 sm:space-y-4"
                 >
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
                     <div>
-                      <label className="theme-text-secondary mb-2 block text-xs font-medium">
+                      <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">
                         Location Name <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -608,36 +608,36 @@ export function SettingsPage() {
                         value={locationForm.name}
                         onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
                         placeholder="e.g., Main Store, Downtown Branch"
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
                         required
                       />
                     </div>
                     <div>
-                      <label className="theme-text-secondary mb-2 block text-xs font-medium">Timezone</label>
+                      <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">Timezone</label>
                       <input
                         type="text"
                         value={locationForm.timezone}
                         onChange={(e) => setLocationForm({ ...locationForm, timezone: e.target.value })}
                         placeholder="UTC"
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="theme-text-secondary mb-2 block text-xs font-medium">Address</label>
+                    <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">Address</label>
                     <textarea
                       value={locationForm.address}
                       onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })}
                       placeholder="Street address, city, state, zip code"
                       rows={2}
-                      className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                      className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
                     />
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <button
                       type="submit"
                       disabled={creatingLocation || !locationForm.name.trim()}
-                      className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-2 text-sm font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-4 sm:px-6 py-2 text-xs sm:text-sm font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                     >
                       {creatingLocation ? 'Saving...' : editingLocation ? 'Update Location' : 'Create Location'}
                     </button>
@@ -645,7 +645,7 @@ export function SettingsPage() {
                       <button
                         type="button"
                         onClick={cancelEditingLocation}
-                        className="theme-chip rounded-full border px-6 py-2 text-sm font-semibold transition hover:border-sky-400"
+                        className="theme-chip rounded-full border px-4 sm:px-6 py-2 text-xs sm:text-sm font-semibold transition hover:border-sky-400 touch-manipulation"
                       >
                         Cancel
                       </button>

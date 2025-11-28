@@ -216,17 +216,17 @@ export function PaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="theme-card w-full max-w-md rounded-3xl border p-8 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="theme-card w-full max-w-md rounded-2xl sm:rounded-3xl border p-4 sm:p-6 lg:p-8 shadow-2xl my-auto max-h-[95vh] overflow-y-auto">
         {stage === 'input' && (
           <>
-            <div className="mb-6 text-center">
-              <div className="mb-4 text-6xl">{getMethodIcon()}</div>
-              <h2 className="theme-text-primary mb-2 text-2xl font-bold">{getMethodName()}</h2>
-              <p className="theme-text-secondary text-sm">Confirm payment details</p>
+            <div className="mb-4 sm:mb-6 text-center">
+              <div className="mb-3 sm:mb-4 text-4xl sm:text-6xl">{getMethodIcon()}</div>
+              <h2 className="theme-text-primary mb-2 text-xl sm:text-2xl font-bold">{getMethodName()}</h2>
+              <p className="theme-text-secondary text-xs sm:text-sm">Confirm payment details</p>
             </div>
 
-            <div className="mb-6 space-y-3">
+            <div className="mb-4 sm:mb-6 space-y-3">
               <div className="theme-surface rounded-2xl border p-4">
                 <div className="mb-3 flex justify-between text-sm theme-text-secondary">
                   <span>Subtotal</span>
@@ -244,16 +244,23 @@ export function PaymentModal({
               </div>
 
               {(method === 'cash' || method === 'transfer') && (
-                <div className="theme-surface rounded-2xl border p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <label className="theme-text-secondary block text-sm font-medium">
+                <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4">
+                  {method === 'transfer' && (
+                    <div className="mb-3 rounded-lg bg-blue-500/10 border border-blue-400/30 p-2 sm:p-3">
+                      <p className="theme-text-secondary text-xs sm:text-sm">
+                        🏦 Share your business account details with the customer and confirm the incoming transfer before completing the sale.
+                      </p>
+                    </div>
+                  )}
+                  <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <label className="theme-text-secondary block text-xs sm:text-sm font-medium">
                       {method === 'cash' ? 'Cash Received' : 'Transfer Amount Received'}
                     </label>
                     <button
                       onClick={() => {
                         setCashAmount((total / 100).toFixed(2));
                       }}
-                      className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+                      className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25 touch-manipulation whitespace-nowrap"
                     >
                       Use Exact Amount
                     </button>
@@ -263,27 +270,27 @@ export function PaymentModal({
                     value={cashAmount}
                     onChange={(e) => setCashAmount(e.target.value)}
                     placeholder="0.00"
-                    className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-2xl font-semibold focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                    className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2.5 sm:py-3 text-xl sm:text-2xl font-semibold focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
                     autoFocus
                     min={total / 100}
                     step="0.01"
                   />
                   {cashAmount && parseFloat(cashAmount) * 100 >= total && (
                     <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2">
-                      <span className="text-sm font-medium text-emerald-200">Change</span>
-                      <span className="text-lg font-bold text-emerald-100">
+                      <span className="text-xs sm:text-sm font-medium text-emerald-200">Change</span>
+                      <span className="text-base sm:text-lg font-bold text-emerald-100">
                         ₦{change > 0 ? (change / 100).toFixed(2) : '0.00'}
                       </span>
                     </div>
                   )}
                   {cashAmount && parseFloat(cashAmount) * 100 < total && (
-                    <p className="mt-2 text-sm text-rose-400">
+                    <p className="mt-2 text-xs sm:text-sm text-rose-400">
                       Insufficient amount. Need ₦{((total - parseFloat(cashAmount) * 100) / 100).toFixed(2)} more.
                     </p>
                   )}
                   {method === 'transfer' && (
                     <p className="mt-2 text-xs theme-text-secondary">
-                      Confirm the transfer once funds arrive before hitting “Confirm Transfer.”
+                      Only confirm once funds are visible in your account.
                     </p>
                   )}
                 </div>
@@ -305,55 +312,9 @@ export function PaymentModal({
                 </div>
               )}
 
-              {method === 'transfer' && (
-                <div className="theme-surface rounded-2xl border p-4">
-                  <p className="theme-text-secondary mb-3 text-sm">
-                    🏦 Share your business account details with the customer and confirm the incoming transfer before completing the sale.
-                  </p>
-                  <div className="mb-3 flex items-center justify-between">
-                    <label className="theme-text-secondary block text-sm font-medium">
-                      Cash Received
-                    </label>
-                    <button
-                      onClick={() => {
-                        setCashAmount((total / 100).toFixed(2));
-                      }}
-                      className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
-                    >
-                      Use Exact Amount
-                    </button>
-                  </div>
-                  <input
-                    type="number"
-                    value={cashAmount}
-                    onChange={(e) => setCashAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-2xl font-semibold focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                    autoFocus
-                    min={total / 100}
-                    step="0.01"
-                  />
-                  {cashAmount && parseFloat(cashAmount) * 100 >= total && (
-                    <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2">
-                      <span className="text-sm font-medium text-emerald-200">Change</span>
-                      <span className="text-lg font-bold text-emerald-100">
-                        ₦{change > 0 ? (change / 100).toFixed(2) : '0.00'}
-                      </span>
-                    </div>
-                  )}
-                  {cashAmount && parseFloat(cashAmount) * 100 < total && (
-                    <p className="mt-2 text-sm text-rose-400">
-                      Insufficient amount. Need ₦{((total - parseFloat(cashAmount) * 100) / 100).toFixed(2)} more.
-                    </p>
-                  )}
-                  <p className="theme-text-secondary mt-3 text-xs">
-                    Only confirm once funds are visible in your account.
-                  </p>
-                </div>
-              )}
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 sm:gap-3">
               {method === 'cash' && (
                 <button
                   onClick={() => {
@@ -363,27 +324,27 @@ export function PaymentModal({
                       handleConfirm();
                     }, 100);
                   }}
-                  className="w-full rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-3 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 touch-manipulation"
+                  className="w-full rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 touch-manipulation"
                   aria-label="Confirm full payment received"
                 >
                   ✓ Confirm Full Payment Received
                 </button>
               )}
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={onClose}
-                  className="theme-chip flex-1 rounded-full border px-6 py-3 font-semibold transition hover:bg-white/10 touch-manipulation"
+                  className="theme-chip flex-1 rounded-full border px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold transition hover:bg-white/10 touch-manipulation"
                   aria-label="Cancel payment"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirm}
-                disabled={
-                  ((method === 'cash' || method === 'transfer') && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
-                  processing
-                }
-                  className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                  disabled={
+                    ((method === 'cash' || method === 'transfer') && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
+                    processing
+                  }
+                  className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   aria-label="Confirm payment"
                 >
                   {method === 'cash' ? 'Confirm with Change' : method === 'transfer' ? 'Confirm Transfer' : 'Confirm Payment'}
@@ -394,22 +355,22 @@ export function PaymentModal({
         )}
 
         {stage === 'processing' && (
-          <div className="py-12 text-center">
-            <div className="mb-6 flex justify-center">
-              <div className="h-20 w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+          <div className="py-8 sm:py-12 text-center">
+            <div className="mb-4 sm:mb-6 flex justify-center">
+              <div className="h-16 w-16 sm:h-20 sm:w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
             </div>
-            <h3 className="theme-text-primary mb-2 text-xl font-semibold">Processing Payment...</h3>
-            <p className="theme-text-secondary text-sm">Please wait while we process your payment</p>
+            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">Processing Payment...</h3>
+            <p className="theme-text-secondary text-xs sm:text-sm">Please wait while we process your payment</p>
           </div>
         )}
 
         {stage === 'redirecting' && (
-          <div className="py-12 text-center">
-            <div className="mb-6 flex justify-center">
-              <div className="h-20 w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+          <div className="py-8 sm:py-12 text-center">
+            <div className="mb-4 sm:mb-6 flex justify-center">
+              <div className="h-16 w-16 sm:h-20 sm:w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
             </div>
-            <h3 className="theme-text-primary mb-2 text-xl font-semibold">Redirecting to Payment...</h3>
-            <p className="theme-text-secondary text-sm mb-4">
+            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">Redirecting to Payment...</h3>
+            <p className="theme-text-secondary text-xs sm:text-sm mb-4">
               A new window will open for you to complete your payment
             </p>
             {checkoutUrl && (
@@ -417,7 +378,7 @@ export function PaymentModal({
                 href={checkoutUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block rounded-full bg-sky-500 px-6 py-3 font-semibold text-white hover:bg-sky-600"
+                className="inline-block rounded-full bg-sky-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white hover:bg-sky-600 touch-manipulation"
               >
                 Open Payment Page
               </a>
@@ -429,17 +390,17 @@ export function PaymentModal({
         )}
 
         {stage === 'success' && (
-          <div className="py-12 text-center">
-            <div className="mb-6 flex justify-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500">
-                <span className="text-4xl">✅</span>
+          <div className="py-8 sm:py-12 text-center">
+            <div className="mb-4 sm:mb-6 flex justify-center">
+              <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-emerald-500">
+                <span className="text-3xl sm:text-4xl">✅</span>
               </div>
             </div>
-            <h3 className="theme-text-primary mb-2 text-xl font-semibold">Payment Successful!</h3>
-            <p className="theme-text-secondary text-sm">Your order has been processed</p>
+            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">Payment Successful!</h3>
+            <p className="theme-text-secondary text-xs sm:text-sm">Your order has been processed</p>
             {method === 'cash' && change > 0 && (
               <div className="mt-4 rounded-lg bg-emerald-500/15 px-4 py-2">
-                <p className="text-sm font-medium text-emerald-200">
+                <p className="text-xs sm:text-sm font-medium text-emerald-200">
                   Change: ₦{(change / 100).toFixed(2)}
                 </p>
               </div>

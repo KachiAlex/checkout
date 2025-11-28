@@ -432,12 +432,12 @@ export function SuperAdminPage() {
   };
 
   return (
-    <div className="theme-background min-h-screen">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-10">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         {lastProvisioned && (
-          <section className="theme-card border-l-4 border-l-emerald-400 px-6 py-5">
-            <h2 className="theme-text-primary text-lg font-semibold">Tenant provisioned</h2>
-            <p className="theme-text-secondary mt-1 text-sm">
+          <section className="theme-card border-l-4 border-l-emerald-400 px-4 sm:px-6 py-4 sm:py-5">
+            <h2 className="theme-text-primary text-base sm:text-lg font-semibold">Tenant provisioned</h2>
+            <p className="theme-text-secondary mt-1 text-xs sm:text-sm">
               Share the admin credentials with{' '}
               <span className="theme-text-primary font-semibold">{lastProvisioned.admin.email}</span>. The tenant is{' '}
               <span className="theme-text-primary font-semibold">{lastProvisioned.tenant.status}</span> and can update
@@ -446,12 +446,12 @@ export function SuperAdminPage() {
           </section>
         )}
 
-        <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
+        <header className="flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4 min-w-0">
             <BrandMark
-              size={60}
+              size={40}
               backgroundClassName="bg-white/90 dark:bg-white/10"
-              className="ring-1 ring-slate-200/40 dark:ring-white/10"
+              className="flex-shrink-0 sm:w-[60px] sm:h-[60px] ring-1 ring-slate-200/40 dark:ring-white/10"
             />
             <div>
               <p className="theme-text-secondary text-xs uppercase tracking-[0.35em]">Platform control</p>

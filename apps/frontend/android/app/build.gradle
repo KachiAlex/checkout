@@ -16,10 +16,36 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            def keystorePropertiesFile = rootProject.file("keystore.properties")
+            def keystoreProperties = new Properties()
+            if (keystorePropertiesFile.exists()) {
+                keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+                def storeFilePath = keystoreProperties['storeFile']
+                // Handle both relative paths (from android dir) and absolute paths
+                if (storeFilePath.startsWith('/') || storeFilePath.matches('^[A-Za-z]:')) {
+                    storeFile file(storeFilePath)
+                } else {
+                    storeFile file(rootProject.file(storeFilePath))
+                }
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            } else {
+                // Fallback: use keystore in app directory if keystore.properties doesn't exist
+                storeFile file('pos-checkout-release.keystore')
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: "checkout123"
+                keyAlias System.getenv("KEY_ALIAS") ?: "checkout"
+                keyPassword System.getenv("KEY_PASSWORD") ?: "checkout123"
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     lintOptions {
