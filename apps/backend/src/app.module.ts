@@ -22,6 +22,7 @@ import { GRNModule } from './grn/grn.module';
 import { CustomersModule } from './customers/customers.module';
 import { ReturnsModule } from './returns/returns.module';
 import { PaymentSettingsModule } from './payment-settings/payment-settings.module';
+import { TaxSettingsModule } from './tax-settings/tax-settings.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { PaymentSettingsModule } from './payment-settings/payment-settings.modul
     CustomersModule,
     ReturnsModule,
     PaymentSettingsModule,
+    TaxSettingsModule,
   ],
 })
 export class AppModule {}

@@ -31,6 +31,7 @@ const grn_module_1 = require("./grn/grn.module");
 const customers_module_1 = require("./customers/customers.module");
 const returns_module_1 = require("./returns/returns.module");
 const payment_settings_module_1 = require("./payment-settings/payment-settings.module");
+const tax_settings_module_1 = require("./tax-settings/tax-settings.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -63,6 +64,7 @@ exports.AppModule = AppModule = __decorate([
             customers_module_1.CustomersModule,
             returns_module_1.ReturnsModule,
             payment_settings_module_1.PaymentSettingsModule,
+            tax_settings_module_1.TaxSettingsModule,
         ],
     })
 ], AppModule);

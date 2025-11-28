@@ -67,6 +67,19 @@ export function SettingsPage() {
     webhookSecret: '',
     enabled: false,
   });
+  const [taxSettings, setTaxSettings] = useState<{ description?: string; percentage?: number; enabled: boolean } | null>(null);
+  const [loadingTaxSettings, setLoadingTaxSettings] = useState(false);
+  const [savingTaxSettings, setSavingTaxSettings] = useState(false);
+  const [taxForm, setTaxForm] = useState({
+    description: '',
+    percentage: '',
+    enabled: false,
+  });
+  const [resetPinModalOpen, setResetPinModalOpen] = useState(false);
+  const [selectedUserForPinReset, setSelectedUserForPinReset] = useState<TenantUser | null>(null);
+  const [newPinValue, setNewPinValue] = useState('');
+  const [confirmPinValue, setConfirmPinValue] = useState('');
+  const [resettingPin, setResettingPin] = useState(false);
   const [printProxyUrl, setPrintProxyUrl] = useState(
     localStorage.getItem('printProxyUrl') || import.meta.env.VITE_PRINT_PROXY_URL || 'ws://localhost:8080'
   );
@@ -152,6 +165,34 @@ export function SettingsPage() {
 
     loadPaymentSettings();
   }, [isTenantAdmin]);
+
+  useEffect(() => {
+    const loadTaxSettings = async () => {
+      if (!isTenantAdmin) {
+        return;
+      }
+      setLoadingTaxSettings(true);
+      try {
+        const response = await axios.get(`${API_URL}/api/v1/tax-settings`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const settings = response.data;
+        setTaxSettings(settings);
+        setTaxForm({
+          description: settings.description || '',
+          percentage: settings.percentage?.toString() || '',
+          enabled: settings.enabled || false,
+        });
+      } catch (error: any) {
+        console.error('Failed to load tax settings:', error);
+        setTaxSettings({ enabled: false });
+      } finally {
+        setLoadingTaxSettings(false);
+      }
+    };
+
+    loadTaxSettings();
+  }, [isTenantAdmin, accessToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -484,13 +525,39 @@ export function SettingsPage() {
     }
   };
 
-  const handleResetPin = async (tenantUser: TenantUser) => {
-    const newPinValue = Math.floor(Math.random() * 900000 + 100000).toString().slice(0, 6);
+  const handleResetPinClick = (tenantUser: TenantUser) => {
+    setSelectedUserForPinReset(tenantUser);
+    setNewPinValue('');
+    setConfirmPinValue('');
+    setResetPinModalOpen(true);
+  };
+
+  const handleResetPin = async () => {
+    if (!selectedUserForPinReset) return;
+
+    // Validate PIN
+    if (!newPinValue || newPinValue.length < 4 || newPinValue.length > 64) {
+      toast.error('PIN must be between 4 and 64 characters');
+      return;
+    }
+
+    if (newPinValue !== confirmPinValue) {
+      toast.error('PINs do not match');
+      return;
+    }
+
+    setResettingPin(true);
     try {
-      await resetTenantUserPin(tenantUser.id, newPinValue);
-      toast.success(`New PIN for ${tenantUser.name}: ${newPinValue}`);
+      await resetTenantUserPin(selectedUserForPinReset.id, newPinValue);
+      toast.success(`PIN reset successfully for ${selectedUserForPinReset.name}`);
+      setResetPinModalOpen(false);
+      setSelectedUserForPinReset(null);
+      setNewPinValue('');
+      setConfirmPinValue('');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to reset PIN');
+    } finally {
+      setResettingPin(false);
     }
   };
 
@@ -1046,7 +1113,7 @@ export function SettingsPage() {
                           <td className="px-4 py-2">
                             <div className="flex flex-wrap gap-2">
                               <button
-                                onClick={() => handleResetPin(tenantUser)}
+                                onClick={() => handleResetPinClick(tenantUser)}
                                 className="theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400 hover:text-sky-200"
                               >
                                 Reset PIN
@@ -1233,6 +1300,123 @@ export function SettingsPage() {
                       >
                         View Monnify Docs
                       </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </SectionContainer>
+        )}
+
+        {isTenantAdmin && (
+          <SectionContainer
+            title="Tax Settings"
+            description="Configure tax settings for your tenant. Cashiers can toggle tax on/off at checkout."
+          >
+            {loadingTaxSettings ? (
+              <div className="py-8 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+                <p className="theme-text-secondary mt-2 text-sm">Loading tax settings...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <div>
+                    <h3 className="theme-text-primary text-sm font-semibold">Enable Tax</h3>
+                    <p className="theme-text-secondary text-xs">
+                      When enabled, tax can be applied at checkout (cashiers can toggle it on/off)
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={taxForm.enabled}
+                      onChange={(e) => setTaxForm({ ...taxForm, enabled: e.target.checked })}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-sky-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300" />
+                  </label>
+                </div>
+
+                {taxForm.enabled && (
+                  <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div>
+                      <label className="theme-text-primary mb-2 block text-sm font-medium">
+                        Tax Description
+                      </label>
+                      <input
+                        type="text"
+                        value={taxForm.description}
+                        onChange={(e) => setTaxForm({ ...taxForm, description: e.target.value })}
+                        placeholder="e.g., VAT, Sales Tax, GST"
+                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                      />
+                      <p className="theme-text-secondary mt-1 text-xs">
+                        This name will appear on receipts and at checkout
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="theme-text-primary mb-2 block text-sm font-medium">
+                        Tax Percentage
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={taxForm.percentage}
+                          onChange={(e) => setTaxForm({ ...taxForm, percentage: e.target.value })}
+                          placeholder="7.5"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        />
+                        <span className="theme-text-secondary text-sm">%</span>
+                      </div>
+                      <p className="theme-text-secondary mt-1 text-xs">
+                        Enter the tax percentage (e.g., 7.5 for 7.5%)
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={async () => {
+                          if (!taxForm.description || !taxForm.percentage) {
+                            toast.error('Please fill in tax description and percentage');
+                            return;
+                          }
+                          const percentage = parseFloat(taxForm.percentage);
+                          if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                            toast.error('Tax percentage must be between 0 and 100');
+                            return;
+                          }
+
+                          setSavingTaxSettings(true);
+                          try {
+                            const response = await axios.put(
+                              `${API_URL}/api/v1/tax-settings`,
+                              {
+                                description: taxForm.description,
+                                percentage: percentage,
+                                enabled: taxForm.enabled,
+                              },
+                              {
+                                headers: { Authorization: `Bearer ${accessToken}` },
+                              }
+                            );
+                            setTaxSettings(response.data);
+                            toast.success('Tax settings saved successfully');
+                          } catch (error: any) {
+                            toast.error(error?.response?.data?.message || 'Failed to save tax settings');
+                          } finally {
+                            setSavingTaxSettings(false);
+                          }
+                        }}
+                        disabled={savingTaxSettings}
+                        className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-2 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {savingTaxSettings ? 'Saving...' : 'Save Settings'}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1788,6 +1972,72 @@ export function SettingsPage() {
           <span className="theme-text-primary font-medium capitalize">{user?.role ?? 'unknown'}</span>
         </div>
       </div>
+
+      {/* Reset PIN Modal */}
+      {resetPinModalOpen && selectedUserForPinReset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="theme-card w-full max-w-md rounded-2xl border p-6 backdrop-blur-xl">
+            <h3 className="theme-text-primary mb-2 text-lg font-semibold">Reset PIN for {selectedUserForPinReset.name}</h3>
+            <p className="theme-text-secondary mb-6 text-sm">Enter a new PIN for this user (4-64 characters)</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="theme-text-primary mb-2 block text-sm font-medium">New PIN</label>
+                <input
+                  type="password"
+                  value={newPinValue}
+                  onChange={(e) => setNewPinValue(e.target.value)}
+                  placeholder="Enter new PIN"
+                  minLength={4}
+                  maxLength={64}
+                  className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="theme-text-primary mb-2 block text-sm font-medium">Confirm PIN</label>
+                <input
+                  type="password"
+                  value={confirmPinValue}
+                  onChange={(e) => setConfirmPinValue(e.target.value)}
+                  placeholder="Confirm new PIN"
+                  minLength={4}
+                  maxLength={64}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newPinValue && confirmPinValue) {
+                      handleResetPin();
+                    }
+                  }}
+                  className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={handleResetPin}
+                disabled={resettingPin || !newPinValue || !confirmPinValue || newPinValue !== confirmPinValue || newPinValue.length < 4 || newPinValue.length > 64}
+                className="flex-1 rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-3 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {resettingPin ? 'Resetting...' : 'Reset PIN'}
+              </button>
+              <button
+                onClick={() => {
+                  setResetPinModalOpen(false);
+                  setSelectedUserForPinReset(null);
+                  setNewPinValue('');
+                  setConfirmPinValue('');
+                }}
+                disabled={resettingPin}
+                className="theme-chip rounded-full border px-6 py-3 font-semibold transition hover:border-sky-400 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

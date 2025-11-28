@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
@@ -40,8 +41,58 @@ export class InventoryController {
   @Post('adjust')
   @ApiOperation({ summary: 'Adjust inventory quantity' })
   @ApiResponse({ status: 201, description: 'Inventory adjusted' })
-  async adjust(@Body() adjustDto: AdjustInventoryDto) {
-    return this.inventoryService.adjust(adjustDto);
+  async adjust(@Body() adjustDto: AdjustInventoryDto, @Request() req: any) {
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.sub || req.user?.id;
+
+    if (!tenantId || !userId) {
+      throw new BadRequestException('Missing required user information (tenantId or userId)');
+    }
+
+    // Build clean DTO with only required fields and valid optional fields
+    const cleanDto: any = {
+      productId: adjustDto.productId,
+      delta: adjustDto.delta,
+      type: adjustDto.type,
+    };
+
+    // Ignore locationId, userId, and referenceId from request - they will be resolved automatically
+    // Only include referenceId if explicitly provided and valid (for order returns, etc.)
+    if (adjustDto.referenceId != null && adjustDto.referenceId !== undefined && adjustDto.referenceId !== '') {
+      const referenceIdStr = String(adjustDto.referenceId).trim();
+      if (referenceIdStr !== '' && isUUID(referenceIdStr)) {
+        cleanDto.referenceId = referenceIdStr;
+      }
+    }
+
+    // Include notes and reason if provided
+    if (adjustDto.notes) {
+      cleanDto.notes = adjustDto.notes;
+    }
+    if (adjustDto.reason) {
+      cleanDto.reason = adjustDto.reason;
+    }
+
+    // Automatically resolve locationId from user context (skip if already in cleanDto)
+    let locationId = cleanDto.locationId || req.user?.locationId;
+
+    // If still no locationId, get the first location for the tenant
+    if (!locationId) {
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      if (locations.length === 0) {
+        throw new BadRequestException('No locations found for this tenant. Please create a location first.');
+      }
+      locationId = locations[0].id;
+    }
+
+    // Update the DTO with the resolved locationId and userId
+    const adjustedDto = {
+      ...cleanDto,
+      locationId,
+      userId: cleanDto.userId || userId,
+    };
+    
+    return this.inventoryService.adjust(adjustedDto);
   }
 
   @Get(':location_id/transactions')

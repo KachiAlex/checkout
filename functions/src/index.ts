@@ -2,9 +2,9 @@ import * as functions from 'firebase-functions/v1';
 import type { Express, Request, Response } from 'express';
 
 const DEFAULT_REGION = process.env.FUNCTION_REGION ?? 'us-central1';
-// Default to 1 instance for cost control - increase only if needed
-const maxInstancesEnv = Number(process.env.FUNCTION_MAX_INSTANCES ?? '1');
-const MAX_INSTANCES = Number.isFinite(maxInstancesEnv) && maxInstancesEnv > 0 ? maxInstancesEnv : 1;
+// Increased to 10 instances to handle concurrent requests and prevent 429 errors
+const maxInstancesEnv = Number(process.env.FUNCTION_MAX_INSTANCES ?? '10');
+const MAX_INSTANCES = Number.isFinite(maxInstancesEnv) && maxInstancesEnv > 0 ? maxInstancesEnv : 10;
 
 let cachedApp: Express | null = null;
 let appInitializationPromise: Promise<Express> | null = null;
@@ -40,18 +40,18 @@ async function getApp(): Promise<Express> {
   return appInitializationPromise;
 }
 
-// Cost-optimized configuration:
-// - 128MB memory (50% cost reduction vs 256MB)
-// - 30s timeout (reduces overrun costs)
-// - minInstances: 0 (no idle costs)
-// - maxInstances: 1 (prevents scaling costs)
+// Configuration optimized for performance and concurrent requests:
+// - 256MB memory for better performance
+// - 60s timeout to handle longer operations
+// - minInstances: 1 to keep instance warm and avoid cold starts
+// - maxInstances: 10 to handle concurrent requests and prevent 429 errors
 export const api = functions
   .region(DEFAULT_REGION)
   .runWith({
     memory: '256MB', // Increased to help with performance
     timeoutSeconds: 60, // Increased timeout to 60 seconds
     minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
-    maxInstances: MAX_INSTANCES,
+    maxInstances: MAX_INSTANCES, // Increased to 10 to handle concurrent requests
     ingressSettings: 'ALLOW_ALL',
   })
   .https.onRequest(async (req: Request, res: Response) => {
@@ -71,20 +71,23 @@ export const api = functions
       origin.startsWith('capacitor://') ||
       allowedOrigins.includes(origin);
     
-    // Helper function to set CORS headers
+    // Helper function to set CORS headers - ALWAYS set them to prevent CORS errors
     const setCorsHeaders = () => {
       if (isAllowed) {
         res.setHeader('Access-Control-Allow-Origin', origin || '*');
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-Slug');
+        res.setHeader('Access-Control-Expose-Headers', 'Authorization');
       }
     };
+    
+    // Set CORS headers immediately for all requests
+    setCorsHeaders();
     
     // Handle CORS preflight requests - MUST return immediately
     if (req.method === 'OPTIONS') {
       console.log('[Functions] Handling OPTIONS preflight request from origin:', origin);
-      setCorsHeaders();
       if (isAllowed) {
         res.setHeader('Access-Control-Max-Age', '3600');
         res.status(204).end();
@@ -95,9 +98,6 @@ export const api = functions
       return;
     }
     
-    // Set CORS headers BEFORE passing to NestJS
-    setCorsHeaders();
-    
     try {
       const app = await getApp();
       // Pass request to NestJS - it will handle the actual request
@@ -105,7 +105,7 @@ export const api = functions
       app(req, res);
     } catch (error: any) {
       console.error('[Functions] Error handling request:', error);
-      // Ensure CORS headers are set even on error
+      // Ensure CORS headers are set even on error - this is critical
       setCorsHeaders();
       if (!res.headersSent) {
         res.status(500).json({

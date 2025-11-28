@@ -40,6 +40,7 @@ const platformConfigs: PlatformConfig[] = [
     icon: '🤖',
     description: 'Convert handhelds into mobile POS terminals with camera and Bluetooth scanners.',
     cta: 'Download for Android',
+    comingSoon: true,
     note: 'Compatible with Android 9+. Enable installs from trusted sources.',
   },
   {

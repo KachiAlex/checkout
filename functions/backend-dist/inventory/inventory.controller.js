@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InventoryController = void 0;
 const common_1 = require("@nestjs/common");
+const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 const inventory_service_1 = require("./inventory.service");
 const adjust_inventory_dto_1 = require("./dto/adjust-inventory.dto");
@@ -32,8 +33,43 @@ let InventoryController = class InventoryController {
     async getBatchInventory(locationId, productId) {
         return this.inventoryService.getBatchInventory(productId, locationId);
     }
-    async adjust(adjustDto) {
-        return this.inventoryService.adjust(adjustDto);
+    async adjust(adjustDto, req) {
+        const tenantId = req.user?.tenantId;
+        const userId = req.user?.sub || req.user?.id;
+        if (!tenantId || !userId) {
+            throw new common_1.BadRequestException('Missing required user information (tenantId or userId)');
+        }
+        const cleanDto = {
+            productId: adjustDto.productId,
+            delta: adjustDto.delta,
+            type: adjustDto.type,
+        };
+        if (adjustDto.referenceId != null && adjustDto.referenceId !== undefined && adjustDto.referenceId !== '') {
+            const referenceIdStr = String(adjustDto.referenceId).trim();
+            if (referenceIdStr !== '' && (0, class_validator_1.isUUID)(referenceIdStr)) {
+                cleanDto.referenceId = referenceIdStr;
+            }
+        }
+        if (adjustDto.notes) {
+            cleanDto.notes = adjustDto.notes;
+        }
+        if (adjustDto.reason) {
+            cleanDto.reason = adjustDto.reason;
+        }
+        let locationId = cleanDto.locationId || req.user?.locationId;
+        if (!locationId) {
+            const locations = await this.locationsRepository.findByTenant(tenantId);
+            if (locations.length === 0) {
+                throw new common_1.BadRequestException('No locations found for this tenant. Please create a location first.');
+            }
+            locationId = locations[0].id;
+        }
+        const adjustedDto = {
+            ...cleanDto,
+            locationId,
+            userId: cleanDto.userId || userId,
+        };
+        return this.inventoryService.adjust(adjustedDto);
     }
     async getTransactions(locationId, from, to) {
         return this.inventoryService.getTransactions(locationId, from, to);
@@ -91,8 +127,9 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Adjust inventory quantity' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Inventory adjusted' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [adjust_inventory_dto_1.AdjustInventoryDto]),
+    __metadata("design:paramtypes", [adjust_inventory_dto_1.AdjustInventoryDto, Object]),
     __metadata("design:returntype", Promise)
 ], InventoryController.prototype, "adjust", null);
 __decorate([

@@ -18,6 +18,7 @@ interface CartSession {
   cartDiscountCents: number;
   cartDiscountPercent: number;
   discountReason: string;
+  taxEnabled: boolean;
 }
 
 interface CartState {
@@ -27,6 +28,7 @@ interface CartState {
   cartDiscountCents: number;
   cartDiscountPercent: number;
   discountReason: string;
+  taxEnabled: boolean;
 
   // Multiple cart sessions on a single device
   sessions: CartSession[];
@@ -38,6 +40,7 @@ interface CartState {
   updateQuantity: (productId: string, quantity: number) => void;
   updateItemDiscount: (productId: string, discountCents: number) => void;
   setCartDiscount: (discountCents: number, discountPercent: number, reason?: string) => void;
+  setTaxEnabled: (enabled: boolean) => void;
   clearCart: () => void;
   getTotal: () => number;
   undoLastRemove: () => void;
@@ -74,6 +77,7 @@ export const useCartStore = create<CartState>()(
         cartDiscountCents: 0,
         cartDiscountPercent: 0,
         discountReason: '',
+        taxEnabled: false, // Tax disabled by default
       });
 
       return {
@@ -83,6 +87,7 @@ export const useCartStore = create<CartState>()(
         cartDiscountCents: 0,
         cartDiscountPercent: 0,
         discountReason: '',
+        taxEnabled: false, // Tax disabled by default
         sessions: [createEmptySession(1)],
         activeSessionId: 'cart-1',
 
@@ -290,6 +295,7 @@ export const useCartStore = create<CartState>()(
               cartDiscountCents: 0,
               cartDiscountPercent: 0,
               discountReason: '',
+              taxEnabled: false,
             };
             sessions[idx] = updatedSession;
 
@@ -301,6 +307,7 @@ export const useCartStore = create<CartState>()(
               cartDiscountCents: 0,
               cartDiscountPercent: 0,
               discountReason: '',
+              taxEnabled: false,
             };
           });
         },
@@ -316,13 +323,15 @@ export const useCartStore = create<CartState>()(
             return sum + itemSubtotal - itemDiscount;
           }, 0);
 
-          // Calculate tax on discounted subtotal
-          const tax = cart.reduce((sum, item) => {
-            const itemSubtotal = item.priceCents * item.quantity;
-            const itemDiscount = item.discountCents || 0;
-            const discountedSubtotal = itemSubtotal - itemDiscount;
-            return sum + discountedSubtotal * item.taxRate;
-          }, 0);
+          // Calculate tax on discounted subtotal (only if tax is enabled)
+          const tax = state.taxEnabled
+            ? cart.reduce((sum, item) => {
+                const itemSubtotal = item.priceCents * item.quantity;
+                const itemDiscount = item.discountCents || 0;
+                const discountedSubtotal = itemSubtotal - itemDiscount;
+                return sum + discountedSubtotal * item.taxRate;
+              }, 0)
+            : 0;
 
           // Apply cart-level discount
           let finalSubtotal = subtotal;
@@ -350,6 +359,7 @@ export const useCartStore = create<CartState>()(
               cartDiscountCents: newSession.cartDiscountCents,
               cartDiscountPercent: newSession.cartDiscountPercent,
               discountReason: newSession.discountReason,
+              taxEnabled: newSession.taxEnabled,
             };
           });
         },
@@ -367,6 +377,7 @@ export const useCartStore = create<CartState>()(
               cartDiscountCents: session.cartDiscountCents,
               cartDiscountPercent: session.cartDiscountPercent,
               discountReason: session.discountReason,
+              taxEnabled: session.taxEnabled,
             };
           });
         },

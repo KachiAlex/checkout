@@ -302,7 +302,11 @@ let AuthService = class AuthService {
             };
         }
         catch (error) {
-            throw new common_1.UnauthorizedException('Invalid refresh token');
+            console.error('[AuthService] Refresh token error:', error);
+            if (error instanceof common_1.UnauthorizedException) {
+                throw error;
+            }
+            throw new common_1.UnauthorizedException('Invalid or expired refresh token. Please log in again.');
         }
     }
 };

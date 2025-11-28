@@ -313,7 +313,11 @@ export class AuthService {
         },
       };
     } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
+      console.error('[AuthService] Refresh token error:', error);
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Invalid or expired refresh token. Please log in again.');
     }
   }
 }

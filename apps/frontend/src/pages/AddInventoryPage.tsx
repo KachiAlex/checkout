@@ -174,8 +174,8 @@ export function AddInventoryPage() {
   };
 
   const handleUpdateQuantity = async (item: InventoryItem) => {
-    if (!user || !effectiveLocationId || !accessToken) {
-      toast.error('Please log in and ensure a location is selected before adjusting inventory.');
+    if (!user || !accessToken) {
+      toast.error('Please log in before adjusting inventory.');
       return;
     }
 
@@ -200,14 +200,14 @@ export function AddInventoryPage() {
     }));
 
     try {
+      // Backend will automatically resolve locationId and userId from JWT/user context
       await axios.post(
         `${API_URL}/api/v1/inventory/adjust`,
         {
           productId: item.product.id,
-          locationId: effectiveLocationId,
           delta,
           type,
-          userId: user.id,
+          // Do NOT send userId or locationId – backend resolves them to avoid validation errors
           notes: 'Updated via inventory management',
         },
         {
@@ -227,8 +227,28 @@ export function AddInventoryPage() {
       });
     } catch (error: any) {
       console.error('Failed to update quantity:', error);
-      const message = error.response?.data?.message || 'Failed to update inventory quantity';
-      toast.error(message);
+      
+      // Extract full error message
+      let errorMessage = 'Failed to update inventory quantity';
+      if (error.response?.data) {
+        if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (Array.isArray(error.response.data.message)) {
+          errorMessage = error.response.data.message.join(', ');
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      if (error.response?.status === 401) {
+        errorMessage = 'Authentication expired. Please log in again.';
+      }
+
+      toast.error(errorMessage);
     } finally {
       setUpdatingQuantities((prev) => {
         const next = { ...prev };

@@ -37,7 +37,7 @@ export declare class InventoryController {
         updatedAt: Date;
     }[]>;
     getBatchInventory(locationId: string, productId: string): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
-    adjust(adjustDto: AdjustInventoryDto): Promise<import("./inventory.repository").InventoryTransactionRecord>;
+    adjust(adjustDto: AdjustInventoryDto, req: any): Promise<import("./inventory.repository").InventoryTransactionRecord>;
     getTransactions(locationId: string, from?: string, to?: string): Promise<import("./inventory.repository").InventoryTransactionRecord[]>;
     createInventoryItem(createDto: CreateInventoryItemDto, req: any): Promise<{
         product: import("../products/products.repository").ProductRecord;

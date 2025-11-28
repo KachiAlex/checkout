@@ -6,7 +6,9 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { InventoryTransactionType } from '@pos-checkout/shared';
 
 export class AdjustInventoryDto {
@@ -14,9 +16,10 @@ export class AdjustInventoryDto {
   @IsUUID()
   productId: string;
 
-  @ApiProperty({ description: 'Location ID' })
-  @IsUUID()
-  locationId: string;
+  @ApiProperty({ description: 'Location ID (optional, will be resolved from user context if not provided)', required: false })
+  @IsOptional()
+  @IsString()
+  locationId?: string;
 
   @ApiProperty({ description: 'Quantity delta (can be negative)', example: -5 })
   @IsNumber()
@@ -31,12 +34,12 @@ export class AdjustInventoryDto {
 
   @ApiProperty({ description: 'User ID performing the adjustment', required: false })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   userId?: string;
 
   @ApiProperty({ description: 'Reference ID (e.g., order ID)', required: false })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   referenceId?: string;
 
   @ApiProperty({ description: 'Notes', required: false })

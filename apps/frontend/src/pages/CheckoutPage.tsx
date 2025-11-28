@@ -53,6 +53,9 @@ export function CheckoutPage() {
     cartDiscountCents,
     cartDiscountPercent,
     discountReason,
+    taxEnabled,
+    setTaxEnabled,
+    setCartDiscount,
   } = useCartStore();
 
   const total = getTotal();
@@ -66,6 +69,9 @@ export function CheckoutPage() {
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
   const [cashChange, setCashChange] = useState<number>(0);
   const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string; phone?: string } | null>(null);
+  const [taxSettings, setTaxSettings] = useState<{ description?: string; percentage?: number; enabled: boolean } | null>(null);
+  const [discountInput, setDiscountInput] = useState('');
+  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('amount');
 
   // Product search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,6 +108,26 @@ export function CheckoutPage() {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery, accessToken]);
+
+  // Fetch tax settings (all users need this to see if tax can be applied)
+  useEffect(() => {
+    const loadTaxSettings = async () => {
+      if (!accessToken) return;
+      try {
+        // Try to get tax settings - if user is not admin, they'll get 403 but that's okay
+        const response = await axios.get(`${API_URL}/api/v1/tax-settings`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        setTaxSettings(response.data);
+      } catch (error: any) {
+        // Tax settings might not exist yet, or user might not have permission - that's okay
+        if (error.response?.status !== 404 && error.response?.status !== 403) {
+          console.error('Failed to load tax settings:', error);
+        }
+      }
+    };
+    loadTaxSettings();
+  }, [accessToken]);
 
   // Handle barcode scan
   const handleBarcodeScan = async (barcode: string) => {
@@ -183,14 +209,23 @@ export function CheckoutPage() {
 
   // Helper to map cart items to order items
   const mapCartToOrderItems = useCallback((cartItems: typeof cart) => {
-    return cartItems.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      priceCents: item.priceCents,
-      taxCents: (item.priceCents * item.quantity - (item.discountCents || 0)) * item.taxRate,
-      discountCents: item.discountCents || 0,
-    }));
-  }, []);
+    // Calculate tax per item using tenant tax settings (if enabled)
+    const taxPercentage = taxEnabled && taxSettings?.percentage ? taxSettings.percentage / 100 : 0;
+    
+    return cartItems.map((item) => {
+      const itemSubtotal = item.priceCents * item.quantity;
+      const itemDiscount = item.discountCents || 0;
+      const itemTaxCents = (itemSubtotal - itemDiscount) * taxPercentage;
+      
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        priceCents: item.priceCents,
+        taxCents: Math.round(itemTaxCents),
+        discountCents: item.discountCents || 0,
+      };
+    });
+  }, [taxEnabled, taxSettings]);
 
   // Helper to calculate totals from cart
   const calculateOrderTotals = useCallback(() => {
@@ -200,13 +235,7 @@ export function CheckoutPage() {
       return sum + itemSubtotal - itemDiscount;
     }, 0);
     
-    const tax = cart.reduce((sum, item) => {
-      const itemSubtotal = item.priceCents * item.quantity;
-      const itemDiscount = item.discountCents || 0;
-      const discountedSubtotal = itemSubtotal - itemDiscount;
-      return sum + discountedSubtotal * item.taxRate;
-    }, 0);
-    
+    // Apply cart-level discount first
     let finalSubtotal = subtotal;
     if (cartDiscountPercent > 0) {
       finalSubtotal = subtotal * (1 - cartDiscountPercent / 100);
@@ -214,11 +243,15 @@ export function CheckoutPage() {
       finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
     }
     
+    // Calculate tax on discounted subtotal using tenant tax settings (if enabled)
+    const taxPercentage = taxEnabled && taxSettings?.percentage ? taxSettings.percentage / 100 : 0;
+    const tax = finalSubtotal * taxPercentage;
+    
     const totalAmount = finalSubtotal + tax;
     const totalDiscountCents = subtotal - finalSubtotal;
     
     return { subtotal, tax, finalSubtotal, totalAmount, totalDiscountCents };
-  }, [cart, cartDiscountPercent, cartDiscountCents]);
+  }, [cart, cartDiscountPercent, cartDiscountCents, taxEnabled, taxSettings]);
 
   // Extract receipt printing logic
   const handleReceiptPrint = useCallback(async (orderId: string) => {
@@ -309,28 +342,9 @@ export function CheckoutPage() {
     }
   };
 
-  // Calculate display totals
-  const subtotal = cart.reduce((sum, item) => {
-    const itemSubtotal = item.priceCents * item.quantity;
-    const itemDiscount = item.discountCents || 0;
-    return sum + itemSubtotal - itemDiscount;
-  }, 0);
-
-  const tax = cart.reduce((sum, item) => {
-    const itemSubtotal = item.priceCents * item.quantity;
-    const itemDiscount = item.discountCents || 0;
-    const discountedSubtotal = itemSubtotal - itemDiscount;
-    return sum + discountedSubtotal * item.taxRate;
-  }, 0);
-
-  let finalSubtotal = subtotal;
-  if (cartDiscountPercent > 0) {
-    finalSubtotal = subtotal * (1 - cartDiscountPercent / 100);
-  } else if (cartDiscountCents > 0) {
-    finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
-  }
-
-  const totalDiscount = subtotal - finalSubtotal;
+  // Calculate display totals using the same logic as calculateOrderTotals
+  const { subtotal, tax, finalSubtotal, totalDiscountCents } = calculateOrderTotals();
+  const totalDiscount = totalDiscountCents;
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden theme-background">
@@ -596,6 +610,59 @@ export function CheckoutPage() {
               <div className="theme-card sticky top-20 sm:top-6 rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
                 <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Summary</h2>
                 
+                {/* Tax Toggle */}
+                {taxSettings && taxSettings.enabled && (
+                  <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
+                    <input
+                      type="checkbox"
+                      id="tax-toggle"
+                      checked={taxEnabled}
+                      onChange={(e) => setTaxEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-500 focus:ring-2 focus:ring-sky-400"
+                    />
+                    <label htmlFor="tax-toggle" className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer">
+                      Apply {taxSettings.description || 'Tax'} ({taxSettings.percentage}%)
+                    </label>
+                  </div>
+                )}
+
+                {/* Discount Input */}
+                <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
+                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">Discount</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={discountType}
+                      onChange={(e) => {
+                        setDiscountType(e.target.value as 'percent' | 'amount');
+                        setDiscountInput('');
+                        setCartDiscount(0, 0, '');
+                      }}
+                      className="theme-surface rounded-lg border border-white/20 px-2 sm:px-3 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                    >
+                      <option value="amount">₦</option>
+                      <option value="percent">%</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={discountInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setDiscountInput(value);
+                        const numValue = parseFloat(value) || 0;
+                        if (discountType === 'percent') {
+                          setCartDiscount(0, numValue, 'Manual discount');
+                        } else {
+                          setCartDiscount(Math.round(numValue * 100), 0, 'Manual discount');
+                        }
+                      }}
+                      placeholder={discountType === 'percent' ? '0' : '0.00'}
+                      min="0"
+                      step={discountType === 'percent' ? '1' : '0.01'}
+                      className="theme-surface flex-1 rounded-lg border border-white/20 px-3 sm:px-4 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                
                 <div className="space-y-2 sm:space-y-3 border-b border-white/10 pb-3 sm:pb-4">
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="theme-text-secondary">Subtotal</span>
@@ -607,10 +674,12 @@ export function CheckoutPage() {
                       <span className="theme-text-primary text-emerald-400">-₦{(totalDiscount / 100).toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="theme-text-secondary">Tax</span>
-                    <span className="theme-text-primary">₦{(tax / 100).toFixed(2)}</span>
-                  </div>
+                  {taxEnabled && tax > 0 && (
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="theme-text-secondary">{taxSettings?.description || 'Tax'}</span>
+                      <span className="theme-text-primary">₦{(tax / 100).toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-3 sm:mt-4 mb-4 sm:mb-6 flex justify-between border-t border-white/10 pt-3 sm:pt-4">
