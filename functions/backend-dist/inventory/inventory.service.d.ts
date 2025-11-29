@@ -70,4 +70,5 @@ export declare class InventoryService {
     }>;
     clearAllInventory(): Promise<number>;
     updateInventoryPrices(productId: string, locationId: string, costCents?: number, salesPriceCents?: number): Promise<import("./inventory.repository").InventoryRecord>;
+    updateInventoryItem(productId: string, locationId: string, quantity?: number, reorderPoint?: number, costCents?: number, salesPriceCents?: number): Promise<import("./inventory.repository").InventoryRecord>;
 }

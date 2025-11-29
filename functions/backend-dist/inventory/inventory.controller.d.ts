@@ -2,6 +2,7 @@ import { InventoryService } from './inventory.service';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { UpdateInventoryPricesDto } from './dto/update-inventory-prices.dto';
+import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import { LocationsRepository } from '../locations/locations.repository';
 export declare class InventoryController {
     private readonly inventoryService;
@@ -62,4 +63,5 @@ export declare class InventoryController {
         count: number;
     }>;
     updateInventoryPrices(updateDto: UpdateInventoryPricesDto, req: any): Promise<import("./inventory.repository").InventoryRecord>;
+    updateInventoryItem(updateDto: UpdateInventoryItemDto, req: any): Promise<import("./inventory.repository").InventoryRecord>;
 }

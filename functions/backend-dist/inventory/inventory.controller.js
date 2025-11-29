@@ -20,6 +20,7 @@ const inventory_service_1 = require("./inventory.service");
 const adjust_inventory_dto_1 = require("./dto/adjust-inventory.dto");
 const create_inventory_item_dto_1 = require("./dto/create-inventory-item.dto");
 const update_inventory_prices_dto_1 = require("./dto/update-inventory-prices.dto");
+const update_inventory_item_dto_1 = require("./dto/update-inventory-item.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const locations_repository_1 = require("../locations/locations.repository");
 let InventoryController = class InventoryController {
@@ -113,6 +114,18 @@ let InventoryController = class InventoryController {
         }
         return this.inventoryService.updateInventoryPrices(updateDto.productId, locationId, updateDto.costCents, updateDto.salesPriceCents);
     }
+    async updateInventoryItem(updateDto, req) {
+        const tenantId = req.user?.tenantId;
+        let locationId = updateDto.locationId || req.user?.locationId;
+        if (!locationId) {
+            const locations = await this.locationsRepository.findByTenant(tenantId);
+            if (locations.length === 0) {
+                throw new common_1.BadRequestException('No locations found for this tenant. Please create a location first.');
+            }
+            locationId = locations[0].id;
+        }
+        return this.inventoryService.updateInventoryItem(updateDto.productId, locationId, updateDto.quantity, updateDto.reorderPoint, updateDto.costCents, updateDto.salesPriceCents);
+    }
 };
 exports.InventoryController = InventoryController;
 __decorate([
@@ -200,6 +213,16 @@ __decorate([
     __metadata("design:paramtypes", [update_inventory_prices_dto_1.UpdateInventoryPricesDto, Object]),
     __metadata("design:returntype", Promise)
 ], InventoryController.prototype, "updateInventoryPrices", null);
+__decorate([
+    (0, common_1.Put)('item'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update inventory item (quantity, reorder point, cost and sales prices)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Inventory item updated' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [update_inventory_item_dto_1.UpdateInventoryItemDto, Object]),
+    __metadata("design:returntype", Promise)
+], InventoryController.prototype, "updateInventoryItem", null);
 exports.InventoryController = InventoryController = __decorate([
     (0, swagger_1.ApiTags)('inventory'),
     (0, common_1.Controller)('inventory'),

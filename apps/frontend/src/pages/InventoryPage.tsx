@@ -220,13 +220,16 @@ export function InventoryPage() {
         return;
       }
 
+      // Get current inventory to preserve values if not being updated
+      const currentItem = inventory.find(inv => inv.productId === productId);
+      
       await axios.put(
         `${API_URL}/api/v1/inventory/item`,
         {
           productId,
           locationId,
-          quantity: editingItem.quantity ? parseInt(editingItem.quantity, 10) : undefined,
-          reorderPoint: editingItem.reorderPoint ? parseInt(editingItem.reorderPoint, 10) : undefined,
+          quantity: editingItem.quantity ? parseInt(editingItem.quantity, 10) : (currentItem?.quantity || 0),
+          reorderPoint: editingItem.reorderPoint ? parseInt(editingItem.reorderPoint, 10) : (currentItem?.reorderPoint || undefined),
           costCents,
           salesPriceCents,
         },
@@ -451,9 +454,10 @@ export function InventoryPage() {
                           <input
                             type="number"
                             step="1"
+                            min="0"
                             value={editingItem.quantity}
                             onChange={(e) => setEditingItem({ ...editingItem, quantity: e.target.value })}
-                            className="w-20 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            className="w-24 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0"
                           />
                         ) : (
@@ -467,9 +471,10 @@ export function InventoryPage() {
                           <input
                             type="number"
                             step="1"
+                            min="0"
                             value={editingItem.reorderPoint}
                             onChange={(e) => setEditingItem({ ...editingItem, reorderPoint: e.target.value })}
-                            className="w-20 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            className="w-24 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0"
                           />
                         ) : (
@@ -481,9 +486,10 @@ export function InventoryPage() {
                           <input
                             type="number"
                             step="0.01"
+                            min="0"
                             value={editingItem.costCents}
                             onChange={(e) => setEditingItem({ ...editingItem, costCents: e.target.value })}
-                            className="w-24 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            className="w-28 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0.00"
                             required
                           />
@@ -496,9 +502,10 @@ export function InventoryPage() {
                           <input
                             type="number"
                             step="0.01"
+                            min="0"
                             value={editingItem.salesPriceCents}
                             onChange={(e) => setEditingItem({ ...editingItem, salesPriceCents: e.target.value })}
-                            className="w-24 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            className="w-28 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0.00"
                             required
                           />
@@ -511,13 +518,16 @@ export function InventoryPage() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleUpdateItem(item.productId)}
-                              className="rounded border border-emerald-400/40 bg-emerald-500/15 px-2 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+                              className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25 flex items-center gap-1"
+                              title="Update all changes"
                             >
+                              <span>✓</span>
                               Update
                             </button>
                             <button
                               onClick={() => setEditingItem(null)}
-                              className="rounded border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+                              className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+                              title="Cancel editing"
                             >
                               Cancel
                             </button>
@@ -531,8 +541,10 @@ export function InventoryPage() {
                               costCents: item.costCents ? (item.costCents / 100).toFixed(2) : '',
                               salesPriceCents: item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : ''),
                             })}
-                            className="rounded border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+                            className="rounded-lg border border-sky-400/40 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/25 flex items-center gap-1.5"
+                            title="Edit inventory item"
                           >
+                            <span className="text-sm">✏️</span>
                             Edit
                           </button>
                         )}

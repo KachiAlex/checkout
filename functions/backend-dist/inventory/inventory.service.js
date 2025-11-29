@@ -231,6 +231,33 @@ let InventoryService = class InventoryService {
             salesPriceCents: salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
         });
     }
+    async updateInventoryItem(productId, locationId, quantity, reorderPoint, costCents, salesPriceCents) {
+        const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);
+        if (!currentInventory) {
+            throw new common_1.NotFoundException(`Inventory not found for product ${productId} at location ${locationId}`);
+        }
+        const quantityDelta = quantity !== undefined ? quantity - currentInventory.quantity : 0;
+        const updated = await this.inventoryRepository.upsertInventory({
+            productId,
+            locationId,
+            quantity: quantity !== undefined ? quantity : currentInventory.quantity,
+            reorderPoint: reorderPoint !== undefined ? reorderPoint : currentInventory.reorderPoint,
+            maxStock: currentInventory.maxStock,
+            costCents: costCents !== undefined ? costCents : currentInventory.costCents,
+            salesPriceCents: salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
+        });
+        if (quantityDelta !== 0) {
+            await this.inventoryRepository.createTransaction({
+                productId,
+                locationId,
+                delta: quantityDelta,
+                type: shared_1.InventoryTransactionType.ADJUST,
+                notes: `Inventory item updated via edit`,
+                ts: new Date(),
+            });
+        }
+        return updated;
+    }
 };
 exports.InventoryService = InventoryService;
 exports.InventoryService = InventoryService = __decorate([
