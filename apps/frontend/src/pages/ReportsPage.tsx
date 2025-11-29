@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { format, parseISO, startOfDay, endOfDay, subDays } from 'date-fns';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
-type ReportTab = 'general' | 'staff' | 'credit' | 'profit';
+type ReportTab = 'general' | 'staff' | 'credit' | 'profit' | 'category' | 'time' | 'inventory' | 'discount' | 'payment' | 'returns' | 'basket' | 'trends' | 'operations';
 
 interface SalesAnalytics {
   period: Period;
@@ -75,7 +75,9 @@ interface ProductAnalytics {
   sku: string;
   quantitySold: number;
   revenue: number;
-  averagePrice: number;
+  cost: number;
+  profit: number;
+  profitMargin: number; // percentage
 }
 
 interface ProfitLossAnalytics {
@@ -104,6 +106,189 @@ interface ProfitLossAnalytics {
   }>;
 }
 
+interface CategoryBrandAnalytics {
+  byCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    profitMargin: number;
+    quantitySold: number;
+    orderCount: number;
+  }>;
+  byBrand: Array<{
+    brandId: string;
+    brandName: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    profitMargin: number;
+    quantitySold: number;
+    orderCount: number;
+  }>;
+}
+
+interface TimeBasedInsights {
+  byHour: Array<{ hour: number; sales: number; orders: number; items: number }>;
+  byDayOfWeek: Array<{ day: string; sales: number; orders: number; items: number }>;
+  byMonth: Array<{ month: string; sales: number; orders: number; items: number }>;
+  peakHour: { hour: number; sales: number };
+  bestDay: { day: string; sales: number };
+  salesVelocity: number; // items per hour
+  yearOverYear: Array<{ period: string; current: number; previous: number; change: number }>;
+}
+
+interface InventoryHealth {
+  turnoverRate: number;
+  slowMovingProducts: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    quantity: number;
+    lastSold?: string;
+    daysSinceLastSale: number;
+  }>;
+  lowStockProducts: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    currentStock: number;
+    reorderPoint?: number;
+    daysRemaining: number;
+  }>;
+  deadStock: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    quantity: number;
+    value: number;
+    lastSold?: string;
+  }>;
+  stockoutFrequency: number;
+}
+
+interface DiscountAnalytics {
+  totalDiscountAmount: number;
+  totalDiscountPercentage: number;
+  ordersWithDiscount: number;
+  averageDiscountPercent: number;
+  discountImpact: {
+    revenueWithDiscount: number;
+    revenueWithoutDiscount: number;
+    profitWithDiscount: number;
+    profitWithoutDiscount: number;
+  };
+  byDiscountType: Array<{
+    type: string;
+    count: number;
+    totalAmount: number;
+    avgPercent: number;
+  }>;
+}
+
+interface PaymentMethodInsights {
+  byMethod: Array<{
+    method: string;
+    count: number;
+    totalAmount: number;
+    averageAmount: number;
+    percentage: number;
+  }>;
+  cashVsDigital: {
+    cash: { count: number; amount: number; percentage: number };
+    digital: { count: number; amount: number; percentage: number };
+  };
+  trends: Array<{
+    period: string;
+    methods: Record<string, number>;
+  }>;
+}
+
+interface ReturnRefundAnalytics {
+  totalReturns: number;
+  totalRefundAmount: number;
+  returnRate: number; // percentage
+  byProduct: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    returnCount: number;
+    returnRate: number;
+    refundAmount: number;
+  }>;
+  byCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    returnCount: number;
+    returnRate: number;
+    refundAmount: number;
+  }>;
+  impactOnProfit: number;
+  trends: Array<{
+    period: string;
+    returns: number;
+    refundAmount: number;
+  }>;
+}
+
+interface BasketAnalysis {
+  averageItemsPerOrder: number;
+  frequentlyBoughtTogether: Array<{
+    products: string[];
+    frequency: number;
+    support: number; // percentage
+  }>;
+  crossSellOpportunities: Array<{
+    productId: string;
+    productName: string;
+    suggestedProducts: Array<{
+      productId: string;
+      productName: string;
+      confidence: number;
+    }>;
+  }>;
+  topBundles: Array<{
+    products: string[];
+    frequency: number;
+    revenue: number;
+  }>;
+}
+
+interface SalesTrendsForecasting {
+  growthRate: number; // percentage
+  trend: 'up' | 'down' | 'stable';
+  forecastedSales: Array<{
+    period: string;
+    forecast: number;
+    confidence: number;
+  }>;
+  variance: Array<{
+    period: string;
+    actual: number;
+    expected: number;
+    variance: number;
+    variancePercent: number;
+  }>;
+  movingAverage: Array<{
+    period: string;
+    value: number;
+  }>;
+}
+
+interface OperationalMetrics {
+  averageTransactionTime: number; // minutes
+  ordersPerStaff: Array<{
+    userId: string;
+    userName: string;
+    orderCount: number;
+    avgTransactionTime: number;
+  }>;
+  peakHours: Array<{ hour: number; orderCount: number }>;
+  averageItemsPerOrder: number;
+  averageWaitTime: number; // minutes (if available)
+}
+
 export function ReportsPage() {
   const { logout, accessToken, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ReportTab>('general');
@@ -121,6 +306,15 @@ export function ReportsPage() {
   const [productAnalytics, setProductAnalytics] = useState<ProductAnalytics[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [profitLossAnalytics, setProfitLossAnalytics] = useState<ProfitLossAnalytics | null>(null);
+  const [categoryBrandAnalytics, setCategoryBrandAnalytics] = useState<CategoryBrandAnalytics | null>(null);
+  const [timeBasedInsights, setTimeBasedInsights] = useState<TimeBasedInsights | null>(null);
+  const [inventoryHealth, setInventoryHealth] = useState<InventoryHealth | null>(null);
+  const [discountAnalytics, setDiscountAnalytics] = useState<DiscountAnalytics | null>(null);
+  const [paymentMethodInsights, setPaymentMethodInsights] = useState<PaymentMethodInsights | null>(null);
+  const [returnRefundAnalytics, setReturnRefundAnalytics] = useState<ReturnRefundAnalytics | null>(null);
+  const [basketAnalysis, setBasketAnalysis] = useState<BasketAnalysis | null>(null);
+  const [salesTrendsForecasting, setSalesTrendsForecasting] = useState<SalesTrendsForecasting | null>(null);
+  const [operationalMetrics, setOperationalMetrics] = useState<OperationalMetrics | null>(null);
 
   const loadGeneralAnalytics = async () => {
     if (!accessToken) return;
@@ -185,8 +379,8 @@ export function ReportsPage() {
 
       const orders = ordersResponse.data || [];
       
-      // Aggregate product sales
-      const productMap: Record<string, { quantity: number; revenue: number }> = {};
+      // Aggregate product sales with cost tracking
+      const productMap: Record<string, { quantity: number; revenue: number; cost: number }> = {};
       const productIds = new Set<string>();
 
       orders.forEach((order: any) => {
@@ -198,7 +392,7 @@ export function ReportsPage() {
             productIds.add(productId);
             
             if (!productMap[productId]) {
-              productMap[productId] = { quantity: 0, revenue: 0 };
+              productMap[productId] = { quantity: 0, revenue: 0, cost: 0 };
             }
             
             const itemTotal = (item.priceCents || 0) * (item.quantity || 0);
@@ -208,27 +402,34 @@ export function ReportsPage() {
         }
       });
 
-      // Fetch product details
+      // Fetch product details to get costs
       const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
       const products = productsResponse.data || [];
       const productsMap = new Map(products.map((p: any) => [p.id, p]));
 
-      // Build analytics array
+      // Calculate costs and build analytics array
       const analytics: ProductAnalytics[] = Array.from(productIds)
         .map((productId) => {
           const stats = productMap[productId];
           const product = productsMap.get(productId) as any;
+          const costCents = product?.costCents || 0;
+          const totalCost = (costCents * stats.quantity) / 100; // Convert to currency
+          const revenue = stats.revenue / 100; // Convert cents to currency
+          const profit = revenue - totalCost;
+          const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
           
           return {
             productId,
             productName: product?.name || `Product ${productId.substring(0, 8)}`,
             sku: product?.sku || 'N/A',
             quantitySold: stats.quantity,
-            revenue: stats.revenue / 100, // Convert cents to currency
-            averagePrice: stats.quantity > 0 ? (stats.revenue / 100) / stats.quantity : 0,
+            revenue,
+            cost: totalCost,
+            profit,
+            profitMargin,
           };
         })
-        .sort((a, b) => b.quantitySold - a.quantitySold); // Sort by quantity sold
+        .sort((a, b) => b.revenue - a.revenue); // Sort by revenue
 
       setProductAnalytics(analytics);
     } catch (error: any) {
@@ -553,6 +754,1359 @@ export function ReportsPage() {
     }
   };
 
+  const loadCategoryBrandAnalytics = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const [ordersResponse, productsResponse] = await Promise.all([
+        axios.get(`${API_URL}/api/v1/orders`, { headers, params: ordersParams }),
+        axios.get(`${API_URL}/api/v1/products`, { headers }),
+      ]);
+
+      const orders = ordersResponse.data || [];
+      const products = productsResponse.data || [];
+      const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      const categoryMap: Record<string, { revenue: number; cost: number; quantity: number; orderCount: number }> = {};
+      const brandMap: Record<string, { revenue: number; cost: number; quantity: number; orderCount: number }> = {};
+      const orderIds = new Set<string>();
+
+      orders.forEach((order: any) => {
+        if (order.items && Array.isArray(order.items)) {
+          orderIds.add(order.id);
+          order.items.forEach((item: any) => {
+            const product = productsMap.get(item.productId);
+            if (!product) return;
+
+            const revenue = (item.priceCents || 0) * (item.quantity || 0);
+            const cost = ((product as any).costCents || 0) * (item.quantity || 0);
+
+            // Category analytics
+            if ((product as any).categoryId) {
+              const catId = (product as any).categoryId;
+              if (!categoryMap[catId]) {
+                categoryMap[catId] = { revenue: 0, cost: 0, quantity: 0, orderCount: 0 };
+              }
+              categoryMap[catId].revenue += revenue;
+              categoryMap[catId].cost += cost;
+              categoryMap[catId].quantity += item.quantity || 0;
+            }
+
+            // Brand analytics
+            if ((product as any).brandId) {
+              const brandId = (product as any).brandId;
+              if (!brandMap[brandId]) {
+                brandMap[brandId] = { revenue: 0, cost: 0, quantity: 0, orderCount: 0 };
+              }
+              brandMap[brandId].revenue += revenue;
+              brandMap[brandId].cost += cost;
+              brandMap[brandId].quantity += item.quantity || 0;
+            }
+          });
+        }
+      });
+
+      // Set order counts
+      Object.keys(categoryMap).forEach(catId => {
+        categoryMap[catId].orderCount = orderIds.size;
+      });
+      Object.keys(brandMap).forEach(brandId => {
+        brandMap[brandId].orderCount = orderIds.size;
+      });
+
+      const byCategory = Object.entries(categoryMap)
+        .map(([categoryId, stats]) => {
+          const category = products.find((p: any) => (p as any).categoryId === categoryId);
+          const profit = (stats.revenue / 100) - (stats.cost / 100);
+          const profitMargin = stats.revenue > 0 ? (profit / (stats.revenue / 100)) * 100 : 0;
+          return {
+            categoryId,
+            categoryName: (category as any)?.categoryName || 'Uncategorized',
+            revenue: stats.revenue / 100,
+            cost: stats.cost / 100,
+            profit,
+            profitMargin,
+            quantitySold: stats.quantity,
+            orderCount: stats.orderCount,
+          };
+        })
+        .sort((a, b) => b.revenue - a.revenue);
+
+      const byBrand = Object.entries(brandMap)
+        .map(([brandId, stats]) => {
+          const brand = products.find((p: any) => (p as any).brandId === brandId);
+          const profit = (stats.revenue / 100) - (stats.cost / 100);
+          const profitMargin = stats.revenue > 0 ? (profit / (stats.revenue / 100)) * 100 : 0;
+          return {
+            brandId,
+            brandName: (brand as any)?.brandName || 'Unbranded',
+            revenue: stats.revenue / 100,
+            cost: stats.cost / 100,
+            profit,
+            profitMargin,
+            quantitySold: stats.quantity,
+            orderCount: stats.orderCount,
+          };
+        })
+        .sort((a, b) => b.revenue - a.revenue);
+
+      setCategoryBrandAnalytics({ byCategory, byBrand });
+    } catch (error: any) {
+      console.error('Failed to load category/brand analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load category/brand analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTimeBasedInsights = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+
+      const orders = ordersResponse.data || [];
+      
+      // Initialize hour buckets (0-23)
+      const hourMap: Record<number, { sales: number; orders: number; items: number }> = {};
+      for (let i = 0; i < 24; i++) {
+        hourMap[i] = { sales: 0, orders: 0, items: 0 };
+      }
+
+      // Initialize day of week buckets
+      const dayMap: Record<string, { sales: number; orders: number; items: number }> = {
+        'Sunday': { sales: 0, orders: 0, items: 0 },
+        'Monday': { sales: 0, orders: 0, items: 0 },
+        'Tuesday': { sales: 0, orders: 0, items: 0 },
+        'Wednesday': { sales: 0, orders: 0, items: 0 },
+        'Thursday': { sales: 0, orders: 0, items: 0 },
+        'Friday': { sales: 0, orders: 0, items: 0 },
+        'Saturday': { sales: 0, orders: 0, items: 0 },
+      };
+
+      // Initialize month buckets
+      const monthMap: Record<string, { sales: number; orders: number; items: number }> = {};
+
+      const orderIds = new Set<string>();
+      let totalHours = 0;
+
+      orders.forEach((order: any) => {
+        const orderDate = new Date(order.completedAt || order.createdAt);
+        const hour = orderDate.getHours();
+        const dayName = format(orderDate, 'EEEE');
+        const monthKey = format(orderDate, 'yyyy-MM');
+
+        orderIds.add(order.id);
+        totalHours++;
+
+        if (!monthMap[monthKey]) {
+          monthMap[monthKey] = { sales: 0, orders: 0, items: 0 };
+        }
+
+        const orderTotal = order.totalCents || 0;
+        let itemCount = 0;
+        if (order.items && Array.isArray(order.items)) {
+          itemCount = order.items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+        }
+
+        hourMap[hour].sales += orderTotal;
+        hourMap[hour].orders += 1;
+        hourMap[hour].items += itemCount;
+
+        dayMap[dayName].sales += orderTotal;
+        dayMap[dayName].orders += 1;
+        dayMap[dayName].items += itemCount;
+
+        monthMap[monthKey].sales += orderTotal;
+        monthMap[monthKey].orders += 1;
+        monthMap[monthKey].items += itemCount;
+      });
+
+      const byHour = Object.entries(hourMap)
+        .map(([hour, data]) => ({
+          hour: parseInt(hour),
+          sales: data.sales / 100,
+          orders: data.orders,
+          items: data.items,
+        }))
+        .sort((a, b) => a.hour - b.hour);
+
+      const byDayOfWeek = Object.entries(dayMap)
+        .map(([day, data]) => ({
+          day,
+          sales: data.sales / 100,
+          orders: data.orders,
+          items: data.items,
+        }));
+
+      const byMonth = Object.entries(monthMap)
+        .map(([month, data]) => ({
+          month,
+          sales: data.sales / 100,
+          orders: data.orders,
+          items: data.items,
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+      const peakHour = byHour.reduce((max, curr) => curr.sales > max.sales ? curr : max, byHour[0]);
+      const bestDay = byDayOfWeek.reduce((max, curr) => curr.sales > max.sales ? curr : byDayOfWeek[0]);
+      
+      // Calculate sales velocity (items per hour)
+      const totalItems = byHour.reduce((sum, h) => sum + h.items, 0);
+      const salesVelocity = totalHours > 0 ? totalItems / totalHours : 0;
+
+      // Year over year comparison (simplified - compare with previous period)
+      const yearOverYear: Array<{ period: string; current: number; previous: number; change: number }> = [];
+      // This would need historical data - placeholder for now
+      
+      setTimeBasedInsights({
+        byHour,
+        byDayOfWeek,
+        byMonth,
+        peakHour: { hour: peakHour.hour, sales: peakHour.sales },
+        bestDay: { day: bestDay.day, sales: bestDay.sales },
+        salesVelocity,
+        yearOverYear,
+      });
+    } catch (error: any) {
+      console.error('Failed to load time-based insights:', error);
+      toast.error(error.response?.data?.message || 'Failed to load time-based insights');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInventoryHealth = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      
+      // Fetch inventory stock
+      const inventoryResponse = await axios.get(
+        `${API_URL}/api/v1/inventory/${user?.locationId}/stock`,
+        { headers }
+      );
+      const inventory = inventoryResponse.data || [];
+
+      // Fetch inventory transactions
+      const transactionsResponse = await axios.get(
+        `${API_URL}/api/v1/inventory/${user?.locationId}/transactions`,
+        { headers }
+      );
+      const transactions = transactionsResponse.data || [];
+
+      // Fetch products for cost data
+      const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
+      const products = productsResponse.data || [];
+      const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      // Fetch orders to calculate sales velocity
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+      const orders = ordersResponse.data || [];
+
+      // Calculate sales by product
+      const salesMap: Record<string, { quantity: number; lastSold?: string }> = {};
+      orders.forEach((order: any) => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            if (!salesMap[item.productId]) {
+              salesMap[item.productId] = { quantity: 0 };
+            }
+            salesMap[item.productId].quantity += item.quantity || 0;
+            const orderDate = order.completedAt || order.createdAt;
+            if (!salesMap[item.productId].lastSold || orderDate > salesMap[item.productId].lastSold!) {
+              salesMap[item.productId].lastSold = orderDate;
+            }
+          });
+        }
+      });
+
+      // Analyze inventory
+      const now = new Date();
+      const slowMoving: Array<{
+        productId: string;
+        productName: string;
+        sku: string;
+        quantity: number;
+        lastSold?: string;
+        daysSinceLastSale: number;
+      }> = [];
+      const lowStock: Array<{
+        productId: string;
+        productName: string;
+        sku: string;
+        currentStock: number;
+        reorderPoint?: number;
+        daysRemaining: number;
+      }> = [];
+      const deadStock: Array<{
+        productId: string;
+        productName: string;
+        sku: string;
+        quantity: number;
+        value: number;
+        lastSold?: string;
+      }> = [];
+
+      let totalInventoryValue = 0;
+      let totalSalesQuantity = 0;
+
+      inventory.forEach((item: any) => {
+        const product = productsMap.get(item.productId) as any;
+        if (!product) return;
+
+        const sales = salesMap[item.productId] || { quantity: 0 };
+        const stock = item.quantity || 0;
+        const costCents = (product as any).costCents || (product as any).priceCents || 0;
+        const inventoryValue = (costCents * stock) / 100;
+        totalInventoryValue += inventoryValue;
+        totalSalesQuantity += sales.quantity;
+
+        // Slow moving (no sales in last 90 days)
+        if (sales.lastSold) {
+          const lastSoldDate = new Date(sales.lastSold);
+          const daysSince = Math.floor((now.getTime() - lastSoldDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysSince > 90 && stock > 0) {
+            slowMoving.push({
+              productId: item.productId,
+              productName: (product as any).name,
+              sku: (product as any).sku,
+              quantity: stock,
+              lastSold: sales.lastSold,
+              daysSinceLastSale: daysSince,
+            });
+          }
+        } else if (stock > 0) {
+          // Never sold
+          slowMoving.push({
+            productId: item.productId,
+            productName: (product as any).name,
+            sku: (product as any).sku,
+            quantity: stock,
+            daysSinceLastSale: 999,
+          });
+        }
+
+        // Low stock
+        const reorderPoint = item.reorderPoint || 0;
+        if (stock <= reorderPoint && stock > 0) {
+          const avgDailySales = sales.quantity > 0 ? sales.quantity / 30 : 0;
+          const daysRemaining = avgDailySales > 0 ? Math.floor(stock / avgDailySales) : 0;
+          lowStock.push({
+            productId: item.productId,
+            productName: (product as any).name,
+            sku: (product as any).sku,
+            currentStock: stock,
+            reorderPoint,
+            daysRemaining,
+          });
+        }
+
+        // Dead stock (no sales in 180+ days and has stock)
+        if (sales.lastSold) {
+          const lastSoldDate = new Date(sales.lastSold);
+          const daysSince = Math.floor((now.getTime() - lastSoldDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysSince > 180 && stock > 0) {
+            deadStock.push({
+              productId: item.productId,
+              productName: (product as any).name,
+              sku: (product as any).sku,
+              quantity: stock,
+              value: inventoryValue,
+              lastSold: sales.lastSold,
+            });
+          }
+        } else if (stock > 0) {
+          deadStock.push({
+            productId: item.productId,
+            productName: (product as any).name,
+            sku: (product as any).sku,
+            quantity: stock,
+            value: inventoryValue,
+          });
+        }
+      });
+
+      // Calculate turnover rate (simplified: sales / average inventory)
+      const avgInventory = inventory.length > 0 
+        ? inventory.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) / inventory.length
+        : 0;
+      const turnoverRate = avgInventory > 0 ? totalSalesQuantity / avgInventory : 0;
+
+      // Calculate stockout frequency (products with 0 stock that had sales)
+      const stockoutCount = inventory.filter((item: any) => {
+        const stock = item.quantity || 0;
+        const sales = salesMap[item.productId];
+        return stock === 0 && sales && sales.quantity > 0;
+      }).length;
+      const stockoutFrequency = inventory.length > 0 ? (stockoutCount / inventory.length) * 100 : 0;
+
+      setInventoryHealth({
+        turnoverRate,
+        slowMovingProducts: slowMoving.sort((a, b) => b.daysSinceLastSale - a.daysSinceLastSale),
+        lowStockProducts: lowStock.sort((a, b) => a.daysRemaining - b.daysRemaining),
+        deadStock: deadStock.sort((a, b) => b.value - a.value),
+        stockoutFrequency,
+      });
+    } catch (error: any) {
+      console.error('Failed to load inventory health:', error);
+      toast.error(error.response?.data?.message || 'Failed to load inventory health');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDiscountAnalytics = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+
+      const orders = ordersResponse.data || [];
+      
+      let totalDiscountAmount = 0;
+      let ordersWithDiscount = 0;
+      let totalDiscountPercent = 0;
+      let revenueWithDiscount = 0;
+      let revenueWithoutDiscount = 0;
+      let profitWithDiscount = 0;
+      let profitWithoutDiscount = 0;
+      const discountTypeMap: Record<string, { count: number; totalAmount: number; totalPercent: number }> = {};
+
+      // Fetch products for cost calculation
+      const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
+      const products = productsResponse.data || [];
+      const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      orders.forEach((order: any) => {
+        const orderTotal = order.totalCents || 0;
+        const cartDiscountCents = order.cartDiscountCents || 0;
+        const cartDiscountPercent = order.cartDiscountPercent || 0;
+        const hasDiscount = cartDiscountCents > 0 || cartDiscountPercent > 0;
+
+        // Calculate what revenue would be without discount
+        let itemsSubtotal = 0;
+        let itemsCost = 0;
+          if (order.items && Array.isArray(order.items)) {
+            order.items.forEach((item: any) => {
+              const product = productsMap.get(item.productId) as any;
+              itemsSubtotal += (item.priceCents || 0) * (item.quantity || 0);
+              itemsCost += ((product as any)?.costCents || 0) * (item.quantity || 0);
+            });
+          }
+
+        const discountAmount = cartDiscountCents > 0 
+          ? cartDiscountCents 
+          : cartDiscountPercent > 0 
+            ? Math.round(itemsSubtotal * (cartDiscountPercent / 100))
+            : 0;
+        
+        const discountPercent = itemsSubtotal > 0 
+          ? (discountAmount / itemsSubtotal) * 100 
+          : 0;
+
+        const revenueAfterDiscount = itemsSubtotal - discountAmount;
+        const profitAfterDiscount = revenueAfterDiscount - itemsCost;
+        const profitBeforeDiscount = itemsSubtotal - itemsCost;
+
+        if (hasDiscount) {
+          ordersWithDiscount++;
+          totalDiscountAmount += discountAmount;
+          totalDiscountPercent += discountPercent;
+          revenueWithDiscount += revenueAfterDiscount;
+          profitWithDiscount += profitAfterDiscount;
+
+          const discountType = cartDiscountCents > 0 ? 'Fixed Amount' : 'Percentage';
+          if (!discountTypeMap[discountType]) {
+            discountTypeMap[discountType] = { count: 0, totalAmount: 0, totalPercent: 0 };
+          }
+          discountTypeMap[discountType].count++;
+          discountTypeMap[discountType].totalAmount += discountAmount;
+          discountTypeMap[discountType].totalPercent += discountPercent;
+        } else {
+          revenueWithoutDiscount += itemsSubtotal;
+          profitWithoutDiscount += profitBeforeDiscount;
+        }
+      });
+
+      const byDiscountType = Object.entries(discountTypeMap)
+        .map(([type, data]) => ({
+          type,
+          count: data.count,
+          totalAmount: data.totalAmount / 100,
+          avgPercent: data.count > 0 ? (data.totalPercent / data.count) : 0,
+        }));
+
+      setDiscountAnalytics({
+        totalDiscountAmount: totalDiscountAmount / 100,
+        totalDiscountPercentage: orders.length > 0 ? (ordersWithDiscount / orders.length) * 100 : 0,
+        ordersWithDiscount,
+        averageDiscountPercent: ordersWithDiscount > 0 ? (totalDiscountPercent / ordersWithDiscount) : 0,
+        discountImpact: {
+          revenueWithDiscount: revenueWithDiscount / 100,
+          revenueWithoutDiscount: revenueWithoutDiscount / 100,
+          profitWithDiscount: profitWithDiscount / 100,
+          profitWithoutDiscount: profitWithoutDiscount / 100,
+        },
+        byDiscountType,
+      });
+    } catch (error: any) {
+      console.error('Failed to load discount analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load discount analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPaymentMethodInsights = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+
+      const orders = ordersResponse.data || [];
+      
+      const methodMap: Record<string, { count: number; totalAmount: number }> = {};
+      let totalAmount = 0;
+      let totalCount = 0;
+
+      // Fetch payments for each order
+      for (const order of orders) {
+        try {
+          const paymentsResponse = await axios.get(
+            `${API_URL}/api/v1/orders/${order.id}/payments`,
+            { headers }
+          );
+          const payments = paymentsResponse.data || [];
+          
+          payments
+            .filter((p: any) => p.status === 'completed')
+            .forEach((payment: any) => {
+              const method = payment.method || 'unknown';
+              const amount = payment.amountCents || 0;
+              
+              if (!methodMap[method]) {
+                methodMap[method] = { count: 0, totalAmount: 0 };
+              }
+              
+              methodMap[method].count += 1;
+              methodMap[method].totalAmount += amount;
+              totalAmount += amount;
+              totalCount += 1;
+            });
+        } catch (error) {
+          console.warn(`Failed to fetch payments for order ${order.id}:`, error);
+        }
+      }
+
+      const byMethod = Object.entries(methodMap)
+        .map(([method, data]) => ({
+          method: method.charAt(0).toUpperCase() + method.slice(1),
+          count: data.count,
+          totalAmount: data.totalAmount / 100,
+          averageAmount: data.count > 0 ? (data.totalAmount / 100) / data.count : 0,
+          percentage: totalAmount > 0 ? (data.totalAmount / totalAmount) * 100 : 0,
+        }))
+        .sort((a, b) => b.totalAmount - a.totalAmount);
+
+      // Calculate cash vs digital
+      const cashMethods = ['cash', 'Cash'];
+      const cashTotal = byMethod
+        .filter(m => cashMethods.includes(m.method))
+        .reduce((sum, m) => sum + m.totalAmount, 0);
+      const digitalTotal = byMethod
+        .filter(m => !cashMethods.includes(m.method))
+        .reduce((sum, m) => sum + m.totalAmount, 0);
+      
+      const cashCount = byMethod
+        .filter(m => cashMethods.includes(m.method))
+        .reduce((sum, m) => sum + m.count, 0);
+      const digitalCount = totalCount - cashCount;
+
+      setPaymentMethodInsights({
+        byMethod,
+        cashVsDigital: {
+          cash: {
+            count: cashCount,
+            amount: cashTotal,
+            percentage: totalAmount > 0 ? (cashTotal / (totalAmount / 100)) * 100 : 0,
+          },
+          digital: {
+            count: digitalCount,
+            amount: digitalTotal,
+            percentage: totalAmount > 0 ? (digitalTotal / (totalAmount / 100)) * 100 : 0,
+          },
+        },
+        trends: [], // TODO: Implement trends over time
+      });
+    } catch (error: any) {
+      console.error('Failed to load payment method insights:', error);
+      toast.error(error.response?.data?.message || 'Failed to load payment method insights');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadReturnRefundAnalytics = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const params: any = {
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        params.from = customDateFrom;
+        params.to = customDateTo;
+      }
+
+      // Fetch returns
+      const returnsResponse = await axios.get(`${API_URL}/api/v1/returns`, { headers, params });
+      const returns = returnsResponse.data || [];
+
+      // Fetch orders for comparison
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+      const orders = ordersResponse.data || [];
+
+      // Fetch products for category mapping
+      const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
+      const products = productsResponse.data || [];
+      const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      // Calculate totals
+      const totalReturns = returns.length;
+      const totalRefundAmount = returns.reduce((sum: number, r: any) => sum + (r.totalRefundCents || 0), 0);
+      const totalOrders = orders.length;
+      const returnRate = totalOrders > 0 ? (totalReturns / totalOrders) * 100 : 0;
+
+      // Analyze by product
+      const productReturnMap: Record<string, {
+        returnCount: number;
+        refundAmount: number;
+        totalSold: number;
+      }> = {};
+
+      // Count sales by product
+      orders.forEach((order: any) => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            if (!productReturnMap[item.productId]) {
+              productReturnMap[item.productId] = { returnCount: 0, refundAmount: 0, totalSold: 0 };
+            }
+            productReturnMap[item.productId].totalSold += item.quantity || 0;
+          });
+        }
+      });
+
+      // Count returns by product
+      returns.forEach((ret: any) => {
+        if (ret.items && Array.isArray(ret.items)) {
+          ret.items.forEach((item: any) => {
+            if (!productReturnMap[item.productId]) {
+              productReturnMap[item.productId] = { returnCount: 0, refundAmount: 0, totalSold: 0 };
+            }
+            productReturnMap[item.productId].returnCount += 1;
+            productReturnMap[item.productId].refundAmount += item.refundAmountCents || 0;
+          });
+        }
+      });
+
+      const byProduct = Object.entries(productReturnMap)
+        .filter(([_, data]) => data.returnCount > 0)
+        .map(([productId, data]) => {
+          const product = productsMap.get(productId) as any;
+          const returnRate = data.totalSold > 0 ? (data.returnCount / data.totalSold) * 100 : 0;
+          return {
+            productId,
+            productName: product?.name || `Product ${productId.substring(0, 8)}`,
+            sku: product?.sku || 'N/A',
+            returnCount: data.returnCount,
+            returnRate,
+            refundAmount: data.refundAmount / 100,
+          };
+        })
+        .sort((a, b) => b.returnCount - a.returnCount);
+
+      // Analyze by category
+      const categoryReturnMap: Record<string, {
+        returnCount: number;
+        refundAmount: number;
+        totalSold: number;
+      }> = {};
+
+      orders.forEach((order: any) => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            const product = productsMap.get(item.productId) as any;
+            if (product?.categoryId) {
+              if (!categoryReturnMap[product.categoryId]) {
+                categoryReturnMap[product.categoryId] = { returnCount: 0, refundAmount: 0, totalSold: 0 };
+              }
+              categoryReturnMap[product.categoryId].totalSold += item.quantity || 0;
+            }
+          });
+        }
+      });
+
+      returns.forEach((ret: any) => {
+        if (ret.items && Array.isArray(ret.items)) {
+          ret.items.forEach((item: any) => {
+            const product = productsMap.get(item.productId) as any;
+            if (product?.categoryId) {
+              if (!categoryReturnMap[product.categoryId]) {
+                categoryReturnMap[product.categoryId] = { returnCount: 0, refundAmount: 0, totalSold: 0 };
+              }
+              categoryReturnMap[product.categoryId].returnCount += 1;
+              categoryReturnMap[product.categoryId].refundAmount += item.refundAmountCents || 0;
+            }
+          });
+        }
+      });
+
+      const byCategory = Object.entries(categoryReturnMap)
+        .filter(([_, data]) => data.returnCount > 0)
+        .map(([categoryId, data]) => {
+          const category = products.find((p: any) => p.categoryId === categoryId);
+          const returnRate = data.totalSold > 0 ? (data.returnCount / data.totalSold) * 100 : 0;
+          return {
+            categoryId,
+            categoryName: category?.categoryName || 'Uncategorized',
+            returnCount: data.returnCount,
+            returnRate,
+            refundAmount: data.refundAmount / 100,
+          };
+        })
+        .sort((a, b) => b.returnCount - a.returnCount);
+
+      // Calculate impact on profit (refund amount reduces profit)
+      const impactOnProfit = totalRefundAmount / 100;
+
+      // Trends by period
+      const periodMap: Record<string, { returns: number; refundAmount: number }> = {};
+      returns.forEach((ret: any) => {
+        const retDate = ret.createdAt || ret.updatedAt;
+        let periodKey: string;
+        try {
+          const date = typeof retDate === 'string' ? parseISO(retDate) : new Date(retDate);
+          periodKey = period === 'daily' 
+            ? format(date, 'yyyy-MM-dd')
+            : period === 'weekly'
+            ? format(date, 'yyyy-\\WW')
+            : format(date, 'yyyy-MM');
+        } catch {
+          periodKey = 'unknown';
+        }
+        if (!periodMap[periodKey]) {
+          periodMap[periodKey] = { returns: 0, refundAmount: 0 };
+        }
+        periodMap[periodKey].returns += 1;
+        periodMap[periodKey].refundAmount += ret.totalRefundCents || 0;
+      });
+
+      const trends = Object.entries(periodMap)
+        .map(([period, data]) => ({
+          period,
+          returns: data.returns,
+          refundAmount: data.refundAmount / 100,
+        }))
+        .sort((a, b) => a.period.localeCompare(b.period));
+
+      setReturnRefundAnalytics({
+        totalReturns,
+        totalRefundAmount: totalRefundAmount / 100,
+        returnRate,
+        byProduct,
+        byCategory,
+        impactOnProfit,
+        trends,
+      });
+    } catch (error: any) {
+      console.error('Failed to load return/refund analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load return/refund analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadBasketAnalysis = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+
+      const orders = ordersResponse.data || [];
+      
+      // Fetch products for names
+      const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
+      const products = productsResponse.data || [];
+      const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      let totalItems = 0;
+      const productPairs: Record<string, number> = {};
+      const productBaskets: Record<string, Set<string>> = {};
+
+      orders.forEach((order: any) => {
+        if (order.items && Array.isArray(order.items) && order.items.length > 1) {
+          const productIds = order.items.map((item: any) => item.productId).filter(Boolean);
+          totalItems += productIds.length;
+
+          // Track product pairs (frequently bought together)
+          for (let i = 0; i < productIds.length; i++) {
+            for (let j = i + 1; j < productIds.length; j++) {
+              const pair = [productIds[i], productIds[j]].sort().join('|');
+              productPairs[pair] = (productPairs[pair] || 0) + 1;
+            }
+          }
+
+          // Track which products appear together
+          productIds.forEach((productId: string) => {
+            if (!productBaskets[productId]) {
+              productBaskets[productId] = new Set();
+            }
+            productIds.forEach((otherId: string) => {
+              if (otherId !== productId) {
+                productBaskets[productId].add(otherId);
+              }
+            });
+          });
+        } else if (order.items && Array.isArray(order.items) && order.items.length === 1) {
+          totalItems += 1;
+        }
+      });
+
+      const averageItemsPerOrder = orders.length > 0 ? totalItems / orders.length : 0;
+
+      // Find frequently bought together (top pairs)
+      const frequentlyBoughtTogether = Object.entries(productPairs)
+        .map(([pair, frequency]) => {
+          const [id1, id2] = pair.split('|');
+          const product1 = productsMap.get(id1) as any;
+          const product2 = productsMap.get(id2) as any;
+          const support = orders.length > 0 ? (frequency / orders.length) * 100 : 0;
+          return {
+            products: [
+              product1?.name || `Product ${id1.substring(0, 8)}`,
+              product2?.name || `Product ${id2.substring(0, 8)}`,
+            ],
+            frequency,
+            support,
+          };
+        })
+        .sort((a, b) => b.frequency - a.frequency)
+        .slice(0, 20);
+
+      // Cross-sell opportunities (products that appear together often)
+      const crossSellOpportunities = Object.entries(productBaskets)
+        .map(([productId, relatedProducts]) => {
+          const product = productsMap.get(productId) as any;
+          const related = Array.from(relatedProducts)
+            .map((relatedId) => {
+              const relatedProduct = productsMap.get(relatedId) as any;
+              const pairKey = [productId, relatedId].sort().join('|');
+              const frequency = productPairs[pairKey] || 0;
+              const confidence = orders.length > 0 ? (frequency / orders.length) * 100 : 0;
+              return {
+                productId: relatedId,
+                productName: relatedProduct?.name || `Product ${relatedId.substring(0, 8)}`,
+                confidence,
+              };
+            })
+            .sort((a, b) => b.confidence - a.confidence)
+            .slice(0, 5);
+
+          return {
+            productId,
+            productName: product?.name || `Product ${productId.substring(0, 8)}`,
+            suggestedProducts: related,
+          };
+        })
+        .filter(item => item.suggestedProducts.length > 0)
+        .sort((a, b) => {
+          const aMaxConfidence = Math.max(...a.suggestedProducts.map(p => p.confidence));
+          const bMaxConfidence = Math.max(...b.suggestedProducts.map(p => p.confidence));
+          return bMaxConfidence - aMaxConfidence;
+        })
+        .slice(0, 10);
+
+      // Top bundles (product combinations that appear together)
+      const topBundles = frequentlyBoughtTogether
+        .map(pair => {
+          // Calculate revenue for this pair
+          let revenue = 0;
+          orders.forEach((order: any) => {
+            if (order.items && Array.isArray(order.items)) {
+              const hasBoth = pair.products.every(productName => 
+                order.items.some((item: any) => {
+                  const product = productsMap.get(item.productId) as any;
+                  return product?.name === productName;
+                })
+              );
+              if (hasBoth) {
+                revenue += order.totalCents || 0;
+              }
+            }
+          });
+          return {
+            products: pair.products,
+            frequency: pair.frequency,
+            revenue: revenue / 100,
+          };
+        })
+        .sort((a, b) => b.frequency - a.frequency)
+        .slice(0, 10);
+
+      setBasketAnalysis({
+        averageItemsPerOrder,
+        frequentlyBoughtTogether,
+        crossSellOpportunities,
+        topBundles,
+      });
+    } catch (error: any) {
+      console.error('Failed to load basket analysis:', error);
+      toast.error(error.response?.data?.message || 'Failed to load basket analysis');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSalesTrendsForecasting = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      
+      // Get current period data
+      const currentParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        currentParams.from = customDateFrom;
+        currentParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        currentParams.from = format(fromDate, 'yyyy-MM-dd');
+        currentParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const currentOrdersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: currentParams,
+      });
+      const currentOrders = currentOrdersResponse.data || [];
+
+      // Get previous period data for comparison
+      const previousParams = { ...currentParams };
+      const now = new Date();
+      let previousFromDate: Date;
+      let previousToDate: Date;
+      
+      if (period === 'custom') {
+        const fromDate = parseISO(customDateFrom);
+        const toDate = parseISO(customDateTo);
+        const daysDiff = Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+        previousToDate = new Date(fromDate);
+        previousToDate.setDate(previousToDate.getDate() - 1);
+        previousFromDate = new Date(previousToDate);
+        previousFromDate.setDate(previousFromDate.getDate() - daysDiff);
+      } else if (period === 'daily') {
+        previousToDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+        previousFromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 59);
+      } else if (period === 'weekly') {
+        previousToDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        previousFromDate = new Date(now.getTime() - 24 * 7 * 24 * 60 * 60 * 1000);
+      } else {
+        previousToDate = new Date(now.getFullYear() - 1, now.getMonth(), 0);
+        previousFromDate = new Date(now.getFullYear() - 2, now.getMonth(), 1);
+      }
+
+      previousParams.from = format(previousFromDate, 'yyyy-MM-dd');
+      previousParams.to = format(previousToDate, 'yyyy-MM-dd');
+
+      const previousOrdersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: previousParams,
+      });
+      const previousOrders = previousOrdersResponse.data || [];
+
+      // Calculate current period sales
+      const currentSales = currentOrders.reduce((sum: number, order: any) => sum + (order.totalCents || 0), 0) / 100;
+      const previousSales = previousOrders.reduce((sum: number, order: any) => sum + (order.totalCents || 0), 0) / 100;
+      
+      // Calculate growth rate
+      const growthRate = previousSales > 0 ? ((currentSales - previousSales) / previousSales) * 100 : 0;
+      
+      // Determine trend
+      let trend: 'up' | 'down' | 'stable' = 'stable';
+      if (growthRate > 5) trend = 'up';
+      else if (growthRate < -5) trend = 'down';
+
+      // Calculate moving average (simplified - using period data)
+      const salesAnalyticsResponse = await axios.get(`${API_URL}/api/v1/reports/sales-analytics`, {
+        headers,
+        params: currentParams,
+      });
+      const salesData = salesAnalyticsResponse.data?.data || [];
+      
+      const movingAverage = salesData.map((item: any) => ({
+        period: item.period,
+        value: item.sales / 100,
+      }));
+
+      // Simple forecast (linear projection based on recent trend)
+      const recentData = salesData.slice(-7); // Last 7 periods
+      const avgRecentSales = recentData.length > 0
+        ? recentData.reduce((sum: number, item: any) => sum + (item.sales || 0), 0) / recentData.length / 100
+        : 0;
+      
+      const forecastedSales = Array.from({ length: 7 }, (_, i) => ({
+        period: `Forecast ${i + 1}`,
+        forecast: avgRecentSales * (1 + (growthRate / 100)),
+        confidence: Math.max(50, 100 - (i * 5)), // Decreasing confidence
+      }));
+
+      // Variance analysis
+      const variance = salesData.map((item: any) => {
+        const actual = item.sales / 100;
+        const expected = avgRecentSales;
+        const variance = actual - expected;
+        const variancePercent = expected > 0 ? (variance / expected) * 100 : 0;
+        return {
+          period: item.period,
+          actual,
+          expected,
+          variance,
+          variancePercent,
+        };
+      });
+
+      setSalesTrendsForecasting({
+        growthRate,
+        trend,
+        forecastedSales,
+        variance,
+        movingAverage,
+      });
+    } catch (error: any) {
+      console.error('Failed to load sales trends & forecasting:', error);
+      toast.error(error.response?.data?.message || 'Failed to load sales trends & forecasting');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadOperationalMetrics = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+
+      const orders = ordersResponse.data || [];
+
+      // Calculate average transaction time (time between order creation and completion)
+      let totalTransactionTime = 0;
+      let validTransactions = 0;
+      const userOrderCount: Record<string, number> = {};
+      const hourOrderCount: Record<number, number> = {};
+      let totalItems = 0;
+
+      orders.forEach((order: any) => {
+        // Transaction time
+        if (order.createdAt && order.completedAt) {
+          try {
+            const created = new Date(order.createdAt);
+            const completed = new Date(order.completedAt);
+            const diffMinutes = (completed.getTime() - created.getTime()) / (1000 * 60);
+            if (diffMinutes > 0 && diffMinutes < 1440) { // Valid time (less than 24 hours)
+              totalTransactionTime += diffMinutes;
+              validTransactions++;
+            }
+          } catch (e) {
+            // Skip invalid dates
+          }
+        }
+
+        // Orders per staff
+        if (order.createdBy) {
+          userOrderCount[order.createdBy] = (userOrderCount[order.createdBy] || 0) + 1;
+        }
+
+        // Peak hours
+        try {
+          const orderDate = new Date(order.completedAt || order.createdAt);
+          const hour = orderDate.getHours();
+          hourOrderCount[hour] = (hourOrderCount[hour] || 0) + 1;
+        } catch (e) {
+          // Skip invalid dates
+        }
+
+        // Items per order
+        if (order.items && Array.isArray(order.items)) {
+          totalItems += order.items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+        }
+      });
+
+      const averageTransactionTime = validTransactions > 0 ? totalTransactionTime / validTransactions : 0;
+      const averageItemsPerOrder = orders.length > 0 ? totalItems / orders.length : 0;
+
+      // Get user names
+      const usersResponse = await axios.get(`${API_URL}/api/v1/users`, { headers });
+      const users = usersResponse.data || [];
+      const usersMap = new Map(users.map((u: any) => [u.id, u]));
+
+      const ordersPerStaff = Object.entries(userOrderCount)
+        .map(([userId, orderCount]) => ({
+          userId,
+          userName: (usersMap.get(userId) as any)?.name || `User ${userId.substring(0, 8)}`,
+          orderCount,
+          avgTransactionTime: averageTransactionTime, // Same for all for now
+        }))
+        .sort((a, b) => b.orderCount - a.orderCount);
+
+      const peakHours = Object.entries(hourOrderCount)
+        .map(([hour, orderCount]) => ({
+          hour: parseInt(hour),
+          orderCount,
+        }))
+        .sort((a, b) => b.orderCount - a.orderCount)
+        .slice(0, 5);
+
+      setOperationalMetrics({
+        averageTransactionTime,
+        ordersPerStaff,
+        peakHours,
+        averageItemsPerOrder,
+        averageWaitTime: averageTransactionTime, // Simplified - same as transaction time
+      });
+    } catch (error: any) {
+      console.error('Failed to load operational metrics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load operational metrics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!accessToken) return;
 
@@ -564,6 +2118,24 @@ export function ReportsPage() {
       loadCreditReport();
     } else if (activeTab === 'profit') {
       loadProfitLossAnalytics();
+    } else if (activeTab === 'category') {
+      loadCategoryBrandAnalytics();
+    } else if (activeTab === 'time') {
+      loadTimeBasedInsights();
+    } else if (activeTab === 'inventory') {
+      loadInventoryHealth();
+    } else if (activeTab === 'discount') {
+      loadDiscountAnalytics();
+    } else if (activeTab === 'payment') {
+      loadPaymentMethodInsights();
+    } else if (activeTab === 'returns') {
+      loadReturnRefundAnalytics();
+    } else if (activeTab === 'basket') {
+      loadBasketAnalysis();
+    } else if (activeTab === 'trends') {
+      loadSalesTrendsForecasting();
+    } else if (activeTab === 'operations') {
+      loadOperationalMetrics();
     }
   }, [activeTab, period, accessToken, user?.locationId, customDateFrom, customDateTo]);
 
@@ -744,7 +2316,21 @@ const SimpleLineChart = ({
         {/* Tabs */}
         <div className="theme-card rounded-xl sm:rounded-2xl lg:rounded-3xl border p-3 sm:p-4 lg:p-6 backdrop-blur-xl">
           <div className="flex flex-wrap gap-2 sm:gap-3">
-            {(['general', 'staff', 'credit', 'profit'] as ReportTab[]).map((tab) => (
+            {([
+              'general', 
+              'staff', 
+              'credit', 
+              'profit',
+              'category',
+              'time',
+              'inventory',
+              'discount',
+              'payment',
+              'returns',
+              'basket',
+              'trends',
+              'operations'
+            ] as ReportTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -754,10 +2340,19 @@ const SimpleLineChart = ({
                     : 'border-white/15 bg-white/5 text-white/70 hover:border-sky-300/50 hover:text-white'
                 }`}
               >
-                {tab === 'general' && '📊 General Analytics'}
-                {tab === 'staff' && '👥 Staff Reports'}
-                {tab === 'credit' && '💳 Credit Reports'}
+                {tab === 'general' && '📊 General'}
+                {tab === 'staff' && '👥 Staff'}
+                {tab === 'credit' && '💳 Credit'}
                 {tab === 'profit' && '💰 Profit/Loss'}
+                {tab === 'category' && '🏷️ Category/Brand'}
+                {tab === 'time' && '⏰ Time Insights'}
+                {tab === 'inventory' && '📦 Inventory'}
+                {tab === 'discount' && '🎫 Discounts'}
+                {tab === 'payment' && '💳 Payments'}
+                {tab === 'returns' && '↩️ Returns'}
+                {tab === 'basket' && '🛒 Basket'}
+                {tab === 'trends' && '📈 Trends'}
+                {tab === 'operations' && '⚙️ Operations'}
               </button>
             ))}
           </div>
@@ -893,7 +2488,7 @@ const SimpleLineChart = ({
                                 <p className="theme-text-secondary text-xs">SKU: {product.sku}</p>
                               </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/10">
                               <div>
                                 <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Qty</p>
                                 <p className="theme-text-primary font-semibold text-sm text-sky-400">
@@ -907,11 +2502,27 @@ const SimpleLineChart = ({
                                 </p>
                               </div>
                               <div>
-                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Avg</p>
-                                <p className="theme-text-secondary text-xs truncate">
-                                  {formatCurrency(product.averagePrice)}
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Cost</p>
+                                <p className="theme-text-primary font-semibold text-sm text-rose-400 truncate">
+                                  {formatCurrency(product.cost)}
                                 </p>
                               </div>
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Profit</p>
+                                <p className={`theme-text-primary font-semibold text-sm truncate ${
+                                  product.profit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                                }`}>
+                                  {formatCurrency(product.profit)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="pt-2 border-t border-white/10">
+                              <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Profit Margin</p>
+                              <p className={`theme-text-primary font-semibold text-sm ${
+                                product.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                              }`}>
+                                {product.profitMargin.toFixed(1)}%
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -938,7 +2549,13 @@ const SimpleLineChart = ({
                                   Revenue
                                 </th>
                                 <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                                  Avg Price
+                                  Cost
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Profit/Loss
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Profit %
                                 </th>
                               </tr>
                             </thead>
@@ -967,8 +2584,22 @@ const SimpleLineChart = ({
                                     </span>
                                   </td>
                                   <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
-                                    <span className="theme-text-secondary">
-                                      {formatCurrency(product.averagePrice)}
+                                    <span className="theme-text-primary font-semibold text-rose-400">
+                                      {formatCurrency(product.cost)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`theme-text-primary font-semibold ${
+                                      product.profit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                                    }`}>
+                                      {formatCurrency(product.profit)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`theme-text-primary font-semibold ${
+                                      product.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                                    }`}>
+                                      {product.profitMargin.toFixed(1)}%
                                     </span>
                                   </td>
                                 </tr>
@@ -1356,6 +2987,177 @@ const SimpleLineChart = ({
               </div>
             )}
 
+            {/* Category & Brand Analytics Tab */}
+            {activeTab === 'category' && categoryBrandAnalytics && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Category & Brand Performance</h2>
+                  <button
+                    onClick={() => {
+                      if (!categoryBrandAnalytics) return;
+                      const exportData = [
+                        ...categoryBrandAnalytics.byCategory.map(c => ({
+                          Type: 'Category',
+                          Name: c.categoryName,
+                          Revenue: c.revenue,
+                          Cost: c.cost,
+                          Profit: c.profit,
+                          'Profit Margin %': c.profitMargin.toFixed(2),
+                          'Quantity Sold': c.quantitySold,
+                          'Order Count': c.orderCount,
+                        })),
+                        ...categoryBrandAnalytics.byBrand.map(b => ({
+                          Type: 'Brand',
+                          Name: b.brandName,
+                          Revenue: b.revenue,
+                          Cost: b.cost,
+                          Profit: b.profit,
+                          'Profit Margin %': b.profitMargin.toFixed(2),
+                          'Quantity Sold': b.quantitySold,
+                          'Order Count': b.orderCount,
+                        })),
+                      ];
+                      exportToCSV(exportData, 'category_brand_report');
+                    }}
+                    disabled={!categoryBrandAnalytics || (categoryBrandAnalytics.byCategory.length === 0 && categoryBrandAnalytics.byBrand.length === 0)}
+                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    📥 Export CSV
+                  </button>
+                </div>
+
+                {/* Category Performance */}
+                <div className="mb-8">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Category Performance</h3>
+                  {categoryBrandAnalytics.byCategory.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No category data available.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Category</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Revenue</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Cost</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Profit</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Margin %</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Qty Sold</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {categoryBrandAnalytics.byCategory.map((category, index) => (
+                              <tr key={category.categoryId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{category.categoryName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-emerald-400">
+                                    {formatCurrency(category.revenue)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-rose-400">
+                                    {formatCurrency(category.cost)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className={`theme-text-primary font-semibold ${
+                                    category.profit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                                  }`}>
+                                    {formatCurrency(category.profit)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className={`theme-text-primary font-semibold ${
+                                    category.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                                  }`}>
+                                    {category.profitMargin.toFixed(1)}%
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {category.quantitySold.toLocaleString()}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Brand Performance */}
+                <div>
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Brand Performance</h3>
+                  {categoryBrandAnalytics.byBrand.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No brand data available.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Brand</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Revenue</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Cost</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Profit</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Margin %</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Qty Sold</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {categoryBrandAnalytics.byBrand.map((brand, index) => (
+                              <tr key={brand.brandId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{brand.brandName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-emerald-400">
+                                    {formatCurrency(brand.revenue)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-rose-400">
+                                    {formatCurrency(brand.cost)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className={`theme-text-primary font-semibold ${
+                                    brand.profit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                                  }`}>
+                                    {formatCurrency(brand.profit)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className={`theme-text-primary font-semibold ${
+                                    brand.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                                  }`}>
+                                    {brand.profitMargin.toFixed(1)}%
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {brand.quantitySold.toLocaleString()}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Credit Reports Tab */}
             {activeTab === 'credit' && creditReport && (
               <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
@@ -1451,6 +3253,1084 @@ const SimpleLineChart = ({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Time-Based Insights Tab */}
+            {activeTab === 'time' && timeBasedInsights && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Time-Based Insights</h2>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Peak Hour</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-sky-400">
+                      {timeBasedInsights.peakHour.hour}:00
+                    </p>
+                    <p className="theme-text-secondary text-xs">
+                      {formatCurrency(timeBasedInsights.peakHour.sales)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Best Day</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-emerald-400">
+                      {timeBasedInsights.bestDay.day}
+                    </p>
+                    <p className="theme-text-secondary text-xs">
+                      {formatCurrency(timeBasedInsights.bestDay.sales)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Sales Velocity</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-purple-400">
+                      {timeBasedInsights.salesVelocity.toFixed(1)}
+                    </p>
+                    <p className="theme-text-secondary text-xs">items/hour</p>
+                  </div>
+                </div>
+
+                {/* Sales by Hour */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Sales by Hour of Day</h3>
+                  <div className="theme-surface rounded-xl border p-4 bg-white/5">
+                    <SimpleLineChart
+                      data={timeBasedInsights.byHour.map(h => ({
+                        period: `${h.hour}:00`,
+                        sales: h.sales,
+                        orders: h.orders,
+                        items: h.items,
+                        averageOrderValue: 0,
+                      }))}
+                      metric="sales"
+                      color="#10b981"
+                      labelFormatter={(period) => period}
+                    />
+                  </div>
+                </div>
+
+                {/* Sales by Day of Week */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Sales by Day of Week</h3>
+                  <div className="theme-surface rounded-xl border overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-white/5">
+                          <tr>
+                            <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Day</th>
+                            <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Sales</th>
+                            <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Orders</th>
+                            <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Items</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/10">
+                          {timeBasedInsights.byDayOfWeek.map((day) => (
+                            <tr key={day.day} className="hover:bg-white/5 transition">
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                <span className="theme-text-primary font-medium">{day.day}</span>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                <span className="theme-text-primary font-semibold text-emerald-400">
+                                  {formatCurrency(day.sales)}
+                                </span>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                <span className="theme-text-primary font-semibold text-sky-400">
+                                  {day.orders}
+                                </span>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                <span className="theme-text-primary font-semibold text-purple-400">
+                                  {day.items}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sales by Month */}
+                {timeBasedInsights.byMonth.length > 0 && (
+                  <div>
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Sales by Month</h3>
+                    <div className="theme-surface rounded-xl border p-4 bg-white/5">
+                      <SimpleLineChart
+                        data={timeBasedInsights.byMonth.map(m => ({
+                          period: m.month,
+                          sales: m.sales,
+                          orders: m.orders,
+                          items: m.items,
+                          averageOrderValue: 0,
+                        }))}
+                        metric="sales"
+                        color="#3b82f6"
+                        labelFormatter={(period) => formatPeriod(period)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Inventory Health Tab */}
+            {activeTab === 'inventory' && inventoryHealth && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Inventory Health</h2>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Turnover Rate</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-sky-400">
+                      {inventoryHealth.turnoverRate.toFixed(2)}x
+                    </p>
+                    <p className="theme-text-secondary text-xs">times per period</p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Stockout Frequency</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-amber-400">
+                      {inventoryHealth.stockoutFrequency.toFixed(1)}%
+                    </p>
+                    <p className="theme-text-secondary text-xs">of products</p>
+                  </div>
+                </div>
+
+                {/* Slow Moving Products */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Slow Moving Products</h3>
+                  {inventoryHealth.slowMovingProducts.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No slow-moving products found.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Product</th>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">SKU</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Stock</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Days Since Sale</th>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Last Sold</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {inventoryHealth.slowMovingProducts.slice(0, 20).map((product) => (
+                              <tr key={product.productId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{product.productName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-secondary text-sm">{product.sku}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {product.quantity}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-rose-400">
+                                    {product.daysSinceLastSale === 999 ? 'Never' : `${product.daysSinceLastSale} days`}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-secondary text-sm">
+                                    {product.lastSold ? format(new Date(product.lastSold), 'MMM dd, yyyy') : 'Never'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Low Stock Products */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Low Stock Alerts</h3>
+                  {inventoryHealth.lowStockProducts.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No low stock alerts.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Product</th>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">SKU</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Current Stock</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Reorder Point</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Days Remaining</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {inventoryHealth.lowStockProducts.map((product) => (
+                              <tr key={product.productId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{product.productName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-secondary text-sm">{product.sku}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-rose-400">
+                                    {product.currentStock}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-secondary">
+                                    {product.reorderPoint || 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className={`theme-text-primary font-semibold ${
+                                    product.daysRemaining < 7 ? 'text-rose-400' : 
+                                    product.daysRemaining < 14 ? 'text-amber-400' : 'text-sky-400'
+                                  }`}>
+                                    {product.daysRemaining} days
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dead Stock */}
+                <div>
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Dead Stock (180+ days)</h3>
+                  {inventoryHealth.deadStock.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No dead stock identified.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Product</th>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">SKU</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Quantity</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Value</th>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Last Sold</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {inventoryHealth.deadStock.map((product) => (
+                              <tr key={product.productId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{product.productName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-secondary text-sm">{product.sku}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {product.quantity}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-rose-400">
+                                    {formatCurrency(product.value)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-secondary text-sm">
+                                    {product.lastSold ? format(new Date(product.lastSold), 'MMM dd, yyyy') : 'Never'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Discount & Promotion Analytics Tab */}
+            {activeTab === 'discount' && discountAnalytics && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Discount & Promotion Analytics</h2>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Discount</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-amber-400">
+                      {formatCurrency(discountAnalytics.totalDiscountAmount)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Orders w/ Discount</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-sky-400">
+                      {discountAnalytics.ordersWithDiscount}
+                    </p>
+                    <p className="theme-text-secondary text-xs">
+                      {discountAnalytics.totalDiscountPercentage.toFixed(1)}% of orders
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Avg Discount %</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-purple-400">
+                      {discountAnalytics.averageDiscountPercent.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Discount Impact</p>
+                    <p className={`theme-text-primary text-lg sm:text-xl font-bold ${
+                      discountAnalytics.discountImpact.profitWithDiscount >= discountAnalytics.discountImpact.profitWithoutDiscount
+                        ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {formatCurrency(
+                        discountAnalytics.discountImpact.profitWithDiscount - discountAnalytics.discountImpact.profitWithoutDiscount
+                      )}
+                    </p>
+                    <p className="theme-text-secondary text-xs">on profit</p>
+                  </div>
+                </div>
+
+                {/* Discount Impact */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Discount Impact Analysis</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="theme-surface rounded-xl border p-4">
+                      <p className="theme-text-secondary text-xs uppercase mb-2">Revenue with Discount</p>
+                      <p className="theme-text-primary text-xl font-bold text-emerald-400">
+                        {formatCurrency(discountAnalytics.discountImpact.revenueWithDiscount)}
+                      </p>
+                    </div>
+                    <div className="theme-surface rounded-xl border p-4">
+                      <p className="theme-text-secondary text-xs uppercase mb-2">Revenue without Discount</p>
+                      <p className="theme-text-primary text-xl font-bold text-sky-400">
+                        {formatCurrency(discountAnalytics.discountImpact.revenueWithoutDiscount)}
+                      </p>
+                    </div>
+                    <div className="theme-surface rounded-xl border p-4">
+                      <p className="theme-text-secondary text-xs uppercase mb-2">Profit with Discount</p>
+                      <p className="theme-text-primary text-xl font-bold text-emerald-400">
+                        {formatCurrency(discountAnalytics.discountImpact.profitWithDiscount)}
+                      </p>
+                    </div>
+                    <div className="theme-surface rounded-xl border p-4">
+                      <p className="theme-text-secondary text-xs uppercase mb-2">Profit without Discount</p>
+                      <p className="theme-text-primary text-xl font-bold text-sky-400">
+                        {formatCurrency(discountAnalytics.discountImpact.profitWithoutDiscount)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Discount Types */}
+                {discountAnalytics.byDiscountType.length > 0 && (
+                  <div>
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Discount Types</h3>
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Type</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Count</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Total Amount</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Avg %</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {discountAnalytics.byDiscountType.map((type) => (
+                              <tr key={type.type} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{type.type}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {type.count}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {formatCurrency(type.totalAmount)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-purple-400">
+                                    {type.avgPercent.toFixed(1)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Payment Method Insights Tab */}
+            {activeTab === 'payment' && paymentMethodInsights && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Payment Method Insights</h2>
+                </div>
+
+                {/* Cash vs Digital Split */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-4 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-400/30">
+                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Cash Payments</p>
+                    <p className="theme-text-primary text-2xl font-bold text-emerald-400">
+                      {formatCurrency(paymentMethodInsights.cashVsDigital.cash.amount)}
+                    </p>
+                    <p className="theme-text-secondary text-sm mt-1">
+                      {paymentMethodInsights.cashVsDigital.cash.count} transactions ({paymentMethodInsights.cashVsDigital.cash.percentage.toFixed(1)}%)
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-4 bg-gradient-to-br from-sky-500/10 to-sky-600/5 border-sky-400/30">
+                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Digital Payments</p>
+                    <p className="theme-text-primary text-2xl font-bold text-sky-400">
+                      {formatCurrency(paymentMethodInsights.cashVsDigital.digital.amount)}
+                    </p>
+                    <p className="theme-text-secondary text-sm mt-1">
+                      {paymentMethodInsights.cashVsDigital.digital.count} transactions ({paymentMethodInsights.cashVsDigital.digital.percentage.toFixed(1)}%)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Payment Methods Table */}
+                <div>
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Payment Methods Breakdown</h3>
+                  {paymentMethodInsights.byMethod.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No payment data available.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Method</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Transactions</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Total Amount</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Avg Amount</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">% of Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {paymentMethodInsights.byMethod.map((method) => (
+                              <tr key={method.method} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{method.method}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {method.count}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-emerald-400">
+                                    {formatCurrency(method.totalAmount)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-purple-400">
+                                    {formatCurrency(method.averageAmount)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold">
+                                    {method.percentage.toFixed(1)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Return & Refund Analytics Tab */}
+            {activeTab === 'returns' && returnRefundAnalytics && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Return & Refund Analytics</h2>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Returns</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-rose-400">
+                      {returnRefundAnalytics.totalReturns}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Refunds</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-amber-400">
+                      {formatCurrency(returnRefundAnalytics.totalRefundAmount)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Return Rate</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-rose-400">
+                      {returnRefundAnalytics.returnRate.toFixed(2)}%
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Profit Impact</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-amber-400">
+                      -{formatCurrency(returnRefundAnalytics.impactOnProfit)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Returns by Product */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Returns by Product</h3>
+                  {returnRefundAnalytics.byProduct.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No return data available.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Product</th>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">SKU</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Return Count</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Return Rate %</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Refund Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {returnRefundAnalytics.byProduct.map((product) => (
+                              <tr key={product.productId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{product.productName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-secondary text-sm">{product.sku}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-rose-400">
+                                    {product.returnCount}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {product.returnRate.toFixed(2)}%
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {formatCurrency(product.refundAmount)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Returns by Category */}
+                {returnRefundAnalytics.byCategory.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Returns by Category</h3>
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Category</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Return Count</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Return Rate %</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Refund Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {returnRefundAnalytics.byCategory.map((category) => (
+                              <tr key={category.categoryId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{category.categoryName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-rose-400">
+                                    {category.returnCount}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {category.returnRate.toFixed(2)}%
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {formatCurrency(category.refundAmount)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Return Trends */}
+                {returnRefundAnalytics.trends.length > 0 && (
+                  <div>
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Return Trends</h3>
+                    <div className="theme-surface rounded-xl border p-4 bg-white/5">
+                      <SimpleLineChart
+                        data={returnRefundAnalytics.trends.map(t => ({
+                          period: t.period,
+                          sales: t.refundAmount,
+                          orders: t.returns,
+                          items: 0,
+                          averageOrderValue: 0,
+                        }))}
+                        metric="sales"
+                        color="#f59e0b"
+                        labelFormatter={(period) => formatPeriod(period)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Basket Analysis Tab */}
+            {activeTab === 'basket' && basketAnalysis && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Basket Analysis</h2>
+                </div>
+
+                {/* Key Metric */}
+                <div className="mb-6">
+                  <div className="theme-surface rounded-xl border p-4">
+                    <p className="theme-text-secondary text-xs uppercase tracking-wide mb-1">Average Items per Order</p>
+                    <p className="theme-text-primary text-3xl font-bold text-sky-400">
+                      {basketAnalysis.averageItemsPerOrder.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Frequently Bought Together */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Frequently Bought Together</h3>
+                  {basketAnalysis.frequentlyBoughtTogether.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No product pairs data available.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Product Pair</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Frequency</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Support %</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {basketAnalysis.frequentlyBoughtTogether.map((pair, index) => (
+                              <tr key={index} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4">
+                                  <div className="flex flex-col gap-1">
+                                    <span className="theme-text-primary font-medium">{pair.products[0]}</span>
+                                    <span className="theme-text-secondary text-sm">+ {pair.products[1]}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {pair.frequency}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-purple-400">
+                                    {pair.support.toFixed(2)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cross-Sell Opportunities */}
+                {basketAnalysis.crossSellOpportunities.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Cross-Sell Opportunities</h3>
+                    <div className="space-y-4">
+                      {basketAnalysis.crossSellOpportunities.map((opportunity) => (
+                        <div key={opportunity.productId} className="theme-surface rounded-xl border p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="theme-text-primary font-semibold">{opportunity.productName}</p>
+                              <p className="theme-text-secondary text-xs">Customers also buy:</p>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {opportunity.suggestedProducts.map((suggested) => (
+                              <div key={suggested.productId} className="flex items-center justify-between">
+                                <span className="theme-text-primary text-sm">{suggested.productName}</span>
+                                <span className="theme-text-secondary text-xs">
+                                  {suggested.confidence.toFixed(1)}% confidence
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Bundles */}
+                {basketAnalysis.topBundles.length > 0 && (
+                  <div>
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Top Product Bundles</h3>
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Bundle</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Frequency</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Revenue</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {basketAnalysis.topBundles.map((bundle, index) => (
+                              <tr key={index} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4">
+                                  <div className="flex flex-col gap-1">
+                                    {bundle.products.map((product, idx) => (
+                                      <span key={idx} className="theme-text-primary font-medium">
+                                        {idx === 0 ? product : `+ ${product}`}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {bundle.frequency}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-emerald-400">
+                                    {formatCurrency(bundle.revenue)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Sales Trends & Forecasting Tab */}
+            {activeTab === 'trends' && salesTrendsForecasting && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Sales Trends & Forecasting</h2>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Growth Rate</p>
+                    <p className={`theme-text-primary text-lg sm:text-xl font-bold ${
+                      salesTrendsForecasting.growthRate >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {salesTrendsForecasting.growthRate >= 0 ? '+' : ''}{salesTrendsForecasting.growthRate.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Trend</p>
+                    <p className={`theme-text-primary text-lg sm:text-xl font-bold ${
+                      salesTrendsForecasting.trend === 'up' ? 'text-emerald-400' :
+                      salesTrendsForecasting.trend === 'down' ? 'text-rose-400' : 'text-sky-400'
+                    }`}>
+                      {salesTrendsForecasting.trend === 'up' ? '📈 Up' :
+                       salesTrendsForecasting.trend === 'down' ? '📉 Down' : '➡️ Stable'}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Forecast Periods</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-purple-400">
+                      {salesTrendsForecasting.forecastedSales.length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Moving Average Chart */}
+                {salesTrendsForecasting.movingAverage.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Moving Average Trend</h3>
+                    <div className="theme-surface rounded-xl border p-4 bg-white/5">
+                      <SimpleLineChart
+                        data={salesTrendsForecasting.movingAverage.map(m => ({
+                          period: m.period,
+                          sales: m.value,
+                          orders: 0,
+                          items: 0,
+                          averageOrderValue: 0,
+                        }))}
+                        metric="sales"
+                        color="#3b82f6"
+                        labelFormatter={(period) => formatPeriod(period)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Variance Analysis */}
+                {salesTrendsForecasting.variance.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Variance Analysis</h3>
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Period</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Actual</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Expected</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Variance</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Variance %</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {salesTrendsForecasting.variance.map((v, index) => (
+                              <tr key={index} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{formatPeriod(v.period)}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-emerald-400">
+                                    {formatCurrency(v.actual)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-secondary">
+                                    {formatCurrency(v.expected)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className={`theme-text-primary font-semibold ${
+                                    v.variance >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                                  }`}>
+                                    {v.variance >= 0 ? '+' : ''}{formatCurrency(v.variance)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className={`theme-text-primary font-semibold ${
+                                    v.variancePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                                  }`}>
+                                    {v.variancePercent >= 0 ? '+' : ''}{v.variancePercent.toFixed(1)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Forecasted Sales */}
+                {salesTrendsForecasting.forecastedSales.length > 0 && (
+                  <div>
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Sales Forecast</h3>
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Period</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Forecast</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Confidence</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {salesTrendsForecasting.forecastedSales.map((forecast, index) => (
+                              <tr key={index} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{forecast.period}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-purple-400">
+                                    {formatCurrency(forecast.forecast)}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-secondary">
+                                    {forecast.confidence.toFixed(0)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Operational Metrics Tab */}
+            {activeTab === 'operations' && operationalMetrics && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Operational Metrics</h2>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Avg Transaction Time</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-sky-400">
+                      {operationalMetrics.averageTransactionTime.toFixed(1)} min
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Avg Items/Order</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-purple-400">
+                      {operationalMetrics.averageItemsPerOrder.toFixed(1)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Staff</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-emerald-400">
+                      {operationalMetrics.ordersPerStaff.length}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Peak Hour</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-amber-400">
+                      {operationalMetrics.peakHours[0]?.hour || 'N/A'}:00
+                    </p>
+                  </div>
+                </div>
+
+                {/* Orders per Staff */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Orders per Staff Member</h3>
+                  {operationalMetrics.ordersPerStaff.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 text-center">
+                      <p className="theme-text-secondary text-sm">No staff data available.</p>
+                    </div>
+                  ) : (
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Staff Member</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Orders</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Avg Time</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {operationalMetrics.ordersPerStaff.map((staff) => (
+                              <tr key={staff.userId} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{staff.userName}</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-sky-400">
+                                    {staff.orderCount}
+                                  </span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-secondary">
+                                    {staff.avgTransactionTime.toFixed(1)} min
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Peak Hours */}
+                {operationalMetrics.peakHours.length > 0 && (
+                  <div>
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Peak Hours</h3>
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Hour</th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Order Count</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {operationalMetrics.peakHours.map((peak) => (
+                              <tr key={peak.hour} className="hover:bg-white/5 transition">
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                  <span className="theme-text-primary font-medium">{peak.hour}:00</span>
+                                </td>
+                                <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="theme-text-primary font-semibold text-amber-400">
+                                    {peak.orderCount}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
