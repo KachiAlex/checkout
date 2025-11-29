@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { InventoryTransactionType } from '@pos-checkout/shared';
@@ -73,6 +73,9 @@ export class InventoryService {
               description: product.description,
               priceCents: product.priceCents,
             },
+            // Use inventory sales price if available, otherwise fall back to product price
+            salesPriceCents: record.salesPriceCents ?? product.priceCents,
+            costCents: record.costCents,
             lastTransaction: lastTransaction
               ? {
                   timestamp: lastTransaction.ts,
@@ -131,6 +134,8 @@ export class InventoryService {
       quantity: newQuantity,
       reorderPoint: currentInventory?.reorderPoint,
       maxStock: currentInventory?.maxStock,
+      costCents: currentInventory?.costCents,
+      salesPriceCents: currentInventory?.salesPriceCents,
     });
 
     return this.inventoryRepository.createTransaction({
@@ -232,6 +237,8 @@ export class InventoryService {
       productId: product.id,
       locationId,
       quantity: createDto.quantity,
+      costCents: createDto.costCents,
+      salesPriceCents: createDto.priceCents, // Use priceCents as initial sales price
     });
 
     // Create transaction record
@@ -262,5 +269,71 @@ export class InventoryService {
 
   async clearAllInventory() {
     return this.inventoryRepository.clearAllInventory();
+  }
+
+  async updateInventoryPrices(
+    productId: string,
+    locationId: string,
+    costCents?: number,
+    salesPriceCents?: number,
+  ) {
+    const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);
+    
+    if (!currentInventory) {
+      throw new NotFoundException(`Inventory not found for product ${productId} at location ${locationId}`);
+    }
+
+    return this.inventoryRepository.upsertInventory({
+      productId,
+      locationId,
+      quantity: currentInventory.quantity,
+      reorderPoint: currentInventory.reorderPoint,
+      maxStock: currentInventory.maxStock,
+      costCents: costCents !== undefined ? costCents : currentInventory.costCents,
+      salesPriceCents: salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
+    });
+  }
+
+  async updateInventoryItem(
+    productId: string,
+    locationId: string,
+    quantity?: number,
+    reorderPoint?: number,
+    costCents?: number,
+    salesPriceCents?: number,
+  ) {
+    const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);
+    
+    if (!currentInventory) {
+      throw new NotFoundException(`Inventory not found for product ${productId} at location ${locationId}`);
+    }
+
+    // Calculate quantity delta if quantity is being updated
+    const quantityDelta = quantity !== undefined ? quantity - currentInventory.quantity : 0;
+
+    // Update inventory with new values
+    const updated = await this.inventoryRepository.upsertInventory({
+      productId,
+      locationId,
+      quantity: quantity !== undefined ? quantity : currentInventory.quantity,
+      reorderPoint: reorderPoint !== undefined ? reorderPoint : currentInventory.reorderPoint,
+      maxStock: currentInventory.maxStock,
+      costCents: costCents !== undefined ? costCents : currentInventory.costCents,
+      salesPriceCents: salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
+    });
+
+    // Create transaction if quantity changed
+    if (quantityDelta !== 0) {
+      await this.inventoryRepository.createTransaction({
+        productId,
+        locationId,
+        delta: quantityDelta,
+        type: InventoryTransactionType.ADJUST,
+        notes: `Inventory item updated via edit`,
+        ts: new Date(),
+      });
+    }
+
+    return updated;
   }
 }

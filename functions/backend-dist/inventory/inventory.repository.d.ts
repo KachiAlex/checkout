@@ -7,6 +7,8 @@ export interface InventoryRecord {
     quantity: number;
     reorderPoint?: number;
     maxStock?: number;
+    costCents?: number;
+    salesPriceCents?: number;
     createdAt: Date;
     updatedAt: Date;
 }

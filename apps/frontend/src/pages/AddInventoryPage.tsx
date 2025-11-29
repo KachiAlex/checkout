@@ -43,6 +43,7 @@ export function AddInventoryPage() {
     name: '',
     description: '',
     quantity: '',
+    costCents: '',
     priceCents: '',
     barcode: '',
     categoryId: '',
@@ -263,8 +264,8 @@ export function AddInventoryPage() {
     const trimmedCategoryName = inventoryForm.categoryName.trim();
     const trimmedBrandName = inventoryForm.brandName.trim();
     
-    if (!inventoryForm.name || !inventoryForm.quantity || !inventoryForm.priceCents) {
-      toast.error('Please fill in required fields: Name, Quantity, and Price');
+    if (!inventoryForm.name || !inventoryForm.quantity || !inventoryForm.costCents || !inventoryForm.priceCents) {
+      toast.error('Please fill in required fields: Name, Quantity, Cost Price, and Selling Price');
       return;
     }
     
@@ -285,6 +286,7 @@ export function AddInventoryPage() {
 
     try {
       const quantity = parseInt(inventoryForm.quantity, 10);
+      const costCents = Math.round(parseFloat(inventoryForm.costCents) * 100);
       const priceCents = Math.round(parseFloat(inventoryForm.priceCents) * 100);
 
       if (isNaN(quantity) || quantity < 0) {
@@ -292,8 +294,13 @@ export function AddInventoryPage() {
         return;
       }
 
+      if (isNaN(costCents) || costCents < 0) {
+        toast.error('Invalid cost price');
+        return;
+      }
+
       if (isNaN(priceCents) || priceCents < 0) {
-        toast.error('Invalid price');
+        toast.error('Invalid selling price');
         return;
       }
       
@@ -306,6 +313,7 @@ export function AddInventoryPage() {
           name: inventoryForm.name,
           description: inventoryForm.description || undefined,
           quantity,
+          costCents,
           priceCents,
           barcode: inventoryForm.barcode || undefined,
           categoryId: inventoryForm.categoryId || undefined,
@@ -329,6 +337,7 @@ export function AddInventoryPage() {
           name: '',
           description: '',
           quantity: '',
+          costCents: '',
           priceCents: '',
           barcode: '',
           categoryId: '',
@@ -461,7 +470,22 @@ export function AddInventoryPage() {
               </div>
               <div>
                 <label className="theme-text-secondary mb-2 block text-sm font-medium">
-                  Price (₦) <span className="text-rose-400">*</span>
+                  Cost Price (₦) <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={inventoryForm.costCents}
+                  onChange={(e) => setInventoryForm({ ...inventoryForm, costCents: e.target.value })}
+                  className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                  placeholder="0.00"
+                  min="0"
+                  required
+                />
+              </div>
+              <div>
+                <label className="theme-text-secondary mb-2 block text-sm font-medium">
+                  Selling Price (₦) <span className="text-rose-400">*</span>
                 </label>
                 <input
                   type="number"
@@ -583,6 +607,7 @@ export function AddInventoryPage() {
                     name: '',
                     description: '',
                     quantity: '',
+                    costCents: '',
                     priceCents: '',
                     barcode: '',
                     categoryId: '',

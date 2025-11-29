@@ -17,9 +17,12 @@ interface InventoryItem {
     name: string;
     sku: string;
     barcode?: string;
+    priceCents?: number;
   };
   quantity: number;
   reorderPoint?: number;
+  costCents?: number;
+  salesPriceCents?: number;
   isProductMissing?: boolean;
 }
 
@@ -31,6 +34,13 @@ export function InventoryPage() {
   const [adjustQuantity, setAdjustQuantity] = useState('');
   const [adjustType, setAdjustType] = useState<'adjust' | 'received'>('adjust');
   const [effectiveLocationId, setEffectiveLocationId] = useState<string | null>(user?.locationId || null);
+  const [editingItem, setEditingItem] = useState<{ 
+    productId: string; 
+    quantity: string; 
+    reorderPoint: string; 
+    costCents: string; 
+    salesPriceCents: string 
+  } | null>(null);
   const hasMissingProducts = inventory.some((item) => item.isProductMissing);
 
   // Get the effective locationId (user's locationId or first location for tenant)
@@ -183,6 +193,51 @@ export function InventoryPage() {
       loadInventory();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to adjust inventory');
+    }
+  };
+
+  const handleUpdateItem = async (productId: string) => {
+    if (!editingItem || !accessToken) return;
+
+    try {
+      const locationId = effectiveLocationId || await getEffectiveLocationId();
+      if (!locationId) {
+        toast.error('Location not set');
+        return;
+      }
+
+      // Validate required fields
+      if (!editingItem.costCents || !editingItem.salesPriceCents) {
+        toast.error('Cost price and selling price are required');
+        return;
+      }
+
+      const costCents = Math.round(parseFloat(editingItem.costCents) * 100);
+      const salesPriceCents = Math.round(parseFloat(editingItem.salesPriceCents) * 100);
+
+      if (isNaN(costCents) || costCents < 0 || isNaN(salesPriceCents) || salesPriceCents < 0) {
+        toast.error('Invalid price values');
+        return;
+      }
+
+      await axios.put(
+        `${API_URL}/api/v1/inventory/item`,
+        {
+          productId,
+          locationId,
+          quantity: editingItem.quantity ? parseInt(editingItem.quantity, 10) : undefined,
+          reorderPoint: editingItem.reorderPoint ? parseInt(editingItem.reorderPoint, 10) : undefined,
+          costCents,
+          salesPriceCents,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      toast.success('Inventory item updated successfully');
+      setEditingItem(null);
+      loadInventory();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update inventory item');
     }
   };
 
@@ -361,6 +416,15 @@ export function InventoryPage() {
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
                       Reorder Point
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Cost Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Sales Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -383,12 +447,95 @@ export function InventoryPage() {
                         {item.product.barcode || '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`font-bold ${item.quantity <= (item.reorderPoint || 0) ? 'text-red-600' : 'text-green-600'}`}>
-                          {item.quantity}
-                        </span>
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="1"
+                            value={editingItem.quantity}
+                            onChange={(e) => setEditingItem({ ...editingItem, quantity: e.target.value })}
+                            className="w-20 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            placeholder="0"
+                          />
+                        ) : (
+                          <span className={`font-bold ${item.quantity <= (item.reorderPoint || 0) ? 'text-red-600' : 'text-green-600'}`}>
+                            {item.quantity}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
-                        {item.reorderPoint || '—'}
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="1"
+                            value={editingItem.reorderPoint}
+                            onChange={(e) => setEditingItem({ ...editingItem, reorderPoint: e.target.value })}
+                            className="w-20 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            placeholder="0"
+                          />
+                        ) : (
+                          <span>{item.reorderPoint || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editingItem.costCents}
+                            onChange={(e) => setEditingItem({ ...editingItem, costCents: e.target.value })}
+                            className="w-24 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            placeholder="0.00"
+                            required
+                          />
+                        ) : (
+                          <span>₦{item.costCents ? (item.costCents / 100).toFixed(2) : '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-primary font-semibold">
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editingItem.salesPriceCents}
+                            onChange={(e) => setEditingItem({ ...editingItem, salesPriceCents: e.target.value })}
+                            className="w-24 rounded border border-white/20 bg-white/5 px-2 py-1 text-sm theme-text-primary focus:border-emerald-300 focus:outline-none"
+                            placeholder="0.00"
+                            required
+                          />
+                        ) : (
+                          <span>₦{item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : '—')}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {editingItem?.productId === item.productId ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateItem(item.productId)}
+                              className="rounded border border-emerald-400/40 bg-emerald-500/15 px-2 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+                            >
+                              Update
+                            </button>
+                            <button
+                              onClick={() => setEditingItem(null)}
+                              className="rounded border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setEditingItem({
+                              productId: item.productId,
+                              quantity: item.quantity.toString(),
+                              reorderPoint: item.reorderPoint ? item.reorderPoint.toString() : '',
+                              costCents: item.costCents ? (item.costCents / 100).toFixed(2) : '',
+                              salesPriceCents: item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : ''),
+                            })}
+                            className="rounded border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

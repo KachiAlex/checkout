@@ -15,21 +15,25 @@ export declare class InventoryService {
     private readonly batchInventoryRepository;
     private readonly usersRepository;
     constructor(inventoryRepository: InventoryRepository, productsService: ProductsService, categoriesService: CategoriesService, brandsService: BrandsService, batchInventoryRepository: BatchInventoryRepository, usersRepository: UsersRepository);
-    getStock(locationId: string, tenantId?: string): Promise<{
-        product: {
-            id: string;
-            name: string;
-            sku: string;
-            barcode: string;
-            description: string;
-            priceCents: number;
-        } | {
-            id: string;
-            name: string;
-            sku: string;
-            barcode: any;
-        };
+    getStock(locationId: string, tenantId?: string): Promise<({
+        product: any;
         isProductMissing: boolean;
+        lastTransaction: any;
+        id: string;
+        productId: string;
+        locationId: string;
+        quantity: number;
+        reorderPoint?: number;
+        maxStock?: number;
+        costCents?: number;
+        salesPriceCents?: number;
+        createdAt: Date;
+        updatedAt: Date;
+    } | {
+        product: any;
+        isProductMissing: boolean;
+        salesPriceCents: number;
+        costCents: number;
         lastTransaction: {
             timestamp: Date;
             userId: string;
@@ -44,7 +48,7 @@ export declare class InventoryService {
         maxStock?: number;
         createdAt: Date;
         updatedAt: Date;
-    }[]>;
+    })[]>;
     getBatchInventory(productId: string, locationId: string): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
     getStockByProduct(productId: string, locationId: string): Promise<number>;
     adjust(adjustDto: AdjustInventoryDto): Promise<InventoryTransactionRecord>;
@@ -65,4 +69,5 @@ export declare class InventoryService {
         kept: number;
     }>;
     clearAllInventory(): Promise<number>;
+    updateInventoryPrices(productId: string, locationId: string, costCents?: number, salesPriceCents?: number): Promise<import("./inventory.repository").InventoryRecord>;
 }

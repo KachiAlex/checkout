@@ -21,6 +21,8 @@ interface InventoryStock {
     priceCents: number;
   };
   quantity: number;
+  costCents?: number;
+  salesPriceCents?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,6 +76,8 @@ export function InventoryManagementPage() {
     description: '',
     quantity: '',
     priceCents: '',
+    costCents: '',
+    salesPriceCents: '',
     barcode: '',
     categoryId: '',
     categoryName: '',
@@ -245,8 +249,8 @@ export function InventoryManagementPage() {
   const handleSubmitInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!inventoryForm.name || !inventoryForm.quantity || !inventoryForm.priceCents) {
-      toast.error('Please fill in required fields: Name, Quantity, and Price');
+    if (!inventoryForm.name || !inventoryForm.quantity || !inventoryForm.costCents || !inventoryForm.salesPriceCents) {
+      toast.error('Please fill in required fields: Name, Quantity, Cost Price, and Selling Price');
       return;
     }
 
@@ -260,15 +264,23 @@ export function InventoryManagementPage() {
 
     try {
       const quantity = parseInt(inventoryForm.quantity, 10);
-      const priceCents = Math.round(parseFloat(inventoryForm.priceCents) * 100);
+      const costCents = Math.round(parseFloat(inventoryForm.costCents) * 100);
+      const salesPriceCents = Math.round(parseFloat(inventoryForm.salesPriceCents) * 100);
+      // Use salesPriceCents as priceCents for backward compatibility
+      const priceCents = salesPriceCents;
 
       if (isNaN(quantity) || quantity < 0) {
         toast.error('Invalid quantity');
         return;
       }
 
-      if (isNaN(priceCents) || priceCents < 0) {
-        toast.error('Invalid price');
+      if (isNaN(costCents) || costCents < 0) {
+        toast.error('Invalid cost price');
+        return;
+      }
+
+      if (isNaN(salesPriceCents) || salesPriceCents < 0) {
+        toast.error('Invalid selling price');
         return;
       }
 
@@ -280,6 +292,7 @@ export function InventoryManagementPage() {
           description: inventoryForm.description || undefined,
           quantity,
           priceCents,
+          costCents,
           barcode: inventoryForm.barcode || undefined,
           categoryId: inventoryForm.categoryId || undefined,
           categoryName: inventoryForm.categoryName || undefined,
@@ -304,6 +317,8 @@ export function InventoryManagementPage() {
           description: '',
           quantity: '',
           priceCents: '',
+          costCents: '',
+          salesPriceCents: '',
           barcode: '',
           categoryId: '',
           categoryName: '',
@@ -527,14 +542,29 @@ export function InventoryManagementPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium theme-text-secondary mb-1">
-                  Price (₦) *
+                  Cost Price (₦) *
                 </label>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  value={inventoryForm.priceCents}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, priceCents: e.target.value })}
+                  value={inventoryForm.costCents}
+                  onChange={(e) => setInventoryForm({ ...inventoryForm, costCents: e.target.value })}
+                  className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium theme-text-secondary mb-1">
+                  Selling Price (₦) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={inventoryForm.salesPriceCents}
+                  onChange={(e) => setInventoryForm({ ...inventoryForm, salesPriceCents: e.target.value })}
                   className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0.00"
                   required
@@ -614,7 +644,8 @@ export function InventoryManagementPage() {
                         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm theme-text-secondary">
                           <span>SKU: {item.product.sku}</span>
                           {item.product.barcode && <span>Barcode: {item.product.barcode}</span>}
-                          <span>Price: ₦{(item.product.priceCents / 100).toFixed(2)}</span>
+                          <span>Cost: ₦{item.costCents ? (item.costCents / 100).toFixed(2) : '—'}</span>
+                          <span>Selling: ₦{item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents / 100).toFixed(2)}</span>
                           <span>Added: {format(new Date(item.createdAt), 'MMM d, yyyy')}</span>
                         </div>
                         <div className="mt-2 flex items-center gap-2">

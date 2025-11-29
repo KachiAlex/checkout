@@ -163,7 +163,7 @@ export function CheckoutPage() {
     }
 
     try {
-      // Get stock level
+      // Get stock level and pricing from inventory
       const stockResponse = await axios.get(
         `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -176,11 +176,14 @@ export function CheckoutPage() {
         return;
       }
 
+      // Use sales price from inventory if available, otherwise fall back to product price
+      const salesPriceCents = inventory?.salesPriceCents ?? product.priceCents;
+
       setSelectedProduct({
         id: product.id,
         sku: product.sku || '',
         name: product.name,
-        priceCents: product.priceCents,
+        priceCents: salesPriceCents,
         taxRate: product.taxRate,
         stock,
         images: product.images,
@@ -209,8 +212,11 @@ export function CheckoutPage() {
 
   // Helper to map cart items to order items
   const mapCartToOrderItems = useCallback((cartItems: typeof cart) => {
-    // Calculate tax per item using tenant tax settings (if enabled)
-    const taxPercentage = taxEnabled && taxSettings?.percentage ? taxSettings.percentage / 100 : 0;
+    // Calculate tax per item using tenant tax settings or default 7.5% VAT (if enabled)
+    const defaultVATPercentage = 7.5;
+    const taxPercentage = taxEnabled 
+      ? (taxSettings?.percentage || defaultVATPercentage) / 100 
+      : 0;
     
     return cartItems.map((item) => {
       const itemSubtotal = item.priceCents * item.quantity;
@@ -243,8 +249,11 @@ export function CheckoutPage() {
       finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
     }
     
-    // Calculate tax on discounted subtotal using tenant tax settings (if enabled)
-    const taxPercentage = taxEnabled && taxSettings?.percentage ? taxSettings.percentage / 100 : 0;
+    // Calculate tax on discounted subtotal using tenant tax settings or default 7.5% VAT (if enabled)
+    const defaultVATPercentage = 7.5;
+    const taxPercentage = taxEnabled 
+      ? (taxSettings?.percentage || defaultVATPercentage) / 100 
+      : 0;
     const tax = finalSubtotal * taxPercentage;
     
     const totalAmount = finalSubtotal + tax;
@@ -448,7 +457,9 @@ export function CheckoutPage() {
                               <p className="theme-text-primary font-medium truncate">{product.name}</p>
                               <p className="theme-text-secondary text-xs sm:text-sm">SKU: {product.sku || 'N/A'}</p>
                             </div>
-                            <p className="theme-text-primary font-semibold text-sm sm:text-base whitespace-nowrap">₦{(product.priceCents / 100).toFixed(2)}</p>
+                            <p className="theme-text-primary font-semibold text-sm sm:text-base whitespace-nowrap">
+                              ₦{(product.priceCents / 100).toFixed(2)}
+                            </p>
                           </div>
                         </button>
                       ))}
@@ -610,21 +621,19 @@ export function CheckoutPage() {
               <div className="theme-card sticky top-20 sm:top-6 rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
                 <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Summary</h2>
                 
-                {/* Tax Toggle */}
-                {taxSettings && taxSettings.enabled && (
-                  <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
-                    <input
-                      type="checkbox"
-                      id="tax-toggle"
-                      checked={taxEnabled}
-                      onChange={(e) => setTaxEnabled(e.target.checked)}
-                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-500 focus:ring-2 focus:ring-sky-400"
-                    />
-                    <label htmlFor="tax-toggle" className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer">
-                      Apply {taxSettings.description || 'Tax'} ({taxSettings.percentage}%)
-                    </label>
-                  </div>
-                )}
+                {/* VAT Toggle - Always visible, optional for cashier */}
+                <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
+                  <input
+                    type="checkbox"
+                    id="vat-toggle"
+                    checked={taxEnabled}
+                    onChange={(e) => setTaxEnabled(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-500 focus:ring-2 focus:ring-sky-400"
+                  />
+                  <label htmlFor="vat-toggle" className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer">
+                    Apply VAT ({taxSettings?.percentage || 7.5}%)
+                  </label>
+                </div>
 
                 {/* Discount Input */}
                 <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
@@ -676,7 +685,7 @@ export function CheckoutPage() {
                   )}
                   {taxEnabled && tax > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="theme-text-secondary">{taxSettings?.description || 'Tax'}</span>
+                      <span className="theme-text-secondary">VAT</span>
                       <span className="theme-text-primary">₦{(tax / 100).toFixed(2)}</span>
                     </div>
                   )}

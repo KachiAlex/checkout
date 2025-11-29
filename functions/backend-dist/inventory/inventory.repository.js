@@ -45,6 +45,8 @@ let InventoryRepository = class InventoryRepository {
                 quantity: record.quantity,
                 reorderPoint: record.reorderPoint,
                 maxStock: record.maxStock,
+                costCents: record.costCents,
+                salesPriceCents: record.salesPriceCents,
                 updatedAt: now,
             }, { merge: true });
             const updated = await docRef.get();
@@ -198,6 +200,8 @@ let InventoryRepository = class InventoryRepository {
             quantity: data.quantity,
             reorderPoint: data.reorderPoint,
             maxStock: data.maxStock,
+            costCents: data.costCents,
+            salesPriceCents: data.salesPriceCents,
             createdAt: this.timestampToDate(data.createdAt),
             updatedAt: this.timestampToDate(data.updatedAt),
         };

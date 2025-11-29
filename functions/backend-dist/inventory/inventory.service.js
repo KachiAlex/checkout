@@ -67,6 +67,8 @@ let InventoryService = class InventoryService {
                         description: product.description,
                         priceCents: product.priceCents,
                     },
+                    salesPriceCents: record.salesPriceCents ?? product.priceCents,
+                    costCents: record.costCents,
                     lastTransaction: lastTransaction
                         ? {
                             timestamp: lastTransaction.ts,
@@ -118,6 +120,8 @@ let InventoryService = class InventoryService {
             quantity: newQuantity,
             reorderPoint: currentInventory?.reorderPoint,
             maxStock: currentInventory?.maxStock,
+            costCents: currentInventory?.costCents,
+            salesPriceCents: currentInventory?.salesPriceCents,
         });
         return this.inventoryRepository.createTransaction({
             productId,
@@ -185,6 +189,8 @@ let InventoryService = class InventoryService {
             productId: product.id,
             locationId,
             quantity: createDto.quantity,
+            costCents: createDto.costCents,
+            salesPriceCents: createDto.priceCents,
         });
         const transaction = await this.inventoryRepository.createTransaction({
             productId: product.id,
@@ -209,6 +215,21 @@ let InventoryService = class InventoryService {
     }
     async clearAllInventory() {
         return this.inventoryRepository.clearAllInventory();
+    }
+    async updateInventoryPrices(productId, locationId, costCents, salesPriceCents) {
+        const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);
+        if (!currentInventory) {
+            throw new common_1.NotFoundException(`Inventory not found for product ${productId} at location ${locationId}`);
+        }
+        return this.inventoryRepository.upsertInventory({
+            productId,
+            locationId,
+            quantity: currentInventory.quantity,
+            reorderPoint: currentInventory.reorderPoint,
+            maxStock: currentInventory.maxStock,
+            costCents: costCents !== undefined ? costCents : currentInventory.costCents,
+            salesPriceCents: salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
+        });
     }
 };
 exports.InventoryService = InventoryService;

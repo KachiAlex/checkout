@@ -43,6 +43,8 @@ interface InventoryStock {
   };
   quantity: number;
   reorderPoint?: number;
+  costCents?: number;
+  salesPriceCents?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -438,7 +440,10 @@ export function InventorySalesPage() {
                         Barcode
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                        Price
+                        Cost Price
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                        Selling Price
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
                         Quantity
@@ -454,7 +459,7 @@ export function InventorySalesPage() {
                   <tbody className="divide-y divide-white/10">
                     {inventoryStock.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-8 text-center theme-text-secondary">
+                        <td colSpan={8} className="px-6 py-8 text-center theme-text-secondary">
                           No inventory items found. Products will appear here after inventory is created.
                         </td>
                       </tr>
@@ -470,8 +475,11 @@ export function InventorySalesPage() {
                           <td className="px-6 py-4 whitespace-nowrap font-mono text-xs theme-text-secondary">
                             {item.product.barcode || '—'}
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
+                            ₦{item.costCents ? (item.costCents / 100).toFixed(2) : '—'}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap theme-text-primary font-semibold">
-                            ₦{(item.product.priceCents / 100).toFixed(2)}
+                            ₦{item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents / 100).toFixed(2)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`font-bold text-lg ${

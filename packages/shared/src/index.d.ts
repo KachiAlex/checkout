@@ -60,6 +60,8 @@ export interface Inventory extends BaseEntity {
     product_id: string;
     location_id: string;
     quantity: number;
+    cost_cents?: number;
+    sales_price_cents?: number;
 }
 export interface InventoryTransaction extends BaseEntity {
     product_id: string;

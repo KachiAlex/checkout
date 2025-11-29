@@ -1,26 +1,31 @@
 import { InventoryService } from './inventory.service';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
+import { UpdateInventoryPricesDto } from './dto/update-inventory-prices.dto';
 import { LocationsRepository } from '../locations/locations.repository';
 export declare class InventoryController {
     private readonly inventoryService;
     private readonly locationsRepository;
     constructor(inventoryService: InventoryService, locationsRepository: LocationsRepository);
-    getStock(locationId: string, req: any): Promise<{
-        product: {
-            id: string;
-            name: string;
-            sku: string;
-            barcode: string;
-            description: string;
-            priceCents: number;
-        } | {
-            id: string;
-            name: string;
-            sku: string;
-            barcode: any;
-        };
+    getStock(locationId: string, req: any): Promise<({
+        product: any;
         isProductMissing: boolean;
+        lastTransaction: any;
+        id: string;
+        productId: string;
+        locationId: string;
+        quantity: number;
+        reorderPoint?: number;
+        maxStock?: number;
+        costCents?: number;
+        salesPriceCents?: number;
+        createdAt: Date;
+        updatedAt: Date;
+    } | {
+        product: any;
+        isProductMissing: boolean;
+        salesPriceCents: number;
+        costCents: number;
         lastTransaction: {
             timestamp: Date;
             userId: string;
@@ -35,7 +40,7 @@ export declare class InventoryController {
         maxStock?: number;
         createdAt: Date;
         updatedAt: Date;
-    }[]>;
+    })[]>;
     getBatchInventory(locationId: string, productId: string): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
     adjust(adjustDto: AdjustInventoryDto, req: any): Promise<import("./inventory.repository").InventoryTransactionRecord>;
     getTransactions(locationId: string, from?: string, to?: string): Promise<import("./inventory.repository").InventoryTransactionRecord[]>;
@@ -56,4 +61,5 @@ export declare class InventoryController {
         message: string;
         count: number;
     }>;
+    updateInventoryPrices(updateDto: UpdateInventoryPricesDto, req: any): Promise<import("./inventory.repository").InventoryRecord>;
 }

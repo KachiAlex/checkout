@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
+import { UpdateInventoryPricesDto } from './dto/update-inventory-prices.dto';
+import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LocationsRepository } from '../locations/locations.repository';
 
@@ -159,5 +161,53 @@ export class InventoryController {
   async clearAllInventory() {
     const count = await this.inventoryService.clearAllInventory();
     return { message: `Cleared ${count} inventory records`, count };
+  }
+
+  @Put('prices')
+  @ApiOperation({ summary: 'Update inventory cost and sales prices' })
+  @ApiResponse({ status: 200, description: 'Inventory prices updated' })
+  async updateInventoryPrices(@Body() updateDto: UpdateInventoryPricesDto, @Request() req: any) {
+    const tenantId = req.user?.tenantId;
+    let locationId = updateDto.locationId || req.user?.locationId;
+
+    if (!locationId) {
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      if (locations.length === 0) {
+        throw new BadRequestException('No locations found for this tenant. Please create a location first.');
+      }
+      locationId = locations[0].id;
+    }
+
+    return this.inventoryService.updateInventoryPrices(
+      updateDto.productId,
+      locationId,
+      updateDto.costCents,
+      updateDto.salesPriceCents,
+    );
+  }
+
+  @Put('item')
+  @ApiOperation({ summary: 'Update inventory item (quantity, reorder point, cost and sales prices)' })
+  @ApiResponse({ status: 200, description: 'Inventory item updated' })
+  async updateInventoryItem(@Body() updateDto: UpdateInventoryItemDto, @Request() req: any) {
+    const tenantId = req.user?.tenantId;
+    let locationId = updateDto.locationId || req.user?.locationId;
+
+    if (!locationId) {
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      if (locations.length === 0) {
+        throw new BadRequestException('No locations found for this tenant. Please create a location first.');
+      }
+      locationId = locations[0].id;
+    }
+
+    return this.inventoryService.updateInventoryItem(
+      updateDto.productId,
+      locationId,
+      updateDto.quantity,
+      updateDto.reorderPoint,
+      updateDto.costCents,
+      updateDto.salesPriceCents,
+    );
   }
 }
