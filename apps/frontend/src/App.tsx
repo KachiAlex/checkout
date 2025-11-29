@@ -6,6 +6,7 @@ import { useAuthStore } from './stores/authStore';
 import { useThemeStore } from './stores/themeStore';
 import './App.css';
 import { NativeDebugPanel } from './components/NativeDebugPanel';
+import { FixedNavigation } from './components/FixedNavigation';
 
 const LoginPage = lazy(() =>
   import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })),
@@ -84,6 +85,7 @@ function App() {
   return (
     <Router>
       <div className="app">
+        <FixedNavigation />
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route

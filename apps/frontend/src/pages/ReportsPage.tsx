@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { format, parseISO, startOfDay, endOfDay, subDays } from 'date-fns';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
-type ReportTab = 'general' | 'staff' | 'credit';
+type ReportTab = 'general' | 'staff' | 'credit' | 'profit';
 
 interface SalesAnalytics {
   period: Period;
@@ -78,6 +78,32 @@ interface ProductAnalytics {
   averagePrice: number;
 }
 
+interface ProfitLossAnalytics {
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  profitMargin: number; // percentage
+  profitPercentage: number; // percentage
+  totalItemsSold: number;
+  averageProfitPerItem: number;
+  byProduct: Array<{
+    productId: string;
+    productName: string;
+    sku: string;
+    quantitySold: number;
+    revenue: number;
+    cost: number;
+    profit: number;
+    profitMargin: number;
+  }>;
+  byPeriod: Array<{
+    period: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+  }>;
+}
+
 export function ReportsPage() {
   const { logout, accessToken, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ReportTab>('general');
@@ -94,6 +120,7 @@ export function ReportsPage() {
   const [creditReport, setCreditReport] = useState<CreditReport | null>(null);
   const [productAnalytics, setProductAnalytics] = useState<ProductAnalytics[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [profitLossAnalytics, setProfitLossAnalytics] = useState<ProfitLossAnalytics | null>(null);
 
   const loadGeneralAnalytics = async () => {
     if (!accessToken) return;
@@ -237,6 +264,176 @@ export function ReportsPage() {
     }
   };
 
+  const loadProfitLossAnalytics = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      
+      // Calculate date range
+      const ordersParams: any = {
+        status: 'completed',
+        location_id: user?.locationId,
+      };
+      
+      if (period === 'custom') {
+        ordersParams.from = customDateFrom;
+        ordersParams.to = customDateTo;
+      } else {
+        const now = new Date();
+        let fromDate: Date;
+        if (period === 'daily') {
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        } else if (period === 'weekly') {
+          fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+        } else {
+          fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        }
+        ordersParams.from = format(fromDate, 'yyyy-MM-dd');
+        ordersParams.to = format(now, 'yyyy-MM-dd');
+      }
+
+      // Fetch completed orders
+      const ordersResponse = await axios.get(`${API_URL}/api/v1/orders`, {
+        headers,
+        params: ordersParams,
+      });
+
+      const orders = ordersResponse.data || [];
+      
+      // Fetch all products to get cost data
+      const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
+      const products = productsResponse.data || [];
+      const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      // Calculate profit/loss
+      let totalRevenue = 0;
+      let totalCost = 0;
+      let totalItemsSold = 0;
+      const productProfitMap: Record<string, {
+        productId: string;
+        productName: string;
+        sku: string;
+        quantitySold: number;
+        revenue: number;
+        cost: number;
+        profit: number;
+      }> = {};
+      const periodMap: Record<string, { revenue: number; cost: number; profit: number }> = {};
+
+      orders.forEach((order: any) => {
+        const orderDate = order.completedAt || order.createdAt;
+        let periodKey: string;
+        try {
+          const date = typeof orderDate === 'string' ? parseISO(orderDate) : new Date(orderDate);
+          periodKey = period === 'daily' 
+            ? format(date, 'yyyy-MM-dd')
+            : period === 'weekly'
+            ? format(date, 'yyyy-\\WW')
+            : format(date, 'yyyy-MM');
+        } catch {
+          periodKey = 'unknown';
+        }
+
+        if (!periodMap[periodKey]) {
+          periodMap[periodKey] = { revenue: 0, cost: 0, profit: 0 };
+        }
+
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            const productId = item.productId;
+            if (!productId) return;
+
+            const product = productsMap.get(productId) as any;
+            const quantity = item.quantity || 0;
+            const priceCents = item.priceCents || 0;
+            const costCents = product?.costCents || 0;
+
+            const itemRevenue = priceCents * quantity;
+            const itemCost = costCents * quantity;
+            const itemProfit = itemRevenue - itemCost;
+
+            totalRevenue += itemRevenue;
+            totalCost += itemCost;
+            totalItemsSold += quantity;
+
+            // Update period map
+            periodMap[periodKey].revenue += itemRevenue;
+            periodMap[periodKey].cost += itemCost;
+            periodMap[periodKey].profit += itemProfit;
+
+            // Update product map
+            if (!productProfitMap[productId]) {
+              productProfitMap[productId] = {
+                productId,
+                productName: product?.name || `Product ${productId.substring(0, 8)}`,
+                sku: product?.sku || 'N/A',
+                quantitySold: 0,
+                revenue: 0,
+                cost: 0,
+                profit: 0,
+              };
+            }
+            productProfitMap[productId].quantitySold += quantity;
+            productProfitMap[productId].revenue += itemRevenue;
+            productProfitMap[productId].cost += itemCost;
+            productProfitMap[productId].profit += itemProfit;
+          });
+        }
+      });
+
+      // Convert to arrays and calculate margins
+      const byProduct = Object.values(productProfitMap)
+        .map(p => ({
+          ...p,
+          profitMargin: p.revenue > 0 ? (p.profit / p.revenue) * 100 : 0,
+        }))
+        .sort((a, b) => b.profit - a.profit);
+
+      const byPeriod = Object.entries(periodMap)
+        .map(([periodKey, data]) => ({
+          period: periodKey,
+          revenue: data.revenue,
+          cost: data.cost,
+          profit: data.profit,
+        }))
+        .sort((a, b) => a.period.localeCompare(b.period));
+
+      const totalProfit = totalRevenue - totalCost;
+      const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+      const profitPercentage = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+      const averageProfitPerItem = totalItemsSold > 0 ? totalProfit / totalItemsSold : 0;
+
+      setProfitLossAnalytics({
+        totalRevenue: totalRevenue / 100, // Convert to currency
+        totalCost: totalCost / 100,
+        totalProfit: totalProfit / 100,
+        profitMargin,
+        profitPercentage,
+        totalItemsSold,
+        averageProfitPerItem: averageProfitPerItem / 100,
+        byProduct: byProduct.map(p => ({
+          ...p,
+          revenue: p.revenue / 100,
+          cost: p.cost / 100,
+          profit: p.profit / 100,
+        })),
+        byPeriod: byPeriod.map(p => ({
+          ...p,
+          revenue: p.revenue / 100,
+          cost: p.cost / 100,
+          profit: p.profit / 100,
+        })),
+      });
+    } catch (error: any) {
+      console.error('Failed to load profit/loss analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load profit/loss analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadCreditReport = async () => {
     if (!accessToken) return;
 
@@ -365,6 +562,8 @@ export function ReportsPage() {
       loadStaffPerformance();
     } else if (activeTab === 'credit') {
       loadCreditReport();
+    } else if (activeTab === 'profit') {
+      loadProfitLossAnalytics();
     }
   }, [activeTab, period, accessToken, user?.locationId, customDateFrom, customDateTo]);
 
@@ -509,7 +708,7 @@ const SimpleLineChart = ({
   };
 
   return (
-    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">
       <div className="relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         {/* Header */}
         <div className="theme-card flex flex-col gap-3 sm:gap-4 rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
@@ -545,7 +744,7 @@ const SimpleLineChart = ({
         {/* Tabs */}
         <div className="theme-card rounded-xl sm:rounded-2xl lg:rounded-3xl border p-3 sm:p-4 lg:p-6 backdrop-blur-xl">
           <div className="flex flex-wrap gap-2 sm:gap-3">
-            {(['general', 'staff', 'credit'] as ReportTab[]).map((tab) => (
+            {(['general', 'staff', 'credit', 'profit'] as ReportTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -558,6 +757,7 @@ const SimpleLineChart = ({
                 {tab === 'general' && '📊 General Analytics'}
                 {tab === 'staff' && '👥 Staff Reports'}
                 {tab === 'credit' && '💳 Credit Reports'}
+                {tab === 'profit' && '💰 Profit/Loss'}
               </button>
             ))}
           </div>
@@ -900,6 +1100,259 @@ const SimpleLineChart = ({
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Profit/Loss Analytics Tab */}
+            {activeTab === 'profit' && profitLossAnalytics && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Profit & Loss Analytics</h2>
+                  <button
+                    onClick={() => {
+                      if (!profitLossAnalytics) return;
+                      const exportData = profitLossAnalytics.byProduct.map(p => ({
+                        Product: p.productName,
+                        SKU: p.sku,
+                        'Quantity Sold': p.quantitySold,
+                        Revenue: p.revenue,
+                        Cost: p.cost,
+                        Profit: p.profit,
+                        'Profit Margin %': p.profitMargin.toFixed(2),
+                      }));
+                      exportToCSV(exportData, 'profit_loss_report');
+                    }}
+                    disabled={!profitLossAnalytics || profitLossAnalytics.byProduct.length === 0}
+                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    📥 Export CSV
+                  </button>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-400/30">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Revenue</p>
+                    <p className="theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold text-emerald-400 truncate">
+                      {formatCurrency(profitLossAnalytics.totalRevenue)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4 bg-gradient-to-br from-rose-500/10 to-rose-600/5 border-rose-400/30">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Total Cost</p>
+                    <p className="theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold text-rose-400 truncate">
+                      {formatCurrency(profitLossAnalytics.totalCost)}
+                    </p>
+                  </div>
+                  <div className={`theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4 bg-gradient-to-br ${
+                    profitLossAnalytics.totalProfit >= 0 
+                      ? 'from-sky-500/10 to-sky-600/5 border-sky-400/30' 
+                      : 'from-amber-500/10 to-amber-600/5 border-amber-400/30'
+                  }`}>
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Net Profit/Loss</p>
+                    <p className={`theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold truncate ${
+                      profitLossAnalytics.totalProfit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                    }`}>
+                      {formatCurrency(profitLossAnalytics.totalProfit)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4 bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-400/30">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Profit Margin</p>
+                    <p className={`theme-text-primary text-lg sm:text-xl lg:text-2xl font-bold truncate ${
+                      profitLossAnalytics.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                    }`}>
+                      {profitLossAnalytics.profitMargin.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Additional Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Items Sold</p>
+                    <p className="theme-text-primary text-lg sm:text-xl font-bold text-sky-400">
+                      {profitLossAnalytics.totalItemsSold.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">Avg Profit/Item</p>
+                    <p className={`theme-text-primary text-lg sm:text-xl font-bold ${
+                      profitLossAnalytics.averageProfitPerItem >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {formatCurrency(profitLossAnalytics.averageProfitPerItem)}
+                    </p>
+                  </div>
+                  <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                    <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">ROI</p>
+                    <p className={`theme-text-primary text-lg sm:text-xl font-bold ${
+                      profitLossAnalytics.profitPercentage >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {profitLossAnalytics.profitPercentage.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Profit/Loss Over Time Chart */}
+                {profitLossAnalytics.byPeriod.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-3 sm:mb-4">Profit/Loss Over Time</h3>
+                    <div className="theme-surface rounded-xl border p-4 bg-white/5">
+                      <SimpleLineChart
+                        data={profitLossAnalytics.byPeriod.map(p => ({
+                          period: p.period,
+                          sales: p.profit,
+                          orders: 0,
+                          items: 0,
+                          averageOrderValue: 0,
+                        }))}
+                        metric="sales"
+                        color={profitLossAnalytics.totalProfit >= 0 ? "#10b981" : "#f59e0b"}
+                        labelFormatter={(period) => formatPeriod(period)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Product Profit Breakdown */}
+                <div className="mb-6">
+                  <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-3 sm:mb-4">Product Profit Breakdown</h3>
+                  {profitLossAnalytics.byProduct.length === 0 ? (
+                    <div className="theme-surface rounded-xl border p-6 sm:p-8 text-center">
+                      <p className="theme-text-secondary text-xs sm:text-sm">No profit/loss data available. Ensure products have cost information.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Mobile Card View */}
+                      <div className="block sm:hidden space-y-3">
+                        {profitLossAnalytics.byProduct.slice(0, 10).map((product, index) => (
+                          <div key={product.productId} className="theme-surface rounded-xl border p-3 space-y-2">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="theme-text-primary font-semibold text-sm">
+                                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                                  </span>
+                                  <span className="theme-text-primary font-medium text-sm truncate">{product.productName}</span>
+                                </div>
+                                <p className="theme-text-secondary text-xs">SKU: {product.sku}</p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Revenue</p>
+                                <p className="theme-text-primary font-semibold text-sm text-emerald-400 truncate">
+                                  {formatCurrency(product.revenue)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Cost</p>
+                                <p className="theme-text-primary font-semibold text-sm text-rose-400 truncate">
+                                  {formatCurrency(product.cost)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Profit</p>
+                                <p className={`theme-text-primary font-semibold text-sm truncate ${
+                                  product.profit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                                }`}>
+                                  {formatCurrency(product.profit)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Margin</p>
+                                <p className={`theme-text-primary font-semibold text-sm truncate ${
+                                  product.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                                }`}>
+                                  {product.profitMargin.toFixed(1)}%
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Desktop Table View */}
+                      <div className="hidden sm:block theme-surface rounded-xl border overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-white/5">
+                              <tr>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Rank
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Product Name
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  SKU
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Qty Sold
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Revenue
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Cost
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Profit/Loss
+                                </th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                  Margin %
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                              {profitLossAnalytics.byProduct.slice(0, 20).map((product, index) => (
+                                <tr key={product.productId} className="hover:bg-white/5 transition">
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-primary font-semibold">
+                                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-primary font-medium">{product.productName}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-secondary text-sm">{product.sku}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-sky-400">
+                                      {product.quantitySold.toLocaleString()}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-emerald-400">
+                                      {formatCurrency(product.revenue)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-rose-400">
+                                      {formatCurrency(product.cost)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`theme-text-primary font-semibold ${
+                                      product.profit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                                    }`}>
+                                      {formatCurrency(product.profit)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`theme-text-primary font-semibold ${
+                                      product.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                                    }`}>
+                                      {product.profitMargin.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 

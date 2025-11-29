@@ -627,7 +627,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         <div className="flex items-start gap-3 sm:gap-4">
           <BrandMark

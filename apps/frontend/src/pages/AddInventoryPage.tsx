@@ -389,7 +389,7 @@ export function AddInventoryPage() {
   }, [user?.id, accessToken]);
 
   return (
-    <div className="theme-background min-h-screen w-full overflow-x-hidden">
+    <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">
       <div className="relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         {/* Header */}
         <div className="theme-card flex flex-col gap-4 sm:gap-6 rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">

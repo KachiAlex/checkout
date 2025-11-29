@@ -347,7 +347,7 @@ export function CheckoutPage() {
   const totalDiscount = totalDiscountCents;
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden theme-background">
+    <div className="relative min-h-screen w-full overflow-x-hidden theme-background page-with-nav">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${theme === 'light' ? 'bg-sky-300/40' : 'bg-cyan-500/30'} blur-[160px]`} />
         <div className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${theme === 'light' ? 'bg-indigo-200/35' : 'bg-indigo-500/25'} blur-[200px]`} />

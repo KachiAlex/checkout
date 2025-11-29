@@ -279,6 +279,29 @@ export const useCartStore = create<CartState>()(
           });
         },
 
+        setTaxEnabled: (enabled) => {
+          set((state) => {
+            const sessions = [...state.sessions];
+            const idx = sessions.findIndex(
+              (s) => s.id === state.activeSessionId,
+            );
+            if (idx === -1) return state;
+
+            const session = sessions[idx];
+            const updatedSession: CartSession = {
+              ...session,
+              taxEnabled: enabled,
+            };
+            sessions[idx] = updatedSession;
+
+            return {
+              ...state,
+              sessions,
+              taxEnabled: updatedSession.taxEnabled,
+            };
+          });
+        },
+
         clearCart: () => {
           set((state) => {
             const sessions = [...state.sessions];

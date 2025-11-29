@@ -1,1 +1,13 @@
 /* Custom styles for POS checkout */
+
+/* Padding for fixed navigation */
+.page-with-nav {
+  padding-bottom: 5rem; /* Mobile: space for bottom nav */
+}
+
+@media (min-width: 640px) {
+  .page-with-nav {
+    padding-bottom: 0;
+    padding-top: 4.5rem; /* Desktop: space for top nav */
+  }
+}
