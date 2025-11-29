@@ -541,11 +541,13 @@ export function InventoryPage() {
                               costCents: item.costCents ? (item.costCents / 100).toFixed(2) : '',
                               salesPriceCents: item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : ''),
                             })}
-                            className="rounded-lg border border-sky-400/40 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/25 flex items-center gap-1.5"
-                            title="Edit inventory item"
+                            className="rounded-lg border-2 border-sky-400/60 bg-sky-500/20 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/30 hover:border-sky-400 flex items-center justify-center gap-2 min-w-[80px] shadow-lg"
+                            title="Edit inventory item - Click to edit quantity, reorder point, cost price, and selling price"
                           >
-                            <span className="text-sm">✏️</span>
-                            Edit
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span>Edit</span>
                           </button>
                         )}
                       </td>
