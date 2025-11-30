@@ -16,9 +16,12 @@ interface InventoryItem {
     name: string;
     sku: string;
     barcode?: string;
+    priceCents?: number;
   };
   quantity: number;
   reorderPoint?: number;
+  costCents?: number;
+  salesPriceCents?: number;
   createdAt: string;
   updatedAt: string;
   lastTransaction?: {
@@ -60,6 +63,13 @@ export function AddInventoryPage() {
   const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([]);
   const [editingQuantities, setEditingQuantities] = useState<Record<string, string>>({});
   const [updatingQuantities, setUpdatingQuantities] = useState<Record<string, boolean>>({});
+  const [editingItem, setEditingItem] = useState<{ 
+    productId: string; 
+    quantity: string; 
+    reorderPoint: string; 
+    costCents: string; 
+    salesPriceCents: string 
+  } | null>(null);
 
   // Get the effective locationId (user's locationId or first location for tenant)
   const getEffectiveLocationId = async (): Promise<string | null> => {
@@ -256,6 +266,54 @@ export function AddInventoryPage() {
         delete next[item.id];
         return next;
       });
+    }
+  };
+
+  const handleUpdateItem = async (productId: string) => {
+    if (!editingItem || !accessToken) return;
+
+    try {
+      const locationId = effectiveLocationId || await getEffectiveLocationId();
+      if (!locationId) {
+        toast.error('Location not set');
+        return;
+      }
+
+      // Validate required fields
+      if (!editingItem.costCents || !editingItem.salesPriceCents) {
+        toast.error('Cost price and selling price are required');
+        return;
+      }
+
+      const costCents = Math.round(parseFloat(editingItem.costCents) * 100);
+      const salesPriceCents = Math.round(parseFloat(editingItem.salesPriceCents) * 100);
+
+      if (isNaN(costCents) || costCents < 0 || isNaN(salesPriceCents) || salesPriceCents < 0) {
+        toast.error('Invalid price values');
+        return;
+      }
+
+      // Get current inventory to preserve values if not being updated
+      const currentItem = inventory.find(inv => inv.productId === productId);
+      
+      await axios.put(
+        `${API_URL}/api/v1/inventory/item`,
+        {
+          productId,
+          locationId,
+          quantity: editingItem.quantity ? parseInt(editingItem.quantity, 10) : (currentItem?.quantity || 0),
+          reorderPoint: editingItem.reorderPoint ? parseInt(editingItem.reorderPoint, 10) : (currentItem?.reorderPoint || undefined),
+          costCents,
+          salesPriceCents,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      toast.success('Inventory item updated successfully');
+      setEditingItem(null);
+      loadInventory();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update inventory item');
     }
   };
 
@@ -662,13 +720,19 @@ export function AddInventoryPage() {
                       Quantity
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                      Last Updated
+                      Reorder Point
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                      Updated By
+                      Cost Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Selling Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Last Updated
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-                      Adjust Qty
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -683,9 +747,68 @@ export function AddInventoryPage() {
                         {item.product.barcode || '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`font-bold ${item.quantity <= (item.reorderPoint || 0) ? 'text-red-600' : 'text-green-600'}`}>
-                          {item.quantity}
-                        </span>
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            value={editingItem.quantity}
+                            onChange={(e) => setEditingItem({ ...editingItem, quantity: e.target.value })}
+                            className="w-24 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                            placeholder="0"
+                          />
+                        ) : (
+                          <span className={`font-bold ${item.quantity <= (item.reorderPoint || 0) ? 'text-red-600' : 'text-green-600'}`}>
+                            {item.quantity}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            value={editingItem.reorderPoint}
+                            onChange={(e) => setEditingItem({ ...editingItem, reorderPoint: e.target.value })}
+                            className="w-24 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                            placeholder="0"
+                          />
+                        ) : (
+                          <span>{item.reorderPoint || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editingItem.costCents}
+                            onChange={(e) => setEditingItem({ ...editingItem, costCents: e.target.value })}
+                            className="w-28 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                            placeholder="0.00"
+                            required
+                          />
+                        ) : (
+                          <span>₦{item.costCents ? (item.costCents / 100).toFixed(2) : '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap theme-text-primary font-semibold">
+                        {editingItem?.productId === item.productId ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editingItem.salesPriceCents}
+                            onChange={(e) => setEditingItem({ ...editingItem, salesPriceCents: e.target.value })}
+                            className="w-28 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                            placeholder="0.00"
+                            required
+                          />
+                        ) : (
+                          <span>₦{item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : '—')}</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary text-sm">
                         {item.lastTransaction?.timestamp
@@ -694,27 +817,43 @@ export function AddInventoryPage() {
                           ? format(new Date(item.updatedAt), 'MMM dd, yyyy HH:mm')
                           : '—'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap theme-text-secondary text-sm">
-                        {item.lastTransaction?.user?.name || item.lastTransaction?.userId || '—'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={editingQuantities[item.id] ?? item.quantity.toString()}
-                            onChange={(e) => handleQuantityInputChange(item.id, e.target.value)}
-                            className="theme-surface w-20 rounded-xl border px-3 py-2 text-[0.85rem] theme-text-primary focus:border-sky-400 focus:outline-none"
-                          />
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {editingItem?.productId === item.productId ? (
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => handleUpdateItem(item.productId)}
+                              className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25 flex items-center gap-1"
+                              title="Update all changes"
+                            >
+                              <span>✓</span>
+                              Update
+                            </button>
+                            <button
+                              onClick={() => setEditingItem(null)}
+                              className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+                              title="Cancel editing"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            type="button"
-                            onClick={() => handleUpdateQuantity(item)}
-                            disabled={updatingQuantities[item.id]}
-                            className="rounded-full bg-gradient-to-r from-indigo-500 to-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:from-indigo-600 hover:to-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => setEditingItem({
+                              productId: item.productId,
+                              quantity: item.quantity.toString(),
+                              reorderPoint: item.reorderPoint ? item.reorderPoint.toString() : '',
+                              costCents: item.costCents ? (item.costCents / 100).toFixed(2) : '',
+                              salesPriceCents: item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : ''),
+                            })}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:from-blue-600 hover:to-blue-700 hover:shadow-xl hover:scale-105 active:scale-95"
+                            title="Edit inventory item - Click to edit quantity, reorder point, cost price, and selling price"
                           >
-                            {updatingQuantities[item.id] ? 'Saving…' : 'Update'}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span className="font-semibold">Edit</span>
                           </button>
-                        </div>
+                        )}
                       </td>
                     </tr>
                   ))}
