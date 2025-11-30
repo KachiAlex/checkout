@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
@@ -22,21 +22,47 @@ export class InventoryController {
   @Get(':location_id/stock')
   @ApiOperation({ summary: 'Get inventory stock for a location' })
   @ApiResponse({ status: 200, description: 'Inventory stock list' })
+  @ApiResponse({ status: 403, description: 'Access denied to this location' })
   async getStock(
     @Param('location_id') locationId: string,
     @Request() req: any,
   ) {
     const tenantId = req.user?.tenantId;
+    
+    // Verify location belongs to tenant
+    const location = await this.locationsRepository.findById(locationId);
+    if (!location) {
+      throw new BadRequestException(`Location with ID ${locationId} not found`);
+    }
+    
+    if (location.tenantId !== tenantId) {
+      throw new ForbiddenException('Access denied to this location');
+    }
+    
     return this.inventoryService.getStock(locationId, tenantId);
   }
 
   @Get(':location_id/batch/:product_id')
   @ApiOperation({ summary: 'Get batch inventory for a product' })
   @ApiResponse({ status: 200, description: 'Batch inventory list' })
+  @ApiResponse({ status: 403, description: 'Access denied to this location' })
   async getBatchInventory(
     @Param('location_id') locationId: string,
     @Param('product_id') productId: string,
+    @Request() req: any,
   ) {
+    const tenantId = req.user?.tenantId;
+    
+    // Verify location belongs to tenant
+    const location = await this.locationsRepository.findById(locationId);
+    if (!location) {
+      throw new BadRequestException(`Location with ID ${locationId} not found`);
+    }
+    
+    if (location.tenantId !== tenantId) {
+      throw new ForbiddenException('Access denied to this location');
+    }
+    
     return this.inventoryService.getBatchInventory(productId, locationId);
   }
 
@@ -100,11 +126,25 @@ export class InventoryController {
   @Get(':location_id/transactions')
   @ApiOperation({ summary: 'Get inventory transactions for a location' })
   @ApiResponse({ status: 200, description: 'Inventory transactions list' })
+  @ApiResponse({ status: 403, description: 'Access denied to this location' })
   async getTransactions(
     @Param('location_id') locationId: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Request() req: any,
   ) {
+    const tenantId = req.user?.tenantId;
+    
+    // Verify location belongs to tenant
+    const location = await this.locationsRepository.findById(locationId);
+    if (!location) {
+      throw new BadRequestException(`Location with ID ${locationId} not found`);
+    }
+    
+    if (location.tenantId !== tenantId) {
+      throw new ForbiddenException('Access denied to this location');
+    }
+    
     return this.inventoryService.getTransactions(locationId, from, to);
   }
 

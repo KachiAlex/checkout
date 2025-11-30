@@ -9,6 +9,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -34,17 +35,36 @@ export class OrdersController {
   @ApiOperation({ summary: 'Get order by ID' })
   @ApiResponse({ status: 200, description: 'Order found' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.ordersService.findOne(id);
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    const order = await this.ordersService.findOne(id);
+    
+    // Verify order belongs to user's tenant via location
+    const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+    
+    return order;
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update order status' })
   @ApiResponse({ status: 200, description: 'Order updated' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDto: { status?: string; notes?: string },
+    @Request() req: any,
   ) {
+    const order = await this.ordersService.findOne(id);
+    
+    // Verify order belongs to user's tenant
+    const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+    
     return this.ordersService.update(id, updateDto);
   }
 
@@ -56,28 +76,55 @@ export class OrdersController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('status') status?: string,
+    @Request() req: any,
   ) {
-    return this.ordersService.findAll(locationId, from, to, status);
+    // Ensure location belongs to tenant if provided
+    if (locationId) {
+      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+    }
+    
+    return this.ordersService.findAll(locationId, from, to, status, req.user.tenantId);
   }
 
   @Get('held')
   @ApiOperation({ summary: 'Get all held/suspended orders' })
   @ApiResponse({ status: 200, description: 'List of held orders' })
-  async findHeldOrders(@Query('location_id') locationId?: string) {
-    return this.ordersService.findHeldOrders(locationId);
+  async findHeldOrders(@Query('location_id') locationId?: string, @Request() req: any) {
+    // Ensure location belongs to tenant if provided
+    if (locationId) {
+      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+    }
+    
+    return this.ordersService.findHeldOrders(locationId, req.user.tenantId);
   }
 
   @Post(':id/hold')
   @ApiOperation({ summary: 'Hold/suspend an order' })
   @ApiResponse({ status: 200, description: 'Order held' })
-  async holdOrder(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  async holdOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    const order = await this.ordersService.findOne(id);
+    
+    const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+    
     return this.ordersService.holdOrder(id);
   }
 
   @Post(':id/recall')
   @ApiOperation({ summary: 'Recall a held order' })
   @ApiResponse({ status: 200, description: 'Order recalled' })
-  async recallOrder(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  async recallOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    const order = await this.ordersService.findOne(id);
+    
+    const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+    
     return this.ordersService.recallOrder(id);
   }
 

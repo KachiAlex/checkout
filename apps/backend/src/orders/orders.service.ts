@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus } from '@pos-checkout/shared';
 import { InventoryService } from '../inventory/inventory.service';
@@ -128,17 +128,45 @@ export class OrdersService {
     });
   }
 
-  async findAll(locationId?: string, from?: string, to?: string, status?: string) {
-    return this.ordersRepository.list({
-      locationId,
+  async findAll(locationId?: string, from?: string, to?: string, status?: string, tenantId?: string) {
+    // If tenantId is provided, filter by tenant locations
+    let filteredLocationId = locationId;
+    if (tenantId && !locationId) {
+      // Get all locations for tenant and filter orders
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      const locationIds = locations.map(loc => loc.id);
+      // Note: Firestore doesn't support 'in' queries with more than 10 items easily
+      // For now, we'll filter in memory if needed, or use locationId if provided
+    }
+    
+    const orders = await this.ordersRepository.list({
+      locationId: filteredLocationId,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
       status: status ? (status as OrderStatus) : undefined,
     });
+    
+    // Filter by tenant if tenantId provided and no locationId specified
+    if (tenantId && !locationId) {
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      const locationIds = new Set(locations.map(loc => loc.id));
+      return orders.filter(order => locationIds.has(order.locationId));
+    }
+    
+    return orders;
   }
 
-  async findHeldOrders(locationId?: string): Promise<OrderRecord[]> {
-    return this.ordersRepository.findHeldOrders(locationId);
+  async findHeldOrders(locationId?: string, tenantId?: string): Promise<OrderRecord[]> {
+    const orders = await this.ordersRepository.findHeldOrders(locationId);
+    
+    // Filter by tenant if tenantId provided
+    if (tenantId && !locationId) {
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      const locationIds = new Set(locations.map(loc => loc.id));
+      return orders.filter(order => locationIds.has(order.locationId));
+    }
+    
+    return orders;
   }
 
   async holdOrder(id: string): Promise<OrderRecord> {
@@ -162,6 +190,33 @@ export class OrdersService {
       isHeld: false,
       heldAt: undefined,
     });
+  }
+
+  /**
+   * Verify that an order belongs to the specified tenant by checking location ownership
+   */
+  async verifyTenantAccess(order: OrderRecord, tenantId: string): Promise<boolean> {
+    const location = await this.locationsRepository.findById(order.locationId);
+    if (!location) {
+      return false;
+    }
+    
+    // Location must belong to the tenant
+    return location.tenantId === tenantId;
+  }
+
+  /**
+   * Verify that a location belongs to the specified tenant
+   */
+  async verifyLocationAccess(locationId: string, tenantId: string): Promise<void> {
+    const location = await this.locationsRepository.findById(locationId);
+    if (!location) {
+      throw new NotFoundException(`Location with ID ${locationId} not found`);
+    }
+    
+    if (location.tenantId !== tenantId) {
+      throw new ForbiddenException('Access denied to this location');
+    }
   }
 
   async completeHeldOrder(id: string, tenantId: string): Promise<OrderRecord> {
