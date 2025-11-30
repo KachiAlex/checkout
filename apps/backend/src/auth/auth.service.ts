@@ -80,7 +80,8 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-    console.log(`[AuthService] Login attempt with PIN: ${loginDto.pin?.substring(0, 2)}**`);
+    // Log login attempt without sensitive data
+    console.log(`[AuthService] Login attempt for tenant: ${loginDto.tenantSlug}`);
     const tenant = await this.tenantsRepository.findBySlug(loginDto.tenantSlug);
 
     if (!tenant) {
@@ -94,11 +95,11 @@ export class AuthService {
     const user = await this.validateUser(loginDto.pin, tenant.id, loginDto.deviceId);
     
     if (!user) {
-      console.log(`[AuthService] Login failed: Invalid PIN`);
+      console.log(`[AuthService] Login failed for tenant: ${loginDto.tenantSlug}`);
       throw new UnauthorizedException('Invalid PIN');
     }
     
-    console.log(`[AuthService] Login successful for user: ${user.name}`);
+    console.log(`[AuthService] Login successful for user: ${user.id} (${user.name})`);
 
     const payload = {
       sub: user.id,

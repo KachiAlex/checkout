@@ -45,9 +45,12 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
 
   let corsOrigins: true | string[];
 
-  if (nodeEnv === 'development') {
-    corsOrigins = true;
-  } else if (corsOriginConfig.trim() === '*') {
+  // Always use configured origins, even in development
+  // Only allow all origins if explicitly set to '*'
+  if (corsOriginConfig.trim() === '*') {
+    if (nodeEnv === 'production') {
+      console.warn('⚠️  CORS allows all origins in production - not recommended for security');
+    }
     corsOrigins = true;
   } else {
     corsOrigins = corsOriginConfig
@@ -110,11 +113,26 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
 
   app.enableCors(corsConfig);
 
+  // Configure Content Security Policy
+  const cspDirectives = {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"], // Allow inline scripts for compatibility
+    styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for compatibility
+    imgSrc: ["'self'", 'data:', 'https:'],
+    connectSrc: ["'self'", 'https:'],
+    fontSrc: ["'self'", 'data:', 'https:'],
+    objectSrc: ["'none'"],
+    mediaSrc: ["'self'"],
+    frameSrc: ["'none'"],
+  };
+
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
       crossOriginEmbedderPolicy: false,
-      contentSecurityPolicy: false,
+      contentSecurityPolicy: nodeEnv === 'production' ? {
+        directives: cspDirectives,
+      } : false, // Disable CSP in development for easier debugging
     }),
   );
 

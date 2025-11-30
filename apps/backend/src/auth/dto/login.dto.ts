@@ -9,10 +9,10 @@ export class LoginDto {
   })
   tenantSlug!: string;
 
-  @ApiProperty({ description: 'User PIN or passphrase (4-64 characters)', example: '1234' })
+  @ApiProperty({ description: 'User PIN or passphrase (6-64 characters)', example: '123456' })
   @IsNotEmpty()
   @IsString()
-  @MinLength(4)
+  @MinLength(6)
   @MaxLength(64)
   pin!: string;
 
