@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CartItem } from '../stores/cartStore';
+import { formatCurrency } from '../utils/numberFormat';
 
 interface DiscountModalProps {
   isOpen: boolean;
@@ -121,7 +122,7 @@ export function DiscountModal({
             />
             <p className="mt-1 text-xs theme-text-secondary">
               Max: {discountType === 'amount' 
-                ? `₦${(maxDiscount / 100).toFixed(2)}`
+                ? formatCurrency(maxDiscount)
                 : '100%'}
             </p>
           </div>

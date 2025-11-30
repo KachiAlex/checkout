@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CartItem } from '../stores/cartStore';
 import { PaymentService } from '../services/paymentService';
 import toast from 'react-hot-toast';
+import { formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -48,10 +49,10 @@ export function PaymentModal({
   const subtotal = cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
   const tax = cart.reduce((sum, item) => sum + item.priceCents * item.quantity * item.taxRate, 0);
   const isCashLike = method === 'cash' || method === 'transfer';
-  const change = isCashLike && cashAmount ? parseFloat(cashAmount) * 100 - total : 0;
+  const change = isCashLike && cashAmount ? parseFormattedNumber(cashAmount) * 100 - total : 0;
 
   const handleConfirm = async () => {
-    if (isCashLike && (!cashAmount || parseFloat(cashAmount) * 100 < total)) {
+    if (isCashLike && (!cashAmount || parseFormattedNumber(cashAmount) * 100 < total)) {
       toast.error('Enter amount received before confirming payment.');
       return;
     }
@@ -230,16 +231,16 @@ export function PaymentModal({
               <div className="theme-surface rounded-2xl border p-4">
                 <div className="mb-3 flex justify-between text-sm theme-text-secondary">
                   <span>Subtotal</span>
-                  <span className="theme-text-primary font-semibold">₦{(subtotal / 100).toFixed(2)}</span>
+                  <span className="theme-text-primary font-semibold">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="mb-3 flex justify-between text-sm theme-text-secondary">
                   <span>Tax</span>
-                  <span className="theme-text-primary font-semibold">₦{(tax / 100).toFixed(2)}</span>
+                  <span className="theme-text-primary font-semibold">{formatCurrency(tax)}</span>
                 </div>
                 <div className="theme-divider my-3 h-px" />
                 <div className="flex items-center justify-between">
                   <span className="theme-text-primary text-lg font-semibold">Total</span>
-                  <span className="text-3xl font-bold text-sky-400">₦{(total / 100).toFixed(2)}</span>
+                  <span className="text-3xl font-bold text-sky-400">{formatCurrency(total)}</span>
                 </div>
               </div>
 
@@ -258,7 +259,7 @@ export function PaymentModal({
                     </label>
                     <button
                       onClick={() => {
-                        setCashAmount((total / 100).toFixed(2));
+                        setCashAmount(formatCurrency(total).replace('₦', ''));
                       }}
                       className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25 touch-manipulation whitespace-nowrap"
                     >
@@ -266,26 +267,27 @@ export function PaymentModal({
                     </button>
                   </div>
                   <input
-                    type="number"
+                    type="text"
                     value={cashAmount}
-                    onChange={(e) => setCashAmount(e.target.value)}
+                    onChange={(e) => {
+                      const { displayValue } = handleNumberInputChange(e.target.value, true);
+                      setCashAmount(displayValue);
+                    }}
                     placeholder="0.00"
                     className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2.5 sm:py-3 text-xl sm:text-2xl font-semibold focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
                     autoFocus
-                    min={total / 100}
-                    step="0.01"
                   />
-                  {cashAmount && parseFloat(cashAmount) * 100 >= total && (
+                  {cashAmount && parseFormattedNumber(cashAmount) * 100 >= total && (
                     <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2">
                       <span className="text-xs sm:text-sm font-medium text-emerald-200">Change</span>
                       <span className="text-base sm:text-lg font-bold text-emerald-100">
-                        ₦{change > 0 ? (change / 100).toFixed(2) : '0.00'}
+                        {change > 0 ? formatCurrency(change) : formatCurrency(0)}
                       </span>
                     </div>
                   )}
-                  {cashAmount && parseFloat(cashAmount) * 100 < total && (
+                  {cashAmount && parseFormattedNumber(cashAmount) * 100 < total && (
                     <p className="mt-2 text-xs sm:text-sm text-rose-400">
-                      Insufficient amount. Need ₦{((total - parseFloat(cashAmount) * 100) / 100).toFixed(2)} more.
+                      Insufficient amount. Need {formatCurrency(total - parseFormattedNumber(cashAmount) * 100)} more.
                     </p>
                   )}
                   {method === 'transfer' && (
@@ -318,7 +320,7 @@ export function PaymentModal({
               {method === 'cash' && (
                 <button
                   onClick={() => {
-                    setCashAmount((total / 100).toFixed(2));
+                    setCashAmount(formatCurrency(total).replace('₦', ''));
                     // Auto-confirm after setting exact amount
                     setTimeout(() => {
                       handleConfirm();
@@ -341,7 +343,7 @@ export function PaymentModal({
                 <button
                   onClick={handleConfirm}
                   disabled={
-                    ((method === 'cash' || method === 'transfer') && (!cashAmount || parseFloat(cashAmount) * 100 < total)) ||
+                    ((method === 'cash' || method === 'transfer') && (!cashAmount || parseFormattedNumber(cashAmount) * 100 < total)) ||
                     processing
                   }
                   className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
@@ -401,7 +403,7 @@ export function PaymentModal({
             {method === 'cash' && change > 0 && (
               <div className="mt-4 rounded-lg bg-emerald-500/15 px-4 py-2">
                 <p className="text-xs sm:text-sm font-medium text-emerald-200">
-                  Change: ₦{(change / 100).toFixed(2)}
+                  Change: {formatCurrency(change)}
                 </p>
               </div>
             )}

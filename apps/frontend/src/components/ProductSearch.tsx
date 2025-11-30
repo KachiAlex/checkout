@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 import { API_URL } from '../config';
+import { formatCurrency, formatNumber } from '../utils/numberFormat';
 
 interface Product {
   id: string;
@@ -520,7 +521,7 @@ export function ProductSearch({
                       </div>
                     )}
                     <h4 className="theme-text-primary line-clamp-1 text-sm font-semibold">{product.name}</h4>
-                    <p className="theme-text-secondary mt-1 text-xs">₦{(product.priceCents / 100).toFixed(2)}</p>
+                    <p className="theme-text-secondary mt-1 text-xs">{formatCurrency(product.priceCents)}</p>
                     {getStockStatus(product.stock) && (
                       <span className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[0.65rem] font-medium ${getStockStatus(product.stock)?.color}`}>
                         {getStockStatus(product.stock)?.label}
@@ -618,7 +619,7 @@ export function ProductSearch({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-lg font-semibold text-sky-400">
-                            ₦{(product.priceCents / 100).toFixed(2)}
+                            {formatCurrency(product.priceCents)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

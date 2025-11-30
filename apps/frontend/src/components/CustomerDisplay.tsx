@@ -1,4 +1,5 @@
 import { CartItem } from '../stores/cartStore';
+import { formatCurrency, formatNumber } from '../utils/numberFormat';
 
 interface CustomerDisplayProps {
   cart: CartItem[];
@@ -48,11 +49,11 @@ export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change 
                 <div className="flex-1">
                   <p className="text-2xl font-semibold">{item.name}</p>
                   <p className="text-xl text-slate-300">
-                    {item.quantity} × ₦{(item.priceCents / 100).toFixed(2)}
+                    {formatNumber(item.quantity)} × {formatCurrency(item.priceCents)}
                   </p>
                 </div>
                 <p className="text-2xl font-bold text-emerald-300">
-                  ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                  {formatCurrency(item.priceCents * item.quantity)}
                 </p>
               </div>
             ))}
@@ -63,15 +64,15 @@ export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change 
         <div className="w-full max-w-2xl space-y-4">
           <div className="flex items-center justify-between rounded-2xl bg-white/10 p-6 backdrop-blur-xl">
             <span className="text-2xl text-slate-300">Subtotal</span>
-            <span className="text-3xl font-semibold">₦{(subtotal / 100).toFixed(2)}</span>
+            <span className="text-3xl font-semibold">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-white/10 p-6 backdrop-blur-xl">
             <span className="text-2xl text-slate-300">Tax</span>
-            <span className="text-3xl font-semibold">₦{(tax / 100).toFixed(2)}</span>
+            <span className="text-3xl font-semibold">{formatCurrency(tax)}</span>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-emerald-500/20 to-blue-500/20 p-8 backdrop-blur-xl">
             <span className="text-3xl font-semibold">Total</span>
-            <span className="text-5xl font-bold text-emerald-300">₦{(total / 100).toFixed(2)}</span>
+            <span className="text-5xl font-bold text-emerald-300">{formatCurrency(total)}</span>
           </div>
         </div>
 
@@ -90,7 +91,7 @@ export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change 
         {change !== undefined && change > 0 && (
           <div className="rounded-2xl bg-emerald-500/20 p-6 backdrop-blur-xl">
             <p className="text-2xl text-slate-300">Change</p>
-            <p className="text-4xl font-bold text-emerald-300">₦{(change / 100).toFixed(2)}</p>
+            <p className="text-4xl font-bold text-emerald-300">{formatCurrency(change)}</p>
           </div>
         )}
 

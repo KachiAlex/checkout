@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { formatCurrency } from '../utils/numberFormat';
 
 interface Product {
   id: string;
@@ -50,7 +51,7 @@ export function ProductList({ onAddToCart }: ProductListProps) {
             <h3 className="font-medium text-gray-800">{product.name}</h3>
             <p className="text-sm text-gray-600">SKU: {product.sku}</p>
             <p className="text-lg font-semibold text-blue-600 mt-2">
-              ₦{(product.priceCents / 100).toFixed(2)}
+              {formatCurrency(product.priceCents)}
             </p>
             <button
               onClick={() => onAddToCart({

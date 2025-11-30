@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_URL } from '../config';
+import { formatCurrency, formatNumber, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
 
 interface Payment {
   id: string;
@@ -65,8 +66,8 @@ export function SplitPaymentModal({
     if (!orderId || !accessToken || !selectedMethod) return;
 
     const amount = selectedMethod === 'cash' 
-      ? parseFloat(cashAmount) * 100 
-      : parseFloat(paymentAmount) * 100;
+      ? parseFormattedNumber(cashAmount) * 100 
+      : parseFormattedNumber(paymentAmount) * 100;
 
     if (isNaN(amount) || amount <= 0) {
       toast.error('Please enter a valid amount');
@@ -75,7 +76,7 @@ export function SplitPaymentModal({
 
     const remaining = getRemaining();
     if (amount > remaining) {
-      toast.error(`Amount exceeds remaining balance of ₦${(remaining / 100).toFixed(2)}`);
+      toast.error(`Amount exceeds remaining balance of ${formatCurrency(remaining)}`);
       return;
     }
 
@@ -130,17 +131,17 @@ export function SplitPaymentModal({
           <div className="theme-surface rounded-2xl border p-4">
             <div className="flex justify-between text-sm theme-text-secondary mb-2">
               <span>Total Amount</span>
-              <span className="theme-text-primary font-semibold">₦{(totalCents / 100).toFixed(2)}</span>
+              <span className="theme-text-primary font-semibold">{formatCurrency(totalCents)}</span>
             </div>
             <div className="flex justify-between text-sm theme-text-secondary mb-2">
               <span>Total Paid</span>
-              <span className="font-semibold text-emerald-400">₦{(totalPaid / 100).toFixed(2)}</span>
+              <span className="font-semibold text-emerald-400">{formatCurrency(totalPaid)}</span>
             </div>
             <div className="theme-divider my-3 h-px" />
             <div className="flex items-center justify-between">
               <span className="theme-text-primary text-lg font-semibold">Remaining</span>
               <span className={`text-2xl font-bold ${isFullyPaid ? 'text-emerald-400' : 'text-amber-400'}`}>
-                ₦{(remaining / 100).toFixed(2)}
+                {formatCurrency(remaining)}
               </span>
             </div>
           </div>
@@ -167,7 +168,7 @@ export function SplitPaymentModal({
                       </span>
                     </div>
                     <span className="theme-text-primary font-semibold">
-                      ₦{(payment.amountCents / 100).toFixed(2)}
+                      {formatCurrency(payment.amountCents)}
                     </span>
                   </div>
                 ))}
@@ -211,24 +212,22 @@ export function SplitPaymentModal({
                       Amount ({selectedMethod === 'cash' ? 'Cash Received' : 'Payment Amount'})
                     </label>
                     <input
-                      type="number"
+                      type="text"
                       value={selectedMethod === 'cash' ? cashAmount : paymentAmount}
                       onChange={(e) => {
+                        const { displayValue } = handleNumberInputChange(e.target.value, true);
                         if (selectedMethod === 'cash') {
-                          setCashAmount(e.target.value);
+                          setCashAmount(displayValue);
                         } else {
-                          setPaymentAmount(e.target.value);
+                          setPaymentAmount(displayValue);
                         }
                       }}
                       placeholder="0.00"
                       className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-xl font-semibold theme-text-primary focus:border-sky-400 focus:outline-none"
                       autoFocus
-                      min="0.01"
-                      step="0.01"
-                      max={remaining / 100}
                     />
                     <p className="mt-1 text-xs theme-text-secondary">
-                      Max: ₦{(remaining / 100).toFixed(2)}
+                      Max: {formatCurrency(remaining)}
                     </p>
                   </div>
                   <div className="flex gap-3">

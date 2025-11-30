@@ -14,6 +14,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { API_URL } from '../config';
 import { generateUUID } from '../utils/uuid';
 import { receiptService } from '../services/receiptService';
+import { formatCurrency, formatNumber } from '../utils/numberFormat';
 
 interface Product {
   id: string;
@@ -458,7 +459,7 @@ export function CheckoutPage() {
                               <p className="theme-text-secondary text-xs sm:text-sm">SKU: {product.sku || 'N/A'}</p>
                             </div>
                             <p className="theme-text-primary font-semibold text-sm sm:text-base whitespace-nowrap">
-                              ₦{(product.priceCents / 100).toFixed(2)}
+                              {formatCurrency(product.priceCents)}
                             </p>
                           </div>
                         </button>
@@ -520,7 +521,7 @@ export function CheckoutPage() {
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
                                 <p className="theme-text-primary font-medium text-sm truncate">{item.name}</p>
-                                <p className="theme-text-secondary text-xs mt-1">₦{(item.priceCents / 100).toFixed(2)} each</p>
+                                <p className="theme-text-secondary text-xs mt-1">{formatCurrency(item.priceCents)} each</p>
                               </div>
                               <button
                                 onClick={() => removeItem(item.productId)}
@@ -547,7 +548,7 @@ export function CheckoutPage() {
                                 </button>
                               </div>
                               <p className="theme-text-primary font-semibold text-sm">
-                                ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                                {formatCurrency(item.priceCents * item.quantity)}
                               </p>
                             </div>
                           </div>
@@ -572,7 +573,7 @@ export function CheckoutPage() {
                                   <p className="theme-text-primary font-medium">{item.name}</p>
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <p className="theme-text-primary">₦{(item.priceCents / 100).toFixed(2)}</p>
+                                  <p className="theme-text-primary">{formatCurrency(item.priceCents)}</p>
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center justify-center gap-2">
@@ -594,7 +595,7 @@ export function CheckoutPage() {
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <p className="theme-text-primary font-semibold">
-                                    ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                                    {formatCurrency(item.priceCents * item.quantity)}
                                   </p>
                                 </td>
                                 <td className="px-4 py-3 text-center">
@@ -675,25 +676,25 @@ export function CheckoutPage() {
                 <div className="space-y-2 sm:space-y-3 border-b border-white/10 pb-3 sm:pb-4">
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="theme-text-secondary">Subtotal</span>
-                    <span className="theme-text-primary">₦{(finalSubtotal / 100).toFixed(2)}</span>
+                    <span className="theme-text-primary">{formatCurrency(finalSubtotal)}</span>
                   </div>
                   {totalDiscount > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm">
                       <span className="theme-text-secondary">Discount</span>
-                      <span className="theme-text-primary text-emerald-400">-₦{(totalDiscount / 100).toFixed(2)}</span>
+                      <span className="theme-text-primary text-emerald-400">-{formatCurrency(totalDiscount)}</span>
                     </div>
                   )}
                   {taxEnabled && tax > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm">
                       <span className="theme-text-secondary">VAT</span>
-                      <span className="theme-text-primary">₦{(tax / 100).toFixed(2)}</span>
+                      <span className="theme-text-primary">{formatCurrency(tax)}</span>
                     </div>
                   )}
                 </div>
 
                 <div className="mt-3 sm:mt-4 mb-4 sm:mb-6 flex justify-between border-t border-white/10 pt-3 sm:pt-4">
                   <span className="theme-text-primary text-base sm:text-lg font-semibold">Total</span>
-                  <span className="theme-text-primary text-lg sm:text-xl font-bold">₦{(total / 100).toFixed(2)}</span>
+                  <span className="theme-text-primary text-lg sm:text-xl font-bold">{formatCurrency(total)}</span>
                 </div>
 
                 <div className="space-y-2">

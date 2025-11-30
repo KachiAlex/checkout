@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { formatCurrency, formatNumber } from '../utils/numberFormat';
 
 interface Product {
   id: string;
@@ -122,7 +123,7 @@ export function QuantitySelectorModal({
             <div>
               <p className="theme-text-secondary text-sm">SKU: {product.sku}</p>
               <p className="theme-text-primary mt-1 text-xl font-semibold">
-                ₦{(product.priceCents / 100).toFixed(2)}
+                {formatCurrency(product.priceCents)}
               </p>
             </div>
             <div className="text-right">
@@ -176,7 +177,7 @@ export function QuantitySelectorModal({
             </p>
           )}
           <p className="mt-2 text-sm theme-text-secondary">
-            Total: <span className="font-semibold theme-text-primary">₦{((product.priceCents * quantity) / 100).toFixed(2)}</span>
+            Total: <span className="font-semibold theme-text-primary">{formatCurrency(product.priceCents * quantity)}</span>
           </p>
         </div>
 

@@ -3,6 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_URL } from '../config';
 import { useAuthStore } from '../stores/authStore';
+import { formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
 
 interface PriceOverrideModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export function PriceOverrideModal({
       return;
     }
 
-    const price = parseFloat(newPrice);
+    const price = parseFormattedNumber(newPrice);
     if (isNaN(price) || price < 0) {
       toast.error('Please enter a valid price');
       return;
@@ -99,7 +100,7 @@ export function PriceOverrideModal({
 
           <div>
             <p className="text-sm theme-text-secondary mb-1">Current Price</p>
-            <p className="theme-text-primary text-lg font-semibold">₦{(currentPriceCents / 100).toFixed(2)}</p>
+            <p className="theme-text-primary text-lg font-semibold">{formatCurrency(currentPriceCents)}</p>
           </div>
 
           {!verified ? (
@@ -140,19 +141,20 @@ export function PriceOverrideModal({
                   New Price (₦) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={newPrice}
-                  onChange={(e) => setNewPrice(e.target.value)}
+                  onChange={(e) => {
+                    const { displayValue } = handleNumberInputChange(e.target.value, true);
+                    setNewPrice(displayValue);
+                  }}
                   placeholder="0.00"
                   className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-xl font-semibold theme-text-primary focus:border-sky-400 focus:outline-none"
                   autoFocus
-                  min="0"
-                  step="0.01"
                 />
-                {newPrice && !isNaN(parseFloat(newPrice)) && (
+                {newPrice && !isNaN(parseFormattedNumber(newPrice)) && (
                   <p className="mt-2 text-sm theme-text-secondary">
-                    Change: {parseFloat(newPrice) * 100 > currentPriceCents ? '+' : ''}
-                    ₦{((parseFloat(newPrice) * 100 - currentPriceCents) / 100).toFixed(2)}
+                    Change: {parseFormattedNumber(newPrice) * 100 > currentPriceCents ? '+' : ''}
+                    {formatCurrency(Math.abs(parseFormattedNumber(newPrice) * 100 - currentPriceCents))}
                   </p>
                 )}
               </div>
@@ -175,7 +177,7 @@ export function PriceOverrideModal({
             {verified && (
               <button
                 onClick={handleConfirm}
-                disabled={!newPrice || isNaN(parseFloat(newPrice)) || parseFloat(newPrice) < 0}
+                disabled={!newPrice || isNaN(parseFormattedNumber(newPrice)) || parseFormattedNumber(newPrice) < 0}
                 className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Confirm Override

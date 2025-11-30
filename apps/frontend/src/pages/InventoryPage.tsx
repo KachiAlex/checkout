@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { API_URL } from '../config';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { formatNumber, formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
 
 interface InventoryItem {
   id: string;

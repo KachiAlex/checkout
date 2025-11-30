@@ -7,6 +7,7 @@ import { API_URL } from '../config';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { format } from 'date-fns';
+import { formatNumber, formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
 
 interface InventoryItem {
   id: string;
@@ -279,8 +280,8 @@ export function AddInventoryPage() {
         return;
       }
 
-      const costCents = Math.round(parseFloat(editingItem.costCents) * 100);
-      const salesPriceCents = Math.round(parseFloat(editingItem.salesPriceCents) * 100);
+      const costCents = Math.round(parseFormattedNumber(editingItem.costCents) * 100);
+      const salesPriceCents = Math.round(parseFormattedNumber(editingItem.salesPriceCents) * 100);
 
       if (isNaN(costCents) || costCents < 0 || isNaN(salesPriceCents) || salesPriceCents < 0) {
         toast.error('Invalid price values');
@@ -297,8 +298,8 @@ export function AddInventoryPage() {
         {
           productId,
           // locationId will be resolved by backend from user context
-          quantity: editingItem.quantity ? parseInt(editingItem.quantity, 10) : (currentItem?.quantity || 0),
-          reorderPoint: editingItem.reorderPoint ? parseInt(editingItem.reorderPoint, 10) : (currentItem?.reorderPoint || undefined),
+          quantity: editingItem.quantity ? parseInt(parseFormattedNumber(editingItem.quantity).toString(), 10) : (currentItem?.quantity || 0),
+          reorderPoint: editingItem.reorderPoint ? parseInt(parseFormattedNumber(editingItem.reorderPoint).toString(), 10) : (currentItem?.reorderPoint || undefined),
           costCents,
           salesPriceCents,
         },
@@ -341,9 +342,9 @@ export function AddInventoryPage() {
     }
 
     try {
-      const quantity = parseInt(inventoryForm.quantity, 10);
-      const costCents = Math.round(parseFloat(inventoryForm.costCents) * 100);
-      const priceCents = Math.round(parseFloat(inventoryForm.priceCents) * 100);
+      const quantity = parseInt(parseFormattedNumber(inventoryForm.quantity).toString(), 10);
+      const costCents = Math.round(parseFormattedNumber(inventoryForm.costCents) * 100);
+      const priceCents = Math.round(parseFormattedNumber(inventoryForm.priceCents) * 100);
 
       if (isNaN(quantity) || quantity < 0) {
         toast.error('Invalid quantity');
@@ -515,12 +516,14 @@ export function AddInventoryPage() {
                   Quantity <span className="text-rose-400">*</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={inventoryForm.quantity}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, quantity: e.target.value })}
+                  onChange={(e) => {
+                    const { displayValue } = handleNumberInputChange(e.target.value, false);
+                    setInventoryForm({ ...inventoryForm, quantity: displayValue });
+                  }}
                   className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0"
-                  min="0"
                   required
                 />
               </div>
@@ -529,13 +532,14 @@ export function AddInventoryPage() {
                   Cost Price (₦) <span className="text-rose-400">*</span>
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
                   value={inventoryForm.costCents}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, costCents: e.target.value })}
+                  onChange={(e) => {
+                    const { displayValue } = handleNumberInputChange(e.target.value, true);
+                    setInventoryForm({ ...inventoryForm, costCents: displayValue });
+                  }}
                   className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0.00"
-                  min="0"
                   required
                 />
               </div>
@@ -544,13 +548,14 @@ export function AddInventoryPage() {
                   Selling Price (₦) <span className="text-rose-400">*</span>
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
                   value={inventoryForm.priceCents}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, priceCents: e.target.value })}
+                  onChange={(e) => {
+                    const { displayValue } = handleNumberInputChange(e.target.value, true);
+                    setInventoryForm({ ...inventoryForm, priceCents: displayValue });
+                  }}
                   className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0.00"
-                  min="0"
                   required
                 />
               </div>
@@ -747,65 +752,69 @@ export function AddInventoryPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         {editingItem?.productId === item.productId ? (
                           <input
-                            type="number"
-                            step="1"
-                            min="0"
+                            type="text"
                             value={editingItem.quantity}
-                            onChange={(e) => setEditingItem({ ...editingItem, quantity: e.target.value })}
+                            onChange={(e) => {
+                              const { displayValue } = handleNumberInputChange(e.target.value, false);
+                              setEditingItem({ ...editingItem, quantity: displayValue });
+                            }}
                             className="w-24 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0"
                           />
                         ) : (
                           <span className={`font-bold ${item.quantity <= (item.reorderPoint || 0) ? 'text-red-600' : 'text-green-600'}`}>
-                            {item.quantity}
+                            {formatNumber(item.quantity)}
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
                         {editingItem?.productId === item.productId ? (
                           <input
-                            type="number"
-                            step="1"
-                            min="0"
+                            type="text"
                             value={editingItem.reorderPoint}
-                            onChange={(e) => setEditingItem({ ...editingItem, reorderPoint: e.target.value })}
+                            onChange={(e) => {
+                              const { displayValue } = handleNumberInputChange(e.target.value, false);
+                              setEditingItem({ ...editingItem, reorderPoint: displayValue });
+                            }}
                             className="w-24 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0"
                           />
                         ) : (
-                          <span>{item.reorderPoint || '—'}</span>
+                          <span>{item.reorderPoint ? formatNumber(item.reorderPoint) : '—'}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary">
                         {editingItem?.productId === item.productId ? (
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
                             value={editingItem.costCents}
-                            onChange={(e) => setEditingItem({ ...editingItem, costCents: e.target.value })}
+                            onChange={(e) => {
+                              const { displayValue } = handleNumberInputChange(e.target.value, true);
+                              setEditingItem({ ...editingItem, costCents: displayValue });
+                            }}
                             className="w-28 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0.00"
                             required
                           />
                         ) : (
-                          <span>₦{item.costCents ? (item.costCents / 100).toFixed(2) : '—'}</span>
+                          <span>{item.costCents ? formatCurrency(item.costCents) : '—'}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-primary font-semibold">
                         {editingItem?.productId === item.productId ? (
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
                             value={editingItem.salesPriceCents}
-                            onChange={(e) => setEditingItem({ ...editingItem, salesPriceCents: e.target.value })}
+                            onChange={(e) => {
+                              const { displayValue } = handleNumberInputChange(e.target.value, true);
+                              setEditingItem({ ...editingItem, salesPriceCents: displayValue });
+                            }}
                             className="w-28 rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-3 py-2 text-sm font-medium theme-text-primary focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
                             placeholder="0.00"
                             required
                           />
                         ) : (
-                          <span>₦{item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : '—')}</span>
+                          <span>{item.salesPriceCents ? formatCurrency(item.salesPriceCents) : (item.product.priceCents ? formatCurrency(item.product.priceCents) : '—')}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap theme-text-secondary text-sm">
@@ -838,10 +847,10 @@ export function AddInventoryPage() {
                           <button
                             onClick={() => setEditingItem({
                               productId: item.productId,
-                              quantity: item.quantity.toString(),
-                              reorderPoint: item.reorderPoint ? item.reorderPoint.toString() : '',
-                              costCents: item.costCents ? (item.costCents / 100).toFixed(2) : '',
-                              salesPriceCents: item.salesPriceCents ? (item.salesPriceCents / 100).toFixed(2) : (item.product.priceCents ? (item.product.priceCents / 100).toFixed(2) : ''),
+                              quantity: formatNumber(item.quantity),
+                              reorderPoint: item.reorderPoint ? formatNumber(item.reorderPoint) : '',
+                              costCents: item.costCents ? formatNumber(item.costCents / 100, 2) : '',
+                              salesPriceCents: item.salesPriceCents ? formatNumber(item.salesPriceCents / 100, 2) : (item.product.priceCents ? formatNumber(item.product.priceCents / 100, 2) : ''),
                             })}
                             className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:from-blue-600 hover:to-blue-700 hover:shadow-xl hover:scale-105 active:scale-95"
                             title="Edit inventory item - Click to edit quantity, reorder point, cost price, and selling price"
