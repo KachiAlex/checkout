@@ -200,12 +200,6 @@ export function InventoryPage() {
     if (!editingItem || !accessToken) return;
 
     try {
-      const locationId = effectiveLocationId || await getEffectiveLocationId();
-      if (!locationId) {
-        toast.error('Location not set');
-        return;
-      }
-
       // Validate required fields
       if (!editingItem.costCents || !editingItem.salesPriceCents) {
         toast.error('Cost price and selling price are required');
@@ -223,11 +217,13 @@ export function InventoryPage() {
       // Get current inventory to preserve values if not being updated
       const currentItem = inventory.find(inv => inv.productId === productId);
       
+      // Don't send locationId - let backend resolve it from user context
+      // This avoids UUID validation errors
       await axios.put(
         `${API_URL}/api/v1/inventory/item`,
         {
           productId,
-          locationId,
+          // locationId will be resolved by backend from user context
           quantity: editingItem.quantity ? parseInt(editingItem.quantity, 10) : (currentItem?.quantity || 0),
           reorderPoint: editingItem.reorderPoint ? parseInt(editingItem.reorderPoint, 10) : (currentItem?.reorderPoint || undefined),
           costCents,
@@ -240,7 +236,9 @@ export function InventoryPage() {
       setEditingItem(null);
       loadInventory();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update inventory item');
+      console.error('Update error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update inventory item';
+      toast.error(errorMessage);
     }
   };
 
