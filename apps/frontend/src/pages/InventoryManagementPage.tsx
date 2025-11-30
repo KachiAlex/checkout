@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { API_URL } from '../config';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { handleNumberInputChange, parseFormattedNumber } from '../utils/numberFormat';
 
 interface InventoryStock {
   id: string;
@@ -264,23 +265,26 @@ export function InventoryManagementPage() {
 
     try {
       const quantity = parseInt(inventoryForm.quantity, 10);
-      const costCents = Math.round(parseFloat(inventoryForm.costCents) * 100);
-      const salesPriceCents = Math.round(parseFloat(inventoryForm.salesPriceCents) * 100);
+      const parsedCostPrice = parseFormattedNumber(inventoryForm.costCents);
+      const parsedSalesPrice = parseFormattedNumber(inventoryForm.salesPriceCents);
+      
+      const costCents = Math.round(parsedCostPrice * 100);
+      const salesPriceCents = Math.round(parsedSalesPrice * 100);
       // Use salesPriceCents as priceCents for backward compatibility
       const priceCents = salesPriceCents;
 
-      if (isNaN(quantity) || quantity < 0) {
+      if (isNaN(quantity) || quantity <= 0) {
         toast.error('Invalid quantity');
         return;
       }
 
-      if (isNaN(costCents) || costCents < 0) {
-        toast.error('Invalid cost price');
+      if (parsedCostPrice <= 0) {
+        toast.error('Invalid cost price. Please enter a valid amount greater than 0.');
         return;
       }
 
-      if (isNaN(salesPriceCents) || salesPriceCents < 0) {
-        toast.error('Invalid selling price');
+      if (parsedSalesPrice <= 0) {
+        toast.error('Invalid selling price. Please enter a valid amount greater than 0.');
         return;
       }
 
@@ -545,11 +549,12 @@ export function InventoryManagementPage() {
                   Cost Price (₦) *
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={inventoryForm.costCents}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, costCents: e.target.value })}
+                  onChange={(e) => {
+                    const { displayValue } = handleNumberInputChange(e.target.value, true);
+                    setInventoryForm({ ...inventoryForm, costCents: displayValue });
+                  }}
                   className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0.00"
                   required
@@ -560,11 +565,12 @@ export function InventoryManagementPage() {
                   Selling Price (₦) *
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={inventoryForm.salesPriceCents}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, salesPriceCents: e.target.value })}
+                  onChange={(e) => {
+                    const { displayValue } = handleNumberInputChange(e.target.value, true);
+                    setInventoryForm({ ...inventoryForm, salesPriceCents: displayValue });
+                  }}
                   className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0.00"
                   required
