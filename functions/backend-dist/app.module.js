@@ -9,6 +9,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const throttler_1 = require("@nestjs/throttler");
+const core_1 = require("@nestjs/core");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const locations_module_1 = require("./locations/locations.module");
@@ -42,6 +44,12 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
                 envFilePath: '.env',
             }),
+            throttler_1.ThrottlerModule.forRoot([
+                {
+                    ttl: 60000,
+                    limit: 10,
+                },
+            ]),
             firestore_module_1.FirestoreModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
@@ -65,6 +73,12 @@ exports.AppModule = AppModule = __decorate([
             returns_module_1.ReturnsModule,
             payment_settings_module_1.PaymentSettingsModule,
             tax_settings_module_1.TaxSettingsModule,
+        ],
+        providers: [
+            {
+                provide: core_1.APP_GUARD,
+                useClass: throttler_1.ThrottlerGuard,
+            },
         ],
     })
 ], AppModule);

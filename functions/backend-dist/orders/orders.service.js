@@ -17,13 +17,15 @@ const orders_repository_1 = require("./orders.repository");
 const customers_service_1 = require("../customers/customers.service");
 const locations_repository_1 = require("../locations/locations.repository");
 const users_repository_1 = require("../users/users.repository");
+const products_service_1 = require("../products/products.service");
 let OrdersService = class OrdersService {
-    constructor(ordersRepository, inventoryService, customersService, locationsRepository, usersRepository) {
+    constructor(ordersRepository, inventoryService, customersService, locationsRepository, usersRepository, productsService) {
         this.ordersRepository = ordersRepository;
         this.inventoryService = inventoryService;
         this.customersService = customersService;
         this.locationsRepository = locationsRepository;
         this.usersRepository = usersRepository;
+        this.productsService = productsService;
     }
     async create(createOrderDto, userId, tenantId, userLocationId) {
         const existingOrder = await this.ordersRepository.findByUuid(createOrderDto.uuid);
@@ -47,6 +49,7 @@ let OrdersService = class OrdersService {
                 locationId = locations[0].id;
             }
         }
+        await this.validateOrderPrices(createOrderDto, locationId, tenantId);
         const orderNumber = await this.generateOrderNumber(locationId);
         if (!createOrderDto.isHeld) {
             await this.validateAndDecrementInventory({ ...createOrderDto, locationId });
@@ -76,6 +79,17 @@ let OrdersService = class OrdersService {
     }
     async findByUuid(uuid) {
         return this.ordersRepository.findByUuid(uuid);
+    }
+    async validateOrderPrices(dto, locationId, tenantId) {
+        for (const item of dto.items) {
+            const product = await this.productsService.findOne(item.productId, tenantId);
+            const inventoryRecord = await this.inventoryService.getInventoryRecord(item.productId, locationId);
+            const expectedPriceCents = inventoryRecord?.salesPriceCents ?? product.priceCents;
+            const priceDifference = Math.abs(item.priceCents - expectedPriceCents);
+            if (priceDifference > 1) {
+                console.warn(`Price mismatch for product ${item.productId}: expected ${expectedPriceCents}, got ${item.priceCents}. Order UUID: ${dto.uuid}`);
+            }
+        }
     }
     async validateAndDecrementInventory(dto) {
         for (const item of dto.items) {
@@ -221,6 +235,7 @@ exports.OrdersService = OrdersService = __decorate([
         inventory_service_1.InventoryService,
         customers_service_1.CustomersService,
         locations_repository_1.LocationsRepository,
-        users_repository_1.UsersRepository])
+        users_repository_1.UsersRepository,
+        products_service_1.ProductsService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

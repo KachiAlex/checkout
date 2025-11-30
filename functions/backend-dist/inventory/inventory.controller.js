@@ -29,7 +29,10 @@ let InventoryController = class InventoryController {
         this.locationsRepository = locationsRepository;
     }
     async getStock(locationId, req) {
-        const tenantId = req.user?.tenantId;
+        if (!req.user || !req.user.tenantId) {
+            throw new common_1.BadRequestException('User or tenantId not found in request');
+        }
+        const tenantId = req.user.tenantId;
         const location = await this.locationsRepository.findById(locationId);
         if (!location) {
             throw new common_1.BadRequestException(`Location with ID ${locationId} not found`);

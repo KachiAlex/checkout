@@ -24,10 +24,10 @@ __decorate([
     __metadata("design:type", String)
 ], LoginDto.prototype, "tenantSlug", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'User PIN or passphrase (4-64 characters)', example: '1234' }),
+    (0, swagger_1.ApiProperty)({ description: 'User PIN or passphrase (6-64 characters)', example: '123456' }),
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(4),
+    (0, class_validator_1.MinLength)(6),
     (0, class_validator_1.MaxLength)(64),
     __metadata("design:type", String)
 ], LoginDto.prototype, "pin", void 0);

@@ -110,6 +110,9 @@ let InventoryService = class InventoryService {
         const inventory = await this.inventoryRepository.getInventory(productId, locationId);
         return inventory?.quantity ?? 0;
     }
+    async getInventoryRecord(productId, locationId) {
+        return this.inventoryRepository.getInventory(productId, locationId);
+    }
     async adjust(adjustDto) {
         const { productId, locationId, delta, type, userId, referenceId, notes, reason } = adjustDto;
         const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);

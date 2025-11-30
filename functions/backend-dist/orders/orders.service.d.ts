@@ -4,16 +4,19 @@ import { OrdersRepository, OrderRecord } from './orders.repository';
 import { CustomersService } from '../customers/customers.service';
 import { LocationsRepository } from '../locations/locations.repository';
 import { UsersRepository } from '../users/users.repository';
+import { ProductsService } from '../products/products.service';
 export declare class OrdersService {
     private readonly ordersRepository;
     private readonly inventoryService;
     private readonly customersService;
     private readonly locationsRepository;
     private readonly usersRepository;
-    constructor(ordersRepository: OrdersRepository, inventoryService: InventoryService, customersService: CustomersService, locationsRepository: LocationsRepository, usersRepository: UsersRepository);
+    private readonly productsService;
+    constructor(ordersRepository: OrdersRepository, inventoryService: InventoryService, customersService: CustomersService, locationsRepository: LocationsRepository, usersRepository: UsersRepository, productsService: ProductsService);
     create(createOrderDto: CreateOrderDto, userId: string, tenantId: string, userLocationId?: string): Promise<OrderRecord>;
     findOne(id: string): Promise<OrderRecord>;
     findByUuid(uuid: string): Promise<OrderRecord | null>;
+    private validateOrderPrices;
     private validateAndDecrementInventory;
     private generateOrderNumber;
     update(id: string, updateDto: {

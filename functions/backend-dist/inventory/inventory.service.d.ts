@@ -51,6 +51,7 @@ export declare class InventoryService {
     })[]>;
     getBatchInventory(productId: string, locationId: string): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
     getStockByProduct(productId: string, locationId: string): Promise<number>;
+    getInventoryRecord(productId: string, locationId: string): Promise<import("./inventory.repository").InventoryRecord>;
     adjust(adjustDto: AdjustInventoryDto): Promise<InventoryTransactionRecord>;
     decrementForSale(productId: string, locationId: string, quantity: number, orderId: string, userId?: string): Promise<void>;
     incrementForReturn(productId: string, locationId: string, quantity: number, returnId: string, userId?: string): Promise<void>;

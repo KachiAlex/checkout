@@ -108,7 +108,7 @@ let AuthService = class AuthService {
         return null;
     }
     async login(loginDto) {
-        console.log(`[AuthService] Login attempt with PIN: ${loginDto.pin?.substring(0, 2)}**`);
+        console.log(`[AuthService] Login attempt for tenant: ${loginDto.tenantSlug}`);
         const tenant = await this.tenantsRepository.findBySlug(loginDto.tenantSlug);
         if (!tenant) {
             throw new common_1.UnauthorizedException('Invalid tenant');
@@ -118,10 +118,10 @@ let AuthService = class AuthService {
         }
         const user = await this.validateUser(loginDto.pin, tenant.id, loginDto.deviceId);
         if (!user) {
-            console.log(`[AuthService] Login failed: Invalid PIN`);
+            console.log(`[AuthService] Login failed for tenant: ${loginDto.tenantSlug}`);
             throw new common_1.UnauthorizedException('Invalid PIN');
         }
-        console.log(`[AuthService] Login successful for user: ${user.name}`);
+        console.log(`[AuthService] Login successful for user: ${user.id} (${user.name})`);
         const payload = {
             sub: user.id,
             role: user.role,
