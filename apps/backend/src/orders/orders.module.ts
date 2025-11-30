@@ -6,9 +6,10 @@ import { OrdersRepository } from './orders.repository';
 import { CustomersModule } from '../customers/customers.module';
 import { LocationsModule } from '../locations/locations.module';
 import { UsersModule } from '../users/users.module';
+import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [InventoryModule, CustomersModule, LocationsModule, UsersModule],
+  imports: [InventoryModule, CustomersModule, LocationsModule, UsersModule, ProductsModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrdersRepository],
   exports: [OrdersService, OrdersRepository],

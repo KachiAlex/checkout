@@ -123,6 +123,13 @@ export class InventoryService {
     return inventory?.quantity ?? 0;
   }
 
+  /**
+   * Get inventory record for a product at a location (for price validation)
+   */
+  async getInventoryRecord(productId: string, locationId: string) {
+    return this.inventoryRepository.getInventory(productId, locationId);
+  }
+
   async adjust(adjustDto: AdjustInventoryDto): Promise<InventoryTransactionRecord> {
     const { productId, locationId, delta, type, userId, referenceId, notes, reason } = adjustDto;
 

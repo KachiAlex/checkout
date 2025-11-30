@@ -6,7 +6,25 @@ const FIREBASE_STORAGE_BUCKET = 'checkout-77d99.firebasestorage.app';
 // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedPath}?alt=media
 const DEFAULT_WINDOWS_INSTALLER_URL = `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_STORAGE_BUCKET}/o/Checkout%20POS%20Setup%201.0.0.exe?alt=media`;
 
-export const API_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_BASE).replace(/\/+$/, '');
+// In development, use localhost backend directly or via proxy
+// In production or when VITE_API_URL is explicitly set, use that value or default to Firebase
+const getApiUrl = () => {
+  // If explicitly set via env var, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+  }
+  
+  // In development, use empty string to leverage Vite proxy (forwards /api to localhost:3000)
+  // This allows relative paths like /api/v1/... which Vite will proxy
+  if (import.meta.env.DEV) {
+    return '';
+  }
+  
+  // In production, use Firebase
+  return DEFAULT_API_BASE;
+};
+
+export const API_URL = getApiUrl();
 
 export const DOWNLOAD_LINKS = {
   windows: import.meta.env.VITE_WINDOWS_INSTALLER_URL?.trim() || DEFAULT_WINDOWS_INSTALLER_URL,
@@ -15,8 +33,10 @@ export const DOWNLOAD_LINKS = {
   ios: import.meta.env.VITE_IOS_APP_URL?.trim() || null,
 } as const;
 
+// Debug logging
 if (import.meta.env.DEV) {
-  console.log('[config] API_URL (dev)', API_URL);
+  console.log('[config] API_URL (dev mode):', API_URL || '(empty - using Vite proxy to localhost:3000)');
+  console.log('[config] Example request:', `${API_URL || ''}/api/v1/auth/login`);
   console.log('[config] Downloads', DOWNLOAD_LINKS);
 } else {
   console.log('[config] API_URL (prod)', API_URL);

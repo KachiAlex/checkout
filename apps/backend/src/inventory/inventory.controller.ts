@@ -27,7 +27,11 @@ export class InventoryController {
     @Param('location_id') locationId: string,
     @Request() req: any,
   ) {
-    const tenantId = req.user?.tenantId;
+    if (!req.user || !req.user.tenantId) {
+      throw new BadRequestException('User or tenantId not found in request');
+    }
+    
+    const tenantId = req.user.tenantId;
     
     // Verify location belongs to tenant
     const location = await this.locationsRepository.findById(locationId);

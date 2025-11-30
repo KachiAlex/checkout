@@ -1,5 +1,6 @@
 import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
@@ -13,15 +14,19 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @Throttle(5, 900000) // 5 requests per 15 minutes (900 seconds = 900000 ms)
   @ApiOperation({ summary: 'Login with tenant slug and PIN' })
   @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
   @Post('superadmin/login')
+  @Throttle(5, 900000) // 5 requests per 15 minutes (900 seconds = 900000 ms)
   @ApiOperation({ summary: 'Super admin login' })
   @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
   async superAdminLogin(@Body() loginDto: SuperAdminLoginDto) {
     return this.authService.loginSuperAdmin(loginDto);
   }
@@ -63,9 +68,11 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Throttle(10, 60000) // 10 requests per minute (60 seconds = 60000 ms)
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
   async refresh(@Body() body: { refreshToken: string }) {
     return this.authService.refreshToken(body.refreshToken);
   }

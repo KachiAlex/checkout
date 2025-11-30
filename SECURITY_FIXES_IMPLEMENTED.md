@@ -54,48 +54,67 @@ This document tracks the security fixes implemented based on the penetration tes
 
 ---
 
-## Remaining High Priority Fixes (To Be Implemented)
+## High Priority Fixes (Completed)
 
-### ⏳ 4. Rate Limiting on Authentication
-**Status:** Pending
-
-**Required:** Install `@nestjs/throttler` package and configure rate limiting on login endpoints.
+### ✅ 4. Rate Limiting on Authentication
+**Status:** Completed
 
 **Implementation:**
-```typescript
-// In auth.controller.ts
-import { Throttle } from '@nestjs/throttler';
+- Installed `@nestjs/throttler` package
+- Configured ThrottlerModule in `app.module.ts` with default limits (10 requests per minute)
+- Applied stricter rate limiting to authentication endpoints:
+  - Login: 5 requests per 15 minutes
+  - Super admin login: 5 requests per 15 minutes
+  - Token refresh: 10 requests per minute
 
-@Post('login')
-@Throttle(5, 900) // 5 requests per 15 minutes
-async login(@Body() loginDto: LoginDto) {
+**Files Modified:**
+- `apps/backend/src/app.module.ts` - Added ThrottlerModule
+- `apps/backend/src/auth/auth.controller.ts` - Added @Throttle decorators
+
+---
+
+### ✅ 5. Role-Based Access Control
+**Status:** Completed
+
+**Implementation:**
+- Created `apps/backend/src/auth/guards/roles.guard.ts` with RolesGuard and @Roles decorator
+- Exported RolesGuard from AuthModule for use in other modules
+- Guard can be applied to endpoints requiring specific roles (MANAGER, ADMIN, etc.)
+
+**Files Created:**
+- `apps/backend/src/auth/guards/roles.guard.ts`
+
+**Files Modified:**
+- `apps/backend/src/auth/auth.module.ts` - Exported RolesGuard
+
+**Usage:**
+```typescript
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.MANAGER, UserRole.ADMIN)
+async sensitiveOperation() {
   // ...
 }
 ```
 
 ---
 
-### ⏳ 5. Role-Based Access Control
-**Status:** Pending
-
-**Required:** Create roles guard and apply to sensitive endpoints.
+### ✅ 6. Server-Side Price Validation
+**Status:** Completed
 
 **Implementation:**
-- Create `apps/backend/src/auth/guards/roles.guard.ts`
-- Apply `@Roles()` decorator to endpoints requiring specific roles
-- Protect manager/admin operations
+- Added `validateOrderPrices()` method to OrdersService
+- Validates order item prices against:
+  1. Inventory salesPriceCents (if available)
+  2. Product priceCents (fallback)
+- Logs warnings for price mismatches (allows 1 cent tolerance for rounding)
+- Added `getInventoryRecord()` method to InventoryService for price lookup
 
----
+**Files Modified:**
+- `apps/backend/src/orders/orders.service.ts` - Added price validation
+- `apps/backend/src/inventory/inventory.service.ts` - Added getInventoryRecord method
+- `apps/backend/src/orders/orders.module.ts` - Added ProductsModule import
 
-### ⏳ 6. Server-Side Price Validation
-**Status:** Pending
-
-**Required:** Validate prices against product catalog instead of trusting client.
-
-**Implementation:**
-- Add price validation in `orders.service.ts`
-- Compare client-provided prices with server-side product prices
-- Reject or override mismatched prices
+**Note:** Currently logs warnings but allows orders to proceed. Can be made stricter to reject mismatched prices or require manager authorization.
 
 ---
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BrandsService } from './brands.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -15,6 +15,9 @@ export class BrandsController {
   @ApiOperation({ summary: 'Get all brands for tenant' })
   @ApiResponse({ status: 200, description: 'List of brands' })
   async findAll(@Request() req: any) {
+    if (!req.user?.tenantId) {
+      throw new UnauthorizedException('User or tenantId not found in request');
+    }
     return this.brandsService.findAll(req.user.tenantId);
   }
 

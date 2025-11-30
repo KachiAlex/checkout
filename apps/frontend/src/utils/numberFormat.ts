@@ -86,7 +86,7 @@ export function formatNumberInput(value: string, allowDecimals: boolean = false)
 }
 
 /**
- * Handle number input change - formats as user types
+ * Handle number input change - allows flexible typing, formats on blur
  * @param value - Input value
  * @param allowDecimals - Whether to allow decimals
  * @returns Object with formatted display value and raw numeric value
@@ -95,9 +95,47 @@ export function handleNumberInputChange(
   value: string,
   allowDecimals: boolean = false
 ): { displayValue: string; numericValue: number } {
-  const displayValue = formatNumberInput(value, allowDecimals);
-  const numericValue = parseFormattedNumber(displayValue);
+  // Allow free typing - just clean invalid characters but don't force format
+  if (!value || value === '') return { displayValue: '', numericValue: 0 };
   
-  return { displayValue, numericValue };
+  // Remove all non-numeric characters except decimal point and commas
+  let cleaned = value.replace(/[^\d.,]/g, '');
+  
+  // Only allow one decimal point
+  if (allowDecimals) {
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    // Limit decimal places to 2 while typing
+    if (parts.length === 2 && parts[1].length > 2) {
+      cleaned = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+  } else {
+    // Remove decimal point if decimals not allowed
+    cleaned = cleaned.replace(/\./g, '');
+  }
+  
+  // Return cleaned value for display (allows typing without forcing commas)
+  const numericValue = parseFormattedNumber(cleaned);
+  return { displayValue: cleaned, numericValue };
+}
+
+/**
+ * Format number input on blur - adds commas for display
+ * @param value - Input value to format
+ * @param allowDecimals - Whether to allow decimals
+ * @returns Formatted string with commas
+ */
+export function formatNumberInputOnBlur(
+  value: string,
+  allowDecimals: boolean = false
+): string {
+  if (!value || value.trim() === '') return '';
+  
+  const parsed = parseFormattedNumber(value);
+  if (isNaN(parsed) || parsed === 0) return '';
+  
+  return formatNumber(parsed, allowDecimals ? 2 : 0);
 }
 

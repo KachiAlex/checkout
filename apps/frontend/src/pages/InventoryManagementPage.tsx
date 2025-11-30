@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { API_URL } from '../config';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { handleNumberInputChange, parseFormattedNumber } from '../utils/numberFormat';
+import { handleNumberInputChange, parseFormattedNumber, formatNumberInputOnBlur } from '../utils/numberFormat';
 
 interface InventoryStock {
   id: string;
@@ -555,6 +555,12 @@ export function InventoryManagementPage() {
                     const { displayValue } = handleNumberInputChange(e.target.value, true);
                     setInventoryForm({ ...inventoryForm, costCents: displayValue });
                   }}
+                  onBlur={(e) => {
+                    const formatted = formatNumberInputOnBlur(e.target.value, true);
+                    if (formatted) {
+                      setInventoryForm({ ...inventoryForm, costCents: formatted });
+                    }
+                  }}
                   className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0.00"
                   required
@@ -570,6 +576,12 @@ export function InventoryManagementPage() {
                   onChange={(e) => {
                     const { displayValue } = handleNumberInputChange(e.target.value, true);
                     setInventoryForm({ ...inventoryForm, salesPriceCents: displayValue });
+                  }}
+                  onBlur={(e) => {
+                    const formatted = formatNumberInputOnBlur(e.target.value, true);
+                    if (formatted) {
+                      setInventoryForm({ ...inventoryForm, salesPriceCents: formatted });
+                    }
                   }}
                   className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   placeholder="0.00"
