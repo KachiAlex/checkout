@@ -72,11 +72,11 @@ export class OrdersController {
   @ApiOperation({ summary: 'Get all orders (sales)' })
   @ApiResponse({ status: 200, description: 'List of orders' })
   async findAll(
+    @Request() req: any,
     @Query('location_id') locationId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('status') status?: string,
-    @Request() req: any,
   ) {
     // Ensure location belongs to tenant if provided
     if (locationId) {
@@ -89,7 +89,7 @@ export class OrdersController {
   @Get('held')
   @ApiOperation({ summary: 'Get all held/suspended orders' })
   @ApiResponse({ status: 200, description: 'List of held orders' })
-  async findHeldOrders(@Query('location_id') locationId?: string, @Request() req: any) {
+  async findHeldOrders(@Request() req: any, @Query('location_id') locationId?: string) {
     // Ensure location belongs to tenant if provided
     if (locationId) {
       await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);

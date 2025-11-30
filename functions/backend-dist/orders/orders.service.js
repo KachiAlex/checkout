@@ -105,16 +105,33 @@ let OrdersService = class OrdersService {
             notes: updateDto.notes ?? order.notes,
         });
     }
-    async findAll(locationId, from, to, status) {
-        return this.ordersRepository.list({
-            locationId,
+    async findAll(locationId, from, to, status, tenantId) {
+        let filteredLocationId = locationId;
+        if (tenantId && !locationId) {
+            const locations = await this.locationsRepository.findByTenant(tenantId);
+            const locationIds = locations.map(loc => loc.id);
+        }
+        const orders = await this.ordersRepository.list({
+            locationId: filteredLocationId,
             from: from ? new Date(from) : undefined,
             to: to ? new Date(to) : undefined,
             status: status ? status : undefined,
         });
+        if (tenantId && !locationId) {
+            const locations = await this.locationsRepository.findByTenant(tenantId);
+            const locationIds = new Set(locations.map(loc => loc.id));
+            return orders.filter(order => locationIds.has(order.locationId));
+        }
+        return orders;
     }
-    async findHeldOrders(locationId) {
-        return this.ordersRepository.findHeldOrders(locationId);
+    async findHeldOrders(locationId, tenantId) {
+        const orders = await this.ordersRepository.findHeldOrders(locationId);
+        if (tenantId && !locationId) {
+            const locations = await this.locationsRepository.findByTenant(tenantId);
+            const locationIds = new Set(locations.map(loc => loc.id));
+            return orders.filter(order => locationIds.has(order.locationId));
+        }
+        return orders;
     }
     async holdOrder(id) {
         const order = await this.findOne(id);
@@ -136,6 +153,22 @@ let OrdersService = class OrdersService {
             isHeld: false,
             heldAt: undefined,
         });
+    }
+    async verifyTenantAccess(order, tenantId) {
+        const location = await this.locationsRepository.findById(order.locationId);
+        if (!location) {
+            return false;
+        }
+        return location.tenantId === tenantId;
+    }
+    async verifyLocationAccess(locationId, tenantId) {
+        const location = await this.locationsRepository.findById(locationId);
+        if (!location) {
+            throw new common_1.NotFoundException(`Location with ID ${locationId} not found`);
+        }
+        if (location.tenantId !== tenantId) {
+            throw new common_1.ForbiddenException('Access denied to this location');
+        }
     }
     async completeHeldOrder(id, tenantId) {
         const order = await this.findOne(id);

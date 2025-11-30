@@ -129,9 +129,9 @@ export class InventoryController {
   @ApiResponse({ status: 403, description: 'Access denied to this location' })
   async getTransactions(
     @Param('location_id') locationId: string,
+    @Request() req: any,
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Request() req: any,
   ) {
     const tenantId = req.user?.tenantId;
     

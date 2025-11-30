@@ -20,10 +20,12 @@ export declare class OrdersService {
         status?: string;
         notes?: string;
     }): Promise<OrderRecord>;
-    findAll(locationId?: string, from?: string, to?: string, status?: string): Promise<OrderRecord[]>;
-    findHeldOrders(locationId?: string): Promise<OrderRecord[]>;
+    findAll(locationId?: string, from?: string, to?: string, status?: string, tenantId?: string): Promise<OrderRecord[]>;
+    findHeldOrders(locationId?: string, tenantId?: string): Promise<OrderRecord[]>;
     holdOrder(id: string): Promise<OrderRecord>;
     recallOrder(id: string): Promise<OrderRecord>;
+    verifyTenantAccess(order: OrderRecord, tenantId: string): Promise<boolean>;
+    verifyLocationAccess(locationId: string, tenantId: string): Promise<void>;
     completeHeldOrder(id: string, tenantId: string): Promise<OrderRecord>;
     private awardLoyaltyPoints;
 }

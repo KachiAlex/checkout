@@ -25,22 +25,48 @@ let OrdersController = class OrdersController {
     async create(createOrderDto, req) {
         return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId, req.user.locationId);
     }
-    async findOne(id) {
-        return this.ordersService.findOne(id);
+    async findOne(id, req) {
+        const order = await this.ordersService.findOne(id);
+        const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
+        return order;
     }
-    async update(id, updateDto) {
+    async update(id, updateDto, req) {
+        const order = await this.ordersService.findOne(id);
+        const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
         return this.ordersService.update(id, updateDto);
     }
-    async findAll(locationId, from, to, status) {
-        return this.ordersService.findAll(locationId, from, to, status);
+    async findAll(req, locationId, from, to, status) {
+        if (locationId) {
+            await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+        }
+        return this.ordersService.findAll(locationId, from, to, status, req.user.tenantId);
     }
-    async findHeldOrders(locationId) {
-        return this.ordersService.findHeldOrders(locationId);
+    async findHeldOrders(req, locationId) {
+        if (locationId) {
+            await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+        }
+        return this.ordersService.findHeldOrders(locationId, req.user.tenantId);
     }
-    async holdOrder(id) {
+    async holdOrder(id, req) {
+        const order = await this.ordersService.findOne(id);
+        const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
         return this.ordersService.holdOrder(id);
     }
-    async recallOrder(id) {
+    async recallOrder(id, req) {
+        const order = await this.ordersService.findOne(id);
+        const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
         return this.ordersService.recallOrder(id);
     }
     async completeHeldOrder(id, req) {
@@ -64,58 +90,68 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Get order by ID' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Order found' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Order not found' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update order status' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Order updated' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "update", null);
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get all orders (sales)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'List of orders' }),
-    __param(0, (0, common_1.Query)('location_id')),
-    __param(1, (0, common_1.Query)('from')),
-    __param(2, (0, common_1.Query)('to')),
-    __param(3, (0, common_1.Query)('status')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('location_id')),
+    __param(2, (0, common_1.Query)('from')),
+    __param(3, (0, common_1.Query)('to')),
+    __param(4, (0, common_1.Query)('status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('held'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all held/suspended orders' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'List of held orders' }),
-    __param(0, (0, common_1.Query)('location_id')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('location_id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "findHeldOrders", null);
 __decorate([
     (0, common_1.Post)(':id/hold'),
     (0, swagger_1.ApiOperation)({ summary: 'Hold/suspend an order' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Order held' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "holdOrder", null);
 __decorate([
     (0, common_1.Post)(':id/recall'),
     (0, swagger_1.ApiOperation)({ summary: 'Recall a held order' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Order recalled' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "recallOrder", null);
 __decorate([

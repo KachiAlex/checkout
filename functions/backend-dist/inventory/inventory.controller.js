@@ -30,9 +30,24 @@ let InventoryController = class InventoryController {
     }
     async getStock(locationId, req) {
         const tenantId = req.user?.tenantId;
+        const location = await this.locationsRepository.findById(locationId);
+        if (!location) {
+            throw new common_1.BadRequestException(`Location with ID ${locationId} not found`);
+        }
+        if (location.tenantId !== tenantId) {
+            throw new common_1.ForbiddenException('Access denied to this location');
+        }
         return this.inventoryService.getStock(locationId, tenantId);
     }
-    async getBatchInventory(locationId, productId) {
+    async getBatchInventory(locationId, productId, req) {
+        const tenantId = req.user?.tenantId;
+        const location = await this.locationsRepository.findById(locationId);
+        if (!location) {
+            throw new common_1.BadRequestException(`Location with ID ${locationId} not found`);
+        }
+        if (location.tenantId !== tenantId) {
+            throw new common_1.ForbiddenException('Access denied to this location');
+        }
         return this.inventoryService.getBatchInventory(productId, locationId);
     }
     async adjust(adjustDto, req) {
@@ -73,7 +88,15 @@ let InventoryController = class InventoryController {
         };
         return this.inventoryService.adjust(adjustedDto);
     }
-    async getTransactions(locationId, from, to) {
+    async getTransactions(locationId, req, from, to) {
+        const tenantId = req.user?.tenantId;
+        const location = await this.locationsRepository.findById(locationId);
+        if (!location) {
+            throw new common_1.BadRequestException(`Location with ID ${locationId} not found`);
+        }
+        if (location.tenantId !== tenantId) {
+            throw new common_1.ForbiddenException('Access denied to this location');
+        }
         return this.inventoryService.getTransactions(locationId, from, to);
     }
     async createInventoryItem(createDto, req) {
@@ -132,6 +155,7 @@ __decorate([
     (0, common_1.Get)(':location_id/stock'),
     (0, swagger_1.ApiOperation)({ summary: 'Get inventory stock for a location' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Inventory stock list' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied to this location' }),
     __param(0, (0, common_1.Param)('location_id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -142,10 +166,12 @@ __decorate([
     (0, common_1.Get)(':location_id/batch/:product_id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get batch inventory for a product' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Batch inventory list' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied to this location' }),
     __param(0, (0, common_1.Param)('location_id')),
     __param(1, (0, common_1.Param)('product_id')),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], InventoryController.prototype, "getBatchInventory", null);
 __decorate([
@@ -162,11 +188,13 @@ __decorate([
     (0, common_1.Get)(':location_id/transactions'),
     (0, swagger_1.ApiOperation)({ summary: 'Get inventory transactions for a location' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Inventory transactions list' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied to this location' }),
     __param(0, (0, common_1.Param)('location_id')),
-    __param(1, (0, common_1.Query)('from')),
-    __param(2, (0, common_1.Query)('to')),
+    __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Query)('from')),
+    __param(3, (0, common_1.Query)('to')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, Object, String, String]),
     __metadata("design:returntype", Promise)
 ], InventoryController.prototype, "getTransactions", null);
 __decorate([
