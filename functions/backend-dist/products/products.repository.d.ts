@@ -45,6 +45,7 @@ export declare class ProductsRepository {
     findById(id: string, tenantId: string): Promise<ProductRecord | null>;
     findByBarcode(barcode: string, tenantId: string): Promise<ProductRecord | null>;
     findBySku(sku: string, tenantId: string): Promise<ProductRecord | null>;
+    findByIds(ids: string[], tenantId: string): Promise<Map<string, ProductRecord>>;
     create(data: CreateProductInput): Promise<ProductRecord>;
     update(id: string, tenantId: string, update: Partial<ProductRecord>): Promise<ProductRecord>;
     private toRecord;

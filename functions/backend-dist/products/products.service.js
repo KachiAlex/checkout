@@ -30,6 +30,9 @@ let ProductsService = class ProductsService {
         }
         return product;
     }
+    async findByIds(ids, tenantId) {
+        return this.productsRepository.findByIds(ids, tenantId);
+    }
     async findByBarcode(barcode, tenantId) {
         const product = await this.productsRepository.findByBarcode(barcode, tenantId);
         if (product && product.active) {

@@ -34,6 +34,12 @@ let FirestoreService = FirestoreService_1 = class FirestoreService {
     batch() {
         return this.firestore.batch();
     }
+    async getAll(...documentRefs) {
+        if (documentRefs.length === 0) {
+            return [];
+        }
+        return this.firestore.getAll(...documentRefs);
+    }
     async healthCheck() {
         try {
             await this.firestore.listCollections();

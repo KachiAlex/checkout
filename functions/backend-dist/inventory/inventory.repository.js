@@ -117,6 +117,46 @@ let InventoryRepository = class InventoryRepository {
             throw error;
         }
     }
+    async getLastTransactionsBatch(productIds, locationId) {
+        if (productIds.length === 0) {
+            return new Map();
+        }
+        const result = new Map();
+        const uniqueProductIds = new Set(productIds);
+        try {
+            const snapshot = await this.transactionsCollection
+                .where('locationId', '==', locationId)
+                .orderBy('ts', 'desc')
+                .limit(1000)
+                .get();
+            const transactionsByProduct = new Map();
+            for (const doc of snapshot.docs) {
+                const transaction = this.toTransactionRecord(doc.id, doc.data());
+                if (!uniqueProductIds.has(transaction.productId)) {
+                    continue;
+                }
+                const existing = transactionsByProduct.get(transaction.productId);
+                if (!existing || transaction.ts.getTime() > existing.ts.getTime()) {
+                    transactionsByProduct.set(transaction.productId, transaction);
+                }
+            }
+            return transactionsByProduct;
+        }
+        catch (error) {
+            if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+                console.warn('Firestore index not found for batch transaction fetch, using individual queries');
+                const promises = productIds.map((productId) => this.getLastTransaction(productId, locationId));
+                const transactions = await Promise.all(promises);
+                transactions.forEach((transaction, index) => {
+                    if (transaction) {
+                        result.set(productIds[index], transaction);
+                    }
+                });
+                return result;
+            }
+            throw error;
+        }
+    }
     async getAllInventory() {
         const snapshot = await this.inventoryCollection.get();
         return snapshot.docs.map((doc) => this.toInventoryRecord(doc.id, doc.data()));

@@ -34,6 +34,30 @@ let UsersRepository = class UsersRepository {
         }
         return this.toRecord(doc.id, doc.data());
     }
+    async findByIds(ids) {
+        if (ids.length === 0) {
+            return new Map();
+        }
+        const result = new Map();
+        const uniqueIds = [...new Set(ids)];
+        const chunkSize = 10;
+        const chunks = [];
+        for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+            chunks.push(uniqueIds.slice(i, i + chunkSize));
+        }
+        const promises = chunks.map(async (chunk) => {
+            const docRefs = chunk.map((id) => this.collection.doc(id));
+            const docs = await this.firestore.getAll(...docRefs);
+            return docs
+                .filter((doc) => doc.exists)
+                .map((doc) => this.toRecord(doc.id, doc.data()));
+        });
+        const allUsers = (await Promise.all(promises)).flat();
+        allUsers.forEach((user) => {
+            result.set(user.id, user);
+        });
+        return result;
+    }
     async findByDeviceId(deviceId, tenantId) {
         const snapshot = await this.collection
             .where('tenantId', '==', tenantId)

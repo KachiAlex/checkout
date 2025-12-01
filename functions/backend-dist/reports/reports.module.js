@@ -13,12 +13,14 @@ const reports_service_1 = require("./reports.service");
 const orders_module_1 = require("../orders/orders.module");
 const inventory_module_1 = require("../inventory/inventory.module");
 const users_module_1 = require("../users/users.module");
+const products_module_1 = require("../products/products.module");
+const customers_module_1 = require("../customers/customers.module");
 let ReportsModule = class ReportsModule {
 };
 exports.ReportsModule = ReportsModule;
 exports.ReportsModule = ReportsModule = __decorate([
     (0, common_1.Module)({
-        imports: [orders_module_1.OrdersModule, inventory_module_1.InventoryModule, users_module_1.UsersModule],
+        imports: [orders_module_1.OrdersModule, inventory_module_1.InventoryModule, users_module_1.UsersModule, products_module_1.ProductsModule, customers_module_1.CustomersModule],
         controllers: [reports_controller_1.ReportsController],
         providers: [reports_service_1.ReportsService],
         exports: [reports_service_1.ReportsService],

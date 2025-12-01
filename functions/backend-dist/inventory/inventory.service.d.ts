@@ -1,6 +1,5 @@
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
-import { InventoryTransactionType } from '@pos-checkout/shared';
 import { InventoryRepository, InventoryTransactionRecord } from './inventory.repository';
 import { ProductsService } from '../products/products.service';
 import { CategoriesService } from '../categories/categories.service';
@@ -15,8 +14,13 @@ export declare class InventoryService {
     private readonly batchInventoryRepository;
     private readonly usersRepository;
     constructor(inventoryRepository: InventoryRepository, productsService: ProductsService, categoriesService: CategoriesService, brandsService: BrandsService, batchInventoryRepository: BatchInventoryRepository, usersRepository: UsersRepository);
-    getStock(locationId: string, tenantId?: string): Promise<({
-        product: any;
+    getStock(locationId: string, tenantId?: string): Promise<{
+        product: {
+            id: string;
+            name: string;
+            sku: string;
+            barcode: any;
+        };
         isProductMissing: boolean;
         lastTransaction: any;
         id: string;
@@ -29,16 +33,28 @@ export declare class InventoryService {
         salesPriceCents?: number;
         createdAt: Date;
         updatedAt: Date;
-    } | {
-        product: any;
+    }[] | {
+        product: {
+            id: any;
+            name: any;
+            sku: any;
+            barcode: any;
+            description: any;
+            priceCents: any;
+        } | {
+            id: string;
+            name: string;
+            sku: string;
+            barcode: any;
+        };
         isProductMissing: boolean;
-        salesPriceCents: number;
+        salesPriceCents: any;
         costCents: number;
         lastTransaction: {
-            timestamp: Date;
-            userId: string;
+            timestamp: any;
+            userId: any;
             user: any;
-            type: InventoryTransactionType;
+            type: any;
         };
         id: string;
         productId: string;
@@ -48,7 +64,7 @@ export declare class InventoryService {
         maxStock?: number;
         createdAt: Date;
         updatedAt: Date;
-    })[]>;
+    }[]>;
     getBatchInventory(productId: string, locationId: string): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
     getStockByProduct(productId: string, locationId: string): Promise<number>;
     getInventoryRecord(productId: string, locationId: string): Promise<import("./inventory.repository").InventoryRecord>;

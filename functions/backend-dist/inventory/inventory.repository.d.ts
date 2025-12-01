@@ -37,6 +37,7 @@ export declare class InventoryRepository {
     createTransaction(record: Omit<InventoryTransactionRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryTransactionRecord>;
     listTransactions(locationId: string, from?: Date, to?: Date): Promise<InventoryTransactionRecord[]>;
     getLastTransaction(productId: string, locationId: string): Promise<InventoryTransactionRecord | null>;
+    getLastTransactionsBatch(productIds: string[], locationId: string): Promise<Map<string, InventoryTransactionRecord>>;
     getAllInventory(): Promise<InventoryRecord[]>;
     findDuplicates(): Promise<{
         key: string;

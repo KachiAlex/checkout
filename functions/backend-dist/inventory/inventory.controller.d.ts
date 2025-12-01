@@ -8,8 +8,13 @@ export declare class InventoryController {
     private readonly inventoryService;
     private readonly locationsRepository;
     constructor(inventoryService: InventoryService, locationsRepository: LocationsRepository);
-    getStock(locationId: string, req: any): Promise<({
-        product: any;
+    getStock(locationId: string, req: any): Promise<{
+        product: {
+            id: string;
+            name: string;
+            sku: string;
+            barcode: any;
+        };
         isProductMissing: boolean;
         lastTransaction: any;
         id: string;
@@ -22,16 +27,28 @@ export declare class InventoryController {
         salesPriceCents?: number;
         createdAt: Date;
         updatedAt: Date;
-    } | {
-        product: any;
+    }[] | {
+        product: {
+            id: any;
+            name: any;
+            sku: any;
+            barcode: any;
+            description: any;
+            priceCents: any;
+        } | {
+            id: string;
+            name: string;
+            sku: string;
+            barcode: any;
+        };
         isProductMissing: boolean;
-        salesPriceCents: number;
+        salesPriceCents: any;
         costCents: number;
         lastTransaction: {
-            timestamp: Date;
-            userId: string;
+            timestamp: any;
+            userId: any;
             user: any;
-            type: import("@pos-checkout/shared").InventoryTransactionType;
+            type: any;
         };
         id: string;
         productId: string;
@@ -41,7 +58,7 @@ export declare class InventoryController {
         maxStock?: number;
         createdAt: Date;
         updatedAt: Date;
-    })[]>;
+    }[]>;
     getBatchInventory(locationId: string, productId: string, req: any): Promise<import("./batch-inventory.repository").BatchInventoryRecord[]>;
     adjust(adjustDto: AdjustInventoryDto, req: any): Promise<import("./inventory.repository").InventoryTransactionRecord>;
     getTransactions(locationId: string, req: any, from?: string, to?: string): Promise<import("./inventory.repository").InventoryTransactionRecord[]>;

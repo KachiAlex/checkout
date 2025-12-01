@@ -83,4 +83,91 @@ export declare class ReportsController {
             };
         }[];
     }>;
+    getAlerts(locationId?: string, req?: any): Promise<{
+        alerts: any[];
+        locationId: string;
+        generatedAt: string;
+        totalAlerts?: undefined;
+        criticalCount?: undefined;
+        warningCount?: undefined;
+    } | {
+        alerts: {
+            type: "stockout" | "low_sales" | "customer_inactive" | "staff_performance" | "low_stock";
+            severity: "critical" | "warning" | "info";
+            title: string;
+            message: string;
+            productId?: string;
+            productName?: string;
+            customerId?: string;
+            customerName?: string;
+            staffId?: string;
+            staffName?: string;
+            daysUntilStockout?: number;
+            currentStock?: number;
+            predictedStockoutDate?: string;
+            salesDropPercent?: number;
+            daysSinceLastPurchase?: number;
+            performanceGap?: number;
+        }[];
+        locationId: string;
+        generatedAt: string;
+        totalAlerts: number;
+        criticalCount: number;
+        warningCount: number;
+    }>;
+    getFraudDetection(locationId?: string, from?: string, to?: string): Promise<{
+        from: string;
+        to: string;
+        locationId: string;
+        fraudAlerts: {
+            type: "discount_abuse" | "ghost_refund" | "high_value_void" | "midnight_sale" | "below_cost";
+            severity: "critical" | "warning" | "suspicious";
+            title: string;
+            description: string;
+            orderId?: string;
+            orderNumber?: string;
+            staffId?: string;
+            staffName?: string;
+            customerId?: string;
+            amount?: number;
+            discountPercent?: number;
+            timestamp?: string;
+        }[];
+        totalAlerts: number;
+        criticalCount: number;
+        warningCount: number;
+    }>;
+    getExpiryAnalytics(locationId?: string, req?: any): Promise<{
+        locationId: string;
+        expiryAlerts: any[];
+        expiringSoon: any[];
+        expiredItems: any[];
+        lossForecast: number;
+        message: string;
+    }>;
+    getShrinkageDetection(locationId?: string, from?: string, to?: string): Promise<{
+        locationId: string;
+        shrinkageAlerts: any[];
+        message: string;
+        from?: undefined;
+        to?: undefined;
+        totalDiscrepancies?: undefined;
+        criticalCount?: undefined;
+    } | {
+        from: string;
+        to: string;
+        locationId: string;
+        shrinkageAlerts: {
+            productId: string;
+            productName?: string;
+            actualStock: number;
+            theoreticalStock: number;
+            discrepancy: number;
+            discrepancyPercent: number;
+            severity: "critical" | "warning";
+        }[];
+        totalDiscrepancies: number;
+        criticalCount: number;
+        message: string;
+    }>;
 }

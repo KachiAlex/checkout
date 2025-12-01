@@ -20,6 +20,7 @@ export declare class UsersRepository {
     constructor(firestore: FirestoreService);
     findAll(tenantId?: string): Promise<UserRecord[]>;
     findById(id: string): Promise<UserRecord | null>;
+    findByIds(ids: string[]): Promise<Map<string, UserRecord>>;
     findByDeviceId(deviceId: string, tenantId: string): Promise<UserRecord | null>;
     findByRole(role: UserRole, tenantId: string): Promise<UserRecord | null>;
     findByEmail(email: string): Promise<UserRecord | null>;

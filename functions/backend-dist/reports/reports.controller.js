@@ -36,6 +36,18 @@ let ReportsController = class ReportsController {
     async getStaffPerformance(locationId, from, to) {
         return this.reportsService.getStaffPerformance(locationId, from, to);
     }
+    async getAlerts(locationId, req) {
+        return this.reportsService.getAlerts(locationId, req?.user?.tenantId);
+    }
+    async getFraudDetection(locationId, from, to) {
+        return this.reportsService.getFraudDetection(locationId, from, to);
+    }
+    async getExpiryAnalytics(locationId, req) {
+        return this.reportsService.getExpiryAnalytics(locationId, req?.user?.tenantId);
+    }
+    async getShrinkageDetection(locationId, from, to) {
+        return this.reportsService.getShrinkageDetection(locationId, from, to);
+    }
 };
 exports.ReportsController = ReportsController;
 __decorate([
@@ -92,6 +104,48 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getStaffPerformance", null);
+__decorate([
+    (0, common_1.Get)('alerts'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get smart alerts (stock-outs, low sales, customer inactivity, staff performance)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Alerts data' }),
+    __param(0, (0, common_1.Query)('location_id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getAlerts", null);
+__decorate([
+    (0, common_1.Get)('fraud-detection'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get fraud detection alerts (discount abuse, suspicious patterns)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Fraud detection data' }),
+    __param(0, (0, common_1.Query)('location_id')),
+    __param(1, (0, common_1.Query)('from')),
+    __param(2, (0, common_1.Query)('to')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getFraudDetection", null);
+__decorate([
+    (0, common_1.Get)('expiry-analytics'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get expiry and batch analytics' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Expiry analytics data' }),
+    __param(0, (0, common_1.Query)('location_id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getExpiryAnalytics", null);
+__decorate([
+    (0, common_1.Get)('shrinkage-detection'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get inventory shrinkage detection (theoretical vs actual stock)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Shrinkage detection data' }),
+    __param(0, (0, common_1.Query)('location_id')),
+    __param(1, (0, common_1.Query)('from')),
+    __param(2, (0, common_1.Query)('to')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getShrinkageDetection", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, swagger_1.ApiTags)('reports'),
     (0, common_1.Controller)('reports'),

@@ -74,6 +74,31 @@ let ProductsRepository = class ProductsRepository {
         const doc = snapshot.docs[0];
         return this.toRecord(doc.id, doc.data());
     }
+    async findByIds(ids, tenantId) {
+        if (ids.length === 0) {
+            return new Map();
+        }
+        const result = new Map();
+        const uniqueIds = [...new Set(ids)];
+        const chunkSize = 10;
+        const chunks = [];
+        for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+            chunks.push(uniqueIds.slice(i, i + chunkSize));
+        }
+        const promises = chunks.map(async (chunk) => {
+            const docRefs = chunk.map((id) => this.collection.doc(id));
+            const docs = await this.firestore.getAll(...docRefs);
+            return docs
+                .filter((doc) => doc.exists)
+                .map((doc) => this.toRecord(doc.id, doc.data()))
+                .filter((record) => record.tenantId === tenantId);
+        });
+        const allProducts = (await Promise.all(promises)).flat();
+        allProducts.forEach((product) => {
+            result.set(product.id, product);
+        });
+        return result;
+    }
     async create(data) {
         if (!data.sku || !data.name) {
             throw new common_1.BadRequestException('Product sku and name are required');

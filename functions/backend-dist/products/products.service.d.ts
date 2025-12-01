@@ -6,6 +6,7 @@ export declare class ProductsService {
     constructor(productsRepository: ProductsRepository);
     findAll(query: string | undefined, locationId: string | undefined, tenantId: string): Promise<ProductRecord[]>;
     findOne(id: string, tenantId: string): Promise<ProductRecord>;
+    findByIds(ids: string[], tenantId: string): Promise<Map<string, ProductRecord>>;
     findByBarcode(barcode: string, tenantId: string): Promise<ProductRecord | null>;
     findBySku(sku: string, tenantId: string): Promise<ProductRecord | null>;
     create(createProductDto: CreateProductDto, tenantId: string): Promise<ProductRecord>;

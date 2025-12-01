@@ -54,6 +54,8 @@ async function getApp() {
     appInitializationPromise = (async () => {
         try {
             console.log('[Functions] Loading backend serverless adapter...');
+            // Use dynamic import - Firebase CLI should not execute this during analysis
+            // Only actual function invocations will trigger this
             const { createServer } = await Promise.resolve().then(() => __importStar(require('../backend-dist/serverless')));
             console.log('[Functions] Creating NestJS server...');
             const app = await createServer();
@@ -74,68 +76,74 @@ async function getApp() {
 // - 60s timeout to handle longer operations
 // - minInstances: 1 to keep instance warm and avoid cold starts
 // - maxInstances: 10 to handle concurrent requests and prevent 429 errors
-exports.api = functions
-    .region(DEFAULT_REGION)
-    .runWith({
-    memory: '256MB', // Increased to help with performance
-    timeoutSeconds: 60, // Increased timeout to 60 seconds
-    minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
-    maxInstances: MAX_INSTANCES, // Increased to 10 to handle concurrent requests
-    ingressSettings: 'ALLOW_ALL',
-})
-    .https.onRequest(async (req, res) => {
-    const origin = req.headers.origin || '';
-    const allowedOrigins = [
-        'https://checkout-77d99.web.app',
-        'https://checkout-77d99.firebaseapp.com',
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'capacitor://localhost',
-    ];
-    const isAllowed = !origin ||
-        origin.startsWith('http://localhost') ||
-        origin.startsWith('https://localhost') ||
-        origin.startsWith('capacitor://') ||
-        allowedOrigins.includes(origin);
-    // Helper function to set CORS headers - ALWAYS set them to prevent CORS errors
-    const setCorsHeaders = () => {
-        if (isAllowed) {
-            res.setHeader('Access-Control-Allow-Origin', origin || '*');
-            res.setHeader('Access-Control-Allow-Credentials', 'true');
-            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
-            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-Slug');
-            res.setHeader('Access-Control-Expose-Headers', 'Authorization');
-        }
-    };
-    // Set CORS headers immediately for all requests
-    setCorsHeaders();
-    // Handle CORS preflight requests - MUST return immediately
-    if (req.method === 'OPTIONS') {
-        console.log('[Functions] Handling OPTIONS preflight request from origin:', origin);
-        if (isAllowed) {
-            res.setHeader('Access-Control-Max-Age', '3600');
-            res.status(204).end();
+const createApiHandler = () => {
+    return functions
+        .region(DEFAULT_REGION)
+        .runWith({
+        memory: '256MB', // Increased to help with performance
+        timeoutSeconds: 60, // Increased timeout to 60 seconds
+        minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
+        maxInstances: MAX_INSTANCES, // Increased to 10 to handle concurrent requests
+        ingressSettings: 'ALLOW_ALL',
+    })
+        .https.onRequest(async (req, res) => {
+        const origin = req.headers.origin || '';
+        const allowedOrigins = [
+            'https://checkout-77d99.web.app',
+            'https://checkout-77d99.firebaseapp.com',
+            'http://localhost:5173',
+            'http://localhost:5174',
+            'capacitor://localhost',
+        ];
+        const isAllowed = !origin ||
+            origin.startsWith('http://localhost') ||
+            origin.startsWith('https://localhost') ||
+            origin.startsWith('capacitor://') ||
+            allowedOrigins.includes(origin);
+        // Helper function to set CORS headers - ALWAYS set them to prevent CORS errors
+        const setCorsHeaders = () => {
+            if (isAllowed) {
+                res.setHeader('Access-Control-Allow-Origin', origin || '*');
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+                res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+                res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-Slug');
+                res.setHeader('Access-Control-Expose-Headers', 'Authorization');
+            }
+        };
+        // Set CORS headers immediately for all requests
+        setCorsHeaders();
+        // Handle CORS preflight requests - MUST return immediately
+        if (req.method === 'OPTIONS') {
+            console.log('[Functions] Handling OPTIONS preflight request from origin:', origin);
+            if (isAllowed) {
+                res.setHeader('Access-Control-Max-Age', '3600');
+                res.status(204).end();
+                return;
+            }
+            console.warn('[Functions] CORS blocked origin:', origin);
+            res.status(403).end('CORS not allowed');
             return;
         }
-        console.warn('[Functions] CORS blocked origin:', origin);
-        res.status(403).end('CORS not allowed');
-        return;
-    }
-    try {
-        const app = await getApp();
-        // Pass request to NestJS - it will handle the actual request
-        // NestJS also has CORS configured, but our headers should take precedence
-        app(req, res);
-    }
-    catch (error) {
-        console.error('[Functions] Error handling request:', error);
-        // Ensure CORS headers are set even on error - this is critical
-        setCorsHeaders();
-        if (!res.headersSent) {
-            res.status(500).json({
-                error: 'Internal server error',
-                message: error?.message || 'Failed to initialize backend',
-            });
+        try {
+            const app = await getApp();
+            // Pass request to NestJS - it will handle the actual request
+            // NestJS also has CORS configured, but our headers should take precedence
+            app(req, res);
         }
-    }
-});
+        catch (error) {
+            console.error('[Functions] Error handling request:', error);
+            // Ensure CORS headers are set even on error - this is critical
+            setCorsHeaders();
+            if (!res.headersSent) {
+                res.status(500).json({
+                    error: 'Internal server error',
+                    message: error?.message || 'Failed to initialize backend',
+                });
+            }
+        }
+    });
+};
+// Export the handler - wrapped in a function to avoid initialization during Firebase CLI analysis
+// During Firebase CLI analysis, it tries to import and analyze the module
+// We export the handler directly - initialization only happens on first request
+exports.api = createApiHandler();
