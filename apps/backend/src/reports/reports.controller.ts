@@ -4,6 +4,7 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
@@ -68,5 +69,49 @@ export class ReportsController {
     @Query('to') to?: string,
   ) {
     return this.reportsService.getStaffPerformance(locationId, from, to);
+  }
+
+  // ========== PHASE 1 ENDPOINTS ==========
+
+  @Get('alerts')
+  @ApiOperation({ summary: 'Get smart alerts (stock-outs, low sales, customer inactivity, staff performance)' })
+  @ApiResponse({ status: 200, description: 'Alerts data' })
+  async getAlerts(
+    @Query('location_id') locationId?: string,
+    @Request() req?: any,
+  ) {
+    return this.reportsService.getAlerts(locationId, req?.user?.tenantId);
+  }
+
+  @Get('fraud-detection')
+  @ApiOperation({ summary: 'Get fraud detection alerts (discount abuse, suspicious patterns)' })
+  @ApiResponse({ status: 200, description: 'Fraud detection data' })
+  async getFraudDetection(
+    @Query('location_id') locationId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.reportsService.getFraudDetection(locationId, from, to);
+  }
+
+  @Get('expiry-analytics')
+  @ApiOperation({ summary: 'Get expiry and batch analytics' })
+  @ApiResponse({ status: 200, description: 'Expiry analytics data' })
+  async getExpiryAnalytics(
+    @Query('location_id') locationId?: string,
+    @Request() req?: any,
+  ) {
+    return this.reportsService.getExpiryAnalytics(locationId, req?.user?.tenantId);
+  }
+
+  @Get('shrinkage-detection')
+  @ApiOperation({ summary: 'Get inventory shrinkage detection (theoretical vs actual stock)' })
+  @ApiResponse({ status: 200, description: 'Shrinkage detection data' })
+  async getShrinkageDetection(
+    @Query('location_id') locationId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.reportsService.getShrinkageDetection(locationId, from, to);
   }
 }

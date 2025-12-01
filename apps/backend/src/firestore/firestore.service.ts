@@ -3,6 +3,7 @@ import {
   CollectionReference,
   DocumentData,
   DocumentReference,
+  DocumentSnapshot,
   Firestore,
   Transaction,
   WriteBatch,
@@ -29,6 +30,13 @@ export class FirestoreService {
 
   batch(): WriteBatch {
     return this.firestore.batch();
+  }
+
+  async getAll(...documentRefs: DocumentReference[]): Promise<Array<DocumentSnapshot>> {
+    if (documentRefs.length === 0) {
+      return [];
+    }
+    return this.firestore.getAll(...documentRefs);
   }
 
   async healthCheck(): Promise<boolean> {

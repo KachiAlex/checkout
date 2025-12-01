@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -9,7 +9,21 @@ import toast from 'react-hot-toast';
 import { format, parseISO, startOfDay, endOfDay, subDays } from 'date-fns';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
-type ReportTab = 'general' | 'staff' | 'credit' | 'profit' | 'category' | 'time' | 'inventory' | 'discount' | 'payment' | 'returns' | 'basket' | 'trends' | 'operations';
+type ReportTab =
+  | 'general'
+  | 'alerts'
+  | 'staff'
+  | 'credit'
+  | 'profit'
+  | 'category'
+  | 'time'
+  | 'inventory'
+  | 'discount'
+  | 'payment'
+  | 'returns'
+  | 'basket'
+  | 'trends'
+  | 'operations';
 
 interface SalesAnalytics {
   period: Period;
@@ -289,8 +303,91 @@ interface OperationalMetrics {
   averageWaitTime: number; // minutes (if available)
 }
 
+type SmartAlertType = 'stockout' | 'low_sales' | 'customer_inactive' | 'staff_performance' | 'low_stock';
+type SmartAlertSeverity = 'critical' | 'warning' | 'info';
+
+interface SmartAlert {
+  type: SmartAlertType;
+  severity: SmartAlertSeverity;
+  title: string;
+  message: string;
+  productId?: string;
+  productName?: string;
+  customerId?: string;
+  customerName?: string;
+  staffId?: string;
+  staffName?: string;
+  daysUntilStockout?: number;
+  currentStock?: number;
+  predictedStockoutDate?: string;
+  salesDropPercent?: number;
+  daysSinceLastPurchase?: number;
+  performanceGap?: number;
+}
+
+interface SmartAlertsAnalytics {
+  alerts: SmartAlert[];
+  locationId?: string;
+  generatedAt: string;
+  totalAlerts: number;
+  criticalCount: number;
+  warningCount: number;
+}
+
+type FraudAlertType = 'discount_abuse' | 'ghost_refund' | 'high_value_void' | 'midnight_sale' | 'below_cost';
+type FraudAlertSeverity = 'critical' | 'warning' | 'suspicious';
+
+interface FraudAlert {
+  type: FraudAlertType;
+  severity: FraudAlertSeverity;
+  title: string;
+  description: string;
+  orderId?: string;
+  orderNumber?: string;
+  staffId?: string;
+  staffName?: string;
+  customerId?: string;
+  amount?: number;
+  discountPercent?: number;
+  timestamp?: string;
+}
+
+interface FraudDetectionAnalytics {
+  from: string;
+  to: string;
+  locationId?: string;
+  fraudAlerts: FraudAlert[];
+  totalAlerts: number;
+  criticalCount: number;
+  warningCount: number;
+}
+
+type ShrinkageSeverity = 'critical' | 'warning';
+
+interface ShrinkageAlert {
+  productId: string;
+  productName?: string;
+  actualStock: number;
+  theoreticalStock: number;
+  discrepancy: number;
+  discrepancyPercent: number;
+  severity: ShrinkageSeverity;
+}
+
+interface ShrinkageDetectionAnalytics {
+  from: string;
+  to: string;
+  locationId?: string;
+  shrinkageAlerts: ShrinkageAlert[];
+  totalDiscrepancies: number;
+  criticalCount: number;
+  message: string;
+}
+
 export function ReportsPage() {
+  console.log('🔥 [ReportsPage] COMPONENT RENDERING NOW!');
   const { logout, accessToken, user } = useAuthStore();
+  console.log('🔥 [ReportsPage] After useAuthStore', { hasToken: !!accessToken, hasUser: !!user, activeTab: 'general' });
   const [activeTab, setActiveTab] = useState<ReportTab>('general');
   const [period, setPeriod] = useState<Period>('daily');
   const [customDateFrom, setCustomDateFrom] = useState<string>(
@@ -305,6 +402,7 @@ export function ReportsPage() {
   const [creditReport, setCreditReport] = useState<CreditReport | null>(null);
   const [productAnalytics, setProductAnalytics] = useState<ProductAnalytics[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [inventoryDebugInfo, setInventoryDebugInfo] = useState<string>('Waiting to load...');
   const [profitLossAnalytics, setProfitLossAnalytics] = useState<ProfitLossAnalytics | null>(null);
   const [categoryBrandAnalytics, setCategoryBrandAnalytics] = useState<CategoryBrandAnalytics | null>(null);
   const [timeBasedInsights, setTimeBasedInsights] = useState<TimeBasedInsights | null>(null);
@@ -315,6 +413,12 @@ export function ReportsPage() {
   const [basketAnalysis, setBasketAnalysis] = useState<BasketAnalysis | null>(null);
   const [salesTrendsForecasting, setSalesTrendsForecasting] = useState<SalesTrendsForecasting | null>(null);
   const [operationalMetrics, setOperationalMetrics] = useState<OperationalMetrics | null>(null);
+  const [smartAlerts, setSmartAlerts] = useState<SmartAlertsAnalytics | null>(null);
+  const [fraudDetection, setFraudDetection] = useState<FraudDetectionAnalytics | null>(null);
+  const [shrinkageDetection, setShrinkageDetection] = useState<ShrinkageDetectionAnalytics | null>(null);
+
+  // Track previous alerts summary to know when to notify about new critical alerts
+  const lastAlertsSummaryRef = useRef<{ total: number; critical: number } | null>(null);
 
   const loadGeneralAnalytics = async () => {
     if (!accessToken) return;
@@ -334,9 +438,6 @@ export function ReportsPage() {
 
       const response = await axios.get(`${API_URL}/api/v1/reports/sales-analytics`, { headers, params });
       setSalesAnalytics(response.data);
-      
-      // Also load product analytics
-      await loadProductAnalytics(headers, params);
     } catch (error: any) {
       console.error('Failed to load sales analytics:', error);
       toast.error(error.response?.data?.message || 'Failed to load sales analytics');
@@ -346,6 +447,12 @@ export function ReportsPage() {
   };
 
   const loadProductAnalytics = async (headers: any, params: any) => {
+    console.log('🎯 [loadProductAnalytics] FUNCTION CALLED!', { hasHeaders: !!headers });
+    // Force visible alert to confirm function runs
+    if (typeof window !== 'undefined') {
+      console.warn('🚨 ALERT: loadProductAnalytics is running!');
+    }
+    setInventoryDebugInfo('Function called - starting...');
     setLoadingProducts(true);
     try {
       // Fetch completed orders for the period
@@ -358,7 +465,6 @@ export function ReportsPage() {
         ordersParams.from = customDateFrom;
         ordersParams.to = customDateTo;
       } else {
-        // Calculate date range based on period
         const now = new Date();
         let fromDate: Date;
         if (period === 'daily') {
@@ -379,10 +485,15 @@ export function ReportsPage() {
 
       const orders = ordersResponse.data || [];
       
-      // Aggregate product sales with cost tracking
-      const productMap: Record<string, { quantity: number; revenue: number; cost: number }> = {};
+      // Aggregate product sales
+      const productMap: Record<string, { 
+        quantity: number; 
+        revenue: number;
+        orderItems?: Array<{ priceCents: number; quantity: number }>;
+      }> = {};
       const productIds = new Set<string>();
 
+      // First pass: collect product IDs and quantities (revenue will be calculated after fetching inventory)
       orders.forEach((order: any) => {
         if (order.items && Array.isArray(order.items)) {
           order.items.forEach((item: any) => {
@@ -392,28 +503,294 @@ export function ReportsPage() {
             productIds.add(productId);
             
             if (!productMap[productId]) {
-              productMap[productId] = { quantity: 0, revenue: 0, cost: 0 };
+              productMap[productId] = { 
+                quantity: 0, 
+                revenue: 0,
+                orderItems: [] // Store order items for price correction
+              };
             }
             
-            const itemTotal = (item.priceCents || 0) * (item.quantity || 0);
-            productMap[productId].quantity += item.quantity || 0;
-            productMap[productId].revenue += itemTotal;
+            const productData = productMap[productId];
+            if (productData) {
+              productData.quantity += item.quantity || 0;
+              if (!productData.orderItems) {
+                productData.orderItems = [];
+              }
+              
+              productData.orderItems.push({
+                priceCents: item.priceCents || 0,
+                quantity: item.quantity || 0
+              });
+            }
           });
         }
       });
 
-      // Fetch product details to get costs
+      // Fetch products first
       const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
       const products = productsResponse.data || [];
       const productsMap = new Map(products.map((p: any) => [p.id, p]));
 
-      // Calculate costs and build analytics array
+      // Get locationId - MUST have this to fetch inventory
+      let locationId = user?.locationId;
+      if (!locationId) {
+        try {
+          const locationsResponse = await axios.get(`${API_URL}/api/v1/locations`, { headers });
+          const locations = locationsResponse.data || [];
+          if (locations.length > 0) {
+            locationId = locations[0].id;
+          }
+        } catch (err) {
+          console.error('Failed to fetch locations:', err);
+        }
+      }
+      
+      // ALWAYS try to fetch inventory - this is where cost AND selling prices are stored
+      const inventoryCostMap = new Map<string, number>();
+      const inventoryPriceMap = new Map<string, number>(); // For correcting wrong order prices
+      if (locationId) {
+        try {
+          console.log('🔍 [INVENTORY FETCH] Starting...', { locationId, url: `${API_URL}/api/v1/inventory/${locationId}/stock` });
+          setInventoryDebugInfo(`Fetching inventory for location ${locationId}...`);
+          
+          // This is the SAME API call the Inventory page makes
+          const inventoryResponse = await axios.get(`${API_URL}/api/v1/inventory/${locationId}/stock`, { headers });
+          const inventory = inventoryResponse.data || [];
+          
+          console.log('✅ [INVENTORY FETCH] Response received:', {
+            status: inventoryResponse.status,
+            itemCount: inventory.length,
+            firstItem: inventory[0] ? {
+              productId: inventory[0].productId,
+              costCents: inventory[0].costCents,
+              salesPriceCents: inventory[0].salesPriceCents,
+              hasCostCents: 'costCents' in inventory[0],
+              allKeys: Object.keys(inventory[0] || {})
+            } : 'No items'
+          });
+          
+          setInventoryDebugInfo(`Found ${inventory.length} inventory items`);
+          
+          // Build cost and price maps from inventory items
+          let itemsWithCost = 0;
+          inventory.forEach((inv: any) => {
+            if (inv.productId) {
+              // costCents is at top level, same as Inventory page shows
+              const cost = inv.costCents ?? 0;
+              inventoryCostMap.set(inv.productId, cost);
+              if (cost > 0) itemsWithCost++;
+              
+              // Also store selling price for price correction
+              const sellingPrice = inv.salesPriceCents ?? inv.product?.priceCents ?? 0;
+              if (sellingPrice > 0) {
+                inventoryPriceMap.set(inv.productId, sellingPrice);
+              }
+            }
+          });
+          
+          console.log('📊 [INVENTORY MAP] Built cost map:', {
+            totalItems: inventory.length,
+            itemsWithCost: itemsWithCost,
+            mappedCount: inventoryCostMap.size,
+            sampleEntries: Array.from(inventoryCostMap.entries()).slice(0, 5)
+          });
+          
+          setInventoryDebugInfo(`${inventory.length} items, ${itemsWithCost} with cost > 0, ${inventoryCostMap.size} total mapped`);
+          
+          // Calculate revenue with price correction for wrong order prices
+          // If order price is 100x smaller than current inventory price, use inventory price
+          console.log('💰 [REVENUE CALC] Starting price correction. Inventory price map size:', inventoryPriceMap.size);
+          
+          Object.keys(productMap).forEach((productId) => {
+            const productData = productMap[productId];
+            if (!productData) return;
+            
+            const currentInventoryPrice = inventoryPriceMap.get(productId);
+            const product = productsMap.get(productId) as any;
+            const isIPhone = product?.name?.toLowerCase().includes('iphone');
+            
+            if (isIPhone) {
+              console.log('🍎 [iPhone REVENUE] Before correction:', {
+                productId,
+                productName: product?.name,
+                currentRevenue: productData.revenue,
+                orderItemsCount: productData.orderItems?.length || 0,
+                hasInventoryPrice: !!currentInventoryPrice,
+                inventoryPrice: currentInventoryPrice,
+                orderItems: productData.orderItems
+              });
+            }
+            
+            let totalRevenue = 0;
+            
+            if (productData.orderItems) {
+              if (isIPhone) {
+                console.log('📋 [iPhone ORDER ITEMS] Processing order items:', {
+                  count: productData.orderItems.length,
+                  items: productData.orderItems.map((oi: any) => ({
+                    priceCents: oi.priceCents,
+                    priceNaira: (oi.priceCents / 100).toFixed(2),
+                    quantity: oi.quantity
+                  }))
+                });
+              }
+              
+              productData.orderItems.forEach((orderItem: any) => {
+                let priceToUse = orderItem.priceCents;
+                
+                // If we have current inventory price and order price seems wrong (100x too small), correct it
+                if (currentInventoryPrice && currentInventoryPrice > 0 && orderItem.priceCents > 0) {
+                  const priceRatio = currentInventoryPrice / orderItem.priceCents;
+                  // If current price is significantly larger (50x or more), the order price was likely stored incorrectly
+                  // This handles cases where prices were stored as naira instead of cents
+                  if (priceRatio >= 50) {
+                    if (isIPhone) {
+                      console.warn(`🔧 [iPhone PRICE CORRECTION] Order price ${orderItem.priceCents} (₦${(orderItem.priceCents/100).toFixed(2)}) seems wrong. Current inventory price ${currentInventoryPrice} (₦${(currentInventoryPrice/100).toFixed(2)}). Ratio: ${priceRatio.toFixed(2)}x. Using current inventory price.`);
+                    }
+                    priceToUse = currentInventoryPrice;
+                  } else if (isIPhone) {
+                    console.log(`✅ [iPhone PRICE CHECK] Order price ${orderItem.priceCents} (₦${(orderItem.priceCents/100).toFixed(2)}) vs inventory ${currentInventoryPrice} (₦${(currentInventoryPrice/100).toFixed(2)}). Ratio: ${priceRatio.toFixed(2)}x. Using order price.`);
+                  }
+                } else if (currentInventoryPrice && currentInventoryPrice > 0) {
+                  // If we have inventory price but order price is 0 or missing, use inventory price
+                  if (isIPhone) {
+                    console.warn(`🔧 [iPhone PRICE CORRECTION] Order price missing/zero. Using current inventory price ${currentInventoryPrice}`);
+                  }
+                  priceToUse = currentInventoryPrice;
+                } else if (isIPhone && !currentInventoryPrice) {
+                  console.warn(`⚠️ [iPhone MISSING] Product ${productId} (${product?.name}) not found in inventory price map. Inventory map has ${inventoryPriceMap.size} items.`);
+                }
+                
+                totalRevenue += priceToUse * orderItem.quantity;
+              });
+            }
+            
+            productData.revenue = totalRevenue;
+            
+            if (isIPhone) {
+              console.log('🍎 [iPhone REVENUE] After correction:', {
+                productId,
+                productName: product?.name,
+                newRevenue: totalRevenue,
+                newRevenueNaira: (totalRevenue / 100).toFixed(2)
+              });
+            }
+            
+            // Clean up orderItems - we don't need them anymore
+            delete productData.orderItems;
+          });
+          
+          // Show which productIds from orders we're looking for
+          const orderProductIds = Array.from(productIds);
+          console.log('🔎 [PRODUCT MATCH] Looking for costs for:', {
+            orderProductIds: orderProductIds.slice(0, 5),
+            foundInInventory: orderProductIds.slice(0, 5).map(pid => ({
+              productId: pid,
+              hasCost: inventoryCostMap.has(pid),
+              cost: inventoryCostMap.get(pid),
+              hasPrice: inventoryPriceMap.has(pid),
+              price: inventoryPriceMap.get(pid)
+            }))
+          });
+          
+          // Show sample of what we found
+          const sampleProducts = Array.from(productIds).slice(0, 3);
+          const sampleInfo = sampleProducts.map(pid => {
+            const cost = inventoryCostMap.get(pid);
+            const price = inventoryPriceMap.get(pid);
+            return `${pid.substring(0, 8)}:cost=${cost ?? 'MISSING'},price=${price ?? 'MISSING'}`;
+          }).join(', ');
+          setInventoryDebugInfo(`${inventoryCostMap.size} mapped. Sample: ${sampleInfo}`);
+        } catch (err: any) {
+          console.error('❌ [INVENTORY FETCH] Failed:', {
+            status: err?.response?.status,
+            statusText: err?.response?.statusText,
+            message: err?.message,
+            url: err?.config?.url,
+            fullError: err
+          });
+          setInventoryDebugInfo(`ERROR: ${err?.response?.status || 'Unknown'} - ${err?.message || 'Failed'}`);
+          
+          // Fallback: calculate revenue from order prices (even if they might be wrong)
+          Object.keys(productMap).forEach((productId) => {
+            const productData = productMap[productId];
+            if (!productData || !productData.orderItems) return;
+            
+            let totalRevenue = 0;
+            if (productData.orderItems) {
+              productData.orderItems.forEach((orderItem: any) => {
+                totalRevenue += orderItem.priceCents * orderItem.quantity;
+              });
+            }
+            productData.revenue = totalRevenue;
+            delete productData.orderItems;
+          });
+        }
+      } else {
+        setInventoryDebugInfo('ERROR: No locationId');
+        
+        // Fallback: calculate revenue from order prices
+        Object.keys(productMap).forEach((productId) => {
+          const productData = productMap[productId];
+          if (!productData || !productData.orderItems) return;
+          
+          let totalRevenue = 0;
+          productData.orderItems.forEach((orderItem: any) => {
+            totalRevenue += orderItem.priceCents * orderItem.quantity;
+          });
+          productData.revenue = totalRevenue;
+          delete productData.orderItems;
+        });
+      }
+
+      // Build analytics with cost from inventory
+      console.log('📊 [ANALYTICS BUILD] Starting:', {
+        totalProductIds: productIds.size,
+        productIds: Array.from(productIds),
+        productMapKeys: Object.keys(productMap),
+        productsMapSize: productsMap.size
+      });
+      
       const analytics: ProductAnalytics[] = Array.from(productIds)
         .map((productId) => {
           const stats = productMap[productId];
+          if (!stats) {
+            console.warn(`⚠️ [MISSING STATS] Product ${productId} has no stats in productMap`);
+            return null;
+          }
           const product = productsMap.get(productId) as any;
-          const costCents = product?.costCents || 0;
-          const totalCost = (costCents * stats.quantity) / 100; // Convert to currency
+          
+          // Get cost from inventory - same field the Inventory page uses (item.costCents)
+          const costCents = inventoryCostMap.get(productId) ?? 0;
+          
+          // Debug: if cost is 0, check if product exists in inventory map
+          if (costCents === 0 && inventoryCostMap.size > 0) {
+            console.warn(`Product ${productId} (${product?.name}) not found in inventory or cost is 0. Inventory has ${inventoryCostMap.size} items.`);
+          }
+          
+          // Debug: Log raw values to check for unit conversion issues
+          if (product?.name?.toLowerCase().includes('iphone')) {
+            const currentInventoryPrice = inventoryPriceMap.get(productId);
+            const revenueNaira = stats.revenue / 100;
+            console.log('🔍 [DEBUG iPhone] Final calculation:', {
+              productName: product.name,
+              revenueCents: stats.revenue,
+              revenueNaira: revenueNaira,
+              costCents: costCents,
+              costNaira: (costCents / 100).toFixed(2),
+              currentInventoryPrice: currentInventoryPrice,
+              currentInventoryPriceNaira: currentInventoryPrice ? (currentInventoryPrice / 100).toFixed(2) : 'N/A',
+              quantity: stats.quantity,
+              costAfterConversion: (costCents * stats.quantity) / 100,
+              expectedRevenue: 2500000, // What user expects in naira
+              expectedCost: 1700000, // What user expects in naira
+              hasInventoryPrice: inventoryPriceMap.has(productId),
+              revenuePerItem: stats.quantity > 0 ? (stats.revenue / stats.quantity) : 0,
+              revenuePerItemNaira: stats.quantity > 0 ? (stats.revenue / stats.quantity / 100).toFixed(2) : '0'
+            });
+          }
+          
+          const totalCost = (costCents * stats.quantity) / 100;
           const revenue = stats.revenue / 100; // Convert cents to currency
           const profit = revenue - totalCost;
           const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -429,11 +806,31 @@ export function ReportsPage() {
             profitMargin,
           };
         })
-        .sort((a, b) => b.revenue - a.revenue); // Sort by revenue
+        .filter((item): item is ProductAnalytics => item !== null) // Filter out null values
+        .sort((a, b) => b.revenue - a.revenue);
+      
+      console.log('✅ [ANALYTICS] Final count:', {
+        totalAnalytics: analytics.length,
+        productNames: analytics.map(a => a.productName)
+      }); // Sort by revenue
+
+      console.log('✅ [ANALYTICS] Final results:', {
+        totalProducts: analytics.length,
+        productsWithCost: analytics.filter(a => a.cost > 0).length,
+        productsWithoutCost: analytics.filter(a => a.cost === 0).length,
+        sampleProducts: analytics.slice(0, 3).map(a => ({
+          name: a.productName,
+          cost: a.cost,
+          revenue: a.revenue,
+          profit: a.profit
+        }))
+      });
 
       setProductAnalytics(analytics);
+      setInventoryDebugInfo(`Complete: ${analytics.length} products, ${analytics.filter(a => a.cost > 0).length} with cost data`);
     } catch (error: any) {
       console.error('Failed to load product analytics:', error);
+      setInventoryDebugInfo(`ERROR: ${error?.message || 'Unknown error'}`);
       // Don't show error toast for product analytics, just log it
     } finally {
       setLoadingProducts(false);
@@ -503,10 +900,42 @@ export function ReportsPage() {
 
       const orders = ordersResponse.data || [];
       
-      // Fetch all products to get cost data
+      // Fetch all products to get product details
       const productsResponse = await axios.get(`${API_URL}/api/v1/products`, { headers });
       const products = productsResponse.data || [];
       const productsMap = new Map(products.map((p: any) => [p.id, p]));
+
+      // Fetch inventory to get cost data (cost is stored in inventory, not products)
+      // Inventory API requires location_id in the path
+      let locationId = user?.locationId;
+      
+      // If user doesn't have locationId, try to get first location for tenant
+      if (!locationId) {
+        try {
+          const locationsResponse = await axios.get(`${API_URL}/api/v1/locations`, { headers });
+          const locations = locationsResponse.data || [];
+          if (locations.length > 0) {
+            locationId = locations[0].id;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch locations:', err);
+        }
+      }
+      
+      let inventoryCostMap = new Map<string, number>();
+      if (locationId) {
+        try {
+          const inventoryResponse = await axios.get(`${API_URL}/api/v1/inventory/${locationId}/stock`, { headers });
+          const inventory = inventoryResponse.data || [];
+          console.log('[Reports] Inventory data for cost calculation:', inventory.length, 'items');
+          inventoryCostMap = new Map(inventory.map((inv: any) => [inv.productId, inv.costCents || 0]));
+          console.log('[Reports] Cost map entries:', inventoryCostMap.size);
+        } catch (err) {
+          console.warn('Failed to fetch inventory for cost data:', err);
+        }
+      } else {
+        console.warn('[Reports] No locationId available for inventory cost fetch');
+      }
 
       // Calculate profit/loss
       let totalRevenue = 0;
@@ -549,7 +978,14 @@ export function ReportsPage() {
             const product = productsMap.get(productId) as any;
             const quantity = item.quantity || 0;
             const priceCents = item.priceCents || 0;
-            const costCents = product?.costCents || 0;
+            // Get cost from inventory (primary source) or fall back to product costCents
+            const inventoryCost = inventoryCostMap.get(productId);
+            const costCents = inventoryCost || product?.costCents || 0;
+            
+            // Debug: log if cost is missing
+            if (!inventoryCost && !product?.costCents) {
+              console.log('[Reports] Missing cost for product:', productId, product?.name);
+            }
 
             const itemRevenue = priceCents * quantity;
             const itemCost = costCents * quantity;
@@ -1228,6 +1664,73 @@ export function ReportsPage() {
     } catch (error: any) {
       console.error('Failed to load inventory health:', error);
       toast.error(error.response?.data?.message || 'Failed to load inventory health');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAlertsAndRisk = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const baseParams: any = {
+        location_id: user?.locationId,
+      };
+
+      const rangeParams: any = {};
+      if (period === 'custom') {
+        rangeParams.from = customDateFrom;
+        rangeParams.to = customDateTo;
+      }
+
+      const [alertsRes, fraudRes, shrinkageRes] = await Promise.all([
+        axios.get(`${API_URL}/api/v1/reports/alerts`, {
+          headers,
+          params: baseParams,
+        }),
+        axios.get(`${API_URL}/api/v1/reports/fraud-detection`, {
+          headers,
+          params: { ...baseParams, ...rangeParams },
+        }),
+        axios.get(`${API_URL}/api/v1/reports/shrinkage-detection`, {
+          headers,
+          params: { ...baseParams, ...rangeParams },
+        }),
+      ]);
+
+      setSmartAlerts(alertsRes.data);
+      setFraudDetection(fraudRes.data);
+      setShrinkageDetection(shrinkageRes.data);
+
+      // Compare with previous alerts to show notifications only when something new appears
+      const currentSummary = {
+        total: alertsRes.data?.totalAlerts ?? 0,
+        critical: alertsRes.data?.criticalCount ?? 0,
+      };
+      const prev = lastAlertsSummaryRef.current;
+
+      if (prev) {
+        if (currentSummary.critical > prev.critical) {
+          const diff = currentSummary.critical - prev.critical;
+          toast.error(
+            `You have ${currentSummary.critical} critical alert${currentSummary.critical === 1 ? '' : 's'} (${diff} new).`,
+            { id: 'critical-alerts' },
+          );
+        } else if (currentSummary.total > prev.total) {
+          const diff = currentSummary.total - prev.total;
+          toast(
+            `You have ${currentSummary.total} alerts in total (${diff} new).`,
+            { id: 'alerts-summary' },
+          );
+        }
+      }
+
+      lastAlertsSummaryRef.current = currentSummary;
+    } catch (error: any) {
+      console.error('Failed to load alerts & risk analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load alerts & risk analytics');
     } finally {
       setLoading(false);
     }
@@ -2108,10 +2611,21 @@ export function ReportsPage() {
   };
 
   useEffect(() => {
-    if (!accessToken) return;
+    console.log('🚀 [REPORTS] useEffect triggered', { activeTab, hasToken: !!accessToken });
+    if (!accessToken) {
+      console.warn('⚠️ [REPORTS] No access token, returning');
+      return;
+    }
 
     if (activeTab === 'general') {
+      console.log('📊 [REPORTS] Loading general analytics...');
       loadGeneralAnalytics();
+      // ALWAYS load product analytics independently - this fetches cost from inventory
+      console.log('🛒 [REPORTS] Calling loadProductAnalytics...');
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      loadProductAnalytics(headers, {}).catch(err => {
+        console.error('❌ [REPORTS] Product analytics error:', err);
+      });
     } else if (activeTab === 'staff') {
       loadStaffPerformance();
     } else if (activeTab === 'credit') {
@@ -2136,13 +2650,15 @@ export function ReportsPage() {
       loadSalesTrendsForecasting();
     } else if (activeTab === 'operations') {
       loadOperationalMetrics();
+    } else if (activeTab === 'alerts') {
+      loadAlertsAndRisk();
     }
   }, [activeTab, period, accessToken, user?.locationId, customDateFrom, customDateTo]);
 
   const formatCurrency = (amount: number) => {
-    // If amount is already in currency units (not cents), use as-is, otherwise divide by 100
-    const amountInCurrency = amount > 1000000 ? amount / 100 : amount;
-    return `₦${amountInCurrency.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Amount is already in currency units (naira), not cents
+    // All analytics values are already converted from cents to naira before reaching here
+    return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatPeriod = (periodStr: string) => {
@@ -2318,6 +2834,7 @@ const SimpleLineChart = ({
           <div className="flex flex-wrap gap-2 sm:gap-3">
             {([
               'general', 
+              'alerts',
               'staff', 
               'credit', 
               'profit',
@@ -2341,6 +2858,24 @@ const SimpleLineChart = ({
                 }`}
               >
                 {tab === 'general' && '📊 General'}
+                {tab === 'alerts' && (
+                  <span className="inline-flex items-center gap-1">
+                    <span>🚨 Alerts &amp; Risk</span>
+                    {(smartAlerts?.totalAlerts ?? 0) > 0 && (
+                      <span
+                        className={`inline-flex items-center justify-center rounded-full px-1.5 text-[10px] font-semibold ${
+                          (smartAlerts?.criticalCount ?? 0) > 0
+                            ? 'bg-rose-500 text-white'
+                            : 'bg-amber-400 text-slate-900'
+                        }`}
+                      >
+                        {smartAlerts?.criticalCount && smartAlerts.criticalCount > 0
+                          ? smartAlerts.criticalCount
+                          : smartAlerts?.totalAlerts}
+                      </span>
+                    )}
+                  </span>
+                )}
                 {tab === 'staff' && '👥 Staff'}
                 {tab === 'credit' && '💳 Credit'}
                 {tab === 'profit' && '💰 Profit/Loss'}
@@ -2462,6 +2997,9 @@ const SimpleLineChart = ({
                 {/* Product Sales Analytics Table */}
                 <div className="mb-6 sm:mb-8">
                   <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-3 sm:mb-4">Product Sales Performance</h3>
+                  <div className="mb-3 p-2 bg-amber-500/20 border border-amber-500/50 rounded text-xs text-amber-300 font-mono">
+                    <strong>DEBUG:</strong> {inventoryDebugInfo}
+                  </div>
                   {loadingProducts ? (
                     <div className="theme-surface rounded-xl border p-6 sm:p-8 text-center">
                       <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent mb-2" />
@@ -2504,7 +3042,7 @@ const SimpleLineChart = ({
                               <div>
                                 <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Cost</p>
                                 <p className="theme-text-primary font-semibold text-sm text-rose-400 truncate">
-                                  {formatCurrency(product.cost)}
+                                  {product.cost === 0 ? 'NO COST DATA' : formatCurrency(product.cost)}
                                 </p>
                               </div>
                               <div>
@@ -2585,7 +3123,7 @@ const SimpleLineChart = ({
                                   </td>
                                   <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
                                     <span className="theme-text-primary font-semibold text-rose-400">
-                                      {formatCurrency(product.cost)}
+                                      {product.cost === 0 ? 'NO COST DATA' : formatCurrency(product.cost)}
                                     </span>
                                   </td>
                                   <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
@@ -2637,6 +3175,249 @@ const SimpleLineChart = ({
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Alerts & Risk Center Tab */}
+            {activeTab === 'alerts' && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Alerts & Risk Center</h2>
+                </div>
+
+                {smartAlerts && smartAlerts.criticalCount > 0 && (
+                  <div className="mb-4 rounded-xl border border-rose-400/60 bg-rose-500/10 px-4 py-3">
+                    <p className="theme-text-primary text-sm font-semibold text-rose-200">
+                      {smartAlerts.criticalCount} critical alert
+                      {smartAlerts.criticalCount === 1 ? '' : 's'} need your attention.
+                    </p>
+                    <p className="theme-text-secondary text-xs mt-1">
+                      Check stock-out risks, major shrinkage, and high-risk staff or customer activity.
+                    </p>
+                  </div>
+                )}
+
+                {!smartAlerts && !fraudDetection && !shrinkageDetection ? (
+                  <div className="theme-surface rounded-xl border p-6 text-center">
+                    <p className="theme-text-secondary text-sm">
+                      No alerts available yet for the selected period.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                      <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                        <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                          Smart Alerts
+                        </p>
+                        <p className="theme-text-primary text-lg sm:text-xl font-bold text-amber-400">
+                          {smartAlerts?.totalAlerts ?? 0}
+                        </p>
+                        <p className="theme-text-secondary text-xs">
+                          {smartAlerts?.criticalCount ?? 0} critical • {smartAlerts?.warningCount ?? 0} warnings
+                        </p>
+                      </div>
+                      <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                        <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                          Fraud Alerts
+                        </p>
+                        <p className="theme-text-primary text-lg sm:text-xl font-bold text-rose-400">
+                          {fraudDetection?.totalAlerts ?? 0}
+                        </p>
+                        <p className="theme-text-secondary text-xs">
+                          {fraudDetection?.criticalCount ?? 0} critical • {fraudDetection?.warningCount ?? 0} warnings
+                        </p>
+                      </div>
+                      <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                        <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                          Shrinkage Issues
+                        </p>
+                        <p className="theme-text-primary text-lg sm:text-xl font-bold text-purple-400">
+                          {shrinkageDetection?.totalDiscrepancies ?? 0}
+                        </p>
+                        <p className="theme-text-secondary text-xs">
+                          {shrinkageDetection?.criticalCount ?? 0} critical
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Smart Alerts List */}
+                    <div className="mb-6">
+                      <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-3">
+                        Smart Alerts
+                      </h3>
+                      {smartAlerts && smartAlerts.alerts.length > 0 ? (
+                        <div className="space-y-3">
+                          {smartAlerts.alerts.slice(0, 20).map((alert, index) => (
+                            <div
+                              key={index}
+                              className={`theme-surface rounded-xl border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 ${
+                                alert.severity === 'critical'
+                                  ? 'border-rose-400/60 bg-rose-500/10'
+                                  : alert.severity === 'warning'
+                                  ? 'border-amber-400/60 bg-amber-500/10'
+                                  : 'border-sky-400/40 bg-sky-500/10'
+                              }`}
+                            >
+                              <div>
+                                <p className="theme-text-primary font-semibold text-sm sm:text-base">
+                                  {alert.title}
+                                </p>
+                                <p className="theme-text-secondary text-xs sm:text-sm mt-1">{alert.message}</p>
+                              </div>
+                              <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-center">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                                    alert.severity === 'critical'
+                                      ? 'bg-rose-500/20 text-rose-200 border border-rose-400/60'
+                                      : alert.severity === 'warning'
+                                      ? 'bg-amber-500/20 text-amber-200 border border-amber-400/60'
+                                      : 'bg-sky-500/20 text-sky-200 border border-sky-400/60'
+                                  }`}
+                                >
+                                  {alert.severity}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="theme-surface rounded-xl border p-4 text-center">
+                          <p className="theme-text-secondary text-sm">No smart alerts for this period.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Fraud Alerts List */}
+                    <div className="mb-6">
+                      <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-3">
+                        Fraud & Abuse Signals
+                      </h3>
+                      {fraudDetection && fraudDetection.fraudAlerts.length > 0 ? (
+                        <div className="space-y-3">
+                          {fraudDetection.fraudAlerts.slice(0, 20).map((alert, index) => (
+                            <div
+                              key={index}
+                              className={`theme-surface rounded-xl border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 ${
+                                alert.severity === 'critical'
+                                  ? 'border-rose-400/60 bg-rose-500/10'
+                                  : alert.severity === 'warning'
+                                  ? 'border-amber-400/60 bg-amber-500/10'
+                                  : 'border-purple-400/60 bg-purple-500/10'
+                              }`}
+                            >
+                              <div>
+                                <p className="theme-text-primary font-semibold text-sm sm:text-base">
+                                  {alert.title}
+                                </p>
+                                <p className="theme-text-secondary text-xs sm:text-sm mt-1">
+                                  {alert.description}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-center">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                                    alert.severity === 'critical'
+                                      ? 'bg-rose-500/20 text-rose-200 border border-rose-400/60'
+                                      : alert.severity === 'warning'
+                                      ? 'bg-amber-500/20 text-amber-200 border border-amber-400/60'
+                                      : 'bg-purple-500/20 text-purple-200 border border-purple-400/60'
+                                  }`}
+                                >
+                                  {alert.severity}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="theme-surface rounded-xl border p-4 text-center">
+                          <p className="theme-text-secondary text-sm">No fraud signals detected for this period.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Shrinkage Alerts */}
+                    <div>
+                      <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-3">
+                        Inventory Shrinkage
+                      </h3>
+                      {shrinkageDetection && shrinkageDetection.shrinkageAlerts.length > 0 ? (
+                        <div className="theme-surface rounded-xl border overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-white/5">
+                                <tr>
+                                  <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                    Product
+                                  </th>
+                                  <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                    Actual
+                                  </th>
+                                  <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                    Theoretical
+                                  </th>
+                                  <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                    Difference
+                                  </th>
+                                  <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                    Severity
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/10">
+                                {shrinkageDetection.shrinkageAlerts.slice(0, 50).map((item, index) => (
+                                  <tr key={index} className="hover:bg-white/5 transition">
+                                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                      <span className="theme-text-primary font-medium">
+                                        {item.productName || item.productId}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                      <span className="theme-text-primary font-semibold text-sky-400">
+                                        {item.actualStock}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                      <span className="theme-text-secondary">{item.theoreticalStock}</span>
+                                    </td>
+                                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                      <span
+                                        className={`theme-text-primary font-semibold ${
+                                          item.discrepancy < 0 ? 'text-rose-400' : 'text-emerald-400'
+                                        }`}
+                                      >
+                                        {item.discrepancy} ({item.discrepancyPercent.toFixed(1)}%)
+                                      </span>
+                                    </td>
+                                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                      <span
+                                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                                          item.severity === 'critical'
+                                            ? 'bg-rose-500/20 text-rose-200 border border-rose-400/60'
+                                            : 'bg-amber-500/20 text-amber-200 border border-amber-400/60'
+                                        }`}
+                                      >
+                                        {item.severity}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="theme-surface rounded-xl border p-4 text-center">
+                          <p className="theme-text-secondary text-sm">
+                            {shrinkageDetection?.message || 'No significant inventory discrepancies detected.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -2877,7 +3658,7 @@ const SimpleLineChart = ({
                               <div>
                                 <p className="theme-text-secondary text-[10px] uppercase mb-0.5">Cost</p>
                                 <p className="theme-text-primary font-semibold text-sm text-rose-400 truncate">
-                                  {formatCurrency(product.cost)}
+                                  {product.cost === 0 ? 'NO COST DATA' : formatCurrency(product.cost)}
                                 </p>
                               </div>
                               <div>
@@ -2958,7 +3739,7 @@ const SimpleLineChart = ({
                                   </td>
                                   <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
                                     <span className="theme-text-primary font-semibold text-rose-400">
-                                      {formatCurrency(product.cost)}
+                                      {product.cost === 0 ? 'NO COST DATA' : formatCurrency(product.cost)}
                                     </span>
                                   </td>
                                   <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">

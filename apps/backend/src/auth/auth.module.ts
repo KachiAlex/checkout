@@ -19,7 +19,7 @@ import { TenantsModule } from '../tenants/tenants.module';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET', 'change-me'),
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '15m'),
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '24h'), // Increased from 15m to 24h to reduce 401 errors
         },
       }),
       inject: [ConfigService],

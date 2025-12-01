@@ -185,6 +185,67 @@ export class InventoryRepository {
     }
   }
 
+  /**
+   * Batch fetch last transaction for multiple products (optimized for inventory loading)
+   * Fetches recent transactions for the location and groups by productId
+   */
+  async getLastTransactionsBatch(productIds: string[], locationId: string): Promise<Map<string, InventoryTransactionRecord>> {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    const result = new Map<string, InventoryTransactionRecord>();
+    const uniqueProductIds = new Set(productIds);
+
+    try {
+      // Fetch recent transactions for this location (last 1000 should cover most cases)
+      // This is more efficient than N individual queries
+      const snapshot = await this.transactionsCollection
+        .where('locationId', '==', locationId)
+        .orderBy('ts', 'desc')
+        .limit(1000)
+        .get();
+
+      // Group by productId and keep only the latest for each
+      const transactionsByProduct = new Map<string, InventoryTransactionRecord>();
+      
+      for (const doc of snapshot.docs) {
+        const transaction = this.toTransactionRecord(doc.id, doc.data());
+        
+        // Only process transactions for products we're interested in
+        if (!uniqueProductIds.has(transaction.productId)) {
+          continue;
+        }
+
+        // Keep only the latest transaction for each product
+        const existing = transactionsByProduct.get(transaction.productId);
+        if (!existing || transaction.ts.getTime() > existing.ts.getTime()) {
+          transactionsByProduct.set(transaction.productId, transaction);
+        }
+      }
+
+      return transactionsByProduct;
+    } catch (error: any) {
+      // If index doesn't exist, fallback to individual queries (slower but works)
+      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+        console.warn('Firestore index not found for batch transaction fetch, using individual queries');
+        const promises = productIds.map((productId) => 
+          this.getLastTransaction(productId, locationId)
+        );
+        const transactions = await Promise.all(promises);
+        
+        transactions.forEach((transaction, index) => {
+          if (transaction) {
+            result.set(productIds[index], transaction);
+          }
+        });
+        
+        return result;
+      }
+      throw error;
+    }
+  }
+
   async getAllInventory(): Promise<InventoryRecord[]> {
     const snapshot = await this.inventoryCollection.get();
     return snapshot.docs.map((doc) => this.toInventoryRecord(doc.id, doc.data()));

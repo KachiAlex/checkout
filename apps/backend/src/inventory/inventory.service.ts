@@ -23,79 +23,103 @@ export class InventoryService {
   async getStock(locationId: string, tenantId?: string) {
     const inventoryRecords = await this.inventoryRepository.listStock(locationId);
     
-    // Enrich inventory records with product information and last transaction
-    const enrichedRecords = await Promise.all(
-      inventoryRecords.map(async (record) => {
-        try {
-          // Fetch product information
-          const product = tenantId
-            ? await this.productsService.findOne(record.productId, tenantId)
-            : null;
-          
-          if (!product) {
-            // If product not found, return record without product info
-            return {
-              ...record,
-              product: null,
-              lastTransaction: null,
-            };
-          }
+    if (!tenantId || inventoryRecords.length === 0) {
+      // Return records without enrichment if no tenantId or no records
+      return inventoryRecords.map((record) => ({
+        ...record,
+        product: {
+          id: record.productId,
+          name: 'Unknown product',
+          sku: '—',
+          barcode: undefined,
+        },
+        isProductMissing: true,
+        lastTransaction: null,
+      }));
+    }
 
-          // Get last transaction for this inventory item
-          const lastTransaction = await this.inventoryRepository.getLastTransaction(
-            record.productId,
-            locationId,
-          );
+    // OPTIMIZATION: Batch fetch all products, transactions, and users at once
+    const productIds = inventoryRecords.map((r) => r.productId);
+    
+    // Batch fetch all products with error handling
+    let productsMap = new Map();
+    try {
+      productsMap = await this.productsService.findByIds(productIds, tenantId);
+    } catch (error) {
+      console.error('Failed to batch fetch products, falling back to individual queries:', error);
+      // Fallback to empty map - will show products as missing
+      productsMap = new Map();
+    }
+    
+    // Batch fetch all last transactions with error handling
+    let transactionsMap = new Map();
+    try {
+      transactionsMap = await this.inventoryRepository.getLastTransactionsBatch(
+        productIds,
+        locationId,
+      );
+    } catch (error) {
+      console.error('Failed to batch fetch transactions, continuing without transaction data:', error);
+      transactionsMap = new Map();
+    }
+    
+    // Collect unique user IDs from transactions
+    const userIds = Array.from(transactionsMap.values())
+      .map((t) => t.userId)
+      .filter((id): id is string => Boolean(id));
+    
+    // Batch fetch all users with error handling
+    let usersMap = new Map();
+    try {
+      usersMap = userIds.length > 0 
+        ? await this.usersRepository.findByIds(userIds)
+        : new Map();
+    } catch (error) {
+      console.error('Failed to batch fetch users, continuing without user data:', error);
+      usersMap = new Map();
+    }
 
-          // Get user info if transaction has userId
-          let lastUpdatedBy = null;
-          if (lastTransaction?.userId && tenantId) {
-            try {
-              const user = await this.usersRepository.findById(lastTransaction.userId);
-              if (user) {
-                lastUpdatedBy = {
-                  id: user.id,
-                  name: user.name,
-                };
-              }
-            } catch (error) {
-              console.error(`Failed to fetch user ${lastTransaction.userId}:`, error);
-            }
-          }
+    // Enrich inventory records using the batch-fetched data
+    const enrichedRecords = inventoryRecords.map((record) => {
+      const product = productsMap.get(record.productId);
+      const lastTransaction = transactionsMap.get(record.productId);
+      
+      let lastUpdatedBy = null;
+      if (lastTransaction?.userId) {
+        const user = usersMap.get(lastTransaction.userId);
+        if (user) {
+          lastUpdatedBy = {
+            id: user.id,
+            name: user.name,
+          };
+        }
+      }
 
-          return {
-            ...record,
-            product: {
+      return {
+        ...record,
+        product: product
+          ? {
               id: product.id,
               name: product.name,
               sku: product.sku,
               barcode: product.barcode,
               description: product.description,
               priceCents: product.priceCents,
-            },
-            // Use inventory sales price if available, otherwise fall back to product price
-            salesPriceCents: record.salesPriceCents ?? product.priceCents,
-            costCents: record.costCents,
-            lastTransaction: lastTransaction
-              ? {
-                  timestamp: lastTransaction.ts,
-                  userId: lastTransaction.userId,
-                  user: lastUpdatedBy,
-                  type: lastTransaction.type,
-                }
-              : null,
-          };
-        } catch (error) {
-          // If product fetch fails, return record without product info
-          console.error(`Failed to fetch product ${record.productId}:`, error);
-          return {
-            ...record,
-            product: null,
-            lastTransaction: null,
-          };
-        }
-      })
-    );
+            }
+          : null,
+        // Use inventory sales price if available, otherwise fall back to product price
+        salesPriceCents: record.salesPriceCents ?? product?.priceCents,
+        costCents: record.costCents,
+        lastTransaction: lastTransaction
+          ? {
+              timestamp: lastTransaction.ts,
+              userId: lastTransaction.userId,
+              user: lastUpdatedBy,
+              type: lastTransaction.type,
+            }
+          : null,
+      };
+    });
 
     const recordsWithFallback = enrichedRecords.map((record) => {
       const isProductMissing = !record.product;

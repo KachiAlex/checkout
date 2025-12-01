@@ -119,6 +119,46 @@ export class ProductsRepository {
     return this.toRecord(doc.id, doc.data());
   }
 
+  /**
+   * Batch fetch products by IDs (optimized for inventory loading)
+   * Uses Firestore getAll() which is more efficient than 'in' queries
+   */
+  async findByIds(ids: string[], tenantId: string): Promise<Map<string, ProductRecord>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const result = new Map<string, ProductRecord>();
+    const uniqueIds = [...new Set(ids)];
+    
+    // Firestore getAll() can handle up to 10 document references at once
+    const chunkSize = 10;
+    const chunks: string[][] = [];
+    for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+      chunks.push(uniqueIds.slice(i, i + chunkSize));
+    }
+
+    // Fetch all chunks in parallel using getAll()
+    const promises = chunks.map(async (chunk) => {
+      const docRefs = chunk.map((id) => this.collection.doc(id));
+      const docs = await this.firestore.getAll(...docRefs);
+      
+      return docs
+        .filter((doc) => doc.exists)
+        .map((doc) => this.toRecord(doc.id, doc.data() as ProductDocument))
+        .filter((record) => record.tenantId === tenantId);
+    });
+
+    const allProducts = (await Promise.all(promises)).flat();
+    
+    // Convert to Map for O(1) lookup
+    allProducts.forEach((product) => {
+      result.set(product.id, product);
+    });
+
+    return result;
+  }
+
   async create(data: CreateProductInput): Promise<ProductRecord> {
     if (!data.sku || !data.name) {
       throw new BadRequestException('Product sku and name are required');

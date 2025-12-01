@@ -24,6 +24,8 @@ async function getApp(): Promise<Express> {
   appInitializationPromise = (async () => {
     try {
       console.log('[Functions] Loading backend serverless adapter...');
+      // Use dynamic import - Firebase CLI should not execute this during analysis
+      // Only actual function invocations will trigger this
       const { createServer } = await import('../backend-dist/serverless');
       console.log('[Functions] Creating NestJS server...');
       const app = await createServer();
@@ -45,16 +47,17 @@ async function getApp(): Promise<Express> {
 // - 60s timeout to handle longer operations
 // - minInstances: 1 to keep instance warm and avoid cold starts
 // - maxInstances: 10 to handle concurrent requests and prevent 429 errors
-export const api = functions
-  .region(DEFAULT_REGION)
-  .runWith({
-    memory: '256MB', // Increased to help with performance
-    timeoutSeconds: 60, // Increased timeout to 60 seconds
-    minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
-    maxInstances: MAX_INSTANCES, // Increased to 10 to handle concurrent requests
-    ingressSettings: 'ALLOW_ALL',
-  })
-  .https.onRequest(async (req: Request, res: Response) => {
+const createApiHandler = () => {
+  return functions
+    .region(DEFAULT_REGION)
+    .runWith({
+      memory: '256MB', // Increased to help with performance
+      timeoutSeconds: 60, // Increased timeout to 60 seconds
+      minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
+      maxInstances: MAX_INSTANCES, // Increased to 10 to handle concurrent requests
+      ingressSettings: 'ALLOW_ALL',
+    })
+    .https.onRequest(async (req: Request, res: Response) => {
     const origin = req.headers.origin || '';
     const allowedOrigins = [
       'https://checkout-77d99.web.app',
@@ -115,3 +118,9 @@ export const api = functions
       }
     }
   });
+};
+
+// Export the handler - wrapped in a function to avoid initialization during Firebase CLI analysis
+// During Firebase CLI analysis, it tries to import and analyze the module
+// We export the handler directly - initialization only happens on first request
+export const api = createApiHandler();

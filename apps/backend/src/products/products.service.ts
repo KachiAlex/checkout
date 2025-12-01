@@ -28,6 +28,13 @@ export class ProductsService {
     return product;
   }
 
+  /**
+   * Batch fetch products by IDs (optimized for inventory loading)
+   */
+  async findByIds(ids: string[], tenantId: string): Promise<Map<string, ProductRecord>> {
+    return this.productsRepository.findByIds(ids, tenantId);
+  }
+
   async findByBarcode(barcode: string, tenantId: string): Promise<ProductRecord | null> {
     const product = await this.productsRepository.findByBarcode(barcode, tenantId);
     if (product && product.active) {

@@ -111,7 +111,7 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '24h'), // Increased from 15m to 24h to reduce 401 errors
     });
 
     const refreshToken = this.jwtService.sign(payload, {
@@ -177,7 +177,7 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '24h'), // Increased from 15m to 24h to reduce 401 errors
     });
 
     const refreshToken = this.jwtService.sign(payload, {
@@ -282,7 +282,7 @@ export class AuthService {
       };
 
       const accessToken = this.jwtService.sign(newPayload, {
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '24h'), // Increased from 15m to 24h to reduce 401 errors
       });
 
       const newRefreshToken = this.jwtService.sign(newPayload, {
