@@ -46,6 +46,9 @@ const SuperAdminPage = lazy(() =>
 );
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
 const GetAppPage = lazy(() => import('./pages/GetAppPage').then((module) => ({ default: module.GetAppPage })));
+const ExecutiveDashboardPage = lazy(() =>
+  import('./pages/ExecutiveDashboardPage').then((module) => ({ default: module.ExecutiveDashboardPage })),
+);
 
 function LoadingScreen() {
   return (
@@ -64,7 +67,7 @@ function App() {
   const isAdmin = user?.role === 'admin';
   const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
   const isCompanyUser = isAuthenticated && !isPlatformAdmin;
-  const authenticatedLandingPath = isPlatformAdmin ? '/superadmin' : '/checkout';
+  const authenticatedLandingPath = isPlatformAdmin ? '/superadmin' : '/dashboard';
   const isElectron =
     typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron');
   const isNativePlatform = isElectron || Capacitor.getPlatform() !== 'web';
@@ -117,6 +120,18 @@ function App() {
               element={
                 isCompanyUser ? (
                   <CheckoutPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                isCompanyUser ? (
+                  <ExecutiveDashboardPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
                 ) : (
