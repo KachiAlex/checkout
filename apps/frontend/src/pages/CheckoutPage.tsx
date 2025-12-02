@@ -76,39 +76,68 @@ export function CheckoutPage() {
 
   // Product search state
   const [searchQuery, setSearchQuery] = useState('');
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] } | null>(null);
   const [quantitySelectorOpen, setQuantitySelectorOpen] = useState(false);
 
-  // Search products with debounce
-  useEffect(() => {
-    if (!searchQuery.trim() || !accessToken) {
+  // Load all products once, then filter on the client as the cashier types
+  const loadAllProducts = useCallback(async () => {
+    if (!accessToken || hasLoadedProducts || isSearching) return;
+
+    setIsSearching(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/products`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const products: Product[] = response.data || [];
+      setAllProducts(products);
+      setSearchResults(products.slice(0, 50));
+      setShowResults(true);
+      setHasLoadedProducts(true);
+    } catch (error) {
+      console.error('Failed to load products for search:', error);
+      toast.error('Failed to load products for search');
       setSearchResults([]);
       setShowResults(false);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [accessToken, hasLoadedProducts, isSearching]);
+
+  // Filter products locally as the cashier types
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      if (allProducts.length > 0) {
+        setSearchResults(allProducts.slice(0, 50));
+        setShowResults(true);
+      } else {
+        setSearchResults([]);
+        setShowResults(false);
+      }
       return;
     }
 
-    const timeoutId = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const response = await axios.get(
-          `${API_URL}/api/v1/products?query=${encodeURIComponent(searchQuery)}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = allProducts
+      .filter((p) => {
+        const name = p.name?.toLowerCase() || '';
+        const sku = p.sku?.toLowerCase() || '';
+        const barcode = p.barcode?.toLowerCase() || '';
+        return (
+          name.includes(q) ||
+          sku.includes(q) ||
+          barcode.includes(q)
         );
-        setSearchResults(response.data?.slice(0, 10) || []);
-        setShowResults(true);
-      } catch (error) {
-        console.error('Search failed:', error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
+      })
+      .slice(0, 50);
 
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, accessToken]);
+    setSearchResults(filtered);
+    setShowResults(true);
+  }, [searchQuery, allProducts]);
 
   // Fetch tax settings (all users need this to see if tax can be applied)
   useEffect(() => {
@@ -433,7 +462,11 @@ export function CheckoutPage() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => searchQuery && setShowResults(true)}
+                      onFocus={() => {
+                        // Load products on first focus, then always show dropdown
+                        loadAllProducts();
+                        setShowResults(true);
+                      }}
                       placeholder="Or type product name, SKU..."
                       className="theme-surface w-full rounded-xl border px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
                     />

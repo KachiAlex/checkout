@@ -4,6 +4,7 @@ import { UsersRepository } from '../users/users.repository';
 import { ProductsService } from '../products/products.service';
 import { CustomersRepository } from '../customers/customers.repository';
 import { InventoryService } from '../inventory/inventory.service';
+import { SuppliersRepository } from '../suppliers/suppliers.repository';
 export declare class ReportsService {
     private readonly ordersRepository;
     private readonly inventoryRepository;
@@ -11,7 +12,8 @@ export declare class ReportsService {
     private readonly productsService;
     private readonly customersRepository;
     private readonly inventoryService;
-    constructor(ordersRepository: OrdersRepository, inventoryRepository: InventoryRepository, usersRepository: UsersRepository, productsService: ProductsService, customersRepository: CustomersRepository, inventoryService: InventoryService);
+    private readonly suppliersRepository;
+    constructor(ordersRepository: OrdersRepository, inventoryRepository: InventoryRepository, usersRepository: UsersRepository, productsService: ProductsService, customersRepository: CustomersRepository, inventoryService: InventoryService, suppliersRepository: SuppliersRepository);
     getSales(from?: string, to?: string, locationId?: string): Promise<{
         from: string;
         to: string;
@@ -179,5 +181,99 @@ export declare class ReportsService {
         totalDiscrepancies: number;
         criticalCount: number;
         message: string;
+    }>;
+    getCustomerSegmentation(locationId: string | undefined, from: string | undefined, to: string | undefined, tenantId: string | undefined): Promise<{
+        from: string;
+        to: string;
+        locationId: string;
+        segments: {
+            customerId: string;
+            name: string;
+            recencyDays: number;
+            frequency: number;
+            monetary: number;
+            rScore: number;
+            fScore: number;
+            mScore: number;
+            rfmScore: string;
+            segment: string;
+            clv: number;
+        }[];
+        totalCustomers: number;
+        generatedAt: string;
+    }>;
+    getSupplierAnalytics(locationId?: string, from?: string, to?: string, tenantId?: string): Promise<{
+        from: string;
+        to: string;
+        locationId: string;
+        suppliers: any[];
+        totalRevenue: number;
+        totalCost: number;
+        totalProfit: number;
+        note: string;
+        productSales?: undefined;
+    } | {
+        from: string;
+        to: string;
+        locationId: string;
+        suppliers: {
+            supplierId: string;
+            supplierName: string;
+            contactName: string;
+            email: string;
+            phone: string;
+            active: boolean;
+            revenue: number;
+            cost: number;
+            profit: number;
+            profitMargin: number;
+            productCount: number;
+            orderCount: number;
+            note: string;
+        }[];
+        totalRevenue: number;
+        totalCost: number;
+        totalProfit: number;
+        productSales: {
+            productId: string;
+            productName: string;
+            quantitySold: number;
+            revenue: number;
+            cost: number;
+            profit: number;
+        }[];
+        note: string;
+    }>;
+    getPriceSensitivity(locationId?: string, from?: string, to?: string, tenantId?: string): Promise<{
+        from: string;
+        to: string;
+        locationId: string;
+        products: any[];
+        note: string;
+        generatedAt?: undefined;
+    } | {
+        from: string;
+        to: string;
+        locationId: string;
+        products: {
+            productId: string;
+            productName: string;
+            currentPrice: number;
+            averagePrice: number;
+            priceChanges: number;
+            totalQuantity: number;
+            totalRevenue: number;
+            priceHistory: {
+                week: string;
+                price: number;
+                quantity: number;
+                revenue: number;
+            }[];
+            elasticity: number;
+            sensitivityLevel: "high" | "medium" | "low" | "unknown";
+            sensitivityScore: number;
+        }[];
+        generatedAt: string;
+        note?: undefined;
     }>;
 }

@@ -6,6 +6,7 @@ import { UsersRepository } from '../users/users.repository';
 import { ProductsService } from '../products/products.service';
 import { CustomersRepository } from '../customers/customers.repository';
 import { InventoryService } from '../inventory/inventory.service';
+import { SuppliersRepository } from '../suppliers/suppliers.repository';
 
 @Injectable()
 export class ReportsService {
@@ -16,6 +17,7 @@ export class ReportsService {
     private readonly productsService: ProductsService,
     private readonly customersRepository: CustomersRepository,
     private readonly inventoryService: InventoryService,
+    private readonly suppliersRepository: SuppliersRepository,
   ) {}
 
   async getSales(from?: string, to?: string, locationId?: string) {
@@ -855,4 +857,472 @@ export class ReportsService {
         : `${shrinkageAlerts.length} products have inventory discrepancies.`,
     };
   }
+
+  // ========== CUSTOMER SEGMENTATION (RFM + CLV) ==========
+  async getCustomerSegmentation(locationId: string | undefined, from: string | undefined, to: string | undefined, tenantId: string | undefined) {
+    if (!tenantId) {
+      return {
+        from,
+        to,
+        locationId,
+        segments: [],
+        totalCustomers: 0,
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    const now = new Date();
+    const fromDate = from ? new Date(from) : new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000); // default 6 months
+    const toDate = to ? new Date(to) : now;
+
+    // Load all completed orders in the window
+    const orders = await this.ordersRepository.list({
+      status: OrderStatus.COMPLETED,
+      locationId,
+      from: fromDate,
+      to: toDate,
+    });
+
+    // Group orders by customer
+    const byCustomer: Record<string, {
+      customerId: string;
+      orderCount: number;
+      totalCents: number;
+      lastOrderAt: Date | null;
+    }> = {};
+
+    orders.forEach((order) => {
+      if (!order.customerId) return;
+      if (!byCustomer[order.customerId]) {
+        byCustomer[order.customerId] = {
+          customerId: order.customerId,
+          orderCount: 0,
+          totalCents: 0,
+          lastOrderAt: null,
+        };
+      }
+      const bucket = byCustomer[order.customerId];
+      bucket.orderCount += 1;
+      bucket.totalCents += order.totalCents;
+      if (!bucket.lastOrderAt || order.createdAt > bucket.lastOrderAt) {
+        bucket.lastOrderAt = order.createdAt;
+      }
+    });
+
+    // Load customer records for the IDs we have
+    const allCustomers = await this.customersRepository.findAll(tenantId);
+    const customerMap = new Map(allCustomers.map((c) => [c.id, c]));
+
+    const daysDiff = (a: Date, b: Date) => Math.max(0, Math.floor((a.getTime() - b.getTime()) / (24 * 60 * 60 * 1000)));
+
+    // Build raw metrics
+    const nowDate = now;
+    const metrics = Object.values(byCustomer).map((c) => {
+      const customer = customerMap.get(c.customerId);
+      const recencyDays = c.lastOrderAt ? daysDiff(nowDate, c.lastOrderAt) : Number.MAX_SAFE_INTEGER;
+      const frequency = c.orderCount;
+      const monetary = c.totalCents / 100;
+
+      return {
+        customerId: c.customerId,
+        name: customer?.name || `Customer ${c.customerId.substring(0, 6)}`,
+        recencyDays,
+        frequency,
+        monetary,
+      };
+    });
+
+    if (metrics.length === 0) {
+      return {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+        locationId,
+        segments: [],
+        totalCustomers: 0,
+        generatedAt: now.toISOString(),
+      };
+    }
+
+    // Helper to score 1-5 using quantiles
+    const scoreField = (values: number[], invert = false) => {
+      const sorted = [...values].sort((a, b) => a - b);
+      const q = (p: number) => sorted[Math.floor((sorted.length - 1) * p)];
+      const q20 = q(0.2);
+      const q40 = q(0.4);
+      const q60 = q(0.6);
+      const q80 = q(0.8);
+
+      return (value: number) => {
+        const val = value;
+        const v = invert ? -val : val;
+        const v20 = invert ? -q80 : q20;
+        const v40 = invert ? -q60 : q40;
+        const v60 = invert ? -q40 : q60;
+        const v80 = invert ? -q20 : q80;
+
+        if (v <= v20) return 1;
+        if (v <= v40) return 2;
+        if (v <= v60) return 3;
+        if (v <= v80) return 4;
+        return 5;
+      };
+    };
+
+    const recencyValues = metrics.map((m) => m.recencyDays);
+    const frequencyValues = metrics.map((m) => m.frequency);
+    const monetaryValues = metrics.map((m) => m.monetary);
+
+    const scoreRecency = scoreField(recencyValues, true); // lower days = better
+    const scoreFrequency = scoreField(frequencyValues, false);
+    const scoreMonetary = scoreField(monetaryValues, false);
+
+    const segments = metrics.map((m) => {
+      const r = scoreRecency(m.recencyDays);
+      const f = scoreFrequency(m.frequency);
+      const mon = scoreMonetary(m.monetary);
+      const rfmScore = `${r}${f}${mon}`;
+
+      let segment: string;
+      if (r >= 4 && f >= 4 && mon >= 4) segment = 'CHAMPION';
+      else if (r >= 4 && f >= 3) segment = 'LOYAL';
+      else if (r <= 2 && f >= 3) segment = 'AT_RISK';
+      else if (r <= 2 && f <= 2) segment = 'LOST';
+      else segment = 'REGULAR';
+
+      // Simple CLV estimate: avg order value * frequency per month * 12 months
+      const avgOrderValue = m.frequency > 0 ? m.monetary / m.frequency : 0;
+      const periodDays = Math.max(1, daysDiff(toDate, fromDate));
+      const ordersPerMonth = (m.frequency / periodDays) * 30;
+      const clv = avgOrderValue * ordersPerMonth * 12;
+
+      return {
+        customerId: m.customerId,
+        name: m.name,
+        recencyDays: m.recencyDays,
+        frequency: m.frequency,
+        monetary: m.monetary,
+        rScore: r,
+        fScore: f,
+        mScore: mon,
+        rfmScore,
+        segment,
+        clv,
+      };
+    });
+
+    return {
+      from: fromDate.toISOString(),
+      to: toDate.toISOString(),
+      locationId,
+      segments,
+      totalCustomers: segments.length,
+      generatedAt: now.toISOString(),
+    };
+  }
+
+  // ========== PHASE B: SUPPLIER ANALYTICS ==========
+  async getSupplierAnalytics(locationId?: string, from?: string, to?: string, tenantId?: string) {
+    const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const toDate = to ? new Date(to) : new Date();
+
+    if (!tenantId) {
+      return {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+        locationId,
+        suppliers: [],
+        totalRevenue: 0,
+        totalCost: 0,
+        totalProfit: 0,
+        note: 'Tenant ID required for supplier analytics',
+      };
+    }
+
+    // Get all suppliers
+    const suppliers = await this.suppliersRepository.findAll(tenantId);
+
+    // Get all orders in the period
+    const orders = await this.ordersRepository.list({
+      status: OrderStatus.COMPLETED,
+      locationId,
+      from: fromDate,
+      to: toDate,
+    });
+
+    // Get all products to map productId to product info
+    const allProducts = await this.productsService.findAll(undefined, locationId, tenantId);
+    const productMap = new Map(allProducts.map((p) => [p.id, p]));
+
+    // Get inventory records for cost data
+    const inventoryRecords = locationId
+      ? await this.inventoryRepository.listStock(locationId)
+      : [];
+    const inventoryMap = new Map(inventoryRecords.map((inv) => [inv.productId, inv]));
+
+    // Aggregate sales by product (we'll note that supplier linking is needed)
+    const productSales: Record<string, {
+      productId: string;
+      productName: string;
+      quantitySold: number;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }> = {};
+
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        const product = productMap.get(item.productId);
+        if (!product) return;
+
+        const inventory = inventoryMap.get(item.productId);
+        const costCents = inventory?.costCents ?? product.costCents ?? 0;
+        const revenueCents = item.priceCents * item.quantity;
+        const costTotalCents = costCents * item.quantity;
+
+        if (!productSales[item.productId]) {
+          productSales[item.productId] = {
+            productId: item.productId,
+            productName: product.name,
+            quantitySold: 0,
+            revenue: 0,
+            cost: 0,
+            profit: 0,
+          };
+        }
+
+        productSales[item.productId].quantitySold += item.quantity;
+        productSales[item.productId].revenue += revenueCents / 100;
+        productSales[item.productId].cost += costTotalCents / 100;
+        productSales[item.productId].profit += (revenueCents - costTotalCents) / 100;
+      });
+    });
+
+    // For now, since products don't have supplierId, we'll show all suppliers
+    // with a note that profit tracking requires product-supplier linking
+    const supplierAnalytics = suppliers.map((supplier) => {
+      // TODO: When products have supplierId, filter productSales by supplier
+      // For now, return basic supplier info
+      return {
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        contactName: supplier.contactName,
+        email: supplier.email,
+        phone: supplier.phone,
+        active: supplier.active,
+        // Placeholder values until product-supplier linking is implemented
+        revenue: 0,
+        cost: 0,
+        profit: 0,
+        profitMargin: 0,
+        productCount: 0,
+        orderCount: 0,
+        note: 'Product-supplier linking required for profit tracking',
+      };
+    });
+
+    // Calculate totals from all product sales
+    const totalRevenue = Object.values(productSales).reduce((sum, p) => sum + p.revenue, 0);
+    const totalCost = Object.values(productSales).reduce((sum, p) => sum + p.cost, 0);
+    const totalProfit = totalRevenue - totalCost;
+
+    return {
+      from: fromDate.toISOString(),
+      to: toDate.toISOString(),
+      locationId,
+      suppliers: supplierAnalytics,
+      totalRevenue,
+      totalCost,
+      totalProfit,
+      productSales: Object.values(productSales).slice(0, 20), // Top 20 products for reference
+      note: 'To enable supplier profit tracking, add supplierId field to products and link products to suppliers.',
+    };
+  }
+
+  // ========== PHASE B: PRICE SENSITIVITY ANALYTICS ==========
+  async getPriceSensitivity(locationId?: string, from?: string, to?: string, tenantId?: string) {
+    const fromDate = from ? new Date(from) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days for price history
+    const toDate = to ? new Date(to) : new Date();
+
+    if (!tenantId) {
+      return {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+        locationId,
+        products: [],
+        note: 'Tenant ID required for price sensitivity analytics',
+      };
+    }
+
+    // Get all orders in the period
+    const orders = await this.ordersRepository.list({
+      status: OrderStatus.COMPLETED,
+      locationId,
+      from: fromDate,
+      to: toDate,
+    });
+
+    // Get inventory transactions to track price changes
+    const transactions = locationId
+      ? await this.inventoryRepository.listTransactions(locationId, fromDate, toDate)
+      : [];
+
+    // Get all products
+    const allProducts = await this.productsService.findAll(undefined, locationId, tenantId);
+    const productMap = new Map(allProducts.map((p) => [p.id, p]));
+
+    // Get current inventory prices
+    const inventoryRecords = locationId
+      ? await this.inventoryRepository.listStock(locationId)
+      : [];
+    const currentPrices = new Map(
+      inventoryRecords.map((inv) => [inv.productId, inv.salesPriceCents ?? 0])
+    );
+
+    // Group orders by product and time period (weekly buckets)
+    const productData: Record<string, {
+      productId: string;
+      productName: string;
+      priceHistory: Array<{ week: string; price: number; quantity: number; revenue: number }>;
+      currentPrice: number;
+      averagePrice: number;
+      priceChanges: number;
+      totalQuantity: number;
+      totalRevenue: number;
+    }> = {};
+
+    // Create weekly buckets
+    const weekBuckets: Record<string, Record<string, { price: number; quantity: number; revenue: number }>> = {};
+
+    orders.forEach((order) => {
+      const orderWeek = formatWeek(order.createdAt);
+      order.items.forEach((item) => {
+        const product = productMap.get(item.productId);
+        if (!product) return;
+
+        if (!productData[item.productId]) {
+          productData[item.productId] = {
+            productId: item.productId,
+            productName: product.name,
+            priceHistory: [],
+            currentPrice: currentPrices.get(item.productId) ?? item.priceCents,
+            averagePrice: 0,
+            priceChanges: 0,
+            totalQuantity: 0,
+            totalRevenue: 0,
+          };
+        }
+
+        if (!weekBuckets[item.productId]) {
+          weekBuckets[item.productId] = {};
+        }
+        if (!weekBuckets[item.productId][orderWeek]) {
+          weekBuckets[item.productId][orderWeek] = { price: 0, quantity: 0, revenue: 0 };
+        }
+
+        const bucket = weekBuckets[item.productId][orderWeek];
+        bucket.quantity += item.quantity;
+        bucket.revenue += (item.priceCents * item.quantity) / 100;
+        // Use average price for the week
+        bucket.price = (bucket.price * (bucket.quantity - item.quantity) + item.priceCents) / bucket.quantity;
+      });
+    });
+
+    // Build price history and calculate sensitivity
+    const priceSensitivityData = Object.entries(productData).map(([productId, data]) => {
+      const buckets = weekBuckets[productId] || {};
+      const weeks = Object.keys(buckets).sort();
+      
+      const priceHistory = weeks.map((week) => ({
+        week,
+        price: buckets[week].price / 100, // Convert to currency units
+        quantity: buckets[week].quantity,
+        revenue: buckets[week].revenue,
+      }));
+
+      // Calculate price changes
+      let priceChanges = 0;
+      for (let i = 1; i < priceHistory.length; i++) {
+        if (Math.abs(priceHistory[i].price - priceHistory[i - 1].price) > 0.01) {
+          priceChanges++;
+        }
+      }
+
+      // Calculate average price
+      const totalPrice = priceHistory.reduce((sum, p) => sum + p.price * p.quantity, 0);
+      const totalQty = priceHistory.reduce((sum, p) => sum + p.quantity, 0);
+      const avgPrice = totalQty > 0 ? totalPrice / totalQty : 0;
+
+      // Calculate price elasticity (simplified)
+      // Price elasticity = % change in quantity / % change in price
+      let elasticity = 0;
+      if (priceHistory.length >= 2 && priceChanges > 0) {
+        const firstHalf = priceHistory.slice(0, Math.floor(priceHistory.length / 2));
+        const secondHalf = priceHistory.slice(Math.floor(priceHistory.length / 2));
+        
+        const firstAvgPrice = firstHalf.reduce((sum, p) => sum + p.price, 0) / firstHalf.length;
+        const firstAvgQty = firstHalf.reduce((sum, p) => sum + p.quantity, 0) / firstHalf.length;
+        const secondAvgPrice = secondHalf.reduce((sum, p) => sum + p.price, 0) / secondHalf.length;
+        const secondAvgQty = secondHalf.reduce((sum, p) => sum + p.quantity, 0) / secondHalf.length;
+
+        if (firstAvgPrice > 0 && firstAvgQty > 0) {
+          const priceChangePercent = ((secondAvgPrice - firstAvgPrice) / firstAvgPrice) * 100;
+          const qtyChangePercent = ((secondAvgQty - firstAvgQty) / firstAvgQty) * 100;
+          
+          if (Math.abs(priceChangePercent) > 0.1) {
+            elasticity = qtyChangePercent / priceChangePercent;
+          }
+        }
+      }
+
+      // Determine sensitivity level
+      let sensitivityLevel: 'high' | 'medium' | 'low' | 'unknown';
+      if (priceHistory.length < 2 || priceChanges === 0) {
+        sensitivityLevel = 'unknown';
+      } else if (Math.abs(elasticity) > 1.5) {
+        sensitivityLevel = 'high';
+      } else if (Math.abs(elasticity) > 0.5) {
+        sensitivityLevel = 'medium';
+      } else {
+        sensitivityLevel = 'low';
+      }
+
+      const totalQuantity = priceHistory.reduce((sum, p) => sum + p.quantity, 0);
+      const totalRevenue = priceHistory.reduce((sum, p) => sum + p.revenue, 0);
+
+      return {
+        productId: data.productId,
+        productName: data.productName,
+        currentPrice: data.currentPrice / 100,
+        averagePrice: avgPrice,
+        priceChanges,
+        totalQuantity,
+        totalRevenue,
+        priceHistory,
+        elasticity: Math.round(elasticity * 100) / 100,
+        sensitivityLevel,
+        sensitivityScore: Math.abs(elasticity),
+      };
+    });
+
+    // Sort by sensitivity score (most sensitive first)
+    priceSensitivityData.sort((a, b) => b.sensitivityScore - a.sensitivityScore);
+
+    return {
+      from: fromDate.toISOString(),
+      to: toDate.toISOString(),
+      locationId,
+      products: priceSensitivityData,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+}
+
+// Helper function to format date as week string (YYYY-WW)
+function formatWeek(date: Date): string {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // Start of week (Sunday)
+  const year = d.getFullYear();
+  const week = Math.ceil((d.getTime() - new Date(year, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return `${year}-W${week.toString().padStart(2, '0')}`;
 }

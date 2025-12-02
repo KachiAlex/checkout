@@ -12,6 +12,7 @@ type Period = 'daily' | 'weekly' | 'monthly' | 'custom';
 type ReportTab =
   | 'general'
   | 'alerts'
+  | 'customers'
   | 'staff'
   | 'credit'
   | 'profit'
@@ -141,6 +142,64 @@ interface CategoryBrandAnalytics {
     quantitySold: number;
     orderCount: number;
   }>;
+}
+
+interface SupplierAnalytics {
+  from: string;
+  to: string;
+  locationId?: string;
+  suppliers: Array<{
+    supplierId: string;
+    supplierName: string;
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    active: boolean;
+    revenue: number;
+    cost: number;
+    profit: number;
+    profitMargin: number;
+    productCount: number;
+    orderCount: number;
+    note?: string;
+  }>;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  productSales?: Array<{
+    productId: string;
+    productName: string;
+    quantitySold: number;
+    revenue: number;
+    cost: number;
+    profit: number;
+  }>;
+  note?: string;
+}
+
+interface PriceSensitivityAnalytics {
+  from: string;
+  to: string;
+  locationId?: string;
+  products: Array<{
+    productId: string;
+    productName: string;
+    currentPrice: number;
+    averagePrice: number;
+    priceChanges: number;
+    totalQuantity: number;
+    totalRevenue: number;
+    priceHistory: Array<{
+      week: string;
+      price: number;
+      quantity: number;
+      revenue: number;
+    }>;
+    elasticity: number;
+    sensitivityLevel: 'high' | 'medium' | 'low' | 'unknown';
+    sensitivityScore: number;
+  }>;
+  generatedAt: string;
 }
 
 interface TimeBasedInsights {
@@ -384,6 +443,27 @@ interface ShrinkageDetectionAnalytics {
   message: string;
 }
 
+interface CustomerSegmentAnalytics {
+  from: string;
+  to: string;
+  locationId?: string;
+  generatedAt: string;
+  totalCustomers: number;
+  segments: Array<{
+    customerId: string;
+    name: string;
+    recencyDays: number;
+    frequency: number;
+    monetary: number;
+    rScore: number;
+    fScore: number;
+    mScore: number;
+    rfmScore: string;
+    segment: string;
+    clv: number;
+  }>;
+}
+
 export function ReportsPage() {
   console.log('🔥 [ReportsPage] COMPONENT RENDERING NOW!');
   const { logout, accessToken, user } = useAuthStore();
@@ -416,6 +496,9 @@ export function ReportsPage() {
   const [smartAlerts, setSmartAlerts] = useState<SmartAlertsAnalytics | null>(null);
   const [fraudDetection, setFraudDetection] = useState<FraudDetectionAnalytics | null>(null);
   const [shrinkageDetection, setShrinkageDetection] = useState<ShrinkageDetectionAnalytics | null>(null);
+  const [customerSegments, setCustomerSegments] = useState<CustomerSegmentAnalytics | null>(null);
+  const [supplierAnalytics, setSupplierAnalytics] = useState<SupplierAnalytics | null>(null);
+  const [priceSensitivity, setPriceSensitivity] = useState<PriceSensitivityAnalytics | null>(null);
 
   // Track previous alerts summary to know when to notify about new critical alerts
   const lastAlertsSummaryRef = useRef<{ total: number; critical: number } | null>(null);
@@ -1736,6 +1819,87 @@ export function ReportsPage() {
     }
   };
 
+  const loadCustomerSegmentation = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const params: any = {
+        location_id: user?.locationId,
+      };
+      if (period === 'custom') {
+        params.from = customDateFrom;
+        params.to = customDateTo;
+      }
+
+      const response = await axios.get(`${API_URL}/api/v1/reports/customer-segmentation`, {
+        headers,
+        params,
+      });
+      setCustomerSegments(response.data);
+    } catch (error: any) {
+      console.error('Failed to load customer segmentation analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load customer analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSupplierAnalytics = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const params: any = {
+        location_id: user?.locationId,
+      };
+      if (period === 'custom') {
+        params.from = customDateFrom;
+        params.to = customDateTo;
+      }
+
+      const response = await axios.get(`${API_URL}/api/v1/reports/supplier-analytics`, {
+        headers,
+        params,
+      });
+      setSupplierAnalytics(response.data);
+    } catch (error: any) {
+      console.error('Failed to load supplier analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load supplier analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPriceSensitivity = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const params: any = {
+        location_id: user?.locationId,
+      };
+      if (period === 'custom') {
+        params.from = customDateFrom;
+        params.to = customDateTo;
+      }
+
+      const response = await axios.get(`${API_URL}/api/v1/reports/price-sensitivity`, {
+        headers,
+        params,
+      });
+      setPriceSensitivity(response.data);
+    } catch (error: any) {
+      console.error('Failed to load price sensitivity analytics:', error);
+      toast.error(error.response?.data?.message || 'Failed to load price sensitivity analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadDiscountAnalytics = async () => {
     if (!accessToken) return;
 
@@ -2634,6 +2798,7 @@ export function ReportsPage() {
       loadProfitLossAnalytics();
     } else if (activeTab === 'category') {
       loadCategoryBrandAnalytics();
+      loadSupplierAnalytics(); // Load supplier analytics when category tab is active
     } else if (activeTab === 'time') {
       loadTimeBasedInsights();
     } else if (activeTab === 'inventory') {
@@ -2648,10 +2813,13 @@ export function ReportsPage() {
       loadBasketAnalysis();
     } else if (activeTab === 'trends') {
       loadSalesTrendsForecasting();
+      loadPriceSensitivity(); // Load price sensitivity when trends tab is active
     } else if (activeTab === 'operations') {
       loadOperationalMetrics();
     } else if (activeTab === 'alerts') {
       loadAlertsAndRisk();
+    } else if (activeTab === 'customers') {
+      loadCustomerSegmentation();
     }
   }, [activeTab, period, accessToken, user?.locationId, customDateFrom, customDateTo]);
 
@@ -2835,6 +3003,7 @@ const SimpleLineChart = ({
             {([
               'general', 
               'alerts',
+              'customers',
               'staff', 
               'credit', 
               'profit',
@@ -2876,6 +3045,7 @@ const SimpleLineChart = ({
                     )}
                   </span>
                 )}
+                {tab === 'customers' && '👤 Customers'}
                 {tab === 'staff' && '👥 Staff'}
                 {tab === 'credit' && '💳 Credit'}
                 {tab === 'profit' && '💰 Profit/Loss'}
@@ -3421,6 +3591,147 @@ const SimpleLineChart = ({
               </div>
             )}
 
+            {/* Customers Analytics Tab */}
+            {activeTab === 'customers' && (
+              <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="theme-text-primary text-xl font-semibold">Customer Analytics (RFM &amp; CLV)</h2>
+                </div>
+
+                {!customerSegments || customerSegments.segments.length === 0 ? (
+                  <div className="theme-surface rounded-xl border p-6 text-center">
+                    <p className="theme-text-secondary text-sm">
+                      No customer analytics data available for the selected period.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                      <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                        <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                          Total Customers
+                        </p>
+                        <p className="theme-text-primary text-lg sm:text-xl font-bold text-sky-400">
+                          {customerSegments.totalCustomers.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                        <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                          Champions
+                        </p>
+                        <p className="theme-text-primary text-lg sm:text-xl font-bold text-emerald-400">
+                          {customerSegments.segments.filter((s) => s.segment === 'CHAMPION').length}
+                        </p>
+                      </div>
+                      <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                        <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                          At Risk / Lost
+                        </p>
+                        <p className="theme-text-primary text-lg sm:text-xl font-bold text-amber-400">
+                          {
+                            customerSegments.segments.filter(
+                              (s) => s.segment === 'AT_RISK' || s.segment === 'LOST',
+                            ).length
+                          }
+                        </p>
+                      </div>
+                      <div className="theme-surface rounded-xl border p-3 sm:p-4">
+                        <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                          Avg CLV
+                        </p>
+                        <p className="theme-text-primary text-lg sm:text-xl font-bold text-purple-400">
+                          {formatCurrency(
+                            customerSegments.segments.reduce((sum, s) => sum + s.clv, 0) /
+                              Math.max(1, customerSegments.segments.length),
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Customers Table */}
+                    <div className="theme-surface rounded-xl border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-white/5">
+                            <tr>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Customer
+                              </th>
+                              <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Segment
+                              </th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Recency (days)
+                              </th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Frequency
+                              </th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Monetary
+                              </th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                RFM
+                              </th>
+                              <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                CLV (est.)
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/10">
+                            {customerSegments.segments
+                              .slice()
+                              .sort((a, b) => b.clv - a.clv)
+                              .map((c) => (
+                                <tr key={c.customerId} className="hover:bg-white/5 transition">
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-primary font-medium">{c.name}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                                        c.segment === 'CHAMPION'
+                                          ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60'
+                                          : c.segment === 'AT_RISK' || c.segment === 'LOST'
+                                          ? 'bg-amber-500/20 text-amber-200 border border-amber-400/60'
+                                          : 'bg-sky-500/20 text-sky-200 border border-sky-400/60'
+                                      }`}
+                                    >
+                                      {c.segment.replace('_', ' ')}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-secondary">{c.recencyDays}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-sky-400">
+                                      {c.frequency}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-emerald-400">
+                                      {formatCurrency(c.monetary)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-secondary font-mono text-xs">{c.rfmScore}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-purple-400">
+                                      {formatCurrency(c.clv)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Staff Performance Tab */}
             {activeTab === 'staff' && staffPerformance && (
               <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
@@ -3936,6 +4247,116 @@ const SimpleLineChart = ({
                     </div>
                   )}
                 </div>
+
+                {/* Supplier Analytics */}
+                {supplierAnalytics && (
+                  <div className="mt-8">
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Supplier Performance</h3>
+                    {supplierAnalytics.note && (
+                      <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-400/30">
+                        <p className="theme-text-secondary text-sm">{supplierAnalytics.note}</p>
+                      </div>
+                    )}
+                    {supplierAnalytics.suppliers.length === 0 ? (
+                      <div className="theme-surface rounded-xl border p-6 text-center">
+                        <p className="theme-text-secondary text-sm">No supplier data available.</p>
+                      </div>
+                    ) : (
+                      <div className="theme-surface rounded-xl border overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-white/5">
+                              <tr>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Supplier</th>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Contact</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Revenue</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Cost</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Profit</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Margin %</th>
+                                <th className="px-4 lg:px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                              {supplierAnalytics.suppliers.map((supplier) => (
+                                <tr key={supplier.supplierId} className="hover:bg-white/5 transition">
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-primary font-medium">{supplier.supplierName}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col">
+                                      {supplier.contactName && (
+                                        <span className="theme-text-primary text-sm">{supplier.contactName}</span>
+                                      )}
+                                      {supplier.email && (
+                                        <span className="theme-text-secondary text-xs">{supplier.email}</span>
+                                      )}
+                                      {supplier.phone && (
+                                        <span className="theme-text-secondary text-xs">{supplier.phone}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-emerald-400">
+                                      {formatCurrency(supplier.revenue)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-rose-400">
+                                      {formatCurrency(supplier.cost)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`theme-text-primary font-semibold ${
+                                      supplier.profit >= 0 ? 'text-sky-400' : 'text-amber-400'
+                                    }`}>
+                                      {formatCurrency(supplier.profit)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`theme-text-primary font-semibold ${
+                                      supplier.profitMargin >= 0 ? 'text-purple-400' : 'text-amber-400'
+                                    }`}>
+                                      {supplier.profitMargin.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${
+                                      supplier.active ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-500/20 text-slate-300'
+                                    }`}>
+                                      {supplier.active ? 'Active' : 'Inactive'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    {supplierAnalytics.totalRevenue > 0 && (
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="theme-surface rounded-xl border p-4">
+                          <p className="theme-text-secondary text-xs mb-1">Total Revenue</p>
+                          <p className="theme-text-primary text-lg font-semibold text-emerald-400">
+                            {formatCurrency(supplierAnalytics.totalRevenue)}
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-xl border p-4">
+                          <p className="theme-text-secondary text-xs mb-1">Total Cost</p>
+                          <p className="theme-text-primary text-lg font-semibold text-rose-400">
+                            {formatCurrency(supplierAnalytics.totalCost)}
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-xl border p-4">
+                          <p className="theme-text-secondary text-xs mb-1">Total Profit</p>
+                          <p className="theme-text-primary text-lg font-semibold text-sky-400">
+                            {formatCurrency(supplierAnalytics.totalProfit)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -4999,6 +5420,89 @@ const SimpleLineChart = ({
                         </table>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Price Sensitivity Analytics */}
+                {priceSensitivity && (
+                  <div className="mt-8">
+                    <h3 className="theme-text-primary text-base sm:text-lg font-semibold mb-4">Price Sensitivity Analysis</h3>
+                    {priceSensitivity.products.length === 0 ? (
+                      <div className="theme-surface rounded-xl border p-6 text-center">
+                        <p className="theme-text-secondary text-sm">No price sensitivity data available for the selected period.</p>
+                      </div>
+                    ) : (
+                      <div className="theme-surface rounded-xl border overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-white/5">
+                              <tr>
+                                <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Product</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Current Price</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Avg Price</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Price Changes</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Elasticity</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Sensitivity</th>
+                                <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Qty Sold</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                              {priceSensitivity.products.slice(0, 20).map((product) => (
+                                <tr key={product.productId} className="hover:bg-white/5 transition">
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                    <span className="theme-text-primary font-medium">{product.productName}</span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-emerald-400">
+                                      {formatCurrency(product.currentPrice)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-sky-400">
+                                      {formatCurrency(product.averagePrice)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-purple-400">
+                                      {product.priceChanges}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`theme-text-primary font-semibold ${
+                                      Math.abs(product.elasticity) > 1.5 ? 'text-rose-400' :
+                                      Math.abs(product.elasticity) > 0.5 ? 'text-amber-400' : 'text-sky-400'
+                                    }`}>
+                                      {product.elasticity.toFixed(2)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${
+                                      product.sensitivityLevel === 'high' ? 'bg-rose-500/20 text-rose-200 border border-rose-400/60' :
+                                      product.sensitivityLevel === 'medium' ? 'bg-amber-500/20 text-amber-200 border border-amber-400/60' :
+                                      product.sensitivityLevel === 'low' ? 'bg-sky-500/20 text-sky-200 border border-sky-400/60' :
+                                      'bg-slate-500/20 text-slate-300 border border-slate-400/60'
+                                    }`}>
+                                      {product.sensitivityLevel}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right">
+                                    <span className="theme-text-primary font-semibold text-sky-400">
+                                      {product.totalQuantity.toLocaleString()}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="p-4 border-t border-white/10">
+                          <p className="theme-text-secondary text-xs">
+                            <strong>Price Elasticity:</strong> Negative values indicate demand decreases when price increases (normal). 
+                            Values &lt; -1 indicate high sensitivity (elastic), &gt; -1 indicate low sensitivity (inelastic).
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
