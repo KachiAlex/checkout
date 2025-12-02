@@ -65,9 +65,19 @@ function App() {
   }));
   const theme = useThemeStore((state) => state.theme);
   const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
+  const isCashier = user?.role === 'cashier';
   const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
   const isCompanyUser = isAuthenticated && !isPlatformAdmin;
-  const authenticatedLandingPath = isPlatformAdmin ? '/superadmin' : '/dashboard';
+  
+  // Determine landing path based on role
+  const authenticatedLandingPath = isPlatformAdmin 
+    ? '/superadmin' 
+    : isAdmin 
+    ? '/dashboard' 
+    : isManager 
+    ? '/checkout' 
+    : '/checkout'; // Cashiers go to checkout
   const isElectron =
     typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron');
   const isNativePlatform = isElectron || Capacitor.getPlatform() !== 'web';
@@ -130,7 +140,7 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <ExecutiveDashboardPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -142,7 +152,7 @@ function App() {
             <Route
               path="/reports"
               element={
-                isCompanyUser ? (
+                isCompanyUser && (isAdmin || isManager) ? (
                   <ReportsPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -154,7 +164,7 @@ function App() {
             <Route
               path="/inventory"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <AddInventoryPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -166,7 +176,7 @@ function App() {
             <Route
               path="/inventory-management"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <InventoryManagementPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -178,7 +188,7 @@ function App() {
             <Route
               path="/suppliers"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <SuppliersPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -190,7 +200,7 @@ function App() {
             <Route
               path="/purchase-orders"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <PurchaseOrdersPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -202,7 +212,7 @@ function App() {
             <Route
               path="/grn"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <GRNPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -214,7 +224,7 @@ function App() {
             <Route
               path="/customers"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <CustomersPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
@@ -226,7 +236,7 @@ function App() {
             <Route
               path="/returns"
               element={
-                isCompanyUser ? (
+                isCompanyUser && isAdmin ? (
                   <ReturnsPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />

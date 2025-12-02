@@ -51,7 +51,7 @@ interface PurchaseOrder {
 }
 
 export function PurchaseOrdersPage() {
-  const { logout, accessToken } = useAuthStore();
+  const { logout, accessToken, user } = useAuthStore();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -69,7 +69,28 @@ export function PurchaseOrdersPage() {
       quantity: number;
       unitCostCents: number;
       totalCostCents: number;
+      isNewProduct?: boolean; // Flag for new products
     }>,
+  });
+  
+  // State for inline supplier creation
+  const [showNewSupplierForm, setShowNewSupplierForm] = useState(false);
+  const [newSupplierForm, setNewSupplierForm] = useState({
+    name: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    address: '',
+  });
+  
+  // State for inline product creation
+  const [showNewProductForm, setShowNewProductForm] = useState<number | null>(null); // Index of item being edited
+  const [newProductForm, setNewProductForm] = useState({
+    name: '',
+    sku: '',
+    barcode: '',
+    description: '',
+    priceCents: 0,
   });
 
   const loadPurchaseOrders = async () => {
@@ -349,19 +370,131 @@ export function PurchaseOrdersPage() {
                   <label className="block text-sm font-medium theme-text-secondary mb-1">
                     Supplier *
                   </label>
-                  <select
-                    value={formData.supplierId}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                    className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
-                    required
-                  >
-                    <option value="">Select supplier...</option>
-                    {suppliers.map((supplier) => (
-                      <option key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.supplierId}
+                      onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                      className="flex-1 theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
+                      required
+                    >
+                      <option value="">Select supplier...</option>
+                      {suppliers.map((supplier) => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSupplierForm(true)}
+                      className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/20 whitespace-nowrap"
+                      title="Add new supplier"
+                    >
+                      ➕ New
+                    </button>
+                  </div>
+                  
+                  {/* Inline Supplier Creation Form */}
+                  {showNewSupplierForm && (
+                    <div className="mt-3 theme-surface rounded-xl border border-white/10 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="theme-text-primary font-semibold">Add New Supplier</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowNewSupplierForm(false);
+                            setNewSupplierForm({ name: '', contactName: '', email: '', phone: '', address: '' });
+                          }}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="block text-xs font-medium theme-text-secondary mb-1">Name *</label>
+                          <input
+                            type="text"
+                            value={newSupplierForm.name}
+                            onChange={(e) => setNewSupplierForm({ ...newSupplierForm, name: e.target.value })}
+                            className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                            placeholder="Supplier name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium theme-text-secondary mb-1">Contact Name</label>
+                          <input
+                            type="text"
+                            value={newSupplierForm.contactName}
+                            onChange={(e) => setNewSupplierForm({ ...newSupplierForm, contactName: e.target.value })}
+                            className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                            placeholder="Contact person"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium theme-text-secondary mb-1">Email</label>
+                          <input
+                            type="email"
+                            value={newSupplierForm.email}
+                            onChange={(e) => setNewSupplierForm({ ...newSupplierForm, email: e.target.value })}
+                            className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                            placeholder="email@example.com"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium theme-text-secondary mb-1">Phone</label>
+                          <input
+                            type="tel"
+                            value={newSupplierForm.phone}
+                            onChange={(e) => setNewSupplierForm({ ...newSupplierForm, phone: e.target.value })}
+                            className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                            placeholder="Phone number"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium theme-text-secondary mb-1">Address</label>
+                          <input
+                            type="text"
+                            value={newSupplierForm.address}
+                            onChange={(e) => setNewSupplierForm({ ...newSupplierForm, address: e.target.value })}
+                            className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                            placeholder="Address"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!newSupplierForm.name.trim()) {
+                            toast.error('Supplier name is required');
+                            return;
+                          }
+                          if (!accessToken) {
+                            toast.error('Not authenticated');
+                            return;
+                          }
+                          try {
+                            const response = await axios.post(
+                              `${API_URL}/api/v1/suppliers`,
+                              { ...newSupplierForm, active: true },
+                              { headers: { Authorization: `Bearer ${accessToken}` } }
+                            );
+                            toast.success('Supplier created successfully');
+                            await loadSuppliers();
+                            setFormData({ ...formData, supplierId: response.data.id });
+                            setShowNewSupplierForm(false);
+                            setNewSupplierForm({ name: '', contactName: '', email: '', phone: '', address: '' });
+                          } catch (error: any) {
+                            console.error('Failed to create supplier:', error);
+                            toast.error(error.response?.data?.message || 'Failed to create supplier');
+                          }
+                        }}
+                        className="w-full rounded-lg bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:shadow-lg"
+                      >
+                        Create Supplier
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium theme-text-secondary mb-1">
@@ -417,19 +550,186 @@ export function PurchaseOrdersPage() {
                             <label className="block text-xs font-medium theme-text-secondary mb-1">
                               Product *
                             </label>
-                            <select
-                              value={item.productId}
-                              onChange={(e) => updateItem(index, 'productId', e.target.value)}
-                              className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-                              required
-                            >
-                              <option value="">Select product...</option>
-                              {products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name} ({product.sku})
-                                </option>
-                              ))}
-                            </select>
+                            <div className="flex gap-2">
+                              {item.isNewProduct ? (
+                                <div className="flex-1 theme-surface rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-sm theme-text-primary">
+                                  <span className="text-emerald-400">New: {item.productName || 'Enter product details'}</span>
+                                </div>
+                              ) : (
+                                <select
+                                  value={item.productId}
+                                  onChange={(e) => {
+                                    if (e.target.value === '__new__') {
+                                      setShowNewProductForm(index);
+                                      updateItem(index, 'productId', '');
+                                    } else {
+                                      updateItem(index, 'productId', e.target.value);
+                                    }
+                                  }}
+                                  className="flex-1 theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                                  required={!item.isNewProduct}
+                                >
+                                  <option value="">Select product...</option>
+                                  <option value="__new__">➕ Add New Product</option>
+                                  {products.map((product) => (
+                                    <option key={product.id} value={product.id}>
+                                      {product.name} ({product.sku})
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                              {item.isNewProduct && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newItems = [...formData.items];
+                                    newItems[index] = {
+                                      productId: '',
+                                      productName: '',
+                                      sku: '',
+                                      quantity: item.quantity,
+                                      unitCostCents: item.unitCostCents,
+                                      totalCostCents: item.totalCostCents,
+                                    };
+                                    setFormData({ ...formData, items: newItems });
+                                    setShowNewProductForm(null);
+                                  }}
+                                  className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                            
+                            {/* Inline Product Creation Form */}
+                            {showNewProductForm === index && (
+                              <div className="mt-3 theme-surface rounded-xl border border-white/10 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="theme-text-primary font-semibold text-sm">Add New Product</h4>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowNewProductForm(null);
+                                      setNewProductForm({ name: '', sku: '', barcode: '', description: '', priceCents: 0 });
+                                    }}
+                                    className="text-red-400 hover:text-red-300"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="block text-xs font-medium theme-text-secondary mb-1">Product Name *</label>
+                                    <input
+                                      type="text"
+                                      value={newProductForm.name}
+                                      onChange={(e) => setNewProductForm({ ...newProductForm, name: e.target.value })}
+                                      className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                                      placeholder="Product name"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium theme-text-secondary mb-1">SKU *</label>
+                                    <input
+                                      type="text"
+                                      value={newProductForm.sku}
+                                      onChange={(e) => setNewProductForm({ ...newProductForm, sku: e.target.value.toUpperCase() })}
+                                      className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                                      placeholder="SKU code"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium theme-text-secondary mb-1">Barcode</label>
+                                    <input
+                                      type="text"
+                                      value={newProductForm.barcode}
+                                      onChange={(e) => setNewProductForm({ ...newProductForm, barcode: e.target.value })}
+                                      className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                                      placeholder="Barcode (optional)"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium theme-text-secondary mb-1">Selling Price (₦)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={newProductForm.priceCents / 100}
+                                      onChange={(e) => setNewProductForm({ ...newProductForm, priceCents: parseFloat(e.target.value) * 100 || 0 })}
+                                      className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                                      placeholder="0.00"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-xs font-medium theme-text-secondary mb-1">Description</label>
+                                    <textarea
+                                      value={newProductForm.description}
+                                      onChange={(e) => setNewProductForm({ ...newProductForm, description: e.target.value })}
+                                      className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                                      rows={2}
+                                      placeholder="Product description (optional)"
+                                    />
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!newProductForm.name.trim() || !newProductForm.sku.trim()) {
+                                      toast.error('Product name and SKU are required');
+                                      return;
+                                    }
+                                    if (!accessToken || !user?.tenantId) {
+                                      toast.error('Not authenticated');
+                                      return;
+                                    }
+                                    try {
+                                      // Create product
+                                      const productResponse = await axios.post(
+                                        `${API_URL}/api/v1/products`,
+                                        {
+                                          name: newProductForm.name,
+                                          sku: newProductForm.sku,
+                                          barcode: newProductForm.barcode || undefined,
+                                          description: newProductForm.description || undefined,
+                                          priceCents: newProductForm.priceCents,
+                                          costCents: item.unitCostCents, // Use cost from PO item
+                                          active: true,
+                                        },
+                                        { headers: { Authorization: `Bearer ${accessToken}` } }
+                                      );
+                                      
+                                      const newProduct = productResponse.data;
+                                      
+                                      // Update the item with new product info
+                                      const newItems = [...formData.items];
+                                      newItems[index] = {
+                                        productId: newProduct.id,
+                                        productName: newProduct.name,
+                                        sku: newProduct.sku,
+                                        quantity: item.quantity,
+                                        unitCostCents: item.unitCostCents,
+                                        totalCostCents: item.quantity * item.unitCostCents,
+                                        isNewProduct: true,
+                                      };
+                                      setFormData({ ...formData, items: newItems });
+                                      
+                                      // Reload products list
+                                      await loadProducts();
+                                      
+                                      toast.success('Product created successfully');
+                                      setShowNewProductForm(null);
+                                      setNewProductForm({ name: '', sku: '', barcode: '', description: '', priceCents: 0 });
+                                    } catch (error: any) {
+                                      console.error('Failed to create product:', error);
+                                      toast.error(error.response?.data?.message || 'Failed to create product');
+                                    }
+                                  }}
+                                  className="w-full rounded-lg bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:shadow-lg"
+                                >
+                                  Create Product
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="sm:col-span-2">
                             <label className="block text-xs font-medium theme-text-secondary mb-1">

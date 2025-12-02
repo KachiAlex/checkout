@@ -28,7 +28,7 @@ export class GRNService {
     return grn;
   }
 
-  async create(data: CreateGRNInput): Promise<GRNRecord> {
+  async create(data: CreateGRNInput): Promise<{ grn: GRNRecord; metadata: { newProductsCount: number; restockedProductsCount: number; newProductIds: string[]; restockedProductIds: string[] } }> {
     // Verify purchase order exists and is approved
     const po = await this.purchaseOrdersRepository.findById(data.purchaseOrderId, data.tenantId);
     if (!po) {
@@ -45,20 +45,35 @@ export class GRNService {
       purchaseOrderNumber: po.orderNumber,
     });
 
+    // Track which products are new vs restocked for notifications
+    const newProducts: string[] = [];
+    const restockedProducts: string[] = [];
+
     // Update inventory for each item
     for (const item of data.items) {
       if (item.receivedQuantity > 0) {
         // Update main inventory
         const currentInventory = await this.inventoryRepository.getInventory(item.productId, data.locationId);
+        const isNewProduct = !currentInventory;
         const newQuantity = (currentInventory?.quantity || 0) + item.receivedQuantity;
         
+        // Update inventory with new quantity and cost price from purchase order
         await this.inventoryRepository.upsertInventory({
           productId: item.productId,
           locationId: data.locationId,
           quantity: newQuantity,
           reorderPoint: currentInventory?.reorderPoint,
           maxStock: currentInventory?.maxStock,
+          costCents: item.unitCostCents, // Update cost price from purchase order
+          salesPriceCents: currentInventory?.salesPriceCents, // Keep existing sales price if any
         });
+
+        // Track for notifications
+        if (isNewProduct) {
+          newProducts.push(item.productId);
+        } else {
+          restockedProducts.push(item.productId);
+        }
 
         // Create batch inventory if batch number provided
         if (item.batchNumber) {
@@ -113,7 +128,16 @@ export class GRNService {
       items: updatedItems,
     });
 
-    return grn;
+    // Return GRN with notification metadata
+    return {
+      grn,
+      metadata: {
+        newProductsCount: newProducts.length,
+        restockedProductsCount: restockedProducts.length,
+        newProductIds: newProducts,
+        restockedProductIds: restockedProducts,
+      },
+    };
   }
 }
 

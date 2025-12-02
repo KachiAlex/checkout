@@ -58,7 +58,7 @@ export class GRNController {
       throw new Error(`Purchase order with ID ${createDto.purchaseOrderId} not found`);
     }
 
-    return this.grnService.create({
+    const result = await this.grnService.create({
       tenantId: req.user.tenantId,
       locationId,
       purchaseOrderId: createDto.purchaseOrderId,
@@ -75,6 +75,12 @@ export class GRNController {
       receivedBy: req.user.sub || req.user.id,
       notes: createDto.notes,
     });
+    
+    // Return GRN with metadata for frontend notifications
+    return {
+      ...result.grn,
+      metadata: result.metadata,
+    };
   }
 }
 

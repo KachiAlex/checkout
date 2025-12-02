@@ -195,7 +195,7 @@ export function GRNPage() {
     try {
       const { subtotal, tax, total } = calculateTotals();
       
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/api/v1/grn`,
         {
           purchaseOrderId: selectedPO.id,
@@ -220,7 +220,22 @@ export function GRNPage() {
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       
-      toast.success('GRN created successfully! Inventory updated.');
+      // Show notifications based on response metadata
+      const metadata = (response.data as any)?.metadata;
+      if (metadata) {
+        if (metadata.newProductsCount > 0) {
+          toast.success(`✅ ${metadata.newProductsCount} new product${metadata.newProductsCount > 1 ? 's' : ''} added to inventory!`, {
+            duration: 5000,
+          });
+        }
+        if (metadata.restockedProductsCount > 0) {
+          toast.success(`📦 ${metadata.restockedProductsCount} product${metadata.restockedProductsCount > 1 ? 's' : ''} restocked!`, {
+            duration: 5000,
+          });
+        }
+      } else {
+        toast.success('GRN created successfully! Inventory updated.');
+      }
       
       // Reset form
       setSelectedPO(null);

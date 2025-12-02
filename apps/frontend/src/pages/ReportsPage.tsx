@@ -144,64 +144,6 @@ interface CategoryBrandAnalytics {
   }>;
 }
 
-interface SupplierAnalytics {
-  from: string;
-  to: string;
-  locationId?: string;
-  suppliers: Array<{
-    supplierId: string;
-    supplierName: string;
-    contactName?: string;
-    email?: string;
-    phone?: string;
-    active: boolean;
-    revenue: number;
-    cost: number;
-    profit: number;
-    profitMargin: number;
-    productCount: number;
-    orderCount: number;
-    note?: string;
-  }>;
-  totalRevenue: number;
-  totalCost: number;
-  totalProfit: number;
-  productSales?: Array<{
-    productId: string;
-    productName: string;
-    quantitySold: number;
-    revenue: number;
-    cost: number;
-    profit: number;
-  }>;
-  note?: string;
-}
-
-interface PriceSensitivityAnalytics {
-  from: string;
-  to: string;
-  locationId?: string;
-  products: Array<{
-    productId: string;
-    productName: string;
-    currentPrice: number;
-    averagePrice: number;
-    priceChanges: number;
-    totalQuantity: number;
-    totalRevenue: number;
-    priceHistory: Array<{
-      week: string;
-      price: number;
-      quantity: number;
-      revenue: number;
-    }>;
-    elasticity: number;
-    sensitivityLevel: 'high' | 'medium' | 'low' | 'unknown';
-    sensitivityScore: number;
-  }>;
-  generatedAt: string;
-}
-
 interface TimeBasedInsights {
   byHour: Array<{ hour: number; sales: number; orders: number; items: number }>;
   byDayOfWeek: Array<{ day: string; sales: number; orders: number; items: number }>;
@@ -241,70 +183,6 @@ interface InventoryHealth {
   stockoutFrequency: number;
 }
 
-interface DiscountAnalytics {
-  totalDiscountAmount: number;
-  totalDiscountPercentage: number;
-  ordersWithDiscount: number;
-  averageDiscountPercent: number;
-  discountImpact: {
-    revenueWithDiscount: number;
-    revenueWithoutDiscount: number;
-    profitWithDiscount: number;
-    profitWithoutDiscount: number;
-  };
-  byDiscountType: Array<{
-    type: string;
-    count: number;
-    totalAmount: number;
-    avgPercent: number;
-  }>;
-}
-
-interface PaymentMethodInsights {
-  byMethod: Array<{
-    method: string;
-    count: number;
-    totalAmount: number;
-    averageAmount: number;
-    percentage: number;
-  }>;
-  cashVsDigital: {
-    cash: { count: number; amount: number; percentage: number };
-    digital: { count: number; amount: number; percentage: number };
-  };
-  trends: Array<{
-    period: string;
-    methods: Record<string, number>;
-  }>;
-}
-
-interface ReturnRefundAnalytics {
-  totalReturns: number;
-  totalRefundAmount: number;
-  returnRate: number; // percentage
-  byProduct: Array<{
-    productId: string;
-    productName: string;
-    sku: string;
-    returnCount: number;
-    returnRate: number;
-    refundAmount: number;
-  }>;
-  byCategory: Array<{
-    categoryId: string;
-    categoryName: string;
-    returnCount: number;
-    returnRate: number;
-    refundAmount: number;
-  }>;
-  impactOnProfit: number;
-  trends: Array<{
-    period: string;
-    returns: number;
-    refundAmount: number;
-  }>;
-}
-
 interface BasketAnalysis {
   averageItemsPerOrder: number;
   frequentlyBoughtTogether: Array<{
@@ -325,27 +203,6 @@ interface BasketAnalysis {
     products: string[];
     frequency: number;
     revenue: number;
-  }>;
-}
-
-interface SalesTrendsForecasting {
-  growthRate: number; // percentage
-  trend: 'up' | 'down' | 'stable';
-  forecastedSales: Array<{
-    period: string;
-    forecast: number;
-    confidence: number;
-  }>;
-  variance: Array<{
-    period: string;
-    actual: number;
-    expected: number;
-    variance: number;
-    variancePercent: number;
-  }>;
-  movingAverage: Array<{
-    period: string;
-    value: number;
   }>;
 }
 
@@ -443,27 +300,6 @@ interface ShrinkageDetectionAnalytics {
   message: string;
 }
 
-interface CustomerSegmentAnalytics {
-  from: string;
-  to: string;
-  locationId?: string;
-  generatedAt: string;
-  totalCustomers: number;
-  segments: Array<{
-    customerId: string;
-    name: string;
-    recencyDays: number;
-    frequency: number;
-    monetary: number;
-    rScore: number;
-    fScore: number;
-    mScore: number;
-    rfmScore: string;
-    segment: string;
-    clv: number;
-  }>;
-}
-
 export function ReportsPage() {
   console.log('🔥 [ReportsPage] COMPONENT RENDERING NOW!');
   const { logout, accessToken, user } = useAuthStore();
@@ -487,18 +323,11 @@ export function ReportsPage() {
   const [categoryBrandAnalytics, setCategoryBrandAnalytics] = useState<CategoryBrandAnalytics | null>(null);
   const [timeBasedInsights, setTimeBasedInsights] = useState<TimeBasedInsights | null>(null);
   const [inventoryHealth, setInventoryHealth] = useState<InventoryHealth | null>(null);
-  const [discountAnalytics, setDiscountAnalytics] = useState<DiscountAnalytics | null>(null);
-  const [paymentMethodInsights, setPaymentMethodInsights] = useState<PaymentMethodInsights | null>(null);
-  const [returnRefundAnalytics, setReturnRefundAnalytics] = useState<ReturnRefundAnalytics | null>(null);
   const [basketAnalysis, setBasketAnalysis] = useState<BasketAnalysis | null>(null);
-  const [salesTrendsForecasting, setSalesTrendsForecasting] = useState<SalesTrendsForecasting | null>(null);
   const [operationalMetrics, setOperationalMetrics] = useState<OperationalMetrics | null>(null);
   const [smartAlerts, setSmartAlerts] = useState<SmartAlertsAnalytics | null>(null);
   const [fraudDetection, setFraudDetection] = useState<FraudDetectionAnalytics | null>(null);
   const [shrinkageDetection, setShrinkageDetection] = useState<ShrinkageDetectionAnalytics | null>(null);
-  const [customerSegments, setCustomerSegments] = useState<CustomerSegmentAnalytics | null>(null);
-  const [supplierAnalytics, setSupplierAnalytics] = useState<SupplierAnalytics | null>(null);
-  const [priceSensitivity, setPriceSensitivity] = useState<PriceSensitivityAnalytics | null>(null);
 
   // Track previous alerts summary to know when to notify about new critical alerts
   const lastAlertsSummaryRef = useRef<{ total: number; critical: number } | null>(null);
@@ -1846,60 +1675,6 @@ export function ReportsPage() {
     }
   };
 
-  const loadSupplierAnalytics = async () => {
-    if (!accessToken) return;
-
-    setLoading(true);
-    try {
-      const headers = { Authorization: `Bearer ${accessToken}` };
-      const params: any = {
-        location_id: user?.locationId,
-      };
-      if (period === 'custom') {
-        params.from = customDateFrom;
-        params.to = customDateTo;
-      }
-
-      const response = await axios.get(`${API_URL}/api/v1/reports/supplier-analytics`, {
-        headers,
-        params,
-      });
-      setSupplierAnalytics(response.data);
-    } catch (error: any) {
-      console.error('Failed to load supplier analytics:', error);
-      toast.error(error.response?.data?.message || 'Failed to load supplier analytics');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadPriceSensitivity = async () => {
-    if (!accessToken) return;
-
-    setLoading(true);
-    try {
-      const headers = { Authorization: `Bearer ${accessToken}` };
-      const params: any = {
-        location_id: user?.locationId,
-      };
-      if (period === 'custom') {
-        params.from = customDateFrom;
-        params.to = customDateTo;
-      }
-
-      const response = await axios.get(`${API_URL}/api/v1/reports/price-sensitivity`, {
-        headers,
-        params,
-      });
-      setPriceSensitivity(response.data);
-    } catch (error: any) {
-      console.error('Failed to load price sensitivity analytics:', error);
-      toast.error(error.response?.data?.message || 'Failed to load price sensitivity analytics');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadDiscountAnalytics = async () => {
     if (!accessToken) return;
 
@@ -2798,7 +2573,7 @@ export function ReportsPage() {
       loadProfitLossAnalytics();
     } else if (activeTab === 'category') {
       loadCategoryBrandAnalytics();
-      loadSupplierAnalytics(); // Load supplier analytics when category tab is active
+      // DISABLED: loadSupplierAnalytics(); // Expensive analytics - disabled to reduce costs
     } else if (activeTab === 'time') {
       loadTimeBasedInsights();
     } else if (activeTab === 'inventory') {
@@ -2812,8 +2587,8 @@ export function ReportsPage() {
     } else if (activeTab === 'basket') {
       loadBasketAnalysis();
     } else if (activeTab === 'trends') {
-      loadSalesTrendsForecasting();
-      loadPriceSensitivity(); // Load price sensitivity when trends tab is active
+      // DISABLED: loadSalesTrendsForecasting(); // Expensive forecasting - disabled to reduce costs
+      // DISABLED: loadPriceSensitivity(); // Expensive analytics - disabled to reduce costs
     } else if (activeTab === 'operations') {
       loadOperationalMetrics();
     } else if (activeTab === 'alerts') {

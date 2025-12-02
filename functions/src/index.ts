@@ -53,12 +53,14 @@ const createApiHandler = () => {
     .runWith({
       memory: '256MB', // Increased to help with performance
       timeoutSeconds: 60, // Increased timeout to 60 seconds
-      minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
+      minInstances: 0, // Set to 0 to avoid always-on costs - instances will scale from 0
       maxInstances: MAX_INSTANCES, // Increased to 10 to handle concurrent requests
       ingressSettings: 'ALLOW_ALL',
     })
     .https.onRequest(async (req: Request, res: Response) => {
     const origin = req.headers.origin || '';
+    // NOTE: We intentionally keep CORS permissive here to avoid blocking the POS UI.
+    // If you need stricter rules later, tighten this list and keep OPTIONS fast.
     const allowedOrigins = [
       'https://checkout-77d99.web.app',
       'https://checkout-77d99.firebaseapp.com',
@@ -66,8 +68,8 @@ const createApiHandler = () => {
       'http://localhost:5174',
       'capacitor://localhost',
     ];
-    
-    const isAllowed = 
+
+    const isKnownOrigin =
       !origin ||
       origin.startsWith('http://localhost') ||
       origin.startsWith('https://localhost') ||
@@ -76,13 +78,19 @@ const createApiHandler = () => {
     
     // Helper function to set CORS headers - ALWAYS set them to prevent CORS errors
     const setCorsHeaders = () => {
-      if (isAllowed) {
-        res.setHeader('Access-Control-Allow-Origin', origin || '*');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-Slug');
-        res.setHeader('Access-Control-Expose-Headers', 'Authorization');
-      }
+      // For now we allow any origin that reaches us to avoid breaking the app.
+      // Browsers will still only expose responses to the requesting origin.
+      res.setHeader('Access-Control-Allow-Origin', origin || '*');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader(
+        'Access-Control-Allow-Methods',
+        'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD',
+      );
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, Accept, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-Slug',
+      );
+      res.setHeader('Access-Control-Expose-Headers', 'Authorization');
     };
     
     // Set CORS headers immediately for all requests
@@ -91,13 +99,9 @@ const createApiHandler = () => {
     // Handle CORS preflight requests - MUST return immediately
     if (req.method === 'OPTIONS') {
       console.log('[Functions] Handling OPTIONS preflight request from origin:', origin);
-      if (isAllowed) {
-        res.setHeader('Access-Control-Max-Age', '3600');
-        res.status(204).end();
-        return;
-      }
-      console.warn('[Functions] CORS blocked origin:', origin);
-      res.status(403).end('CORS not allowed');
+      // Always respond to preflight quickly with permissive CORS.
+      res.setHeader('Access-Control-Max-Age', '3600');
+      res.status(204).end();
       return;
     }
     

@@ -35,8 +35,9 @@ class SyncService {
       this.isOnline = false;
     });
 
-    // Auto-sync every 30 seconds when online
-    this.startAutoSync();
+    // Auto-sync every 5 minutes when online (reduced from 30s to save costs)
+    // Only syncs if there are pending orders
+    this.startAutoSync(300000); // 5 minutes = 300000ms
   }
 
   /**
@@ -47,9 +48,20 @@ class SyncService {
       clearInterval(this.syncInterval);
     }
 
-    this.syncInterval = window.setInterval(() => {
+    this.syncInterval = window.setInterval(async () => {
       if (this.isOnline && !this.isSyncing) {
-        this.sync();
+        // Only sync if there are pending events to avoid unnecessary API calls
+        try {
+          const pendingEvents = await db.syncEvents
+            .where('status')
+            .equals('pending')
+            .count();
+          if (pendingEvents > 0) {
+            this.sync();
+          }
+        } catch (error) {
+          console.error('Error checking pending events:', error);
+        }
       }
     }, intervalMs);
   }

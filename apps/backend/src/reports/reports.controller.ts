@@ -114,42 +114,4 @@ export class ReportsController {
   ) {
     return this.reportsService.getShrinkageDetection(locationId, from, to);
   }
-
-  @Get('customer-segmentation')
-  @ApiOperation({ summary: 'Get customer segmentation analytics (RFM + CLV)' })
-  @ApiResponse({ status: 200, description: 'Customer segmentation data' })
-  async getCustomerSegmentation(
-    @Query('location_id') locationId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Request() req?: any,
-  ) {
-    return this.reportsService.getCustomerSegmentation(locationId, from, to, req?.user?.tenantId);
-  }
-
-  // ========== PHASE B: SUPPLIER & PRICE SENSITIVITY ==========
-
-  @Get('supplier-analytics')
-  @ApiOperation({ summary: 'Get supplier profit contribution analytics' })
-  @ApiResponse({ status: 200, description: 'Supplier analytics data' })
-  async getSupplierAnalytics(
-    @Query('location_id') locationId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Request() req?: any,
-  ) {
-    return this.reportsService.getSupplierAnalytics(locationId, from, to, req?.user?.tenantId);
-  }
-
-  @Get('price-sensitivity')
-  @ApiOperation({ summary: 'Get price sensitivity analytics (price elasticity per product)' })
-  @ApiResponse({ status: 200, description: 'Price sensitivity data' })
-  async getPriceSensitivity(
-    @Query('location_id') locationId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Request() req?: any,
-  ) {
-    return this.reportsService.getPriceSensitivity(locationId, from, to, req?.user?.tenantId);
-  }
 }
