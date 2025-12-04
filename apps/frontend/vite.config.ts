@@ -17,17 +17,22 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // React and React-DOM - must be first
+            // React and React-DOM - must be first and together
+            // Include scheduler which React depends on
             if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
               return 'vendor-react';
             }
-            // React Router - depends on React, but Vite will handle dependency
+            // React Router - separate chunk that depends on React
             if (id.includes('react-router')) {
               return 'vendor-router';
             }
-            // React Hot Toast - depends on React
+            // React Hot Toast - separate chunk
             if (id.includes('react-hot-toast')) {
               return 'vendor-toast';
+            }
+            // dexie-react-hooks depends on React
+            if (id.includes('dexie-react-hooks')) {
+              return 'vendor-react-hooks';
             }
             // Large libraries that don't depend on React
             if (id.includes('@zxing')) {
@@ -42,8 +47,15 @@ export default defineConfig({
             if (id.includes('zustand')) {
               return 'vendor-state';
             }
-            // Everything else - but ensure React is never in here
-            // Vite should automatically handle chunk dependencies
+            // Capacitor libraries
+            if (id.includes('@capacitor')) {
+              return 'vendor-capacitor';
+            }
+            // Everything else - but check for any React dependencies
+            // If it's a React-related package, put it in vendor-react-deps
+            if (id.includes('react') || id.includes('jsx-runtime')) {
+              return 'vendor-react-deps';
+            }
             return 'vendor-misc';
           }
         },
