@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -63,23 +63,10 @@ export function ReportsPage() {
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (accessToken) {
-      loadLocations();
-      loadReportData();
-    }
-  }, [accessToken, activeTab, locationId, dateRange]);
+  // Memoize date range string to avoid unnecessary re-renders
+  const dateRangeKey = useMemo(() => `${dateRange.from}-${dateRange.to}`, [dateRange.from, dateRange.to]);
 
-  // Reset pagination when tab changes
-  useEffect(() => {
-    setSalesPage(1);
-    setTopSellersPage(1);
-    setAnalyticsPage(1);
-    setStaffPage(1);
-    setPurchaseOrdersPage(1);
-  }, [activeTab]);
-
-  const loadLocations = async () => {
+  const loadLocations = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/locations`, {
@@ -92,9 +79,9 @@ export function ReportsPage() {
     } catch (error) {
       console.error('Failed to load locations:', error);
     }
-  };
+  }, [accessToken, locationId]);
 
-  const loadReportData = async () => {
+  const loadReportData = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -192,22 +179,23 @@ export function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, staffPerformance]);
 
-  const formatCurrency = (amount: number) => {
+  // Memoize format functions
+  const formatCurrency = useCallback((amount: number) => {
     return `₦${amount.toFixed(2)}`;
-  };
+  }, []);
 
-  const formatCurrencyCents = (cents: number) => {
+  const formatCurrencyCents = useCallback((cents: number) => {
     return `₦${(cents / 100).toFixed(2)}`;
-  };
+  }, []);
 
-  const handleViewReceipt = (orderId: string) => {
+  const handleViewReceipt = useCallback((orderId: string) => {
     setSelectedOrderId(orderId);
     setReceiptModalOpen(true);
-  };
+  }, []);
 
-  const handlePrintReceipt = async (orderId: string) => {
+  const handlePrintReceipt = useCallback(async (orderId: string) => {
     try {
       const success = await receiptService.printReceiptBrowser(orderId);
       if (success) {
@@ -218,10 +206,10 @@ export function ReportsPage() {
     } catch (error) {
       toast.error('Failed to print receipt');
     }
-  };
+  }, []);
 
-  // Pagination helper
-  const paginate = <T,>(items: T[], page: number, perPage: number) => {
+  // Memoize pagination helper
+  const paginate = useCallback(<T,>(items: T[], page: number, perPage: number) => {
     const start = (page - 1) * perPage;
     const end = start + perPage;
     return {
@@ -230,9 +218,9 @@ export function ReportsPage() {
       currentPage: page,
       totalItems: items.length,
     };
-  };
+  }, []);
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityColor = useCallback((severity: string) => {
     switch (severity) {
       case 'critical':
         return 'bg-red-500/20 text-red-400 border-red-500/50';
@@ -241,9 +229,10 @@ export function ReportsPage() {
       default:
         return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
     }
-  };
+  }, []);
 
-  const tabs: Array<{ id: ReportTab; label: string; icon: string }> = [
+  // Memoize tabs array
+  const tabs: Array<{ id: ReportTab; label: string; icon: string }> = useMemo(() => [
     { id: 'sales', label: 'Sales Report', icon: '💰' },
     { id: 'top-sellers', label: 'Top Sellers', icon: '🏆' },
     { id: 'analytics', label: 'Sales Analytics', icon: '📊' },
@@ -254,7 +243,43 @@ export function ReportsPage() {
     { id: 'staff', label: 'Staff Performance', icon: '👥' },
     { id: 'inventory', label: 'Inventory Analytics', icon: '📦' },
     { id: 'purchase-orders', label: 'Purchase Orders', icon: '📋' },
-  ];
+  ], []);
+
+  // Memoize sales rows computation
+  const salesRows = useMemo(() => {
+    if (!salesReport?.orders) return [];
+    const rows: Array<{
+      productId: string;
+      productName: string;
+      price: number;
+      totalOrder: number;
+      avgOrderValue: number;
+      orderNumber: string;
+      orderId: string;
+    }> = [];
+    
+    salesReport.orders.forEach((order: any) => {
+      order.items?.forEach((item: any) => {
+        rows.push({
+          productId: item.productId,
+          productName: item.productName || item.productId,
+          price: item.priceCents / 100,
+          totalOrder: item.quantity,
+          avgOrderValue: salesReport.averageOrderValue,
+          orderNumber: order.orderNumber,
+          orderId: order.id,
+        });
+      });
+    });
+    
+    return rows;
+  }, [salesReport]);
+
+  // Memoize paginated sales data
+  const paginatedSales = useMemo(() => {
+    if (activeTab !== 'sales' || salesRows.length === 0) return null;
+    return paginate(salesRows, salesPage, itemsPerPage);
+  }, [salesRows, salesPage, activeTab]);
 
   return (
     <div className="min-h-screen theme-bg">
@@ -353,53 +378,28 @@ export function ReportsPage() {
           ) : (
             <>
               {/* Sales Report */}
-              {activeTab === 'sales' && salesReport && (() => {
-                // Flatten orders to product-level rows
-                const salesRows: Array<{
-                  productId: string;
-                  productName: string;
-                  price: number;
-                  totalOrder: number;
-                  avgOrderValue: number;
-                  orderNumber: string;
-                  orderId: string;
-                }> = [];
-                
-                salesReport.orders?.forEach((order: any) => {
-                  order.items?.forEach((item: any) => {
-                    salesRows.push({
-                      productId: item.productId,
-                      productName: item.productName || item.productId,
-                      price: item.priceCents / 100,
-                      totalOrder: item.quantity,
-                      avgOrderValue: salesReport.averageOrderValue,
-                      orderNumber: order.orderNumber,
-                      orderId: order.id,
-                    });
-                  });
-                });
-
-                const paginated = paginate(salesRows, salesPage, itemsPerPage);
+              {activeTab === 'sales' && salesReport && paginatedSales && (() => {
+                const paginated = paginatedSales;
 
                 return (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
-                        <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesReport.totalSales)}</p>
-                      </div>
-                      <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Total Orders</p>
-                        <p className="text-2xl font-bold theme-text-primary">{salesReport.totalOrders}</p>
-                      </div>
-                      <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
-                        <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesReport.averageOrderValue)}</p>
-                      </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
+                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesReport.totalSales)}</p>
                     </div>
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Total Orders</p>
+                      <p className="text-2xl font-bold theme-text-primary">{salesReport.totalOrders}</p>
+                    </div>
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
+                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesReport.averageOrderValue)}</p>
+                    </div>
+                  </div>
                     
                     {salesRows.length > 0 ? (
-                      <div>
+                    <div>
                         <div className="overflow-x-auto">
                           <table className="w-full">
                             <thead>
@@ -434,7 +434,7 @@ export function ReportsPage() {
                                       >
                                         Print
                                       </button>
-                                    </div>
+                            </div>
                                   </td>
                                 </tr>
                               ))}
@@ -463,13 +463,13 @@ export function ReportsPage() {
                               >
                                 Next
                               </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
+                    </div>
+                  )}
+                </div>
                     ) : (
                       <p className="theme-text-secondary text-center py-8">No sales data available</p>
-                    )}
+              )}
                   </div>
                 );
               })()}
@@ -500,8 +500,8 @@ export function ReportsPage() {
                       >
                         Staff
                       </button>
-                    </div>
-                  </div>
+                            </div>
+                          </div>
                   
                   {topSellersType === 'product' ? (
                     topSellers.topSellers && topSellers.topSellers.length > 0 ? (() => {
@@ -529,7 +529,7 @@ export function ReportsPage() {
                                 ))}
                               </tbody>
                             </table>
-                          </div>
+                    </div>
                           
                           {paginated.totalPages > 1 && (
                             <div className="flex items-center justify-between mt-4">
@@ -557,7 +557,7 @@ export function ReportsPage() {
                         </>
                       );
                     })() : (
-                      <p className="theme-text-secondary text-center py-8">No sales data available</p>
+                    <p className="theme-text-secondary text-center py-8">No sales data available</p>
                     )
                   ) : (
                     staffPerformance && staffPerformance.staffPerformance ? (() => {
@@ -631,21 +631,21 @@ export function ReportsPage() {
               {activeTab === 'analytics' && salesAnalytics && (() => {
                 const paginated = paginate(salesAnalytics.data || [], analyticsPage, itemsPerPage);
                 return (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
-                        <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totalSales)}</p>
-                      </div>
-                      <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Total Orders</p>
-                        <p className="text-2xl font-bold theme-text-primary">{salesAnalytics.totalOrders}</p>
-                      </div>
-                      <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Avg Order Value</p>
-                        <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.averageOrderValue)}</p>
-                      </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
+                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totalSales)}</p>
                     </div>
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Total Orders</p>
+                      <p className="text-2xl font-bold theme-text-primary">{salesAnalytics.totalOrders}</p>
+                    </div>
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Avg Order Value</p>
+                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.averageOrderValue)}</p>
+                    </div>
+                  </div>
                     
                     {paginated.items.length > 0 ? (
                       <>
@@ -672,7 +672,7 @@ export function ReportsPage() {
                               ))}
                             </tbody>
                           </table>
-                        </div>
+                      </div>
                         
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
@@ -694,9 +694,9 @@ export function ReportsPage() {
                               >
                                 Next
                               </button>
-                            </div>
-                          </div>
-                        )}
+                    </div>
+                </div>
+              )}
                       </>
                     ) : (
                       <p className="theme-text-secondary text-center py-8">No analytics data available</p>
@@ -862,8 +862,8 @@ export function ReportsPage() {
                 const paginated = paginate(staffList, staffPage, itemsPerPage);
                 
                 return (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold theme-text-primary">Staff Performance</h3>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold theme-text-primary">Staff Performance</h3>
                     
                     {paginated.items.length > 0 ? (
                       <>
@@ -898,7 +898,7 @@ export function ReportsPage() {
                               ))}
                             </tbody>
                           </table>
-                        </div>
+                            </div>
                         
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
@@ -920,14 +920,14 @@ export function ReportsPage() {
                               >
                                 Next
                               </button>
-                            </div>
                           </div>
+                            </div>
                         )}
                       </>
-                    ) : (
-                      <p className="theme-text-secondary text-center py-8">No staff performance data available</p>
-                    )}
-                  </div>
+                  ) : (
+                    <p className="theme-text-secondary text-center py-8">No staff performance data available</p>
+                  )}
+                </div>
                 );
               })()}
 
@@ -997,16 +997,16 @@ export function ReportsPage() {
                 const paginated = paginate(purchaseOrders, purchaseOrdersPage, itemsPerPage);
                 
                 return (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold theme-text-primary">Purchase Orders</h3>
-                      <Link
-                        to="/purchase-orders"
-                        className="text-sm font-medium text-sky-400 hover:text-sky-300 transition"
-                      >
-                        Manage Purchase Orders →
-                      </Link>
-                    </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold theme-text-primary">Purchase Orders</h3>
+                    <Link
+                      to="/purchase-orders"
+                      className="text-sm font-medium text-sky-400 hover:text-sky-300 transition"
+                    >
+                      Manage Purchase Orders →
+                    </Link>
+                  </div>
                     
                     {paginated.items.length > 0 ? (
                       <>
@@ -1036,14 +1036,14 @@ export function ReportsPage() {
                                       : po.status === 'approved' ? 'bg-blue-500/20 text-blue-400' 
                                       : 'bg-yellow-500/20 text-yellow-400'
                                     }`}>
-                                      {po.status.toUpperCase()}
-                                    </span>
+                              {po.status.toUpperCase()}
+                            </span>
                                   </td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
-                        </div>
+                          </div>
                         
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
@@ -1065,14 +1065,14 @@ export function ReportsPage() {
                               >
                                 Next
                               </button>
-                            </div>
-                          </div>
+                        </div>
+                    </div>
                         )}
                       </>
-                    ) : (
-                      <p className="theme-text-secondary text-center py-8">No purchase orders found</p>
-                    )}
-                  </div>
+                  ) : (
+                    <p className="theme-text-secondary text-center py-8">No purchase orders found</p>
+                  )}
+                </div>
                 );
               })()}
             </>
