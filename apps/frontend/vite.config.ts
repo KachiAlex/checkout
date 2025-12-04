@@ -17,12 +17,19 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('scheduler') || id.includes('react-dom')) {
+            // React and React-DOM - must be first
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
               return 'vendor-react';
             }
-            if (id.includes('zustand')) {
-              return 'vendor-state';
+            // React Router - depends on React, but Vite will handle dependency
+            if (id.includes('react-router')) {
+              return 'vendor-router';
             }
+            // React Hot Toast - depends on React
+            if (id.includes('react-hot-toast')) {
+              return 'vendor-toast';
+            }
+            // Large libraries that don't depend on React
             if (id.includes('@zxing')) {
               return 'vendor-scanner';
             }
@@ -32,17 +39,15 @@ export default defineConfig({
             if (id.includes('axios')) {
               return 'vendor-network';
             }
-            if (id.includes('react-router') || id.includes('react-router-dom')) {
-              return 'vendor-router';
+            if (id.includes('zustand')) {
+              return 'vendor-state';
             }
-            if (id.includes('react-hot-toast')) {
-              return 'vendor-toast';
-            }
-            // Group other node_modules into a separate chunk
+            // Everything else - but ensure React is never in here
+            // Vite should automatically handle chunk dependencies
             return 'vendor-misc';
           }
         },
-        // Optimize chunk size
+        // Ensure proper chunk loading order
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
