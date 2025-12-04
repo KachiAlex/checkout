@@ -6,7 +6,7 @@ Write-Host "`n📦 Step 1: Committing and pushing to Git..." -ForegroundColor Ye
 git add .
 $changes = git status --porcelain
 if ($changes) {
-    git commit -m "feat: improve cost price and selling price input flexibility with comma formatting"
+    git commit -m "perf: optimize page loading with memoization, debouncing, and better code splitting"
     Write-Host "✅ Changes committed" -ForegroundColor Green
 } else {
     Write-Host "ℹ️  No changes to commit" -ForegroundColor Yellow
