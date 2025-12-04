@@ -1,9 +1,37 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Plugin to ensure React chunk loads before vendor-misc
+function enforceReactDependency() {
+  return {
+    name: 'enforce-react-dependency',
+    generateBundle(options: any, bundle: any) {
+      const reactChunkName = Object.keys(bundle).find((name) => 
+        name.includes('vendor-react') && bundle[name].type === 'chunk'
+      );
+      
+      if (!reactChunkName) return;
+      
+      // Make all vendor chunks depend on React chunk
+      Object.keys(bundle).forEach((fileName) => {
+        const chunk = bundle[fileName];
+        if (chunk.type === 'chunk' && fileName.includes('vendor-') && fileName !== reactChunkName) {
+          // Ensure React is in the imports/dynamicImports
+          if (!chunk.imports?.includes(reactChunkName) && !chunk.dynamicImports?.includes(reactChunkName)) {
+            chunk.imports = chunk.imports || [];
+            if (!chunk.imports.includes(reactChunkName)) {
+              chunk.imports.push(reactChunkName);
+            }
+          }
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: '/',
-  plugins: [react()],
+  plugins: [react(), enforceReactDependency()],
   build: {
     minify: 'terser',
     terserOptions: {
