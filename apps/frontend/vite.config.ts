@@ -1,37 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Plugin to ensure React chunk loads before vendor-misc
-function enforceReactDependency() {
-  return {
-    name: 'enforce-react-dependency',
-    generateBundle(options: any, bundle: any) {
-      const reactChunkName = Object.keys(bundle).find((name) => 
-        name.includes('vendor-react') && bundle[name].type === 'chunk'
-      );
-      
-      if (!reactChunkName) return;
-      
-      // Make all vendor chunks depend on React chunk
-      Object.keys(bundle).forEach((fileName) => {
-        const chunk = bundle[fileName];
-        if (chunk.type === 'chunk' && fileName.includes('vendor-') && fileName !== reactChunkName) {
-          // Ensure React is in the imports/dynamicImports
-          if (!chunk.imports?.includes(reactChunkName) && !chunk.dynamicImports?.includes(reactChunkName)) {
-            chunk.imports = chunk.imports || [];
-            if (!chunk.imports.includes(reactChunkName)) {
-              chunk.imports.push(reactChunkName);
-            }
-          }
-        }
-      });
-    },
-  };
-}
+// No longer needed - React dependencies are now in vendor-react chunk
 
 export default defineConfig({
   base: '/',
-  plugins: [react(), enforceReactDependency()],
+  plugins: [react()],
   build: {
     minify: 'terser',
     terserOptions: {
@@ -47,22 +21,15 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             // React and React-DOM - must be first and together
             // Include scheduler which React depends on
-            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler') || id.includes('jsx-runtime')) {
               return 'vendor-react';
             }
-            // React Router - separate chunk that depends on React
-            if (id.includes('react-router')) {
-              return 'vendor-router';
+            // All React-dependent libraries MUST be in vendor-react to avoid loading order issues
+            // This ensures React is always available when these libraries load
+            if (id.includes('react-router') || id.includes('react-hot-toast') || id.includes('dexie-react-hooks')) {
+              return 'vendor-react';
             }
-            // React Hot Toast - separate chunk
-            if (id.includes('react-hot-toast')) {
-              return 'vendor-toast';
-            }
-            // dexie-react-hooks depends on React
-            if (id.includes('dexie-react-hooks')) {
-              return 'vendor-react-hooks';
-            }
-            // Large libraries that don't depend on React
+            // Large libraries that don't depend on React - safe to split
             if (id.includes('@zxing')) {
               return 'vendor-scanner';
             }
@@ -75,15 +42,11 @@ export default defineConfig({
             if (id.includes('zustand')) {
               return 'vendor-state';
             }
-            // Capacitor libraries
+            // Capacitor libraries - don't depend on React
             if (id.includes('@capacitor')) {
               return 'vendor-capacitor';
             }
-            // Everything else - but check for any React dependencies
-            // If it's a React-related package, put it in vendor-react-deps
-            if (id.includes('react') || id.includes('jsx-runtime')) {
-              return 'vendor-react-deps';
-            }
+            // Everything else - should be safe (no React dependencies)
             return 'vendor-misc';
           }
         },
