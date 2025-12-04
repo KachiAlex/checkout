@@ -348,6 +348,74 @@ export class ReceiptService {
   }
 
   /**
+   * Print receipt to USB Serial printer
+   */
+  async printReceiptToSerial(orderId: string, port: SerialPort): Promise<boolean> {
+    try {
+      const accessToken = useAuthStore.getState().accessToken;
+      if (!accessToken) {
+        throw new Error('Not authenticated');
+      }
+
+      // Get receipt in ESC/POS format
+      const response = await axios.get(`${API_URL}/api/v1/receipts/${orderId}/print`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const { escpos } = response.data;
+      
+      // Convert ESC/POS string to Uint8Array
+      const encoder = new TextEncoder();
+      const data = encoder.encode(escpos);
+
+      // Import printer device service
+      const { writeToSerialPort } = await import('./printerDeviceService');
+      await writeToSerialPort(port, data);
+
+      return true;
+    } catch (error) {
+      console.error('Failed to print to serial printer:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Print receipt to Bluetooth printer
+   */
+  async printReceiptToBluetooth(orderId: string, characteristic: BluetoothRemoteGATTCharacteristic): Promise<boolean> {
+    try {
+      const accessToken = useAuthStore.getState().accessToken;
+      if (!accessToken) {
+        throw new Error('Not authenticated');
+      }
+
+      // Get receipt in ESC/POS format
+      const response = await axios.get(`${API_URL}/api/v1/receipts/${orderId}/print`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const { escpos } = response.data;
+      
+      // Convert ESC/POS string to Uint8Array
+      const encoder = new TextEncoder();
+      const data = encoder.encode(escpos);
+
+      // Import printer device service
+      const { writeToBluetoothPrinter } = await import('./printerDeviceService');
+      await writeToBluetoothPrinter(characteristic, data);
+
+      return true;
+    } catch (error) {
+      console.error('Failed to print to Bluetooth printer:', error);
+      return false;
+    }
+  }
+
+  /**
    * Print receipt using browser print dialog (fallback)
    */
   async printReceiptBrowser(orderId: string): Promise<boolean> {
@@ -360,45 +428,134 @@ export class ReceiptService {
         throw new Error('Popup blocked. Please allow popups to print receipts.');
       }
 
+      // Detect mobile device
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const screenWidth = window.screen.width;
+
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <title>Receipt - Order ${orderId}</title>
             <style>
+              * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+              }
+              
+              html, body {
+                width: 100%;
+                height: 100%;
+                overflow-x: hidden;
+              }
+              
+              body {
+                font-family: 'Courier New', 'Courier', monospace;
+                font-size: ${isMobile ? '10px' : '12px'};
+                line-height: 1.4;
+                padding: ${isMobile ? '10px' : '20px'};
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                background: white;
+                color: black;
+                margin: 0 auto;
+                max-width: 100%;
+                width: 100%;
+              }
+              
+              pre {
+                font-family: inherit;
+                font-size: inherit;
+                line-height: inherit;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                max-width: 100%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+              }
+              
+              @media screen {
+                body {
+                  max-width: ${isMobile ? '100%' : '80mm'};
+                  margin: 0 auto;
+                  padding: ${isMobile ? '15px' : '20px'};
+                }
+              }
+              
               @media print {
                 @page {
-                  size: 80mm auto;
-                  margin: 0;
+                  size: ${isMobile ? 'A4' : '80mm'} auto;
+                  margin: ${isMobile ? '5mm' : '0'};
                 }
                 body {
                   margin: 0;
-                  padding: 10mm;
-                  font-family: 'Courier New', monospace;
-                  font-size: 12px;
-                  line-height: 1.4;
+                  padding: ${isMobile ? '10mm' : '10mm'};
+                  font-size: ${isMobile ? '9px' : '12px'};
+                  max-width: 100%;
+                  width: 100%;
+                }
+                pre {
+                  max-width: 100%;
+                  width: 100%;
+                  overflow: visible;
                 }
               }
-              body {
-                font-family: 'Courier New', monospace;
-                font-size: 12px;
-                line-height: 1.4;
-                padding: 20px;
-                white-space: pre-wrap;
-                max-width: 80mm;
-                margin: 0 auto;
+              
+              @media screen and (max-width: 480px) {
+                body {
+                  font-size: 9px;
+                  padding: 10px;
+                }
+              }
+              
+              @media screen and (min-width: 481px) and (max-width: 768px) {
+                body {
+                  font-size: 10px;
+                  padding: 15px;
+                }
               }
             </style>
           </head>
           <body>
             <pre>${receipt.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
             <script>
-              window.onload = function() {
-                window.print();
+              (function() {
+                // Ensure content is loaded before printing
+                if (document.readyState === 'complete') {
+                  setTimeout(function() {
+                    window.print();
+                  }, 250);
+                } else {
+                  window.onload = function() {
+                    setTimeout(function() {
+                      window.print();
+                    }, 250);
+                  };
+                }
+                
+                // Close window after printing (if supported)
                 window.onafterprint = function() {
-                  window.close();
+                  setTimeout(function() {
+                    window.close();
+                  }, 100);
                 };
-              };
+                
+                // Fallback: close after a delay if onafterprint doesn't fire
+                setTimeout(function() {
+                  if (!document.hidden) {
+                    // Window is still visible, user might have cancelled print
+                    // Don't auto-close, let user close manually
+                  }
+                }, 5000);
+              })();
             </script>
           </body>
         </html>

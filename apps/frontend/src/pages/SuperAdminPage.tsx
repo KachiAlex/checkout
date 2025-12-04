@@ -9,6 +9,7 @@ import {
   suspendTenant,
   activateTenant,
   deleteTenant,
+  changeSuperAdminPassword,
   UpdateSubscriptionPayload,
   TenantSummary,
   TenantProvisioningResult,
@@ -78,6 +79,13 @@ export function SuperAdminPage() {
   });
   const [subscriptionOriginal, setSubscriptionOriginal] = useState<typeof subscriptionForm | null>(null);
   const [savingSubscription, setSavingSubscription] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (!user?.isPlatformAdmin) {
@@ -431,6 +439,42 @@ export function SuperAdminPage() {
     }
   };
 
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!passwordForm.newPassword || passwordForm.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    // For superadmin, we'll use the email from the login or prompt for it
+    // Since we don't store email in user object, we'll need to get it from the tenant contactEmail
+    // or use a known superadmin email. For now, let's use the tenant contactEmail as fallback
+    const email = user?.email || 'onyedika.akoma@gmail.com'; // Fallback to known superadmin email
+    
+    if (!email) {
+      toast.error('Email is required. Please contact support.');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await changeSuperAdminPassword(email, passwordForm.currentPassword, passwordForm.newPassword);
+      toast.success('Password changed successfully');
+      setPasswordModalOpen(false);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to change password');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
@@ -466,6 +510,12 @@ export function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
+            <button
+              onClick={() => setPasswordModalOpen(true)}
+              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40"
+            >
+              Change Password
+            </button>
             <button
               onClick={logout}
               className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40"
@@ -969,6 +1019,91 @@ export function SuperAdminPage() {
                     disabled={savingSubscription}
                   >
                     {savingSubscription ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Password Change Modal */}
+        {passwordModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="theme-card w-full max-w-md rounded-3xl border p-6 backdrop-blur-xl">
+              <h2 className="theme-text-primary text-lg font-semibold">Change Password</h2>
+              <p className="theme-text-secondary mt-1 text-xs">
+                Update your superadmin password. Use a strong password with at least 6 characters.
+              </p>
+
+              <form onSubmit={handleChangePassword} className="mt-6 space-y-4">
+                <div className="flex flex-col gap-2">
+                  <label className="theme-text-secondary text-sm font-medium" htmlFor="current-password">
+                    Current Password
+                  </label>
+                  <input
+                    id="current-password"
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(event) =>
+                      setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))
+                    }
+                    className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="theme-text-secondary text-sm font-medium" htmlFor="new-password">
+                    New Password
+                  </label>
+                  <input
+                    id="new-password"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(event) =>
+                      setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))
+                    }
+                    className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="theme-text-secondary text-sm font-medium" htmlFor="confirm-password">
+                    Confirm New Password
+                  </label>
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) =>
+                      setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))
+                    }
+                    className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-300 transition hover:border-white/30"
+                    onClick={() => {
+                      setPasswordModalOpen(false);
+                      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    }}
+                    disabled={changingPassword}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-950 shadow-[0_15px_40px_-20px_rgba(56,189,248,0.7)] transition hover:shadow-[0_18px_46px_-18px_rgba(16,185,129,0.7)] disabled:cursor-not-allowed disabled:opacity-70"
+                    disabled={changingPassword}
+                  >
+                    {changingPassword ? 'Changing...' : 'Change Password'}
                   </button>
                 </div>
               </form>

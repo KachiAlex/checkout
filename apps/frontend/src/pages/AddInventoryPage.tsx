@@ -478,6 +478,12 @@ export function AddInventoryPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Link
+              to="/purchase-orders"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-5 py-2 text-sm font-semibold text-emerald-950 shadow-[0_20px_45px_-25px_rgba(16,185,129,0.7)] transition hover:shadow-[0_26px_55px_-20px_rgba(16,185,129,0.9)]"
+            >
+              ➕ Create Purchase Order
+            </Link>
+            <Link
               to="/checkout"
               className="theme-chip inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition hover:border-emerald-300/60 hover:text-emerald-100"
             >

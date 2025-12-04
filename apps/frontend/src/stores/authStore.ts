@@ -18,6 +18,7 @@ interface TenantInfo {
 interface User {
   id: string;
   name: string;
+  email?: string;
   role: string;
   locationId?: string;
   tenantId: string;
@@ -174,11 +175,28 @@ axios.interceptors.request.use(
     try {
       const { accessToken } = useAuthStore.getState();
 
+      const apiUrl = API_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      // If we're talking to Supabase, attach the anon key via `apikey` header
+      if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
+        config.headers = config.headers ?? {};
+        (config.headers as any).apikey = supabaseAnonKey;
+      }
+
+      // If we have an app auth token, use it for Authorization
       if (accessToken) {
         config.headers = config.headers ?? {};
         (config.headers as any).Authorization = `Bearer ${accessToken}`;
-      } else if (config.headers && (config.headers as any).Authorization) {
-        delete (config.headers as any).Authorization;
+      } else {
+        // No app token – for Supabase, use anon key as bearer so the edge function is accessible
+        if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
+          config.headers = config.headers ?? {};
+          (config.headers as any).Authorization = `Bearer ${supabaseAnonKey}`;
+        } else if (config.headers && (config.headers as any).Authorization) {
+          // Non‑Supabase: clear stale Authorization
+          delete (config.headers as any).Authorization;
+        }
       }
     } catch (error) {
       console.warn('Failed to attach auth token to request:', error);

@@ -367,10 +367,10 @@ export function CheckoutPage() {
 
       toast.success(`Payment confirmed! Order: ${order.orderNumber || orderUuid}`);
       setLastCompletedOrderId(order.id);
-      await handleReceiptPrint(order.id);
       clearCart();
       setSelectedCustomer(null);
-      setLastCompletedOrderId(null);
+      // Open receipt options modal for user to choose how to handle receipt
+      setReceiptOptionsOpen(true);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Payment failed';
       toast.error(errorMessage, { duration: 5000, icon: '❌' });

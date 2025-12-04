@@ -108,3 +108,19 @@ export async function deleteTenant(tenantId: string): Promise<TenantDeleteRespon
   return data;
 }
 
+export async function changeSuperAdminPassword(
+  email: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ success: boolean; message: string }> {
+  const { data } = await axios.post<{ success: boolean; message: string }>(
+    `${API_URL}/api/v1/auth/change-password`,
+    {
+      email,
+      currentPassword,
+      newPassword,
+    },
+  );
+  return data;
+}
+

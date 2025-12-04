@@ -45,6 +45,13 @@ export class ReportsService {
         orderNumber: order.orderNumber,
         total: order.totalCents / 100,
         createdAt: order.createdAt,
+        items: order.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          priceCents: item.priceCents,
+          taxCents: item.taxCents,
+          discountCents: item.discountCents || 0,
+        })),
       })),
     };
   }

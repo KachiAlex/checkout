@@ -16,10 +16,13 @@ import {
   PaymentSettingsService,
   PaymentSettings,
   UpdatePaymentSettingsRequest,
+  GatewayKey,
+  GatewayConfig,
 } from '../services/paymentSettingsService';
 import { receiptService, Printer } from '../services/receiptService';
 import { useScannerDeviceStore } from '../stores/scannerDeviceStore';
 import { fetchRegisteredDevices } from '../services/scannerDeviceService';
+import { PrinterDeviceManager } from '../components/PrinterDeviceManager';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { Link } from 'react-router-dom';
@@ -60,12 +63,53 @@ export function SettingsPage() {
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
   const [savingPaymentSettings, setSavingPaymentSettings] = useState(false);
-  const [monnifyForm, setMonnifyForm] = useState({
-    apiKey: '',
-    secretKey: '',
-    contractCode: '',
-    webhookSecret: '',
-    enabled: false,
+  const gatewayKeys: GatewayKey[] = ['monnify', 'opay', 'palmpay', 'firstbank'];
+  const [activeGateway, setActiveGateway] = useState<GatewayKey>('monnify');
+  const [gatewayForms, setGatewayForms] = useState<Record<GatewayKey, {
+    enabled: boolean;
+    apiKey: string;
+    secretKey: string;
+    contractCode: string;
+    merchantId: string;
+    terminalId: string;
+    webhookSecret: string;
+  }>>({
+    monnify: {
+      enabled: false,
+      apiKey: '',
+      secretKey: '',
+      contractCode: '',
+      merchantId: '',
+      terminalId: '',
+      webhookSecret: '',
+    },
+    opay: {
+      enabled: false,
+      apiKey: '',
+      secretKey: '',
+      contractCode: '',
+      merchantId: '',
+      terminalId: '',
+      webhookSecret: '',
+    },
+    palmpay: {
+      enabled: false,
+      apiKey: '',
+      secretKey: '',
+      contractCode: '',
+      merchantId: '',
+      terminalId: '',
+      webhookSecret: '',
+    },
+    firstbank: {
+      enabled: false,
+      apiKey: '',
+      secretKey: '',
+      contractCode: '',
+      merchantId: '',
+      terminalId: '',
+      webhookSecret: '',
+    },
   });
   const [taxSettings, setTaxSettings] = useState<{ description?: string; percentage?: number; enabled: boolean } | null>(null);
   const [loadingTaxSettings, setLoadingTaxSettings] = useState(false);
@@ -147,13 +191,48 @@ export function SettingsPage() {
       try {
         const settings = await PaymentSettingsService.getPaymentSettings();
         setPaymentSettings(settings);
-        setMonnifyForm({
-          apiKey: settings.monnifyApiKey || '',
-          secretKey: settings.monnifySecretKey || '',
-          contractCode: settings.monnifyContractCode || '',
-          webhookSecret: settings.monnifyWebhookSecret || '',
-          enabled: settings.monnifyEnabled || false,
-        });
+        const active = (settings.activeGateway as GatewayKey) || 'monnify';
+        setActiveGateway(active);
+
+        const gw = settings.gateways || {};
+        setGatewayForms((prev) => ({
+          monnify: {
+            enabled: gw.monnify?.enabled ?? settings.monnifyEnabled ?? false,
+            apiKey: gw.monnify?.apiKey ?? settings.monnifyApiKey ?? '',
+            secretKey: gw.monnify?.secretKey ?? settings.monnifySecretKey ?? '',
+            contractCode: gw.monnify?.contractCode ?? settings.monnifyContractCode ?? '',
+            merchantId: gw.monnify?.merchantId ?? '',
+            terminalId: gw.monnify?.terminalId ?? '',
+            webhookSecret: gw.monnify?.webhookSecret ?? settings.monnifyWebhookSecret ?? '',
+          },
+          opay: {
+            enabled: gw.opay?.enabled ?? false,
+            apiKey: gw.opay?.apiKey ?? '',
+            secretKey: gw.opay?.secretKey ?? '',
+            contractCode: gw.opay?.contractCode ?? '',
+            merchantId: gw.opay?.merchantId ?? '',
+            terminalId: gw.opay?.terminalId ?? '',
+            webhookSecret: gw.opay?.webhookSecret ?? '',
+          },
+          palmpay: {
+            enabled: gw.palmpay?.enabled ?? false,
+            apiKey: gw.palmpay?.apiKey ?? '',
+            secretKey: gw.palmpay?.secretKey ?? '',
+            contractCode: gw.palmpay?.contractCode ?? '',
+            merchantId: gw.palmpay?.merchantId ?? '',
+            terminalId: gw.palmpay?.terminalId ?? '',
+            webhookSecret: gw.palmpay?.webhookSecret ?? '',
+          },
+          firstbank: {
+            enabled: gw.firstbank?.enabled ?? false,
+            apiKey: gw.firstbank?.apiKey ?? '',
+            secretKey: gw.firstbank?.secretKey ?? '',
+            contractCode: gw.firstbank?.contractCode ?? '',
+            merchantId: gw.firstbank?.merchantId ?? '',
+            terminalId: gw.firstbank?.terminalId ?? '',
+            webhookSecret: gw.firstbank?.webhookSecret ?? '',
+          },
+        }));
       } catch (error: any) {
         console.error('Failed to load payment settings:', error);
         // Don't show error toast, just use defaults
@@ -202,7 +281,8 @@ export function SettingsPage() {
       try {
         const response = await axios.get(`${API_URL}/api/v1/locations`, {
           headers: { Authorization: `Bearer ${accessToken}` },
-          timeout: 8000, // 8 second timeout
+          // Allow more time for cold-started functions and Firestore
+          timeout: 20000, // 20 second timeout
         });
         if (!cancelled) {
           setLocations(response.data || []);
@@ -1148,7 +1228,7 @@ export function SettingsPage() {
         {isTenantAdmin && (
           <SectionContainer
             title="Payment Gateway"
-            description="Configure Monnify payment integration for your tenant. Payments will use these credentials when enabled."
+            description="Configure your preferred payment provider (Monnify, Opay, Palmpay, FirstBank). Payments will use the active gateway when enabled."
           >
             {loadingPaymentSettings ? (
               <div className="py-8 text-center">
@@ -1157,152 +1237,220 @@ export function SettingsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <h3 className="theme-text-primary text-sm font-semibold">Enable Monnify Payments</h3>
+                    <h3 className="theme-text-primary text-sm font-semibold">Active Payment Gateway</h3>
                     <p className="theme-text-secondary text-xs">
-                      When enabled, card and QR payments will be processed through Monnify
+                      Choose which provider your tenant will use for card/QR payments.
                     </p>
                   </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={monnifyForm.enabled}
-                      onChange={(e) => setMonnifyForm({ ...monnifyForm, enabled: e.target.checked })}
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-sky-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300" />
-                  </label>
+                  <select
+                    value={activeGateway}
+                    onChange={(e) => setActiveGateway(e.target.value as GatewayKey)}
+                    className="mt-2 w-full rounded-xl border border-white/20 bg-slate-900 px-3 py-2 text-sm text-slate-100 md:mt-0 md:w-64"
+                  >
+                    <option value="monnify">Monnify</option>
+                    <option value="opay">Opay</option>
+                    <option value="palmpay">Palmpay</option>
+                    <option value="firstbank">FirstBank</option>
+                  </select>
                 </div>
 
-                {monnifyForm.enabled && (
-                  <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div>
-                      <label className="theme-text-primary mb-2 block text-sm font-medium">
-                        Monnify API Key
-                      </label>
-                      <input
-                        type="text"
-                        value={monnifyForm.apiKey}
-                        onChange={(e) => setMonnifyForm({ ...monnifyForm, apiKey: e.target.value })}
-                        placeholder={paymentSettings?.monnifyApiKey || 'Enter your Monnify API Key'}
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                      />
-                      <p className="theme-text-secondary mt-1 text-xs">
-                        Get this from your Monnify dashboard → Settings → API Keys
-                      </p>
+                {(() => {
+                  const form = gatewayForms[activeGateway];
+                  const setForm = (patch: Partial<typeof form>) =>
+                    setGatewayForms((prev) => ({
+                      ...prev,
+                      [activeGateway]: { ...prev[activeGateway], ...patch },
+                    }));
+
+                  const isMonnify = activeGateway === 'monnify';
+                  const isOpay = activeGateway === 'opay';
+                  const isPalmpay = activeGateway === 'palmpay';
+                  const isFirstBank = activeGateway === 'firstbank';
+
+                  const gatewayLabel =
+                    activeGateway === 'monnify'
+                      ? 'Monnify'
+                      : activeGateway === 'opay'
+                      ? 'Opay'
+                      : activeGateway === 'palmpay'
+                      ? 'Palmpay'
+                      : 'FirstBank';
+
+                  return (
+                    <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="theme-text-primary text-sm font-semibold">
+                            Enable {gatewayLabel} Payments
+                          </h3>
+                          <p className="theme-text-secondary text-xs">
+                            When enabled, card and QR payments can be routed through {gatewayLabel}.
+                          </p>
+                        </div>
+                        <label className="relative inline-flex cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            checked={form.enabled}
+                            onChange={(e) => setForm({ enabled: e.target.checked })}
+                            className="peer sr-only"
+                          />
+                          <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-sky-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300" />
+                        </label>
+                      </div>
+
+                      {form.enabled && (
+                        <>
+                          <div>
+                            <label className="theme-text-primary mb-2 block text-sm font-medium">
+                              {gatewayLabel} API Key
+                            </label>
+                            <input
+                              type="text"
+                              value={form.apiKey}
+                              onChange={(e) => setForm({ apiKey: e.target.value })}
+                              placeholder="Enter API Key"
+                              className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="theme-text-primary mb-2 block text-sm font-medium">
+                              {gatewayLabel} Secret Key
+                            </label>
+                            <input
+                              type="password"
+                              value={form.secretKey}
+                              onChange={(e) => setForm({ secretKey: e.target.value })}
+                              placeholder="Enter Secret Key"
+                              className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                            />
+                          </div>
+
+                          {isMonnify && (
+                            <div>
+                              <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                Monnify Contract Code
+                              </label>
+                              <input
+                                type="text"
+                                value={form.contractCode}
+                                onChange={(e) => setForm({ contractCode: e.target.value })}
+                                placeholder="Enter Contract Code"
+                                className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                              />
+                            </div>
+                          )}
+
+                          {(isOpay || isPalmpay || isFirstBank) && (
+                            <>
+                              <div>
+                                <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                  Merchant ID
+                                </label>
+                                <input
+                                  type="text"
+                                  value={form.merchantId}
+                                  onChange={(e) => setForm({ merchantId: e.target.value })}
+                                  placeholder="Enter Merchant ID"
+                                  className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                  Terminal ID
+                                </label>
+                                <input
+                                  type="text"
+                                  value={form.terminalId}
+                                  onChange={(e) => setForm({ terminalId: e.target.value })}
+                                  placeholder="Enter Terminal ID"
+                                  className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                                />
+                              </div>
+                            </>
+                          )}
+
+                          <div>
+                            <label className="theme-text-primary mb-2 block text-sm font-medium">
+                              Webhook Secret (Optional)
+                            </label>
+                            <input
+                              type="password"
+                              value={form.webhookSecret}
+                              onChange={(e) => setForm({ webhookSecret: e.target.value })}
+                              placeholder="Enter webhook secret"
+                              className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                            />
+                          </div>
+
+                          <div className="flex gap-3 pt-2">
+                            <button
+                              onClick={async () => {
+                                // Basic validation for Monnify
+                                if (
+                                  activeGateway === 'monnify' &&
+                                  (!form.apiKey || !form.secretKey || !form.contractCode)
+                                ) {
+                                  toast.error('Please fill in API Key, Secret Key, and Contract Code');
+                                  return;
+                                }
+
+                                setSavingPaymentSettings(true);
+                                try {
+                                  const buildGatewayPayload = (
+                                    key: GatewayKey,
+                                    f: (typeof gatewayForms)[GatewayKey],
+                                  ): GatewayConfig => {
+                                    const cfg: GatewayConfig = {
+                                      enabled: f.enabled,
+                                    };
+                                    if (f.apiKey && !f.apiKey.includes('...')) cfg.apiKey = f.apiKey;
+                                    if (f.secretKey && !f.secretKey.includes('...')) cfg.secretKey = f.secretKey;
+                                    if (f.contractCode && !f.contractCode.includes('...'))
+                                      cfg.contractCode = f.contractCode;
+                                    if (f.merchantId && !f.merchantId.includes('...')) cfg.merchantId = f.merchantId;
+                                    if (f.terminalId && !f.terminalId.includes('...')) cfg.terminalId = f.terminalId;
+                                    if (f.webhookSecret && !f.webhookSecret.includes('...'))
+                                      cfg.webhookSecret = f.webhookSecret;
+                                    return cfg;
+                                  };
+
+                                  const gatewaysPayload: Record<string, GatewayConfig> = {};
+                                  gatewayKeys.forEach((key) => {
+                                    gatewaysPayload[key] = buildGatewayPayload(key, gatewayForms[key]);
+                                  });
+
+                                  const monnifyForm = gatewayForms.monnify;
+
+                                  const updateData: UpdatePaymentSettingsRequest = {
+                                    activeGateway,
+                                    monnifyEnabled: monnifyForm.enabled,
+                                    gateways: gatewaysPayload,
+                                  };
+
+                                  const updated = await PaymentSettingsService.updatePaymentSettings(updateData);
+                                  setPaymentSettings(updated);
+                                  toast.success('Payment settings saved successfully');
+                                } catch (error: any) {
+                                  toast.error(error?.response?.data?.message || 'Failed to save payment settings');
+                                } finally {
+                                  setSavingPaymentSettings(false);
+                                }
+                              }}
+                              disabled={savingPaymentSettings}
+                              className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-2 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {savingPaymentSettings ? 'Saving...' : 'Save Settings'}
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
-
-                    <div>
-                      <label className="theme-text-primary mb-2 block text-sm font-medium">
-                        Monnify Secret Key
-                      </label>
-                      <input
-                        type="password"
-                        value={monnifyForm.secretKey}
-                        onChange={(e) => setMonnifyForm({ ...monnifyForm, secretKey: e.target.value })}
-                        placeholder={paymentSettings?.monnifySecretKey || 'Enter your Monnify Secret Key'}
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                      />
-                      <p className="theme-text-secondary mt-1 text-xs">
-                        Keep this secure. It will be stored encrypted in your tenant settings.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="theme-text-primary mb-2 block text-sm font-medium">
-                        Monnify Contract Code
-                      </label>
-                      <input
-                        type="text"
-                        value={monnifyForm.contractCode}
-                        onChange={(e) => setMonnifyForm({ ...monnifyForm, contractCode: e.target.value })}
-                        placeholder={paymentSettings?.monnifyContractCode || 'Enter your Monnify Contract Code'}
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                      />
-                      <p className="theme-text-secondary mt-1 text-xs">
-                        Found in your Monnify merchant profile
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="theme-text-primary mb-2 block text-sm font-medium">
-                        Monnify Webhook Secret (Optional)
-                      </label>
-                      <input
-                        type="password"
-                        value={monnifyForm.webhookSecret}
-                        onChange={(e) => setMonnifyForm({ ...monnifyForm, webhookSecret: e.target.value })}
-                        placeholder={paymentSettings?.monnifyWebhookSecret || 'Enter webhook secret for verification'}
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                      />
-                      <p className="theme-text-secondary mt-1 text-xs">
-                        Used to verify webhook signatures from Monnify
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        onClick={async () => {
-                          if (!monnifyForm.apiKey || !monnifyForm.secretKey || !monnifyForm.contractCode) {
-                            toast.error('Please fill in API Key, Secret Key, and Contract Code');
-                            return;
-                          }
-
-                          setSavingPaymentSettings(true);
-                          try {
-                            const updateData: UpdatePaymentSettingsRequest = {
-                              monnifyEnabled: monnifyForm.enabled,
-                            };
-
-                            // Only update fields that have been changed (not masked values)
-                            if (monnifyForm.apiKey && !monnifyForm.apiKey.includes('...')) {
-                              updateData.monnifyApiKey = monnifyForm.apiKey;
-                            }
-                            if (monnifyForm.secretKey && !monnifyForm.secretKey.includes('...')) {
-                              updateData.monnifySecretKey = monnifyForm.secretKey;
-                            }
-                            if (monnifyForm.contractCode) {
-                              updateData.monnifyContractCode = monnifyForm.contractCode;
-                            }
-                            if (monnifyForm.webhookSecret && !monnifyForm.webhookSecret.includes('...')) {
-                              updateData.monnifyWebhookSecret = monnifyForm.webhookSecret;
-                            }
-
-                            const updated = await PaymentSettingsService.updatePaymentSettings(updateData);
-                            setPaymentSettings(updated);
-                            toast.success('Payment settings saved successfully');
-                            
-                            // Update form with masked values
-                            setMonnifyForm({
-                              apiKey: updated.monnifyApiKey || '',
-                              secretKey: updated.monnifySecretKey || '',
-                              contractCode: updated.monnifyContractCode || '',
-                              webhookSecret: updated.monnifyWebhookSecret || '',
-                              enabled: updated.monnifyEnabled,
-                            });
-                          } catch (error: any) {
-                            toast.error(error?.response?.data?.message || 'Failed to save payment settings');
-                          } finally {
-                            setSavingPaymentSettings(false);
-                          }
-                        }}
-                        disabled={savingPaymentSettings}
-                        className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-2 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {savingPaymentSettings ? 'Saving...' : 'Save Settings'}
-                      </button>
-                      <a
-                        href="https://developers.monnify.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="theme-chip rounded-full border px-6 py-2 font-semibold transition hover:border-sky-400 hover:text-sky-200"
-                      >
-                        View Monnify Docs
-                      </a>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
           </SectionContainer>
@@ -1755,6 +1903,15 @@ export function SettingsPage() {
               </ol>
             </div>
             </div>
+          </SectionContainer>
+        )}
+
+        {isTenantAdmin && (
+          <SectionContainer
+            title="USB & Bluetooth Printers"
+            description="Connect POS printers directly via USB Serial or Bluetooth. No proxy server needed!"
+          >
+            <PrinterDeviceManager />
           </SectionContainer>
         )}
 

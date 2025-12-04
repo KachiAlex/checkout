@@ -57,6 +57,7 @@ export function PurchaseOrdersPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingPoId, setEditingPoId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     supplierId: '',
@@ -196,6 +197,67 @@ export function PurchaseOrdersPage() {
     });
   };
 
+  // Get the effective locationId (user's locationId or first location for tenant)
+  const getEffectiveLocationId = async (): Promise<string | null> => {
+    if (!accessToken || !user) return null;
+    
+    // If user has locationId, use it
+    if (user.locationId) {
+      return user.locationId;
+    }
+    
+    // Otherwise, get first location for tenant
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/v1/locations`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const locations = response.data || [];
+      if (locations.length > 0) {
+        return locations[0].id;
+      }
+    } catch (error) {
+      console.error('Failed to fetch locations:', error);
+    }
+    
+    return null;
+  };
+
+  const handleEdit = (po: PurchaseOrder) => {
+    // Only allow editing draft or pending orders
+    if (po.status !== 'draft' && po.status !== 'pending') {
+      toast.error('Only draft or pending purchase orders can be edited');
+      return;
+    }
+
+    setEditingPoId(po.id);
+    setFormData({
+      supplierId: po.supplierId,
+      expectedDeliveryDate: po.expectedDeliveryDate ? po.expectedDeliveryDate.split('T')[0] : '',
+      notes: po.notes || '',
+      items: po.items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        sku: item.sku,
+        quantity: item.quantity,
+        unitCostCents: item.unitCostCents,
+        totalCostCents: item.totalCostCents,
+      })),
+    });
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPoId(null);
+    setShowForm(false);
+    setFormData({
+      supplierId: '',
+      expectedDeliveryDate: '',
+      notes: '',
+      items: [],
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken) {
@@ -213,24 +275,54 @@ export function PurchaseOrdersPage() {
       return;
     }
 
+    // Get locationId
+    const locationId = await getEffectiveLocationId();
+    if (!locationId) {
+      toast.error('No location found. Please create a location first.');
+      return;
+    }
+
     const { subtotal, tax, total } = calculateTotals(formData.items);
 
     try {
-      await axios.post(
-        `${API_URL}/api/v1/purchase-orders`,
-        {
-          supplierId: formData.supplierId,
-          items: formData.items,
-          subtotalCents: subtotal,
-          taxCents: tax,
-          totalCents: total,
-          expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
-          notes: formData.notes || undefined,
-        },
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
-      toast.success('Purchase order created successfully');
+      if (editingPoId) {
+        // Update existing purchase order
+        await axios.put(
+          `${API_URL}/api/v1/purchase-orders/${editingPoId}`,
+          {
+            locationId,
+            supplierId: formData.supplierId,
+            items: formData.items,
+            subtotalCents: subtotal,
+            taxCents: tax,
+            totalCents: total,
+            expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
+            notes: formData.notes || undefined,
+          },
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        toast.success('Purchase order updated successfully');
+      } else {
+        // Create new purchase order
+        await axios.post(
+          `${API_URL}/api/v1/purchase-orders`,
+          {
+            locationId,
+            supplierId: formData.supplierId,
+            items: formData.items,
+            subtotalCents: subtotal,
+            taxCents: tax,
+            totalCents: total,
+            expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
+            notes: formData.notes || undefined,
+          },
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        toast.success('Purchase order created successfully');
+      }
+      
       setShowForm(false);
+      setEditingPoId(null);
       setFormData({
         supplierId: '',
         expectedDeliveryDate: '',
@@ -239,8 +331,8 @@ export function PurchaseOrdersPage() {
       });
       await loadPurchaseOrders();
     } catch (error: any) {
-      console.error('Failed to create purchase order:', error);
-      toast.error(error.response?.data?.message || 'Failed to create purchase order');
+      console.error('Failed to save purchase order:', error);
+      toast.error(error.response?.data?.message || `Failed to ${editingPoId ? 'update' : 'create'} purchase order`);
     }
   };
 
@@ -320,6 +412,20 @@ export function PurchaseOrdersPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {!showForm && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-5 py-2 text-sm font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70"
+              >
+                ➕ Create Purchase Order
+              </button>
+            )}
+            <Link
+              to="/grn"
+              className="theme-chip inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition"
+            >
+              📦 Receive Items
+            </Link>
             <Link
               to="/suppliers"
               className="theme-chip inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition"
@@ -348,22 +454,12 @@ export function PurchaseOrdersPage() {
           </div>
         </div>
 
-        {/* Create PO Button */}
-        {!showForm && (
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowForm(true)}
-              className="rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70"
-            >
-              ➕ Create Purchase Order
-            </button>
-          </div>
-        )}
-
         {/* Purchase Order Form */}
         {showForm && (
           <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-            <h2 className="theme-text-primary text-xl font-semibold mb-4">Create New Purchase Order</h2>
+            <h2 className="theme-text-primary text-xl font-semibold mb-4">
+              {editingPoId ? 'Edit Purchase Order' : 'Create New Purchase Order'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -818,19 +914,11 @@ export function PurchaseOrdersPage() {
                   type="submit"
                   className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70"
                 >
-                  Create Purchase Order
+                  {editingPoId ? 'Update Purchase Order' : 'Create Purchase Order'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setFormData({
-                      supplierId: '',
-                      expectedDeliveryDate: '',
-                      notes: '',
-                      items: [],
-                    });
-                  }}
+                  onClick={handleCancelEdit}
                   className="rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5"
                 >
                   Cancel
@@ -924,12 +1012,20 @@ export function PurchaseOrdersPage() {
                     </div>
                     <div className="ml-4 flex flex-col gap-2">
                       {(po.status === 'draft' || po.status === 'pending') && (
-                        <button
-                          onClick={() => handleApprove(po.id)}
-                          className="rounded-full border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/20"
-                        >
-                          Approve
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleEdit(po)}
+                            className="rounded-full border border-blue-500/50 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-400 transition hover:bg-blue-500/20"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleApprove(po.id)}
+                            className="rounded-full border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/20"
+                          >
+                            Approve
+                          </button>
+                        </>
                       )}
                       {po.status !== 'received' && po.status !== 'cancelled' && (
                         <button

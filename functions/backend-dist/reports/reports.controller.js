@@ -48,15 +48,6 @@ let ReportsController = class ReportsController {
     async getShrinkageDetection(locationId, from, to) {
         return this.reportsService.getShrinkageDetection(locationId, from, to);
     }
-    async getCustomerSegmentation(locationId, from, to, req) {
-        return this.reportsService.getCustomerSegmentation(locationId, from, to, req?.user?.tenantId);
-    }
-    async getSupplierAnalytics(locationId, from, to, req) {
-        return this.reportsService.getSupplierAnalytics(locationId, from, to, req?.user?.tenantId);
-    }
-    async getPriceSensitivity(locationId, from, to, req) {
-        return this.reportsService.getPriceSensitivity(locationId, from, to, req?.user?.tenantId);
-    }
 };
 exports.ReportsController = ReportsController;
 __decorate([
@@ -155,42 +146,6 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getShrinkageDetection", null);
-__decorate([
-    (0, common_1.Get)('customer-segmentation'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get customer segmentation analytics (RFM + CLV)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Customer segmentation data' }),
-    __param(0, (0, common_1.Query)('location_id')),
-    __param(1, (0, common_1.Query)('from')),
-    __param(2, (0, common_1.Query)('to')),
-    __param(3, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, Object]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getCustomerSegmentation", null);
-__decorate([
-    (0, common_1.Get)('supplier-analytics'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get supplier profit contribution analytics' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Supplier analytics data' }),
-    __param(0, (0, common_1.Query)('location_id')),
-    __param(1, (0, common_1.Query)('from')),
-    __param(2, (0, common_1.Query)('to')),
-    __param(3, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, Object]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getSupplierAnalytics", null);
-__decorate([
-    (0, common_1.Get)('price-sensitivity'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get price sensitivity analytics (price elasticity per product)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Price sensitivity data' }),
-    __param(0, (0, common_1.Query)('location_id')),
-    __param(1, (0, common_1.Query)('from')),
-    __param(2, (0, common_1.Query)('to')),
-    __param(3, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, Object]),
-    __metadata("design:returntype", Promise)
-], ReportsController.prototype, "getPriceSensitivity", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, swagger_1.ApiTags)('reports'),
     (0, common_1.Controller)('reports'),

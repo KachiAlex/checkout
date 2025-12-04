@@ -140,7 +140,7 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                isCompanyUser && isAdmin ? (
+                isCompanyUser ? (
                   <ExecutiveDashboardPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />

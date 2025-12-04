@@ -69,6 +69,7 @@ export function InventoryManagementPage() {
     type: 'ADJUSTMENT' as string,
     reason: '',
     notes: '',
+    supplierId: '',
   });
   
   // Simple inventory input form
@@ -89,6 +90,7 @@ export function InventoryManagementPage() {
   // Categories and brands
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([]);
+  const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
 
   const loadInventoryStock = async () => {
     if (!accessToken || !user) return;
@@ -177,12 +179,28 @@ export function InventoryManagementPage() {
     }
   };
 
+  const loadSuppliers = async () => {
+    if (!accessToken) return;
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/suppliers`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setSuppliers(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to load suppliers:', error);
+      if (error.response?.status !== 401) {
+        toast.error('Failed to load suppliers');
+      }
+    }
+  };
+
   useEffect(() => {
     if (user && user.locationId && accessToken) {
       loadInventoryStock();
       loadInventoryTransactions();
       loadCategories();
       loadBrands();
+      loadSuppliers();
     }
   }, [user, accessToken]);
 
@@ -199,6 +217,7 @@ export function InventoryManagementPage() {
       type: 'adjust',
       reason: '',
       notes: '',
+      supplierId: '',
     });
     setShowAdjustForm(true);
   };
@@ -226,6 +245,7 @@ export function InventoryManagementPage() {
           type: adjustForm.type,
           reason: adjustForm.reason || undefined,
           notes: adjustForm.notes || undefined,
+          supplierId: adjustForm.supplierId || undefined,
         },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
@@ -238,6 +258,7 @@ export function InventoryManagementPage() {
         type: 'adjust',
         reason: '',
         notes: '',
+        supplierId: '',
       });
       await loadInventoryStock();
       await loadInventoryTransactions();
@@ -393,10 +414,16 @@ export function InventoryManagementPage() {
           <div className="flex flex-wrap items-center gap-3">
             <Link
               to="/purchase-orders"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-5 py-2 text-sm font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70"
+            >
+              ➕ Create Purchase Order
+            </Link>
+            <Link
+              to="/purchase-orders"
               className="theme-chip inline-flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition"
             >
               <span>📋</span>
-              Purchase Orders
+              View Purchase Orders
             </Link>
             <Link
               to="/suppliers"
@@ -763,6 +790,23 @@ export function InventoryManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium theme-text-secondary mb-1">
+                    Supplier (Optional - for restocking tracking)
+                  </label>
+                  <select
+                    value={adjustForm.supplierId}
+                    onChange={(e) => setAdjustForm({ ...adjustForm, supplierId: e.target.value })}
+                    className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
+                  >
+                    <option value="">No supplier (manual adjustment)</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium theme-text-secondary mb-1">
                     Notes
                   </label>
                   <textarea
@@ -790,6 +834,7 @@ export function InventoryManagementPage() {
                         type: 'adjust',
                         reason: '',
                         notes: '',
+                        supplierId: '',
                       });
                     }}
                     className="rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5"

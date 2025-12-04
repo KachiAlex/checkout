@@ -2,20 +2,53 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import { useAuthStore } from '../stores/authStore';
 
+export type GatewayKey = 'monnify' | 'opay' | 'palmpay' | 'firstbank';
+
+export interface GatewayConfig {
+  enabled?: boolean;
+  displayName?: string;
+  apiKey?: string;
+  secretKey?: string;
+  contractCode?: string;
+  merchantId?: string;
+  terminalId?: string;
+  webhookSecret?: string;
+}
+
 export interface PaymentSettings {
+  // Legacy Monnify fields (for backward compatibility)
   monnifyApiKey?: string;
   monnifySecretKey?: string;
   monnifyContractCode?: string;
   monnifyWebhookSecret?: string;
   monnifyEnabled: boolean;
+
+  // Multi-gateway configuration
+  activeGateway?: GatewayKey;
+  gateways?: {
+    monnify?: GatewayConfig;
+    opay?: GatewayConfig;
+    palmpay?: GatewayConfig;
+    firstbank?: GatewayConfig;
+  };
 }
 
 export interface UpdatePaymentSettingsRequest {
+  // Legacy Monnify fields
   monnifyApiKey?: string;
   monnifySecretKey?: string;
   monnifyContractCode?: string;
   monnifyWebhookSecret?: string;
   monnifyEnabled?: boolean;
+
+  // Multi-gateway fields
+  activeGateway?: GatewayKey;
+  gateways?: {
+    monnify?: GatewayConfig;
+    opay?: GatewayConfig;
+    palmpay?: GatewayConfig;
+    firstbank?: GatewayConfig;
+  };
 }
 
 /**
