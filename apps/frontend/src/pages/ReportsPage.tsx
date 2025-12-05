@@ -279,7 +279,19 @@ export function ReportsPage() {
   const paginatedSales = useMemo(() => {
     if (activeTab !== 'sales' || salesRows.length === 0) return null;
     return paginate(salesRows, salesPage, itemsPerPage);
-  }, [salesRows, salesPage, activeTab]);
+  }, [salesRows, salesPage, activeTab, paginate]);
+
+  // Load locations on mount
+  useEffect(() => {
+    loadLocations();
+  }, [loadLocations]);
+
+  // Load report data when dependencies change
+  useEffect(() => {
+    if (accessToken) {
+      loadReportData();
+    }
+  }, [accessToken, activeTab, locationId, dateRangeKey, loadReportData]);
 
   return (
     <div className="min-h-screen theme-bg">
@@ -373,10 +385,62 @@ export function ReportsPage() {
         <div className="theme-surface rounded-2xl border theme-border p-6 sm:p-8">
           {loading ? (
             <div className="text-center py-12">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-sky-400 border-t-transparent mb-4" />
               <p className="theme-text-secondary">Loading report...</p>
             </div>
           ) : (
             <>
+              {/* Show message if no data for current tab */}
+              {activeTab === 'sales' && !salesReport && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No sales data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'top-sellers' && !topSellers && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No top sellers data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'analytics' && !salesAnalytics && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No analytics data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'alerts' && !alerts && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No alerts data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'fraud' && !fraudAlerts && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No fraud detection data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'expiry' && !expiryAnalytics && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No expiry analytics data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'shrinkage' && !shrinkageAlerts && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No shrinkage data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'staff' && !staffPerformance && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No staff performance data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'inventory' && !inventoryAnalytics && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No inventory analytics data available. Try adjusting your filters or date range.</p>
+                </div>
+              )}
+              {activeTab === 'purchase-orders' && purchaseOrders.length === 0 && !loading && (
+                <div className="text-center py-12">
+                  <p className="theme-text-secondary">No purchase orders found.</p>
+                </div>
+              )}
               {/* Sales Report */}
               {activeTab === 'sales' && salesReport && paginatedSales && (() => {
                 const paginated = paginatedSales;
