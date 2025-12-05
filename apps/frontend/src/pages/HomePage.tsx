@@ -293,35 +293,134 @@ export function HomePage() {
 
         <section id="pricing" className="py-12 sm:py-16 lg:py-20">
           <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 lg:px-6">
-            <div className="rounded-2xl sm:rounded-[32px] border border-white/10 bg-slate-950/70 p-6 sm:p-8 lg:p-10 shadow-[0_40px_120px_-50px_rgba(99,102,241,0.6)] backdrop-blur-2xl">
-              <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10 md:flex-row md:items-center md:justify-between">
-                <div className="md:w-2/3">
-                  <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-sky-200">Pricing</p>
-                  <h2 className="mt-3 sm:mt-4 text-2xl sm:text-3xl font-semibold text-white">Flexible licensing for every stage</h2>
-                  <p className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-300">
-                    Checkout's licensing engine lets you assign monthly, annual, or lifetime plans per tenant. Scale up
-                    seat counts anytime and pay only for active locations.
-                  </p>
-                  <ul className="mt-4 sm:mt-6 space-y-2 sm:space-y-3 text-xs sm:text-sm text-slate-300">
-                    <li>• Platform fee includes tenant provisioning, user management, and device registration.</li>
-                    <li>• Optional add-ons: advanced analytics, fiscal compliance packs, dedicated success engineer.</li>
-                    <li>• Volume discounts kick in from the 5th tenant onwards.</li>
+            <div className="text-center mb-8 sm:mb-12">
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-sky-200">Pricing</p>
+              <h2 className="mt-3 sm:mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold text-white">Simple, transparent pricing</h2>
+              <p className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+                Choose the plan that works best for your business. All plans include full access to all features.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:gap-6 lg:gap-8 md:grid-cols-3">
+              {/* Monthly Plan */}
+              <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/70 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(56,189,248,0.4)] backdrop-blur-xl hover:border-sky-400/40 transition">
+                <div className="text-center">
+                  <h3 className="text-lg sm:text-xl font-semibold text-white">Monthly</h3>
+                  <div className="mt-4 sm:mt-6">
+                    <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white">
+                      $7<span className="text-base sm:text-lg font-normal text-slate-300">/user</span>
+                    </p>
+                    <p className="mt-2 text-xs sm:text-sm text-slate-400">Billed monthly</p>
+                  </div>
+                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 text-left text-xs sm:text-sm text-slate-300">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Full feature access</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Unlimited locations</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Priority support</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Cancel anytime</span>
+                    </li>
                   </ul>
-                </div>
-                <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-900/60 p-5 sm:p-6 text-center">
-                  <p className="text-xs sm:text-sm uppercase tracking-[0.4em] text-slate-400">Starter preview</p>
-                  <p className="mt-4 sm:mt-5 text-3xl sm:text-4xl font-semibold text-white">
-                    $249<span className="text-sm sm:text-base font-normal text-slate-300">/tenant/mo</span>
-                  </p>
-                  <p className="mt-2 text-xs sm:text-sm text-slate-400">Includes 3 locations and unlimited devices</p>
-                  <a
-                    href="mailto:hello@checkouthq.com?subject=Checkout%20Pricing"
-                    className="mt-4 sm:mt-6 inline-flex items-center justify-center rounded-full bg-white px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold text-slate-900 shadow-md shadow-white/40 transition hover:shadow-white/60 touch-manipulation"
+                  <button
+                    onClick={() => setShowRegistration(true)}
+                    className="mt-6 sm:mt-8 w-full rounded-full border border-white/20 bg-white/5 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/10 touch-manipulation"
                   >
-                    Talk to sales
-                  </a>
+                    Get Started
+                  </button>
                 </div>
               </div>
+
+              {/* Annual Plan - Featured */}
+              <div className="rounded-2xl sm:rounded-3xl border-2 border-sky-400/60 bg-gradient-to-br from-sky-500/20 via-slate-950/80 to-slate-950/70 p-6 sm:p-8 shadow-[0_30px_80px_-40px_rgba(56,189,248,0.6)] backdrop-blur-xl hover:border-sky-400/80 transition relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-3 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg">
+                    Best Value
+                  </span>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg sm:text-xl font-semibold text-white">Annual</h3>
+                  <div className="mt-4 sm:mt-6">
+                    <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white">
+                      $80<span className="text-base sm:text-lg font-normal text-slate-300">/annum</span>
+                    </p>
+                    <p className="mt-2 text-xs sm:text-sm text-slate-400">Save $4 per year</p>
+                  </div>
+                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 text-left text-xs sm:text-sm text-slate-300">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Everything in Monthly</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Annual billing discount</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Dedicated account manager</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Priority feature requests</span>
+                    </li>
+                  </ul>
+                  <button
+                    onClick={() => setShowRegistration(true)}
+                    className="mt-6 sm:mt-8 w-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-[0_20px_50px_-28px_rgba(56,189,248,0.55)] transition hover:shadow-[0_24px_60px_-28px_rgba(56,189,248,0.7)] touch-manipulation"
+                  >
+                    Get Started
+                  </button>
+                </div>
+              </div>
+
+              {/* Lifetime Plan */}
+              <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/70 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(139,92,246,0.4)] backdrop-blur-xl hover:border-purple-400/40 transition">
+                <div className="text-center">
+                  <h3 className="text-lg sm:text-xl font-semibold text-white">Lifetime</h3>
+                  <div className="mt-4 sm:mt-6">
+                    <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white">
+                      $1,200
+                    </p>
+                    <p className="mt-2 text-xs sm:text-sm text-slate-400">One-time payment</p>
+                  </div>
+                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 text-left text-xs sm:text-sm text-slate-300">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Everything in Annual</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>Lifetime access</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>All future features included</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>No recurring fees</span>
+                    </li>
+                  </ul>
+                  <button
+                    onClick={() => setShowRegistration(true)}
+                    className="mt-6 sm:mt-8 w-full rounded-full border border-white/20 bg-white/5 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/10 touch-manipulation"
+                  >
+                    Get Started
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="mt-8 sm:mt-12 text-center">
+              <p className="text-xs sm:text-sm text-slate-400">
+                All plans include a 14-day free trial. No credit card required.
+              </p>
             </div>
           </div>
         </section>
