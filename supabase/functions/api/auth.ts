@@ -5,7 +5,7 @@ import { parseRequestBody } from '../_shared/request.ts';
 import bcrypt from 'npm:bcryptjs@2.4.3';
 
 // Simple JWT creation using Web Crypto API (native to Deno, no external library needed)
-async function createJWT(payload: Record<string, any>, secret: string, expiresIn: number): Promise<string> {
+export async function createJWT(payload: Record<string, any>, secret: string, expiresIn: number): Promise<string> {
   const header = {
     alg: 'HS256',
     typ: 'JWT',
@@ -39,7 +39,9 @@ async function createJWT(payload: Record<string, any>, secret: string, expiresIn
   );
 
   // Convert signature to base64url
-  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+  const signatureArray = new Uint8Array(signature);
+  const signatureString = String.fromCharCode.apply(null, Array.from(signatureArray));
+  const encodedSignature = btoa(signatureString)
     .replace(/=/g, '')
     .replace(/\+/g, '-')
     .replace(/\//g, '_');
@@ -59,7 +61,9 @@ interface SuperAdminLoginRequest {
 }
 
 export async function handleAuth(req: Request, path: string, method: string): Promise<Response> {
+  console.log('[Auth] handleAuth called:', { path, method });
   if (path === '/auth/login' && method === 'POST') {
+    console.log('[Auth] Routing to handleTenantLogin');
     return handleTenantLogin(req);
   }
   if (path === '/auth/superadmin/login' && method === 'POST') {
@@ -76,7 +80,10 @@ export async function handleAuth(req: Request, path: string, method: string): Pr
 
 async function handleTenantLogin(req: Request): Promise<Response> {
   try {
+    console.log('[Auth] Login request received');
     const body = await parseRequestBody<LoginRequest>(req);
+    console.log('[Auth] Parsed body:', { tenantSlug: body?.tenantSlug, hasPin: !!body?.pin, hasDeviceId: !!body?.deviceId });
+    
     if (!body?.tenantSlug || !body?.pin || !body?.deviceId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
@@ -84,17 +91,38 @@ async function handleTenantLogin(req: Request): Promise<Response> {
       );
     }
 
-    const db = getFirestoreInstance();
+    console.log('[Auth] Getting Firestore instance...');
+    let db;
+    try {
+      db = getFirestoreInstance();
+      console.log('[Auth] Firestore instance obtained');
+    } catch (firestoreError) {
+      console.error('[Auth] Firestore initialization error:', firestoreError);
+      throw new Error(`Firestore initialization failed: ${firestoreError instanceof Error ? firestoreError.message : 'Unknown error'}`);
+    }
     
     // Find tenant
-    const tenants = await db.collection('tenants')
-      .where('slug', '==', body.tenantSlug)
-      .limit(1)
-      .get();
+    console.log('[Auth] Querying tenants with slug:', body.tenantSlug);
+    let tenants;
+    try {
+      tenants = await db.collection('tenants')
+        .where('slug', '==', body.tenantSlug)
+        .limit(1)
+        .get();
+      console.log('[Auth] Tenant query result:', { empty: tenants.empty, count: tenants.docs.length });
+    } catch (queryError) {
+      console.error('[Auth] Tenant query error:', queryError);
+      throw new Error(`Tenant query failed: ${queryError instanceof Error ? queryError.message : 'Unknown error'}`);
+    }
     
     if (tenants.empty) {
+      console.log('[Auth] Tenant not found for slug:', body.tenantSlug);
       return new Response(
-        JSON.stringify({ error: 'Invalid tenant' }),
+        JSON.stringify({ 
+          error: 'Invalid tenant', 
+          message: `No tenant found with slug: ${body.tenantSlug}`,
+          receivedSlug: body.tenantSlug
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -134,8 +162,21 @@ async function handleTenantLogin(req: Request): Promise<Response> {
     }
 
     if (!userDoc || !user) {
+      console.log('[Auth] Invalid credentials - no matching user found');
+      console.log('[Auth] Debug info:', {
+        tenantId,
+        usersFound: users.docs.length,
+        usersChecked: users.docs.map(d => ({ id: d.id, hasPinHash: !!d.data().pinHash }))
+      });
       return new Response(
-        JSON.stringify({ error: 'Invalid credentials' }),
+        JSON.stringify({ 
+          error: 'Invalid credentials', 
+          message: 'PIN does not match any user for this tenant',
+          debug: {
+            tenantId,
+            usersFound: users.docs.length,
+          }
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -143,34 +184,53 @@ async function handleTenantLogin(req: Request): Promise<Response> {
     // Create JWT tokens using simple Web Crypto API
     const jwtSecret = Deno.env.get('JWT_SECRET') || '';
     if (!jwtSecret) {
+      console.error('[Auth] JWT_SECRET not configured');
       throw new Error('JWT_SECRET not configured');
     }
 
-    const accessToken = await createJWT(
-      {
-        sub: userDoc.id,
-        tenantId,
-        role: user.role || 'cashier',
-        locationId: user.locationId || null,
-        deviceId: user.deviceId || null,
-        isPlatformAdmin: user.isPlatformAdmin || false,
-      },
-      jwtSecret,
-      60 * 60 * 24 // 24 hours
-    );
+    console.log('[Auth] Creating access token...');
+    let accessToken;
+    try {
+      accessToken = await createJWT(
+        {
+          sub: userDoc.id,
+          tenantId,
+          role: user.role || 'cashier',
+          locationId: user.locationId || null,
+          deviceId: user.deviceId || null,
+          isPlatformAdmin: user.isPlatformAdmin || false,
+        },
+        jwtSecret,
+        60 * 60 * 24 // 24 hours
+      );
+      console.log('[Auth] Access token created');
+    } catch (tokenError) {
+      console.error('[Auth] Access token creation error:', tokenError);
+      throw new Error(`Access token creation failed: ${tokenError instanceof Error ? tokenError.message : 'Unknown error'}`);
+    }
 
-    const refreshToken = await createJWT(
-      {
-        sub: userDoc.id,
-        tenantId,
-        role: user.role || 'cashier',
-        locationId: user.locationId || null,
-        deviceId: user.deviceId || null,
-        isPlatformAdmin: user.isPlatformAdmin || false,
-      },
-      jwtSecret,
-      60 * 60 * 24 * 7 // 7 days
-    );
+    console.log('[Auth] Creating refresh token...');
+    let refreshToken;
+    try {
+      // Use JWT_REFRESH_SECRET if available, otherwise fall back to JWT_SECRET
+      const refreshSecret = Deno.env.get('JWT_REFRESH_SECRET') || jwtSecret;
+      refreshToken = await createJWT(
+        {
+          sub: userDoc.id,
+          tenantId,
+          role: user.role || 'cashier',
+          locationId: user.locationId || null,
+          deviceId: user.deviceId || null,
+          isPlatformAdmin: user.isPlatformAdmin || false,
+        },
+        refreshSecret,
+        60 * 60 * 24 * 7 // 7 days
+      );
+      console.log('[Auth] Refresh token created');
+    } catch (tokenError) {
+      console.error('[Auth] Refresh token creation error:', tokenError);
+      throw new Error(`Refresh token creation failed: ${tokenError instanceof Error ? tokenError.message : 'Unknown error'}`);
+    }
 
     return new Response(
       JSON.stringify({
@@ -196,8 +256,14 @@ async function handleTenantLogin(req: Request): Promise<Response> {
     );
   } catch (error) {
     console.error('[Auth] Login error:', error);
+    console.error('[Auth] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('[Auth] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return new Response(
-      JSON.stringify({ error: 'Login failed', message: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        error: 'Login failed', 
+        message: error instanceof Error ? error.message : 'Unknown error',
+        type: error instanceof Error ? error.constructor.name : typeof error
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -319,9 +385,11 @@ async function handleSuperAdminLogin(req: Request): Promise<Response> {
         isPlatformAdmin: true,
       },
       jwtSecret,
-      60 * 60 * 24 // 24 hours
+      60 * 60 * 24 // 24 hours (matching backend default)
     );
 
+    // Use JWT_REFRESH_SECRET if available, otherwise fall back to JWT_SECRET
+    const refreshSecret = Deno.env.get('JWT_REFRESH_SECRET') || jwtSecret;
     const refreshToken = await createJWT(
       {
         sub: userDoc.id,
@@ -331,7 +399,7 @@ async function handleSuperAdminLogin(req: Request): Promise<Response> {
         deviceId: user.deviceId || null,
         isPlatformAdmin: true,
       },
-      jwtSecret,
+      refreshSecret,
       60 * 60 * 24 * 7 // 7 days
     );
 

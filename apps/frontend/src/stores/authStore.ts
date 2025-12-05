@@ -178,23 +178,45 @@ axios.interceptors.request.use(
       const apiUrl = API_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // If we're talking to Supabase, attach the anon key via `apikey` header
+      // If we're talking to Supabase, ALWAYS attach the anon key via `apikey` header
+      // This is required even for OPTIONS requests - Supabase validates it at infrastructure level
       if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
         config.headers = config.headers ?? {};
         (config.headers as any).apikey = supabaseAnonKey;
+        // Also set it as Authorization for non-OPTIONS requests if needed
+        // But for OPTIONS, only apikey header is needed
       }
 
-      // If we have an app auth token, use it for Authorization
-      if (accessToken) {
+      // Don't send auth token to login endpoints
+      const isAuthEndpoint = config.url?.includes('/auth/login') || 
+                            config.url?.includes('/auth/superadmin/login');
+      const isOptionsRequest = config.method?.toUpperCase() === 'OPTIONS';
+      
+      // For OPTIONS requests, send anon key as Authorization (Supabase requires it)
+      // But don't send our app JWT token
+      if (isOptionsRequest) {
+        // For OPTIONS, use anon key as Authorization (Supabase infrastructure requires it)
+        if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
+          config.headers = config.headers ?? {};
+          (config.headers as any).Authorization = `Bearer ${supabaseAnonKey}`;
+        }
+      } else if (accessToken && !isAuthEndpoint) {
+        // If we have an app auth token, use it for Authorization (but not for login endpoints)
         config.headers = config.headers ?? {};
         (config.headers as any).Authorization = `Bearer ${accessToken}`;
-      } else {
+      } else if (!isAuthEndpoint) {
         // No app token – for Supabase, use anon key as bearer so the edge function is accessible
         if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
           config.headers = config.headers ?? {};
           (config.headers as any).Authorization = `Bearer ${supabaseAnonKey}`;
         } else if (config.headers && (config.headers as any).Authorization) {
           // Non‑Supabase: clear stale Authorization
+          delete (config.headers as any).Authorization;
+        }
+      } else {
+        // For login endpoints, don't send Authorization header - only apikey
+        // Supabase will validate the apikey header, not Authorization
+        if (config.headers && (config.headers as any).Authorization) {
           delete (config.headers as any).Authorization;
         }
       }
@@ -213,8 +235,24 @@ axios.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If we get a 401 and haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't try to refresh on login/auth endpoints - these are expected to fail if not logged in
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
+                          originalRequest?.url?.includes('/auth/superadmin/login') ||
+                          originalRequest?.url?.includes('/auth/refresh');
+
+    // If we get a 401 on login endpoint, clear any invalid tokens
+    if (error.response?.status === 401 && isAuthEndpoint) {
+      const { accessToken } = useAuthStore.getState();
+      if (accessToken) {
+        // Invalid token detected on login attempt, clear it
+        console.warn('[Auth] Invalid token detected on login endpoint, clearing stored tokens');
+        useAuthStore.getState().logout();
+      }
+      return Promise.reject(error);
+    }
+
+    // If we get a 401 and haven't tried to refresh yet (and it's not an auth endpoint)
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       const { refreshToken, refresh } = useAuthStore.getState();

@@ -39,8 +39,121 @@ function generateDefaultPin(): string {
   return Math.random().toString().slice(2, 8).padStart(6, '0');
 }
 
+// Public registration handler - creates tenant with FREE tier (14-day trial)
+async function handlePublicRegistration(req: Request): Promise<Response> {
+  try {
+    const body = await parseRequestBody<{
+      companyName: string;
+      companySlug: string;
+      adminName: string;
+      adminEmail: string;
+      adminPassword: string;
+    }>(req);
+    
+    if (!body || !body.companyName || !body.companySlug || !body.adminName || !body.adminEmail || !body.adminPassword) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: companyName, companySlug, adminName, adminEmail, adminPassword' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const db = getFirestoreInstance();
+    const normalizedSlug = normalizeSlug(body.companySlug);
+
+    // Check if slug already exists
+    const existingSnapshot = await db.collection('tenants')
+      .where('slug', '==', normalizedSlug)
+      .limit(1)
+      .get();
+
+    if (!existingSnapshot.empty) {
+      return new Response(
+        JSON.stringify({ error: 'Company slug already in use. Please choose a different one.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Set FREE tier with 14-day expiration
+    const now = new Date();
+    const billingCycleStart = Timestamp.fromDate(now);
+    const billingCycleEnd = Timestamp.fromDate(new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)); // 14 days
+
+    const tenantData: any = {
+      name: body.companyName.trim(),
+      slug: normalizedSlug,
+      plan: 'free', // FREE tier
+      status: 'active', // Auto-activate for free tier
+      seatLimit: 1, // Free tier: 1 location
+      contactEmail: body.adminEmail.toLowerCase(),
+      billingCycleStart,
+      billingCycleEnd,
+      metadata: {
+        registrationSource: 'public',
+        registeredAt: now.toISOString(),
+      },
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    const tenantRef = await db.collection('tenants').add(tenantData);
+    const tenantDoc = await tenantRef.get();
+    const tenant = tenantDoc.data();
+
+    // Create admin user
+    const pinHash = await bcrypt.hash(body.adminPassword, 10);
+    const adminData = {
+      name: body.adminName.trim(),
+      email: body.adminEmail.toLowerCase(),
+      role: 'admin',
+      pinHash,
+      tenantId: tenantRef.id,
+      isPlatformAdmin: false,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    const adminRef = await db.collection('users').add(adminData);
+    const adminDoc = await adminRef.get();
+    const admin = adminDoc.data();
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        tenant: {
+          id: tenantRef.id,
+          name: tenant?.name || body.companyName,
+          slug: tenant?.slug || normalizedSlug,
+          plan: 'free',
+          status: 'active',
+          billingCycleEnd: billingCycleEnd.toDate().toISOString(),
+        },
+        admin: {
+          id: adminRef.id,
+          email: admin?.email || body.adminEmail,
+        },
+        message: 'Registration successful! Your 14-day free trial has started.',
+      }),
+      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('[Platform] Public registration error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to register', 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
 export async function handlePlatform(req: Request, path: string, method: string): Promise<Response> {
   console.log('[Platform] Request:', { path, method });
+
+  // Handle public registration (no auth required)
+  if (path === '/platform/register' && method === 'POST') {
+    return handlePublicRegistration(req);
+  }
 
   // Handle tenant listing
   if (path === '/platform/tenants' && method === 'GET') {

@@ -49,6 +49,9 @@ const GetAppPage = lazy(() => import('./pages/GetAppPage').then((module) => ({ d
 const ExecutiveDashboardPage = lazy(() =>
   import('./pages/ExecutiveDashboardPage').then((module) => ({ default: module.ExecutiveDashboardPage })),
 );
+const BillingPage = lazy(() =>
+  import('./pages/BillingPage').then((module) => ({ default: module.BillingPage })),
+);
 
 function LoadingScreen() {
   return (
@@ -283,6 +286,12 @@ function App() {
               path="/superadmin/dashboard"
               element={
                 isAuthenticated && isPlatformAdmin ? <SuperAdminPage /> : <Navigate to="/superadmin/login" replace />
+              }
+            />
+            <Route
+              path="/superadmin/billing"
+              element={
+                isAuthenticated && isPlatformAdmin ? <BillingPage /> : <Navigate to="/superadmin/login" replace />
               }
             />
             <Route

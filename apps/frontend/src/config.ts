@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = 'https://cdazlztdllykbtfnssma.supabase.co/functions/v1';
+const DEFAULT_API_BASE = 'https://lyxwslsckkbcpepxigdx.supabase.co/functions/v1';
 const FIREBASE_STORAGE_BUCKET = 'checkout-77d99.firebasestorage.app';
 
 // Default Firebase Storage URL for desktop installer

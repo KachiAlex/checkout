@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
+import { RegistrationForm } from '../components/RegistrationForm';
 import { useThemeStore } from '../stores/themeStore';
 
 const features = [
@@ -66,6 +68,7 @@ const testimonials = [
 
 export function HomePage() {
   const theme = useThemeStore((state) => state.theme);
+  const [showRegistration, setShowRegistration] = useState(false);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
@@ -140,14 +143,21 @@ export function HomePage() {
               analytics, and tenant licensing into one glassmorphism-inspired interface your teams love using.
             </p>
             <div className="mt-6 sm:mt-8 flex flex-col gap-3 sm:gap-4">
-              <Link
-                to="/login"
+              <button
+                onClick={() => setShowRegistration(true)}
                 className="inline-flex items-center justify-center gap-2 sm:gap-3 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 px-6 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-emerald-950 shadow-[0_28px_60px_-30px_rgba(56,189,248,0.75)] transition hover:shadow-[0_30px_65px_-28px_rgba(56,189,248,0.9)] touch-manipulation"
               >
-                <span className="text-base sm:text-lg">🔐</span>
-                <span>Sign in to console</span>
-              </Link>
+                <span className="text-base sm:text-lg">🚀</span>
+                <span>Start Free Trial</span>
+              </button>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 sm:px-7 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 touch-manipulation"
+                >
+                  <span className="text-base sm:text-lg">🔐</span>
+                  <span>Sign in</span>
+                </Link>
                 <a
                   href="#features"
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 sm:px-7 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 touch-manipulation"
@@ -343,6 +353,25 @@ export function HomePage() {
           </div>
         </section>
       </main>
+
+      {/* Registration Modal */}
+      {showRegistration && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowRegistration(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition z-10"
+              aria-label="Close"
+            >
+              <span className="text-2xl">×</span>
+            </button>
+            <RegistrationForm
+              onSuccess={() => setShowRegistration(false)}
+              onCancel={() => setShowRegistration(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <footer className="relative z-10 border-t border-white/10 bg-slate-950/80 py-10">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">

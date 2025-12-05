@@ -42,10 +42,14 @@ export enum DeviceType {
 }
 
 export enum TenantPlan {
-  MONTHLY = 'monthly',
-  ANNUAL = 'annual',
-  LIFETIME = 'lifetime',
-  TRIAL = 'trial',
+  FREE = 'free', // 14-day free trial
+  STARTER = 'starter',
+  PROFESSIONAL = 'professional',
+  ENTERPRISE = 'enterprise',
+  MONTHLY = 'monthly', // Legacy
+  ANNUAL = 'annual', // Legacy
+  LIFETIME = 'lifetime', // Legacy
+  TRIAL = 'trial', // Legacy
 }
 
 export enum TenantStatus {

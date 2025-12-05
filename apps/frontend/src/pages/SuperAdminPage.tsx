@@ -17,6 +17,11 @@ import {
 import { useAuthStore } from '../stores/authStore';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
+import {
+  getSubscriptionPricing,
+  updateSubscriptionPricing,
+  SubscriptionPricing,
+} from '../services/subscriptionPricingService';
 
 const PLAN_OPTIONS = [
   { label: 'Monthly', value: 'monthly' },
@@ -86,6 +91,10 @@ export function SuperAdminPage() {
     confirmPassword: '',
   });
   const [changingPassword, setChangingPassword] = useState(false);
+  const [pricingConfig, setPricingConfig] = useState<SubscriptionPricing | null>(null);
+  const [loadingPricing, setLoadingPricing] = useState(false);
+  const [savingPricing, setSavingPricing] = useState(false);
+  const [pricingForm, setPricingForm] = useState<Partial<SubscriptionPricing>>({});
 
   useEffect(() => {
     if (!user?.isPlatformAdmin) {
@@ -104,7 +113,21 @@ export function SuperAdminPage() {
       }
     };
 
+    const loadPricing = async () => {
+      setLoadingPricing(true);
+      try {
+        const pricing = await getSubscriptionPricing();
+        setPricingConfig(pricing);
+        setPricingForm(pricing);
+      } catch (error: any) {
+        toast.error(error?.response?.data?.message || 'Unable to load pricing');
+      } finally {
+        setLoadingPricing(false);
+      }
+    };
+
     loadTenants();
+    loadPricing();
   }, [user?.isPlatformAdmin]);
 
   if (!user?.isPlatformAdmin) {
@@ -475,6 +498,26 @@ export function SuperAdminPage() {
     }
   };
 
+  const handleSavePricing = async () => {
+    const { accessToken } = useAuthStore.getState();
+    if (!accessToken) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    setSavingPricing(true);
+    try {
+      const updated = await updateSubscriptionPricing(pricingForm, accessToken);
+      setPricingConfig(updated);
+      setPricingForm(updated);
+      toast.success('Pricing updated successfully');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to update pricing');
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
@@ -510,6 +553,12 @@ export function SuperAdminPage() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
+            <a
+              href="/superadmin/billing"
+              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40"
+            >
+              Billing
+            </a>
             <button
               onClick={() => setPasswordModalOpen(true)}
               className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40"
@@ -542,6 +591,172 @@ export function SuperAdminPage() {
             <p className="theme-text-secondary text-xs uppercase tracking-[0.3em]">Suspended</p>
             <h2 className="theme-text-primary mt-4 text-3xl font-semibold">{stats.suspended}</h2>
           </div>
+        </section>
+
+        {/* Subscription Pricing Configuration */}
+        <section className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
+            <div>
+              <h2 className="theme-text-primary text-lg font-semibold">Subscription Pricing</h2>
+              <p className="theme-text-secondary mt-1 text-xs">
+                Configure monthly prices for each subscription tier. Prices are in cents (e.g., 4900 = $49.00).
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <a
+                href="/superadmin/billing"
+                className="rounded-full border border-white/20 px-6 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/40"
+              >
+                Manage Billing
+              </a>
+              <button
+                onClick={handleSavePricing}
+                disabled={savingPricing || loadingPricing}
+                className="rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:shadow-lg disabled:opacity-50"
+              >
+                {savingPricing ? 'Saving...' : 'Save Pricing'}
+              </button>
+            </div>
+          </div>
+
+          {loadingPricing ? (
+            <div className="text-center py-8">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+              <p className="theme-text-secondary mt-2 text-sm">Loading pricing...</p>
+            </div>
+          ) : pricingConfig ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Free Tier */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <h3 className="theme-text-primary text-sm font-semibold text-emerald-400 mb-2">Free (14-day trial)</h3>
+                <p className="theme-text-secondary text-xs mb-3">Auto-assigned on registration</p>
+                <div className="space-y-2">
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <input
+                      type="number"
+                      value={pricingForm.free?.priceCents ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        free: { ...prev.free!, priceCents: 0 } // Always 0
+                      }))}
+                      disabled
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Locations</label>
+                    <input
+                      type="number"
+                      value={pricingForm.free?.locations ?? 1}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        free: { ...prev.free!, locations: 1 } // Always 1
+                      }))}
+                      disabled
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Starter Tier */}
+              <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                <h3 className="theme-text-primary text-sm font-semibold text-sky-400 mb-2">Starter</h3>
+                <p className="theme-text-secondary text-xs mb-3">Monthly subscription</p>
+                <div className="space-y-2">
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <input
+                      type="number"
+                      value={pricingForm.starter?.priceCents ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        starter: { ...prev.starter!, priceCents: parseInt(e.target.value) || 0 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Locations</label>
+                    <input
+                      type="number"
+                      value={pricingForm.starter?.locations ?? 1}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        starter: { ...prev.starter!, locations: parseInt(e.target.value) || 1 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Professional Tier */}
+              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
+                <h3 className="theme-text-primary text-sm font-semibold text-purple-400 mb-2">Professional</h3>
+                <p className="theme-text-secondary text-xs mb-3">Monthly subscription</p>
+                <div className="space-y-2">
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <input
+                      type="number"
+                      value={pricingForm.professional?.priceCents ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        professional: { ...prev.professional!, priceCents: parseInt(e.target.value) || 0 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Locations</label>
+                    <input
+                      type="number"
+                      value={pricingForm.professional?.locations ?? 5}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        professional: { ...prev.professional!, locations: parseInt(e.target.value) || 5 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Enterprise Tier */}
+              <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4">
+                <h3 className="theme-text-primary text-sm font-semibold text-indigo-400 mb-2">Enterprise</h3>
+                <p className="theme-text-secondary text-xs mb-3">Custom pricing</p>
+                <div className="space-y-2">
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents, 0 = custom)</label>
+                    <input
+                      type="number"
+                      value={pricingForm.enterprise?.priceCents ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        enterprise: { ...prev.enterprise!, priceCents: parseInt(e.target.value) || 0 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Locations (0 = unlimited)</label>
+                    <input
+                      type="number"
+                      value={pricingForm.enterprise?.locations ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        enterprise: { ...prev.enterprise!, locations: parseInt(e.target.value) || 0 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="theme-card rounded-3xl border p-6 backdrop-blur-xl">

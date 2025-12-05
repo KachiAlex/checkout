@@ -4,9 +4,6 @@
 import { getFirestore } from 'npm:firebase-admin@11.11.0/firestore';
 import { getFirebaseApp } from './firebase.ts';
 
-// Initialize Firebase app
-getFirebaseApp();
-
 let firestoreInstance: any = null;
 
 export function getFirestoreInstance() {
@@ -14,9 +11,20 @@ export function getFirestoreInstance() {
     return firestoreInstance;
   }
 
-  const app = getFirebaseApp();
-  firestoreInstance = getFirestore(app);
-  return firestoreInstance;
+  try {
+    console.log('[Firestore] Getting Firebase app...');
+    const app = getFirebaseApp();
+    console.log('[Firestore] Firebase app obtained, initializing Firestore...');
+    
+    firestoreInstance = getFirestore(app);
+    console.log('[Firestore] Firestore instance created successfully');
+    
+    return firestoreInstance;
+  } catch (error) {
+    console.error('[Firestore] Error initializing Firestore:', error);
+    console.error('[Firestore] Error details:', error instanceof Error ? error.stack : 'No stack trace');
+    throw error;
+  }
 }
 
 // Helper functions to match the FirestoreService interface
