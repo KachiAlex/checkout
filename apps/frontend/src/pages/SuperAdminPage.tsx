@@ -95,6 +95,12 @@ export function SuperAdminPage() {
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [savingPricing, setSavingPricing] = useState(false);
   const [pricingForm, setPricingForm] = useState<Partial<SubscriptionPricing>>({});
+  // Store prices in dollars for the form (convert from/to cents)
+  const [pricingFormDollars, setPricingFormDollars] = useState<{
+    starter?: number;
+    professional?: number;
+    enterprise?: number;
+  }>({});
 
   useEffect(() => {
     if (!user?.isPlatformAdmin) {
@@ -119,6 +125,12 @@ export function SuperAdminPage() {
         const pricing = await getSubscriptionPricing();
         setPricingConfig(pricing);
         setPricingForm(pricing);
+        // Convert cents to dollars for display
+        setPricingFormDollars({
+          starter: (pricing.starter?.priceCents ?? 0) / 100,
+          professional: (pricing.professional?.priceCents ?? 0) / 100,
+          enterprise: (pricing.enterprise?.priceCents ?? 0) / 100,
+        });
       } catch (error: any) {
         toast.error(error?.response?.data?.message || 'Unable to load pricing');
       } finally {
@@ -505,11 +517,39 @@ export function SuperAdminPage() {
       return;
     }
 
+    if (!pricingConfig) {
+      toast.error('Pricing config not loaded');
+      return;
+    }
+
     setSavingPricing(true);
     try {
-      const updated = await updateSubscriptionPricing(pricingForm, accessToken);
+      // Convert dollars to cents for the API
+      const pricingPayload: Partial<SubscriptionPricing> = {
+        ...pricingConfig,
+        starter: {
+          ...pricingConfig.starter,
+          priceCents: Math.round((pricingFormDollars.starter ?? 0) * 100),
+        },
+        professional: {
+          ...pricingConfig.professional,
+          priceCents: Math.round((pricingFormDollars.professional ?? 0) * 100),
+        },
+        enterprise: {
+          ...pricingConfig.enterprise,
+          priceCents: Math.round((pricingFormDollars.enterprise ?? 0) * 100),
+        },
+      };
+
+      const updated = await updateSubscriptionPricing(pricingPayload, accessToken);
       setPricingConfig(updated);
       setPricingForm(updated);
+      // Update dollar form values
+      setPricingFormDollars({
+        starter: (updated.starter?.priceCents ?? 0) / 100,
+        professional: (updated.professional?.priceCents ?? 0) / 100,
+        enterprise: (updated.enterprise?.priceCents ?? 0) / 100,
+      });
       toast.success('Pricing updated successfully');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to update pricing');
@@ -599,7 +639,7 @@ export function SuperAdminPage() {
             <div>
               <h2 className="theme-text-primary text-lg font-semibold">Subscription Pricing</h2>
               <p className="theme-text-secondary mt-1 text-xs">
-                Configure monthly prices for each subscription tier. Prices are in cents (e.g., 4900 = $49.00).
+                Configure monthly prices for each subscription tier. Prices are in dollars.
               </p>
             </div>
             <div className="flex gap-2">
@@ -632,16 +672,12 @@ export function SuperAdminPage() {
                 <p className="theme-text-secondary text-xs mb-3">Auto-assigned on registration</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
                     <input
                       type="number"
-                      value={pricingForm.free?.priceCents ?? 0}
-                      onChange={(e) => setPricingForm(prev => ({
-                        ...prev,
-                        free: { ...prev.free!, priceCents: 0 } // Always 0
-                      }))}
+                      value={((pricingConfig?.free?.priceCents ?? 0) / 100).toFixed(2)}
                       disabled
-                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50"
                     />
                   </div>
                   <div>
@@ -666,13 +702,15 @@ export function SuperAdminPage() {
                 <p className="theme-text-secondary text-xs mb-3">Monthly subscription</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
                     <input
                       type="number"
-                      value={pricingForm.starter?.priceCents ?? 0}
-                      onChange={(e) => setPricingForm(prev => ({
+                      step="0.01"
+                      min="0"
+                      value={pricingFormDollars.starter ?? 0}
+                      onChange={(e) => setPricingFormDollars(prev => ({
                         ...prev,
-                        starter: { ...prev.starter!, priceCents: parseInt(e.target.value) || 0 }
+                        starter: parseFloat(e.target.value) || 0
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"
                     />
@@ -698,13 +736,15 @@ export function SuperAdminPage() {
                 <p className="theme-text-secondary text-xs mb-3">Monthly subscription</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
                     <input
                       type="number"
-                      value={pricingForm.professional?.priceCents ?? 0}
-                      onChange={(e) => setPricingForm(prev => ({
+                      step="0.01"
+                      min="0"
+                      value={pricingFormDollars.professional ?? 0}
+                      onChange={(e) => setPricingFormDollars(prev => ({
                         ...prev,
-                        professional: { ...prev.professional!, priceCents: parseInt(e.target.value) || 0 }
+                        professional: parseFloat(e.target.value) || 0
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
                     />
@@ -730,13 +770,15 @@ export function SuperAdminPage() {
                 <p className="theme-text-secondary text-xs mb-3">Custom pricing</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents, 0 = custom)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($, 0 = custom)</label>
                     <input
                       type="number"
-                      value={pricingForm.enterprise?.priceCents ?? 0}
-                      onChange={(e) => setPricingForm(prev => ({
+                      step="0.01"
+                      min="0"
+                      value={pricingFormDollars.enterprise ?? 0}
+                      onChange={(e) => setPricingFormDollars(prev => ({
                         ...prev,
-                        enterprise: { ...prev.enterprise!, priceCents: parseInt(e.target.value) || 0 }
+                        enterprise: parseFloat(e.target.value) || 0
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
                     />

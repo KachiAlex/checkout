@@ -28,7 +28,14 @@ export function BillingPage() {
   const [pricingConfig, setPricingConfig] = useState<SubscriptionPricing | null>(null);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [savingPricing, setSavingPricing] = useState(false);
+  // Store non-price fields (locations, etc.)
   const [pricingForm, setPricingForm] = useState<Partial<SubscriptionPricing>>({});
+  // Store prices in dollars for the form (convert from/to cents)
+  const [pricingFormDollars, setPricingFormDollars] = useState<{
+    starter?: number;
+    professional?: number;
+    enterprise?: number;
+  }>({});
 
   const [promoDiscounts, setPromoDiscounts] = useState<PromoDiscount[]>([]);
   const [loadingPromos, setLoadingPromos] = useState(false);
@@ -48,6 +55,12 @@ export function BillingPage() {
     usageLimit: undefined,
     isActive: true,
   });
+  // Store dollar values for promo form (convert from/to cents)
+  const [promoFormDollars, setPromoFormDollars] = useState<{
+    minPurchase?: number;
+    maxDiscount?: number;
+    discountValue?: number; // For fixed amount discounts
+  }>({});
 
   useEffect(() => {
     if (!user?.isPlatformAdmin) {
@@ -60,7 +73,14 @@ export function BillingPage() {
       try {
         const pricing = await getSubscriptionPricing();
         setPricingConfig(pricing);
+        // Store non-price fields
         setPricingForm(pricing);
+        // Convert cents to dollars for display
+        setPricingFormDollars({
+          starter: (pricing.starter?.priceCents ?? 0) / 100,
+          professional: (pricing.professional?.priceCents ?? 0) / 100,
+          enterprise: (pricing.enterprise?.priceCents ?? 0) / 100,
+        });
 
         const { accessToken } = useAuthStore.getState();
         if (accessToken) {
@@ -89,11 +109,39 @@ export function BillingPage() {
       return;
     }
 
+    if (!pricingConfig) {
+      toast.error('Pricing config not loaded');
+      return;
+    }
+
     setSavingPricing(true);
     try {
-      const updated = await updateSubscriptionPricing(pricingForm, accessToken);
+      // Convert dollars to cents for the API
+      const pricingPayload: Partial<SubscriptionPricing> = {
+        ...pricingConfig,
+        starter: {
+          ...pricingConfig.starter,
+          priceCents: Math.round((pricingFormDollars.starter ?? 0) * 100),
+        },
+        professional: {
+          ...pricingConfig.professional,
+          priceCents: Math.round((pricingFormDollars.professional ?? 0) * 100),
+        },
+        enterprise: {
+          ...pricingConfig.enterprise,
+          priceCents: Math.round((pricingFormDollars.enterprise ?? 0) * 100),
+        },
+      };
+
+      const updated = await updateSubscriptionPricing(pricingPayload, accessToken);
       setPricingConfig(updated);
       setPricingForm(updated);
+      // Update dollar form values
+      setPricingFormDollars({
+        starter: (updated.starter?.priceCents ?? 0) / 100,
+        professional: (updated.professional?.priceCents ?? 0) / 100,
+        enterprise: (updated.enterprise?.priceCents ?? 0) / 100,
+      });
       toast.success('Pricing updated successfully');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to update pricing');
@@ -118,6 +166,7 @@ export function BillingPage() {
       usageLimit: undefined,
       isActive: true,
     });
+    setPromoFormDollars({ minPurchase: undefined, maxDiscount: undefined, discountValue: undefined });
     setShowPromoModal(true);
   };
 
@@ -136,6 +185,12 @@ export function BillingPage() {
       validUntil: promo.validUntil.split('T')[0],
       usageLimit: promo.usageLimit,
       isActive: promo.isActive,
+    });
+    // Convert cents to dollars for display
+    setPromoFormDollars({
+      minPurchase: promo.minPurchaseCents ? promo.minPurchaseCents / 100 : undefined,
+      maxDiscount: promo.maxDiscountCents ? promo.maxDiscountCents / 100 : undefined,
+      discountValue: promo.discountType === 'fixed' ? promo.discountValue / 100 : undefined,
     });
     setShowPromoModal(true);
   };
@@ -158,11 +213,21 @@ export function BillingPage() {
     }
 
     try {
+      // Convert dollars to cents for the API
+      const promoPayload: CreatePromoDiscountPayload = {
+        ...promoForm,
+        discountValue: promoForm.discountType === 'fixed' && promoFormDollars.discountValue !== undefined
+          ? Math.round(promoFormDollars.discountValue * 100)
+          : promoForm.discountValue,
+        minPurchaseCents: promoFormDollars.minPurchase ? Math.round(promoFormDollars.minPurchase * 100) : undefined,
+        maxDiscountCents: promoFormDollars.maxDiscount ? Math.round(promoFormDollars.maxDiscount * 100) : undefined,
+      };
+
       if (editingPromo) {
-        await updatePromoDiscount(editingPromo.id, promoForm, accessToken);
+        await updatePromoDiscount(editingPromo.id, promoPayload, accessToken);
         toast.success('Promo discount updated');
       } else {
-        await createPromoDiscount(promoForm, accessToken);
+        await createPromoDiscount(promoPayload, accessToken);
         toast.success('Promo discount created');
       }
 
@@ -253,7 +318,7 @@ export function BillingPage() {
             <div>
               <h2 className="theme-text-primary text-lg font-semibold">Subscription Pricing</h2>
               <p className="theme-text-secondary mt-1 text-xs">
-                Configure monthly prices for each subscription tier. Prices are in cents (e.g., 4900 = $49.00).
+                Configure monthly prices for each subscription tier. Prices are in dollars.
               </p>
             </div>
             <button
@@ -278,10 +343,10 @@ export function BillingPage() {
                 <p className="theme-text-secondary text-xs mb-3">Auto-assigned on registration</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
                     <input
                       type="number"
-                      value={pricingForm.free?.priceCents ?? 0}
+                      value={((pricingConfig?.free?.priceCents ?? 0) / 100).toFixed(2)}
                       disabled
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50"
                     />
@@ -304,13 +369,15 @@ export function BillingPage() {
                 <p className="theme-text-secondary text-xs mb-3">Monthly subscription</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
                     <input
                       type="number"
-                      value={pricingForm.starter?.priceCents ?? 0}
-                      onChange={(e) => setPricingForm(prev => ({
+                      step="0.01"
+                      min="0"
+                      value={pricingFormDollars.starter ?? 0}
+                      onChange={(e) => setPricingFormDollars(prev => ({
                         ...prev,
-                        starter: { ...prev.starter!, priceCents: parseInt(e.target.value) || 0 }
+                        starter: parseFloat(e.target.value) || 0
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"
                     />
@@ -336,13 +403,15 @@ export function BillingPage() {
                 <p className="theme-text-secondary text-xs mb-3">Monthly subscription</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
                     <input
                       type="number"
-                      value={pricingForm.professional?.priceCents ?? 0}
-                      onChange={(e) => setPricingForm(prev => ({
+                      step="0.01"
+                      min="0"
+                      value={pricingFormDollars.professional ?? 0}
+                      onChange={(e) => setPricingFormDollars(prev => ({
                         ...prev,
-                        professional: { ...prev.professional!, priceCents: parseInt(e.target.value) || 0 }
+                        professional: parseFloat(e.target.value) || 0
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
                     />
@@ -368,13 +437,15 @@ export function BillingPage() {
                 <p className="theme-text-secondary text-xs mb-3">Custom pricing</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price (cents, 0 = custom)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($, 0 = custom)</label>
                     <input
                       type="number"
-                      value={pricingForm.enterprise?.priceCents ?? 0}
-                      onChange={(e) => setPricingForm(prev => ({
+                      step="0.01"
+                      min="0"
+                      value={pricingFormDollars.enterprise ?? 0}
+                      onChange={(e) => setPricingFormDollars(prev => ({
                         ...prev,
-                        enterprise: { ...prev.enterprise!, priceCents: parseInt(e.target.value) || 0 }
+                        enterprise: parseFloat(e.target.value) || 0
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
                     />
@@ -555,7 +626,15 @@ export function BillingPage() {
                   <label className="theme-text-secondary text-sm font-medium mb-1 block">Discount Type *</label>
                   <select
                     value={promoForm.discountType}
-                    onChange={(e) => setPromoForm(prev => ({ ...prev, discountType: e.target.value as 'percentage' | 'fixed' }))}
+                    onChange={(e) => {
+                      const newType = e.target.value as 'percentage' | 'fixed';
+                      setPromoForm(prev => ({ ...prev, discountType: newType, discountValue: 0 }));
+                      if (newType === 'fixed') {
+                        setPromoFormDollars(prev => ({ ...prev, discountValue: 0 }));
+                      } else {
+                        setPromoFormDollars(prev => ({ ...prev, discountValue: undefined }));
+                      }
+                    }}
                     className="theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"
                     required
                   >
@@ -566,15 +645,24 @@ export function BillingPage() {
 
                 <div>
                   <label className="theme-text-secondary text-sm font-medium mb-1 block">
-                    Discount Value * {promoForm.discountType === 'percentage' ? '(0-100)' : '(cents)'}
+                    Discount Value * {promoForm.discountType === 'percentage' ? '(0-100%)' : '($)'}
                   </label>
                   <input
                     type="number"
-                    value={promoForm.discountValue}
-                    onChange={(e) => setPromoForm(prev => ({ ...prev, discountValue: parseFloat(e.target.value) || 0 }))}
+                    value={promoForm.discountType === 'fixed' && promoFormDollars.discountValue !== undefined
+                      ? promoFormDollars.discountValue
+                      : promoForm.discountValue}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      if (promoForm.discountType === 'fixed') {
+                        setPromoFormDollars(prev => ({ ...prev, discountValue: value }));
+                      } else {
+                        setPromoForm(prev => ({ ...prev, discountValue: value }));
+                      }
+                    }}
                     min={0}
                     max={promoForm.discountType === 'percentage' ? 100 : undefined}
-                    step={promoForm.discountType === 'percentage' ? 1 : 100}
+                    step={promoForm.discountType === 'percentage' ? 1 : 0.01}
                     className="theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"
                     required
                   />
@@ -627,23 +715,25 @@ export function BillingPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="theme-text-secondary text-sm font-medium mb-1 block">Min Purchase (cents, optional)</label>
+                  <label className="theme-text-secondary text-sm font-medium mb-1 block">Min Purchase ($, optional)</label>
                   <input
                     type="number"
-                    value={promoForm.minPurchaseCents || ''}
-                    onChange={(e) => setPromoForm(prev => ({ ...prev, minPurchaseCents: e.target.value ? parseInt(e.target.value) : undefined }))}
-                    min={0}
+                    step="0.01"
+                    min="0"
+                    value={promoFormDollars.minPurchase ?? ''}
+                    onChange={(e) => setPromoFormDollars(prev => ({ ...prev, minPurchase: e.target.value ? parseFloat(e.target.value) : undefined }))}
                     className="theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"
                   />
                 </div>
 
                 <div>
-                  <label className="theme-text-secondary text-sm font-medium mb-1 block">Max Discount (cents, optional)</label>
+                  <label className="theme-text-secondary text-sm font-medium mb-1 block">Max Discount ($, optional)</label>
                   <input
                     type="number"
-                    value={promoForm.maxDiscountCents || ''}
-                    onChange={(e) => setPromoForm(prev => ({ ...prev, maxDiscountCents: e.target.value ? parseInt(e.target.value) : undefined }))}
-                    min={0}
+                    step="0.01"
+                    min="0"
+                    value={promoFormDollars.maxDiscount ?? ''}
+                    onChange={(e) => setPromoFormDollars(prev => ({ ...prev, maxDiscount: e.target.value ? parseFloat(e.target.value) : undefined }))}
                     className="theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"
                   />
                 </div>
