@@ -86,7 +86,7 @@ export function formatNumberInput(value: string, allowDecimals: boolean = false)
 }
 
 /**
- * Handle number input change - allows flexible typing, formats on blur
+ * Handle number input change - formats numbers with commas for display
  * @param value - Input value
  * @param allowDecimals - Whether to allow decimals
  * @returns Object with formatted display value and raw numeric value
@@ -95,7 +95,6 @@ export function handleNumberInputChange(
   value: string,
   allowDecimals: boolean = false
 ): { displayValue: string; numericValue: number } {
-  // Allow free typing - just clean invalid characters but don't force format
   if (!value || value === '') return { displayValue: '', numericValue: 0 };
   
   // Remove all non-numeric characters except decimal point and commas
@@ -111,14 +110,38 @@ export function handleNumberInputChange(
     if (parts.length === 2 && parts[1].length > 2) {
       cleaned = parts[0] + '.' + parts[1].substring(0, 2);
     }
+    // If there's a trailing decimal point, format with 2 decimal places
+    if (cleaned.endsWith('.')) {
+      const num = parseFormattedNumber(cleaned.slice(0, -1));
+      if (!isNaN(num) && num > 0) {
+        return { displayValue: formatNumber(num, 2), numericValue: num };
+      }
+    }
   } else {
     // Remove decimal point if decimals not allowed
     cleaned = cleaned.replace(/\./g, '');
   }
   
-  // Return cleaned value for display (allows typing without forcing commas)
+  // Parse the numeric value
   const numericValue = parseFormattedNumber(cleaned);
-  return { displayValue: cleaned, numericValue };
+  
+  // Format with commas for display
+  if (isNaN(numericValue) || numericValue === 0) {
+    return { displayValue: cleaned, numericValue: 0 };
+  }
+  
+  // Format the display value with commas
+  if (allowDecimals) {
+    const parts = cleaned.split('.');
+    const integerPart = parts[0];
+    const decimalPart = parts[1] || '';
+    const formattedInteger = formatNumber(parseFloat(integerPart) || 0, 0);
+    // If there's a decimal part, include it; otherwise format with 2 decimal places if it was a complete number
+    const displayValue = decimalPart ? `${formattedInteger}.${decimalPart}` : formatNumber(numericValue, 2);
+    return { displayValue, numericValue };
+  } else {
+    return { displayValue: formatNumber(numericValue, 0), numericValue };
+  }
 }
 
 /**

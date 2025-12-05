@@ -35,6 +35,7 @@ export function BillingPage() {
     starter?: number;
     professional?: number;
     enterprise?: number;
+    lifetime?: number;
   }>({});
 
   const [promoDiscounts, setPromoDiscounts] = useState<PromoDiscount[]>([]);
@@ -80,6 +81,7 @@ export function BillingPage() {
           starter: (pricing.starter?.priceCents ?? 0) / 100,
           professional: (pricing.professional?.priceCents ?? 0) / 100,
           enterprise: (pricing.enterprise?.priceCents ?? 0) / 100,
+          lifetime: (pricing.lifetime?.priceCents ?? 0) / 100,
         });
 
         const { accessToken } = useAuthStore.getState();
@@ -116,20 +118,32 @@ export function BillingPage() {
 
     setSavingPricing(true);
     try {
-      // Convert dollars to cents for the API
+      // Convert dollars to cents for the API, preserving locations and users
       const pricingPayload: Partial<SubscriptionPricing> = {
         ...pricingConfig,
         starter: {
-          ...pricingConfig.starter,
+          ...pricingConfig.starter!,
           priceCents: Math.round((pricingFormDollars.starter ?? 0) * 100),
+          locations: pricingForm.starter?.locations ?? pricingConfig.starter?.locations ?? 1,
+          users: pricingForm.starter?.users ?? pricingConfig.starter?.users ?? 10,
         },
         professional: {
-          ...pricingConfig.professional,
+          ...pricingConfig.professional!,
           priceCents: Math.round((pricingFormDollars.professional ?? 0) * 100),
+          locations: pricingForm.professional?.locations ?? pricingConfig.professional?.locations ?? 5,
+          users: pricingForm.professional?.users ?? pricingConfig.professional?.users ?? 15,
         },
         enterprise: {
-          ...pricingConfig.enterprise,
+          ...pricingConfig.enterprise!,
           priceCents: Math.round((pricingFormDollars.enterprise ?? 0) * 100),
+          locations: pricingForm.enterprise?.locations ?? pricingConfig.enterprise?.locations ?? 0,
+          users: pricingForm.enterprise?.users ?? pricingConfig.enterprise?.users ?? 0,
+        },
+        lifetime: {
+          ...pricingConfig.lifetime!,
+          priceCents: Math.round((pricingFormDollars.lifetime ?? 0) * 100),
+          locations: pricingForm.lifetime?.locations ?? pricingConfig.lifetime?.locations ?? 0,
+          users: pricingForm.lifetime?.users ?? pricingConfig.lifetime?.users ?? 0,
         },
       };
 
@@ -141,6 +155,7 @@ export function BillingPage() {
         starter: (updated.starter?.priceCents ?? 0) / 100,
         professional: (updated.professional?.priceCents ?? 0) / 100,
         enterprise: (updated.enterprise?.priceCents ?? 0) / 100,
+        lifetime: (updated.lifetime?.priceCents ?? 0) / 100,
       });
       toast.success('Pricing updated successfully');
     } catch (error: any) {
@@ -336,7 +351,7 @@ export function BillingPage() {
               <p className="theme-text-secondary mt-2 text-sm">Loading pricing...</p>
             </div>
           ) : pricingConfig ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               {/* Free Tier */}
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                 <h3 className="theme-text-primary text-sm font-semibold text-emerald-400 mb-2">Free (14-day trial)</h3>
@@ -356,6 +371,15 @@ export function BillingPage() {
                     <input
                       type="number"
                       value={pricingForm.free?.locations ?? 1}
+                      disabled
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Users</label>
+                    <input
+                      type="number"
+                      value={pricingForm.free?.users ?? 3}
                       disabled
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50"
                     />
@@ -386,10 +410,24 @@ export function BillingPage() {
                     <label className="theme-text-secondary text-xs mb-1 block">Locations</label>
                     <input
                       type="number"
-                      value={pricingForm.starter?.locations ?? 1}
+                      min="1"
+                      value={pricingForm.starter?.locations ?? pricingConfig.starter?.locations ?? 3}
                       onChange={(e) => setPricingForm(prev => ({
                         ...prev,
                         starter: { ...prev.starter!, locations: parseInt(e.target.value) || 1 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Users</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricingForm.starter?.users ?? pricingConfig.starter?.users ?? 10}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        starter: { ...prev.starter!, users: parseInt(e.target.value) || 1 }
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"
                     />
@@ -420,10 +458,24 @@ export function BillingPage() {
                     <label className="theme-text-secondary text-xs mb-1 block">Locations</label>
                     <input
                       type="number"
-                      value={pricingForm.professional?.locations ?? 5}
+                      min="1"
+                      value={pricingForm.professional?.locations ?? pricingConfig.professional?.locations ?? 5}
                       onChange={(e) => setPricingForm(prev => ({
                         ...prev,
                         professional: { ...prev.professional!, locations: parseInt(e.target.value) || 5 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Users</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricingForm.professional?.users ?? pricingConfig.professional?.users ?? 15}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        professional: { ...prev.professional!, users: parseInt(e.target.value) || 1 }
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
                     />
@@ -434,10 +486,10 @@ export function BillingPage() {
               {/* Enterprise Tier */}
               <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4">
                 <h3 className="theme-text-primary text-sm font-semibold text-indigo-400 mb-2">Enterprise</h3>
-                <p className="theme-text-secondary text-xs mb-3">Custom pricing</p>
+                <p className="theme-text-secondary text-xs mb-3">Monthly subscription</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="theme-text-secondary text-xs mb-1 block">Price ($, 0 = custom)</label>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -454,12 +506,74 @@ export function BillingPage() {
                     <label className="theme-text-secondary text-xs mb-1 block">Locations (0 = unlimited)</label>
                     <input
                       type="number"
-                      value={pricingForm.enterprise?.locations ?? 0}
+                      min="0"
+                      value={pricingForm.enterprise?.locations ?? pricingConfig.enterprise?.locations ?? 0}
                       onChange={(e) => setPricingForm(prev => ({
                         ...prev,
                         enterprise: { ...prev.enterprise!, locations: parseInt(e.target.value) || 0 }
                       }))}
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Users (0 = unlimited)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={pricingForm.enterprise?.users ?? pricingConfig.enterprise?.users ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        enterprise: { ...prev.enterprise!, users: parseInt(e.target.value) || 0 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Lifetime Tier */}
+              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
+                <h3 className="theme-text-primary text-sm font-semibold text-purple-400 mb-2">Lifetime</h3>
+                <p className="theme-text-secondary text-xs mb-3">One-time payment</p>
+                <div className="space-y-2">
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Price ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={pricingFormDollars.lifetime ?? 0}
+                      onChange={(e) => setPricingFormDollars(prev => ({
+                        ...prev,
+                        lifetime: parseFloat(e.target.value) || 0
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Locations (0 = unlimited)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={pricingForm.lifetime?.locations ?? pricingConfig.lifetime?.locations ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        lifetime: { ...prev.lifetime!, locations: parseInt(e.target.value) || 0 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="theme-text-secondary text-xs mb-1 block">Users (0 = unlimited)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={pricingForm.lifetime?.users ?? pricingConfig.lifetime?.users ?? 0}
+                      onChange={(e) => setPricingForm(prev => ({
+                        ...prev,
+                        lifetime: { ...prev.lifetime!, users: parseInt(e.target.value) || 0 }
+                      }))}
+                      className="theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"
                     />
                   </div>
                 </div>

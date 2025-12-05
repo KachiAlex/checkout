@@ -16,12 +16,20 @@ import { TenantsModule } from '../tenants/tenants.module';
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'change-me'),
-        signOptions: {
-          expiresIn: '24h', // Fixed to 24h to prevent 15m expiration from .env
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const jwtSecret = configService.get<string>('JWT_SECRET');
+        if (!jwtSecret) {
+          throw new Error(
+            'JWT_SECRET environment variable is required. Please set it in your environment configuration.',
+          );
+        }
+        return {
+          secret: jwtSecret,
+          signOptions: {
+            expiresIn: '24h', // Fixed to 24h to prevent 15m expiration from .env
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],

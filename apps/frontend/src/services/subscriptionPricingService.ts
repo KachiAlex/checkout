@@ -6,21 +6,31 @@ export interface SubscriptionPricing {
     priceCents: number;
     durationDays: number;
     locations: number;
+    users: number;
     features: string[];
   };
   starter: {
     priceCents: number;
     locations: number;
+    users: number;
     features: string[];
   };
   professional: {
     priceCents: number;
     locations: number;
+    users: number;
     features: string[];
   };
   enterprise: {
     priceCents: number;
     locations: number;
+    users: number;
+    features: string[];
+  };
+  lifetime: {
+    priceCents: number;
+    locations: number; // 0 = unlimited
+    users: number; // 0 = unlimited
     features: string[];
   };
 }

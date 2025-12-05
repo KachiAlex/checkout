@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
 import { RegistrationForm } from '../components/RegistrationForm';
 import { useThemeStore } from '../stores/themeStore';
+import { getSubscriptionPricing, SubscriptionPricing } from '../services/subscriptionPricingService';
 
 const features = [
   {
@@ -69,6 +70,36 @@ const testimonials = [
 export function HomePage() {
   const theme = useThemeStore((state) => state.theme);
   const [showRegistration, setShowRegistration] = useState(false);
+  const [pricing, setPricing] = useState<SubscriptionPricing | null>(null);
+  const [loadingPricing, setLoadingPricing] = useState(true);
+
+  // Fetch pricing from API
+  useEffect(() => {
+    const loadPricing = async () => {
+      try {
+        const data = await getSubscriptionPricing();
+        setPricing(data);
+      } catch (error) {
+        console.error('Failed to load pricing:', error);
+        // Keep pricing as null to show fallback values
+      } finally {
+        setLoadingPricing(false);
+      }
+    };
+    loadPricing();
+  }, []);
+
+  // Helper to format price in dollars
+  const formatPrice = (cents: number) => {
+    if (cents === 0) return '$0.00';
+    return `$${(cents / 100).toFixed(2)}`;
+  };
+
+  // Helper to format locations/users (0 = unlimited)
+  const formatLimit = (value: number) => {
+    if (value === 0) return 'Unlimited';
+    return value.toString();
+  };
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
@@ -297,125 +328,199 @@ export function HomePage() {
               <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-sky-200">Pricing</p>
               <h2 className="mt-3 sm:mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold text-white">Simple, transparent pricing</h2>
               <p className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
-                Choose the plan that works best for your business. All plans include full access to all features.
+                Choose the plan that works best for your business. Start with a 14-day free trial.
               </p>
             </div>
-            <div className="grid gap-4 sm:gap-6 lg:gap-8 md:grid-cols-3">
-              {/* Monthly Plan */}
-              <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/70 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(56,189,248,0.4)] backdrop-blur-xl hover:border-sky-400/40 transition">
-                <div className="text-center">
-                  <h3 className="text-lg sm:text-xl font-semibold text-white">Monthly</h3>
-                  <div className="mt-4 sm:mt-6">
-                    <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white">
-                      $7<span className="text-base sm:text-lg font-normal text-slate-300">/user</span>
-                    </p>
-                    <p className="mt-2 text-xs sm:text-sm text-slate-400">Billed monthly</p>
+            <div className="grid gap-4 sm:gap-6 lg:gap-8 md:grid-cols-2 lg:grid-cols-5">
+              {/* Free Tier */}
+              {pricing?.free && (
+                <div className="rounded-2xl sm:rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(16,185,129,0.4)] backdrop-blur-xl hover:border-emerald-400/40 transition">
+                  <div className="text-center">
+                    <h3 className="text-lg sm:text-xl font-semibold text-emerald-400">Free</h3>
+                    <p className="text-xs sm:text-sm text-emerald-300 mt-1">{pricing.free.durationDays} day trial</p>
+                    <div className="mt-4 sm:mt-6 space-y-3">
+                      {loadingPricing ? (
+                        <div className="h-12 flex items-center justify-center">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Price:</p>
+                            <p className="text-2xl sm:text-3xl font-semibold text-white">{formatPrice(pricing.free.priceCents)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Locations:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{pricing.free.locations}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Users:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{pricing.free.users || 3}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowRegistration(true)}
+                      className="mt-6 sm:mt-8 w-full rounded-full border border-emerald-400/60 bg-emerald-400/20 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-emerald-100 transition hover:border-emerald-400/80 hover:bg-emerald-400/30 touch-manipulation"
+                    >
+                      Start Free Trial
+                    </button>
                   </div>
-                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 text-left text-xs sm:text-sm text-slate-300">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Full feature access</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Unlimited locations</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Priority support</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Cancel anytime</span>
-                    </li>
-                  </ul>
-                  <button
-                    onClick={() => setShowRegistration(true)}
-                    className="mt-6 sm:mt-8 w-full rounded-full border border-white/20 bg-white/5 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/10 touch-manipulation"
-                  >
-                    Get Started
-                  </button>
                 </div>
-              </div>
+              )}
 
-              {/* Annual Plan - Featured */}
-              <div className="rounded-2xl sm:rounded-3xl border-2 border-sky-400/60 bg-gradient-to-br from-sky-500/20 via-slate-950/80 to-slate-950/70 p-6 sm:p-8 shadow-[0_30px_80px_-40px_rgba(56,189,248,0.6)] backdrop-blur-xl hover:border-sky-400/80 transition relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-3 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg">
-                    Best Value
-                  </span>
-                </div>
-                <div className="text-center">
-                  <h3 className="text-lg sm:text-xl font-semibold text-white">Annual</h3>
-                  <div className="mt-4 sm:mt-6">
-                    <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white">
-                      $80<span className="text-base sm:text-lg font-normal text-slate-300">/annum</span>
-                    </p>
-                    <p className="mt-2 text-xs sm:text-sm text-slate-400">Save $4 per year</p>
+              {/* Starter Tier */}
+              {pricing?.starter && (
+                <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/70 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(56,189,248,0.4)] backdrop-blur-xl hover:border-sky-400/40 transition">
+                  <div className="text-center">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white">Starter</h3>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-1">Monthly Subscription</p>
+                    <div className="mt-4 sm:mt-6 space-y-3">
+                      {loadingPricing ? (
+                        <div className="h-12 flex items-center justify-center">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Price:</p>
+                            <p className="text-2xl sm:text-3xl font-semibold text-white">{formatPrice(pricing.starter.priceCents)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Locations:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{pricing.starter.locations}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Users:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{pricing.starter.users || 10}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowRegistration(true)}
+                      className="mt-6 sm:mt-8 w-full rounded-full border border-white/20 bg-white/5 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/10 touch-manipulation"
+                    >
+                      Get Started
+                    </button>
                   </div>
-                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 text-left text-xs sm:text-sm text-slate-300">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Everything in Monthly</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Annual billing discount</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Dedicated account manager</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Priority feature requests</span>
-                    </li>
-                  </ul>
-                  <button
-                    onClick={() => setShowRegistration(true)}
-                    className="mt-6 sm:mt-8 w-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-[0_20px_50px_-28px_rgba(56,189,248,0.55)] transition hover:shadow-[0_24px_60px_-28px_rgba(56,189,248,0.7)] touch-manipulation"
-                  >
-                    Get Started
-                  </button>
                 </div>
-              </div>
+              )}
 
-              {/* Lifetime Plan */}
-              <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/70 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(139,92,246,0.4)] backdrop-blur-xl hover:border-purple-400/40 transition">
-                <div className="text-center">
-                  <h3 className="text-lg sm:text-xl font-semibold text-white">Lifetime</h3>
-                  <div className="mt-4 sm:mt-6">
-                    <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white">
-                      $1,200
-                    </p>
-                    <p className="mt-2 text-xs sm:text-sm text-slate-400">One-time payment</p>
+              {/* Professional Tier - Featured */}
+              {pricing?.professional && (
+                <div className="rounded-2xl sm:rounded-3xl border-2 border-sky-400/60 bg-gradient-to-br from-sky-500/20 via-slate-950/80 to-slate-950/70 p-6 sm:p-8 shadow-[0_30px_80px_-40px_rgba(56,189,248,0.6)] backdrop-blur-xl hover:border-sky-400/80 transition relative">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-3 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg">
+                      Popular
+                    </span>
                   </div>
-                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 text-left text-xs sm:text-sm text-slate-300">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Everything in Annual</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>Lifetime access</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>All future features included</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>No recurring fees</span>
-                    </li>
-                  </ul>
-                  <button
-                    onClick={() => setShowRegistration(true)}
-                    className="mt-6 sm:mt-8 w-full rounded-full border border-white/20 bg-white/5 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/10 touch-manipulation"
-                  >
-                    Get Started
-                  </button>
+                  <div className="text-center">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white">Professional</h3>
+                    <p className="text-xs sm:text-sm text-slate-300 mt-1">Monthly Subscription</p>
+                    <div className="mt-4 sm:mt-6 space-y-3">
+                      {loadingPricing ? (
+                        <div className="h-12 flex items-center justify-center">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-300 mb-1">Price:</p>
+                            <p className="text-2xl sm:text-3xl font-semibold text-white">{formatPrice(pricing.professional.priceCents)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-300 mb-1">Locations:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{formatLimit(pricing.professional.locations)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-300 mb-1">Users:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{formatLimit(pricing.professional.users || 15)}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowRegistration(true)}
+                      className="mt-6 sm:mt-8 w-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-[0_20px_50px_-28px_rgba(56,189,248,0.55)] transition hover:shadow-[0_24px_60px_-28px_rgba(56,189,248,0.7)] touch-manipulation"
+                    >
+                      Get Started
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Enterprise Tier */}
+              {pricing?.enterprise && (
+                <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/70 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(139,92,246,0.4)] backdrop-blur-xl hover:border-purple-400/40 transition">
+                  <div className="text-center">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white">Enterprise</h3>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-1">Monthly Subscription</p>
+                    <div className="mt-4 sm:mt-6 space-y-3">
+                      {loadingPricing ? (
+                        <div className="h-12 flex items-center justify-center">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Price:</p>
+                            <p className="text-2xl sm:text-3xl font-semibold text-white">
+                              {pricing.enterprise.priceCents > 0 
+                                ? formatPrice(pricing.enterprise.priceCents)
+                                : 'Custom'}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowRegistration(true)}
+                      className="mt-6 sm:mt-8 w-full rounded-full border border-white/20 bg-white/5 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/10 touch-manipulation"
+                    >
+                      {pricing.enterprise.priceCents > 0 ? 'Get Started' : 'Contact Sales'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Lifetime Tier */}
+              {pricing?.lifetime && (
+                <div className="rounded-2xl sm:rounded-3xl border border-purple-500/30 bg-purple-500/10 p-6 sm:p-8 shadow-[0_20px_60px_-30px_rgba(139,92,246,0.4)] backdrop-blur-xl hover:border-purple-400/40 transition">
+                  <div className="text-center">
+                    <h3 className="text-lg sm:text-xl font-semibold text-purple-400">Lifetime</h3>
+                    <div className="mt-4 sm:mt-6 space-y-3">
+                      {loadingPricing ? (
+                        <div className="h-12 flex items-center justify-center">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Price:</p>
+                            <p className="text-2xl sm:text-3xl font-semibold text-white">{formatPrice(pricing.lifetime.priceCents)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Locations:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{formatLimit(pricing.lifetime.locations)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs sm:text-sm text-slate-400 mb-1">Users:</p>
+                            <p className="text-lg sm:text-xl font-semibold text-white">{formatLimit(pricing.lifetime.users)}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowRegistration(true)}
+                      className="mt-6 sm:mt-8 w-full rounded-full border border-purple-400/60 bg-purple-400/20 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-purple-100 transition hover:border-purple-400/80 hover:bg-purple-400/30 touch-manipulation"
+                    >
+                      Get Started
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="mt-8 sm:mt-12 text-center">
               <p className="text-xs sm:text-sm text-slate-400">

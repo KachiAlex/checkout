@@ -10,21 +10,31 @@ interface SubscriptionPricing {
     priceCents: number; // Always 0
     durationDays: number; // Always 14
     locations: number; // Always 1
+    users: number;
     features: string[];
   };
   starter: {
     priceCents: number; // Monthly price in cents
     locations: number;
+    users: number;
     features: string[];
   };
   professional: {
     priceCents: number; // Monthly price in cents
     locations: number;
+    users: number;
     features: string[];
   };
   enterprise: {
     priceCents: number; // Monthly price in cents (or null for custom pricing)
-    locations: number; // null for unlimited
+    locations: number; // 0 = unlimited
+    users: number; // 0 = unlimited
+    features: string[];
+  };
+  lifetime: {
+    priceCents: number; // One-time price in cents
+    locations: number; // 0 = unlimited
+    users: number; // 0 = unlimited
     features: string[];
   };
 }
@@ -34,47 +44,67 @@ const DEFAULT_PRICING: SubscriptionPricing = {
     priceCents: 0,
     durationDays: 14,
     locations: 1,
+    users: 3,
     features: [
       'Basic POS features',
       '1 location',
+      '3 users',
       'Unlimited products',
       'Basic reporting',
       'Email support',
     ],
   },
   starter: {
-    priceCents: 4900, // $49/month
-    locations: 1,
+    priceCents: 999, // $9.99/month
+    locations: 3,
+    users: 10,
     features: [
       'Everything in Free',
-      '1 location',
-      'Up to 5 users',
+      '3 locations',
+      '10 users',
       'Advanced reporting',
       'Priority support',
     ],
   },
   professional: {
-    priceCents: 14900, // $149/month
+    priceCents: 1999, // $19.99/month
     locations: 5,
+    users: 15,
     features: [
       'Everything in Starter',
-      'Up to 5 locations',
-      'Unlimited users',
+      '5 locations',
+      '15 users',
       'Advanced analytics',
       'API access',
       'Priority support',
     ],
   },
   enterprise: {
-    priceCents: 0, // Custom pricing
+    priceCents: 4999, // $49.99/month
     locations: 0, // Unlimited
+    users: 0, // Unlimited
     features: [
       'Everything in Professional',
       'Unlimited locations',
+      'Unlimited users',
       'White-label options',
       'Dedicated support',
       'Custom integrations',
       'SLA guarantees',
+    ],
+  },
+  lifetime: {
+    priceCents: 150000, // $1,500 one-time
+    locations: 0, // Unlimited
+    users: 0, // Unlimited
+    features: [
+      'Everything in Enterprise',
+      'Unlimited locations',
+      'Unlimited users',
+      'Lifetime access',
+      'All future features',
+      'No recurring fees',
+      'Dedicated support',
     ],
   },
 };
@@ -86,10 +116,11 @@ async function getPricingConfig(): Promise<SubscriptionPricing> {
   if (configDoc.exists) {
     const data = configDoc.data();
     return {
-      free: data.free || DEFAULT_PRICING.free,
-      starter: data.starter || DEFAULT_PRICING.starter,
-      professional: data.professional || DEFAULT_PRICING.professional,
-      enterprise: data.enterprise || DEFAULT_PRICING.enterprise,
+      free: { ...DEFAULT_PRICING.free, ...(data.free || {}) },
+      starter: { ...DEFAULT_PRICING.starter, ...(data.starter || {}) },
+      professional: { ...DEFAULT_PRICING.professional, ...(data.professional || {}) },
+      enterprise: { ...DEFAULT_PRICING.enterprise, ...(data.enterprise || {}) },
+      lifetime: { ...DEFAULT_PRICING.lifetime, ...(data.lifetime || {}) },
     };
   }
   
@@ -133,14 +164,22 @@ export async function handleSubscriptionPricing(req: Request, path: string, meth
       }
 
       const body = await parseRequestBody<Partial<SubscriptionPricing>>(req);
+      if (!body) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid request body' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       const db = getFirestoreInstance();
       
       const current = await getPricingConfig();
       const updated = {
-        free: body.free || current.free,
-        starter: body.starter || current.starter,
-        professional: body.professional || current.professional,
-        enterprise: body.enterprise || current.enterprise,
+        free: body.free ? { ...current.free, ...body.free } : current.free,
+        starter: body.starter ? { ...current.starter, ...body.starter } : current.starter,
+        professional: body.professional ? { ...current.professional, ...body.professional } : current.professional,
+        enterprise: body.enterprise ? { ...current.enterprise, ...body.enterprise } : current.enterprise,
+        lifetime: body.lifetime ? { ...current.lifetime, ...body.lifetime } : current.lifetime,
       };
 
       // Validate free tier (must be 0 price, 14 days, 1 location)
