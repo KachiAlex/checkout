@@ -27,7 +27,6 @@
     "@capacitor-community/camera-preview": "^5.0.0",
     "@capacitor/camera": "^6.1.2",
     "@capacitor/core": "^6.2.1",
-    "@rollup/rollup-win32-x64-msvc": "^4.53.3",
     "@zxing/library": "^0.20.0",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
@@ -41,6 +40,9 @@
     "react-router-dom": "^6.21.0",
     "tailwindcss": "^3.4.1",
     "zustand": "^4.4.7"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.53.3"
   },
   "devDependencies": {
     "@capacitor/android": "^6.2.1",
