@@ -3,7 +3,7 @@ services:
     name: pos-checkout-api
     env: node
     buildCommand: npm install --no-optional --include=dev --workspace=packages/shared --workspace=packages/payment-adapters --workspace=apps/backend && npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend
-    startCommand: cd apps/backend && node dist/main.js
+    startCommand: cd apps/backend && node dist/src/main.js
     envVars:
       - key: NODE_ENV
         value: production
