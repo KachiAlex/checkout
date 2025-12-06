@@ -33,7 +33,9 @@
   "dependencies": {
     "electron-updater": "^6.6.2",
     "node-hid": "^2.1.2",
-    "prebuild-install": "^7.1.1",
+    "prebuild-install": "^7.1.1"
+  },
+  "optionalDependencies": {
     "usb-detection": "^4.14.2"
   }
 }
