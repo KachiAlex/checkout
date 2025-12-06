@@ -17,7 +17,7 @@ Render may not automatically use `render.yaml`. You **MUST** manually set the bu
    - **Name:** `pos-checkout-api`
    - **Environment:** `Node`
    - **Root Directory:** Leave empty (root of repo)
-   - **Build Command:** `npm install --no-optional --workspace=packages/shared --workspace=packages/payment-adapters --workspace=apps/backend && npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend`
+   - **Build Command:** `npm install --no-optional --include=dev --workspace=packages/shared --workspace=packages/payment-adapters --workspace=apps/backend && npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend`
    - **Start Command:** `npm run start:prod --workspace=apps/backend`
    - **⚠️ CRITICAL:** Copy the build command exactly as shown above and paste it into the Render dashboard. Do NOT use the default `npm install; npm run build` command!
 
