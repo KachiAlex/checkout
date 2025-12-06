@@ -65,12 +65,26 @@ export const useAuthStore = create<AuthState>()(
           // This ensures the browser includes it in OPTIONS preflight requests
           if (isSupabaseRequest && supabaseAnonKey) {
             axios.defaults.headers.common['apikey'] = supabaseAnonKey;
+            axios.defaults.headers.common['Apikey'] = supabaseAnonKey;
+            axios.defaults.headers.common['APIKEY'] = supabaseAnonKey;
+          }
+          
+          // CRITICAL: Explicitly set headers for login request to ensure apikey is included
+          // The browser needs this header in the OPTIONS preflight request
+          const loginHeaders: any = {};
+          if (isSupabaseRequest && supabaseAnonKey) {
+            loginHeaders['apikey'] = supabaseAnonKey;
+            loginHeaders['Apikey'] = supabaseAnonKey;
+            loginHeaders['APIKEY'] = supabaseAnonKey;
+            loginHeaders['Authorization'] = `Bearer ${supabaseAnonKey}`;
           }
           
           const response = await axios.post(`${API_URL}/api/v1/auth/login`, {
             tenantSlug,
             pin,
             deviceId,
+          }, {
+            headers: loginHeaders,
           });
 
           const { accessToken, refreshToken, user, tenant } = response.data;
