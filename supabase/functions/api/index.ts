@@ -23,6 +23,7 @@ import { handleSettings } from './settings.ts';
 import { handleWebhooks } from './webhooks.ts';
 import { handleSubscriptionPricing } from './subscription-pricing.ts';
 import { handlePromoDiscounts } from './promo-discounts.ts';
+import { handleUpload } from './upload.ts';
 
 Deno.serve(async (req: Request): Promise<Response> => {
   try {
@@ -187,6 +188,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Promo discounts routes (admin only)
     if (cleanPath.startsWith('/promo-discounts')) {
       return await handlePromoDiscounts(req, cleanPath, method);
+    }
+
+    // Upload route
+    if (cleanPath.startsWith('/upload')) {
+      return await handleUpload(req, cleanPath, method);
     }
 
     // Health check

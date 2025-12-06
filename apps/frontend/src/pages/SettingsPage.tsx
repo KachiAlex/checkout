@@ -29,7 +29,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
 function ReceiptCustomizationSection() {
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const [customization, setCustomization] = useState<{
     companyName: string;
     logoUrl: string;
@@ -41,6 +41,8 @@ function ReceiptCustomizationSection() {
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     loadCustomization();
@@ -54,6 +56,9 @@ function ReceiptCustomizationSection() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       setCustomization(response.data);
+      if (response.data.logoUrl) {
+        setLogoPreview(response.data.logoUrl);
+      }
     } catch (error: any) {
       console.error('Failed to load customization:', error);
       // If 404, use defaults
@@ -62,6 +67,56 @@ function ReceiptCustomizationSection() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'logos');
+      formData.append('tenantId', user?.tenantId || '');
+
+      // Upload to backend endpoint
+      const response = await axios.post(
+        `${API_URL}/api/v1/upload`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      const uploadedUrl = response.data.url;
+      setCustomization({ ...customization, logoUrl: uploadedUrl });
+      setLogoPreview(uploadedUrl);
+      toast.success('Logo uploaded successfully');
+    } catch (error: any) {
+      console.error('Failed to upload logo:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -116,32 +171,82 @@ function ReceiptCustomizationSection() {
 
         <div className="md:col-span-2">
           <label className="theme-text-secondary mb-2 block text-sm font-medium">
-            Logo URL
+            Company Logo
           </label>
-          <input
-            type="url"
-            value={customization.logoUrl}
-            onChange={(e) => setCustomization({ ...customization, logoUrl: e.target.value })}
-            placeholder="https://example.com/logo.png"
-            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-          />
-          <p className="theme-text-secondary mt-1 text-xs">
-            Enter a URL to your company logo. The logo will appear at the top of receipts.
-          </p>
-          {customization.logoUrl && (
-            <div className="mt-3">
-              <p className="theme-text-secondary mb-2 text-xs font-medium">Logo Preview:</p>
-              <img
-                src={customization.logoUrl}
-                alt="Logo preview"
-                className="max-h-20 rounded-lg border border-white/10"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  toast.error('Failed to load logo image. Please check the URL.');
-                }}
-              />
+          
+          {/* File Upload */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <label className="flex-1 cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo}
+                  className="hidden"
+                />
+                <div className="theme-surface flex items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm transition hover:border-sky-400 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation min-h-[44px]">
+                  {uploadingLogo ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                      <span className="theme-text-secondary">Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg">📁</span>
+                      <span className="theme-text-primary font-medium">Choose Image File</span>
+                    </>
+                  )}
+                </div>
+              </label>
+              <div className="flex-1">
+                <input
+                  type="url"
+                  value={customization.logoUrl}
+                  onChange={(e) => {
+                    setCustomization({ ...customization, logoUrl: e.target.value });
+                    setLogoPreview(e.target.value);
+                  }}
+                  placeholder="Or enter logo URL"
+                  className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                />
+              </div>
             </div>
-          )}
+            
+            <p className="theme-text-secondary text-xs">
+              Upload an image file (PNG, JPG, etc.) or enter a URL. Max file size: 5MB. The logo will appear at the top of receipts.
+            </p>
+            
+            {/* Logo Preview */}
+            {(logoPreview || customization.logoUrl) && (
+              <div className="mt-3">
+                <p className="theme-text-secondary mb-2 text-xs font-medium">Logo Preview:</p>
+                <div className="inline-block rounded-lg border border-white/10 bg-white/5 p-2">
+                  <img
+                    src={logoPreview || customization.logoUrl}
+                    alt="Logo preview"
+                    className="max-h-20 max-w-full rounded object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      toast.error('Failed to load logo image. Please check the URL or upload a new image.');
+                    }}
+                  />
+                </div>
+                {customization.logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomization({ ...customization, logoUrl: '' });
+                      setLogoPreview(null);
+                    }}
+                    className="theme-text-secondary mt-2 text-xs underline hover:text-sky-400"
+                  >
+                    Remove logo
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="md:col-span-2">

@@ -28,12 +28,18 @@ exports.AuthModule = AuthModule = __decorate([
             passport_1.PassportModule,
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
-                useFactory: (configService) => ({
-                    secret: configService.get('JWT_SECRET', 'change-me'),
-                    signOptions: {
-                        expiresIn: '24h',
-                    },
-                }),
+                useFactory: (configService) => {
+                    const jwtSecret = configService.get('JWT_SECRET');
+                    if (!jwtSecret) {
+                        throw new Error('JWT_SECRET environment variable is required. Please set it in your environment configuration.');
+                    }
+                    return {
+                        secret: jwtSecret,
+                        signOptions: {
+                            expiresIn: '24h',
+                        },
+                    };
+                },
                 inject: [config_1.ConfigService],
             }),
         ],

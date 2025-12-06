@@ -214,7 +214,7 @@ export function AddInventoryPage() {
                 setInventoryForm(prev => ({ ...prev, brandId: product.brandId }));
               }
               
-              toast.info('Form filled with existing inventory data. Update quantities/prices as needed.');
+              toast('Form filled with existing inventory data. Update quantities/prices as needed.', { icon: 'ℹ️' });
             } else {
               // Product exists but not in inventory - fill with product data only
               setInventoryForm({
@@ -241,7 +241,7 @@ export function AddInventoryPage() {
                 setInventoryForm(prev => ({ ...prev, brandId: product.brandId }));
               }
               
-              toast.info('Product found! Please enter quantity and cost price.');
+              toast('Product found! Please enter quantity and cost price.', { icon: 'ℹ️' });
             }
           } catch (invError) {
             // If inventory check fails, just fill with product data
@@ -295,7 +295,7 @@ export function AddInventoryPage() {
         }
       } else {
         // Product not found - just keep the barcode
-        toast.info('Product not found. You can create a new product with this barcode.');
+        toast('Product not found. You can create a new product with this barcode.', { icon: 'ℹ️' });
       }
     } catch (error: any) {
       console.error('Barcode scan failed:', error);
