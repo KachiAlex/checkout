@@ -280,6 +280,20 @@ axios.interceptors.request.use(
         }
       }
       // For non-Supabase requests without app token and not login: leave Authorization as-is
+      
+      // Debug logging for Supabase requests to help diagnose CORS issues
+      if (isSupabaseRequest && import.meta.env.DEV) {
+        const hasApikey = !!(config.headers as any).apikey;
+        const hasAuth = !!(config.headers as any).Authorization;
+        if (!hasApikey) {
+          console.warn('[Auth Interceptor] WARNING: apikey header missing on Supabase request:', {
+            url: config.url,
+            method: config.method,
+            hasApikey,
+            hasAuth,
+          });
+        }
+      }
 
       // Debug logging for login requests
       if (isAuthEndpoint) {
