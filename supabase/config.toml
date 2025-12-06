@@ -39,3 +39,9 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
+# Edge Functions configuration
+[functions]
+# Disable JWT verification for the api function since we use custom JWT authentication
+[functions.api]
+verify_jwt = false
+

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { width: 100%; padding: 8px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Test Login Endpoint</h1>
+    <p>This will test if the login endpoint works and creates valid tokens.</p>
+    
+    <input type="text" id="tenantSlug" placeholder="Tenant Slug" value="test">
+    <input type="text" id="pin" placeholder="PIN" value="1234">
+    <button onclick="testLogin()">Test Login</button>
+    
+    <h2>Result:</h2>
+    <pre id="result"></pre>
+    
+    <h2>If login succeeds, test the token:</h2>
+    <button onclick="testToken()">Test Token Verification</button>
+    <pre id="tokenResult"></pre>
+
+    <script>
+        const API_URL = 'https://lyxwslsckkbcpepxigdx.supabase.co/functions/v1/api/v1';
+        const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5eHdzbHNja2tiY3BlcHhpZ2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0NjQ2MDAsImV4cCI6MjA0OTAyMjYwMH0.8qJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJq';
+        
+        let savedToken = null;
+
+        async function testLogin() {
+            const output = document.getElementById('result');
+            const tenantSlug = document.getElementById('tenantSlug').value;
+            const pin = document.getElementById('pin').value;
+            
+            output.textContent = 'Logging in...';
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': API_KEY,
+                    },
+                    body: JSON.stringify({
+                        tenantSlug,
+                        pin,
+                        deviceId: 'test-device'
+                    })
+                });
+                
+                const data = await response.json();
+                output.textContent = `Status: ${response.status}\n\n${JSON.stringify(data, null, 2)}`;
+                
+                if (data.accessToken) {
+                    savedToken = data.accessToken;
+                    output.textContent += '\n\n✅ Token received! Click "Test Token Verification" to test it.';
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function testToken() {
+            const output = document.getElementById('tokenResult');
+            
+            if (!savedToken) {
+                output.textContent = 'No token available. Please login first.';
+                return;
+            }
+            
+            output.textContent = 'Testing token...';
+            
+            try {
+                // Test with a simple endpoint that requires auth
+                const response = await fetch(`${API_URL}/platform/tenants`, {
+                    headers: {
+                        'Authorization': `Bearer ${savedToken}`,
+                        'apikey': API_KEY,
+                    }
+                });
+                
+                const data = await response.json();
+                output.textContent = `Status: ${response.status}\n\n${JSON.stringify(data, null, 2)}`;
+                
+                if (response.status === 401) {
+                    output.textContent += '\n\n❌ Token verification FAILED - Invalid JWT';
+                } else if (response.ok) {
+                    output.textContent += '\n\n✅ Token verification SUCCESS';
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
+

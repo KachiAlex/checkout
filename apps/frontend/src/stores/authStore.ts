@@ -50,6 +50,23 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (tenantSlug: string, pin: string, deviceId?: string) => {
         try {
+          // Check if Supabase anon key is configured (critical for Supabase requests)
+          const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+          const isSupabaseRequest = API_URL.includes('supabase.co');
+          
+          if (isSupabaseRequest && !supabaseAnonKey) {
+            const error = new Error('Configuration Error: VITE_SUPABASE_ANON_KEY is not set. Please contact support.');
+            (error as any).customMessage = 'Configuration Error: Missing Supabase API key. Please contact support or check browser console for details.';
+            (error as any).isConfigError = true;
+            throw error;
+          }
+          
+          // For Supabase requests, ensure apikey is set as a default header
+          // This ensures the browser includes it in OPTIONS preflight requests
+          if (isSupabaseRequest && supabaseAnonKey) {
+            axios.defaults.headers.common['apikey'] = supabaseAnonKey;
+          }
+          
           const response = await axios.post(`${API_URL}/api/v1/auth/login`, {
             tenantSlug,
             pin,
@@ -73,7 +90,30 @@ export const useAuthStore = create<AuthState>()(
           // Set default authorization header
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error: any) {
-          const message = error.response?.data?.message || 'Login failed';
+          // Check if this is a Supabase authorization error
+          if (error.response?.status === 401) {
+            const errorData = error.response?.data;
+            const errorMessage = errorData?.message || errorData?.error || 'Authorization required';
+            
+            // Check if this is the Supabase infrastructure error
+            if (errorMessage.toLowerCase().includes('authorization required') || 
+                errorMessage.toLowerCase().includes('authorization')) {
+              const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+              if (!supabaseAnonKey) {
+                const configError = new Error('Configuration Error: VITE_SUPABASE_ANON_KEY is not set. This is required for Supabase requests.');
+                (configError as any).customMessage = 'Configuration Error: Missing Supabase API key. Please contact support or check browser console for details.';
+                (configError as any).isConfigError = true;
+                throw configError;
+              } else {
+                // Key is set but still getting 401 - might be invalid key
+                const authError = new Error('Authorization failed: The Supabase API key may be invalid or expired.');
+                (authError as any).customMessage = 'Authorization failed. Please check your Supabase API key configuration.';
+                throw authError;
+              }
+            }
+          }
+          
+          const message = error.response?.data?.message || error.response?.data?.error || 'Login failed';
           if (error && typeof error === 'object') {
             error.customMessage = message;
           }
@@ -174,55 +214,99 @@ axios.interceptors.request.use(
   (config) => {
     try {
       const { accessToken } = useAuthStore.getState();
-
       const apiUrl = API_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      // If we're talking to Supabase, ALWAYS attach the anon key via `apikey` header
-      // This is required even for OPTIONS requests - Supabase validates it at infrastructure level
-      if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
-        config.headers = config.headers ?? {};
-        (config.headers as any).apikey = supabaseAnonKey;
-        // Also set it as Authorization for non-OPTIONS requests if needed
-        // But for OPTIONS, only apikey header is needed
-      }
-
-      // Don't send auth token to login endpoints
+      const isSupabaseRequest = apiUrl.includes('supabase.co');
       const isAuthEndpoint = config.url?.includes('/auth/login') || 
                             config.url?.includes('/auth/superadmin/login');
       const isOptionsRequest = config.method?.toUpperCase() === 'OPTIONS';
-      
-      // For OPTIONS requests, send anon key as Authorization (Supabase requires it)
-      // But don't send our app JWT token
-      if (isOptionsRequest) {
-        // For OPTIONS, use anon key as Authorization (Supabase infrastructure requires it)
-        if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
-          config.headers = config.headers ?? {};
-          (config.headers as any).Authorization = `Bearer ${supabaseAnonKey}`;
+
+      // Ensure headers object exists (axios will create it if needed, but we ensure it's initialized)
+      if (!config.headers) {
+        config.headers = {} as any;
+      }
+
+      // For Supabase requests, ALWAYS send apikey header (required by infrastructure)
+      // This is CRITICAL for OPTIONS requests - Supabase infrastructure checks this before our function runs
+      // The browser will include this header in the OPTIONS preflight if we set it on the actual request
+      if (isSupabaseRequest) {
+        if (supabaseAnonKey) {
+          // Set apikey header (required by Supabase infrastructure for ALL requests including OPTIONS)
+          // This must be set so the browser includes it in the OPTIONS preflight request
+          // Use lowercase 'apikey' as Supabase expects it
+          (config.headers as any).apikey = supabaseAnonKey;
+          (config.headers as any)['apikey'] = supabaseAnonKey;
+          
+          // Also ensure it's in the headers that will trigger OPTIONS to include it
+          // The browser automatically includes custom headers in OPTIONS if the actual request has them
+        } else {
+          // This is a critical error - Supabase requires the apikey header
+          console.error('[Auth] CRITICAL: VITE_SUPABASE_ANON_KEY is not set!');
+          console.error('[Auth] This will cause "Authorization required" 401 errors.');
+          console.error('[Auth] Please set VITE_SUPABASE_ANON_KEY in your .env file or environment variables.');
+          console.error('[Auth] Get your key from: Supabase Dashboard → Project Settings → API → anon public key');
+          // Note: The login function will catch this and show a user-friendly error
         }
-      } else if (accessToken && !isAuthEndpoint) {
-        // If we have an app auth token, use it for Authorization (but not for login endpoints)
-        config.headers = config.headers ?? {};
+      }
+
+      // Determine which Authorization header to use
+      if (isSupabaseRequest) {
+        if (supabaseAnonKey) {
+          // For Supabase requests with anon key:
+          if (accessToken && !isAuthEndpoint && !isOptionsRequest) {
+            // Authenticated request (not login, not OPTIONS): use app JWT token
+            (config.headers as any).Authorization = `Bearer ${accessToken}`;
+          } else {
+            // Login endpoint, OPTIONS, or no app token: use anon key
+            (config.headers as any).Authorization = `Bearer ${supabaseAnonKey}`;
+          }
+        }
+        // Note: If supabaseAnonKey is missing, we already logged an error above
+      } else if (!isSupabaseRequest && accessToken && !isAuthEndpoint) {
+        // Non-Supabase request with app token: use app JWT token
         (config.headers as any).Authorization = `Bearer ${accessToken}`;
-      } else if (!isAuthEndpoint) {
-        // No app token – for Supabase, use anon key as bearer so the edge function is accessible
-        if (apiUrl.includes('supabase.co') && supabaseAnonKey) {
-          config.headers = config.headers ?? {};
-          (config.headers as any).Authorization = `Bearer ${supabaseAnonKey}`;
-        } else if (config.headers && (config.headers as any).Authorization) {
-          // Non‑Supabase: clear stale Authorization
+      } else if (!isSupabaseRequest && isAuthEndpoint) {
+        // Non-Supabase login endpoint: clear any stale Authorization header
+        if (config.headers) {
           delete (config.headers as any).Authorization;
         }
-      } else {
-        // For login endpoints, don't send app JWT token
-        // But we still need apikey header for Supabase infrastructure
-        // Clear any stale Authorization header that might be an app token
-        if (config.headers && (config.headers as any).Authorization) {
-          const authHeader = (config.headers as any).Authorization;
-          // Only clear if it's not the anon key (which we might have set above)
-          if (!authHeader.includes(supabaseAnonKey || '')) {
-            delete (config.headers as any).Authorization;
-          }
+      }
+      // For non-Supabase requests without app token and not login: leave Authorization as-is
+
+      // Debug logging for login requests
+      if (isAuthEndpoint) {
+        const hasApikey = !!(config.headers as any).apikey;
+        const hasAuthorization = !!(config.headers as any).Authorization;
+        const authHeaderValue = (config.headers as any).Authorization;
+        const authHeaderPrefix = authHeaderValue?.substring(0, 20) || 'none';
+        
+        // Always log critical issues (even in production)
+        if (!supabaseAnonKey && isSupabaseRequest) {
+          console.error('[Auth] ⚠️ CRITICAL: VITE_SUPABASE_ANON_KEY is missing!');
+          console.error('[Auth] This will cause "missing authorization header" errors.');
+          console.error('[Auth] To fix: Set VITE_SUPABASE_ANON_KEY in apps/frontend/.env and rebuild.');
+          console.error('[Auth] Get your key from: Supabase Dashboard → Project Settings → API → anon public key');
+        }
+        
+        if (import.meta.env.DEV || !supabaseAnonKey) {
+          console.log('[Auth Interceptor] Login request:', {
+            url: config.url,
+            hasApikey,
+            hasAuthorization,
+            authHeaderPrefix,
+            isSupabaseRequest,
+            hasAnonKey: !!supabaseAnonKey,
+            anonKeyPrefix: supabaseAnonKey ? supabaseAnonKey.substring(0, 20) : 'NOT SET',
+            envVarSet: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+          });
+        }
+        
+        // In production, still log critical issues
+        if (!hasApikey && isSupabaseRequest) {
+          console.error('[Auth] Login request missing apikey header - this will fail!');
+        }
+        if (!hasAuthorization && isSupabaseRequest) {
+          console.error('[Auth] Login request missing Authorization header - this will fail!');
         }
       }
     } catch (error) {

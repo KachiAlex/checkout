@@ -234,37 +234,45 @@ export function ScannerInput({ onScan, placeholder = "Scan barcode/QR with scann
   return (
     <>
       <div className={`space-y-3 ${className}`}>
-        <div className="theme-surface flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4 shadow-inner shadow-black/40">
-          <span className="theme-text-secondary text-lg">📷</span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            className="flex-1 bg-transparent text-lg theme-text-primary placeholder:text-current/50 focus:outline-none font-mono"
-            autoFocus={autoFocus}
-            autoComplete="off"
-          />
-          {isCameraSupported && (
-            <button
-              onClick={() => setShowCameraScanner(true)}
-              className="theme-chip rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
-              title="Open camera scanner"
-            >
-              📷 Camera
-            </button>
-          )}
-          {isBluetoothSupported && (
-            <button
-              onClick={connectBluetoothScanner}
-              className="theme-chip rounded-full border border-purple-400/40 bg-purple-500/15 px-3 py-2 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/25"
-              title="Connect Bluetooth scanner"
-            >
-              📡 Bluetooth
-            </button>
-          )}
+        <div className="theme-surface flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-3 sm:p-4 shadow-inner shadow-black/40">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <span className="theme-text-secondary text-lg flex-shrink-0">📷</span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              className="flex-1 min-w-0 bg-transparent text-base sm:text-lg theme-text-primary placeholder:text-current/50 focus:outline-none font-mono"
+              autoFocus={autoFocus}
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex gap-2 sm:gap-3 flex-shrink-0">
+            {isCameraSupported && (
+              <button
+                onClick={() => setShowCameraScanner(true)}
+                className="theme-chip rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 sm:px-3 py-2.5 sm:py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25 active:scale-95 touch-manipulation flex-1 sm:flex-initial items-center justify-center gap-1.5 sm:gap-0"
+                title="Open camera scanner"
+              >
+                <span className="text-base sm:text-lg">📷</span>
+                <span className="sm:hidden">Camera</span>
+                <span className="hidden sm:inline">Camera</span>
+              </button>
+            )}
+            {isBluetoothSupported && (
+              <button
+                onClick={connectBluetoothScanner}
+                className="theme-chip rounded-full border border-purple-400/40 bg-purple-500/15 px-4 sm:px-3 py-2.5 sm:py-2 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/25 active:scale-95 touch-manipulation flex-1 sm:flex-initial items-center justify-center gap-1.5 sm:gap-0"
+                title="Connect Bluetooth scanner"
+              >
+                <span className="text-base sm:text-lg">📡</span>
+                <span className="sm:hidden">BT</span>
+                <span className="hidden sm:inline">Bluetooth</span>
+              </button>
+            )}
+          </div>
         </div>
       {activeDevice && (
         <p className="text-xs theme-text-secondary text-center">

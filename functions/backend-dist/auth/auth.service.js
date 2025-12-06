@@ -131,7 +131,7 @@ let AuthService = class AuthService {
             isPlatformAdmin: user.isPlatformAdmin,
         };
         const accessToken = this.jwtService.sign(payload, {
-            expiresIn: this.configService.get('JWT_EXPIRES_IN', '24h'),
+            expiresIn: '24h',
         });
         const refreshToken = this.jwtService.sign(payload, {
             expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '7d'),
@@ -187,7 +187,7 @@ let AuthService = class AuthService {
             isPlatformAdmin: user.isPlatformAdmin,
         };
         const accessToken = this.jwtService.sign(payload, {
-            expiresIn: this.configService.get('JWT_EXPIRES_IN', '24h'),
+            expiresIn: '24h',
         });
         const refreshToken = this.jwtService.sign(payload, {
             expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '7d'),
@@ -271,7 +271,7 @@ let AuthService = class AuthService {
                 isPlatformAdmin: user.isPlatformAdmin,
             };
             const accessToken = this.jwtService.sign(newPayload, {
-                expiresIn: this.configService.get('JWT_EXPIRES_IN', '24h'),
+                expiresIn: '24h',
             });
             const newRefreshToken = this.jwtService.sign(newPayload, {
                 expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '7d'),

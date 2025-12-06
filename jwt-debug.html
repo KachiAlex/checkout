@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #dee2e6;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .success {
+            color: #28a745;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JWT Debug Tool</h1>
+        
+        <h2>Step 1: Check JWT Secret Configuration</h2>
+        <button onclick="checkSecretInfo()">Check Secret Info</button>
+        <pre id="secretInfo"></pre>
+
+        <h2>Step 2: Test Token Creation</h2>
+        <button onclick="testTokenCreation()">Create Test Token</button>
+        <pre id="createResult"></pre>
+
+        <h2>Step 3: Test Token Verification</h2>
+        <p>Enter a token to verify (or use the one from Step 2):</p>
+        <input type="text" id="tokenInput" placeholder="Paste JWT token here">
+        <button onclick="testTokenVerification()">Verify Token</button>
+        <pre id="verifyResult"></pre>
+
+        <h2>Step 4: Check Current Browser Token</h2>
+        <button onclick="checkBrowserToken()">Check Browser Token</button>
+        <pre id="browserToken"></pre>
+
+        <h2>Step 5: Clear Browser Storage</h2>
+        <button onclick="clearStorage()" style="background: #dc3545;">Clear All Storage</button>
+        <pre id="clearResult"></pre>
+    </div>
+
+    <script>
+        const API_BASE = 'https://lyxwslsckkbcpepxigdx.supabase.co/functions/v1';
+        const API_URL = `${API_BASE}/api/v1`;
+        const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5eHdzbHNja2tiY3BlcHhpZ2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0NjQ2MDAsImV4cCI6MjA0OTAyMjYwMH0.8qJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJqJq';
+
+        async function checkSecretInfo() {
+            const output = document.getElementById('secretInfo');
+            output.textContent = 'Loading...';
+            try {
+                const response = await fetch(`${API_URL}/jwt-test?action=info`, {
+                    headers: { 'apikey': API_KEY }
+                });
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+                output.className = response.ok ? 'success' : 'error';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'error';
+            }
+        }
+
+        async function testTokenCreation() {
+            const output = document.getElementById('createResult');
+            output.textContent = 'Creating test token...';
+            try {
+                const response = await fetch(`${API_URL}/jwt-test?action=create`, {
+                    headers: { 'apikey': API_KEY }
+                });
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+                output.className = response.ok ? 'success' : 'error';
+                
+                // Auto-fill token input if creation succeeded
+                if (data.token) {
+                    document.getElementById('tokenInput').value = data.token;
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'error';
+            }
+        }
+
+        async function testTokenVerification() {
+            const output = document.getElementById('verifyResult');
+            const token = document.getElementById('tokenInput').value.trim();
+            
+            if (!token) {
+                output.textContent = 'Please enter a token first';
+                output.className = 'error';
+                return;
+            }
+
+            output.textContent = 'Verifying token...';
+            try {
+                const response = await fetch(`${API_URL}/jwt-test?action=verify`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'apikey': API_KEY
+                    }
+                });
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+                output.className = response.ok ? 'success' : 'error';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'error';
+            }
+        }
+
+        function checkBrowserToken() {
+            const output = document.getElementById('browserToken');
+            try {
+                const accessToken = localStorage.getItem('accessToken');
+                const refreshToken = localStorage.getItem('refreshToken');
+                
+                const info = {
+                    hasAccessToken: !!accessToken,
+                    accessTokenLength: accessToken ? accessToken.length : 0,
+                    accessTokenPreview: accessToken ? accessToken.substring(0, 50) + '...' : null,
+                    hasRefreshToken: !!refreshToken,
+                    refreshTokenLength: refreshToken ? refreshToken.length : 0,
+                    localStorageKeys: Object.keys(localStorage),
+                };
+
+                // Try to decode token (just for display, not verification)
+                if (accessToken) {
+                    try {
+                        const parts = accessToken.split('.');
+                        if (parts.length === 3) {
+                            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                            info.decodedPayload = {
+                                sub: payload.sub,
+                                tenantId: payload.tenantId,
+                                role: payload.role,
+                                exp: payload.exp,
+                                expDate: new Date(payload.exp * 1000).toISOString(),
+                                iat: payload.iat,
+                                iatDate: new Date(payload.iat * 1000).toISOString(),
+                                isExpired: payload.exp < Math.floor(Date.now() / 1000)
+                            };
+                        }
+                    } catch (e) {
+                        info.decodeError = e.message;
+                    }
+                }
+
+                output.textContent = JSON.stringify(info, null, 2);
+                output.className = accessToken ? 'success' : 'error';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'error';
+            }
+        }
+
+        function clearStorage() {
+            const output = document.getElementById('clearResult');
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Try to clear IndexedDB
+                if ('indexedDB' in window) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(db => {
+                            indexedDB.deleteDatabase(db.name);
+                        });
+                    });
+                }
+
+                output.textContent = '✅ Storage cleared successfully!\n\nPlease refresh the page and log in again.';
+                output.className = 'success';
+                
+                setTimeout(() => {
+                    if (confirm('Storage cleared! Would you like to reload the page?')) {
+                        location.reload();
+                    }
+                }, 1000);
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'error';
+            }
+        }
+    </script>
+</body>
+</html>
+

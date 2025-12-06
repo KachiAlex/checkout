@@ -374,6 +374,84 @@ export async function handleSettings(req: Request, path: string, method: string)
       );
     }
 
+    // GET /customization - Get customization settings
+    if (path === '/customization' && method === 'GET') {
+      const tenantDoc = await db.collection('tenants').doc(user.tenantId).get();
+      if (!tenantDoc.exists) {
+        return new Response(
+          JSON.stringify({ error: 'Tenant not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const tenantData = tenantDoc.data();
+      const customization = tenantData?.metadata?.customization || {
+        companyName: tenantData?.name || '',
+        logoUrl: '',
+        footerMessage: 'Thank you for your purchase!',
+      };
+
+      return new Response(
+        JSON.stringify(customization),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // PUT /customization - Update customization settings
+    if (path === '/customization' && method === 'PUT') {
+      // Check permissions
+      if (!isTenantAdmin && !isPlatformAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Only tenant administrators can manage customization settings' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const tenantDoc = await db.collection('tenants').doc(user.tenantId).get();
+      if (!tenantDoc.exists) {
+        return new Response(
+          JSON.stringify({ error: 'Tenant not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const tenantData = tenantDoc.data();
+      const body = await parseRequestBody<{
+        companyName?: string;
+        logoUrl?: string;
+        footerMessage?: string;
+      }>(req);
+      
+      if (!body) {
+        return new Response(
+          JSON.stringify({ error: 'Request body is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const currentCustomization = tenantData?.metadata?.customization || {};
+      const updatedCustomization = {
+        ...currentCustomization,
+        ...(body.companyName !== undefined && { companyName: body.companyName }),
+        ...(body.logoUrl !== undefined && { logoUrl: body.logoUrl }),
+        ...(body.footerMessage !== undefined && { footerMessage: body.footerMessage }),
+      };
+
+      // Update tenant metadata
+      await db.collection('tenants').doc(user.tenantId).update({
+        metadata: {
+          ...(tenantData?.metadata || {}),
+          customization: updatedCustomization,
+        },
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return new Response(
+        JSON.stringify(updatedCustomization),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 404
     return new Response(
       JSON.stringify({ error: 'Not Found', path, method }),

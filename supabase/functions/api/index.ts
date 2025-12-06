@@ -169,8 +169,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return await handleDevices(req, cleanPath, method);
     }
 
-    // Settings routes (tax-settings, payment-settings)
-    if (cleanPath.startsWith('/tax-settings') || cleanPath.startsWith('/payment-settings')) {
+    // Settings routes (tax-settings, payment-settings, customization)
+    if (cleanPath.startsWith('/tax-settings') || cleanPath.startsWith('/payment-settings') || cleanPath.startsWith('/customization')) {
       return await handleSettings(req, cleanPath, method);
     }
 

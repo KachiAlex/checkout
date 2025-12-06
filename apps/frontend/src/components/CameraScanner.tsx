@@ -109,23 +109,23 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="theme-card w-full max-w-2xl rounded-3xl border p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="theme-text-primary text-xl font-bold">Camera Scanner</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+      <div className="theme-card w-full max-w-2xl rounded-2xl sm:rounded-3xl border p-4 sm:p-6 shadow-2xl">
+        <div className="mb-3 sm:mb-4 flex items-center justify-between">
+          <h2 className="theme-text-primary text-lg sm:text-xl font-bold">Camera Scanner</h2>
                 <button
             onClick={() => {
               stopScanning();
               onClose();
             }}
-            className="theme-chip rounded-full border p-2 transition hover:bg-white/10"
+            className="theme-chip rounded-full border p-2 transition hover:bg-white/10 active:scale-95 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Close scanner"
           >
             ✕
               </button>
       </div>
 
-        <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-2xl bg-black">
+        <div className="relative mb-3 sm:mb-4 aspect-video w-full overflow-hidden rounded-xl sm:rounded-2xl bg-black">
             <video
               ref={videoRef}
             className="h-full w-full object-cover"
@@ -154,9 +154,9 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
           {/* Scanning overlay with guide lines */}
           {scanning && !error && (
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 border-2 border-sky-400 border-dashed rounded-lg" />
+              <div className="absolute left-1/2 top-1/2 h-40 w-40 sm:h-48 sm:w-48 -translate-x-1/2 -translate-y-1/2 border-2 border-sky-400 border-dashed rounded-lg" />
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                <p className="theme-text-primary text-sm font-semibold bg-black/60 px-3 py-1 rounded">
+                <p className="theme-text-primary text-xs sm:text-sm font-semibold bg-black/60 px-2 sm:px-3 py-1 rounded">
                   Position barcode/QR code here
                 </p>
               </div>
@@ -165,7 +165,7 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
         </div>
 
         <div className="space-y-2 text-center">
-          <p className="theme-text-secondary text-sm">
+          <p className="theme-text-secondary text-xs sm:text-sm">
             {scanning && !error
               ? 'Point your camera at a barcode or QR code'
               : error
@@ -177,7 +177,7 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
               stopScanning();
               onClose();
             }}
-            className="theme-chip w-full rounded-full border px-6 py-3 font-semibold transition hover:bg-white/10"
+            className="theme-chip w-full rounded-full border px-6 py-3 font-semibold transition hover:bg-white/10 active:scale-95 touch-manipulation min-h-[44px]"
           >
             Close
           </button>

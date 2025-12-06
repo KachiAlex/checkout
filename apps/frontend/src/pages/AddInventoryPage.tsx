@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { API_URL } from '../config';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { ScannerInput } from '../components/ScannerInput';
 import { format } from 'date-fns';
 import { formatNumber, formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
 
@@ -147,6 +148,159 @@ export function AddInventoryPage() {
       setBrands(response.data || []);
     } catch (error) {
       console.error('Failed to load brands:', error);
+    }
+  };
+
+  // Handle barcode scan - search for existing product and auto-fill form
+  const handleBarcodeScan = async (barcode: string) => {
+    if (!barcode.trim() || !accessToken) {
+      // If no barcode, just set it in the form
+      setInventoryForm({ ...inventoryForm, barcode });
+      return;
+    }
+
+    // First, set the barcode in the form
+    setInventoryForm({ ...inventoryForm, barcode });
+
+    try {
+      // Search for existing product by barcode
+      const response = await axios.get(
+        `${API_URL}/api/v1/products?query=${encodeURIComponent(barcode)}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      
+      const products = response.data || [];
+      // Try to find exact barcode match first
+      const product = products.find((p: any) => p.barcode === barcode) || products[0];
+      
+      if (product) {
+        // Auto-fill form with product details
+        toast.success(`Found product: ${product.name}`);
+        
+        // Get inventory details if available
+        const locationId = await getEffectiveLocationId();
+        if (locationId) {
+          try {
+            const invResponse = await axios.get(
+              `${API_URL}/api/v1/inventory/${locationId}/stock`,
+              { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            const invItem = invResponse.data.find((inv: any) => inv.productId === product.id);
+            
+            if (invItem) {
+              // Product exists in inventory - fill with existing data
+              setInventoryForm({
+                name: product.name,
+                description: product.description || '',
+                quantity: formatNumber(invItem.quantity),
+                costCents: invItem.costCents ? formatNumber(invItem.costCents / 100) : '',
+                priceCents: invItem.salesPriceCents ? formatNumber(invItem.salesPriceCents / 100) : (product.priceCents ? formatNumber(product.priceCents / 100) : ''),
+                barcode: product.barcode || barcode,
+                categoryId: product.categoryId || '',
+                categoryName: product.category?.name || '',
+                brandId: product.brandId || '',
+                brandName: product.brand?.name || '',
+              });
+              
+              // Set category/brand mode and IDs based on what's available
+              if (product.categoryId) {
+                setCategoryMode('existing');
+                savedCategoryId.current = product.categoryId;
+                setInventoryForm(prev => ({ ...prev, categoryId: product.categoryId }));
+              }
+              if (product.brandId) {
+                setBrandMode('existing');
+                savedBrandId.current = product.brandId;
+                setInventoryForm(prev => ({ ...prev, brandId: product.brandId }));
+              }
+              
+              toast.info('Form filled with existing inventory data. Update quantities/prices as needed.');
+            } else {
+              // Product exists but not in inventory - fill with product data only
+              setInventoryForm({
+                name: product.name,
+                description: product.description || '',
+                quantity: '',
+                costCents: '',
+                priceCents: product.priceCents ? formatNumber(product.priceCents / 100) : '',
+                barcode: product.barcode || barcode,
+                categoryId: product.categoryId || '',
+                categoryName: product.category?.name || '',
+                brandId: product.brandId || '',
+                brandName: product.brand?.name || '',
+              });
+              
+              if (product.categoryId) {
+                setCategoryMode('existing');
+                savedCategoryId.current = product.categoryId;
+                setInventoryForm(prev => ({ ...prev, categoryId: product.categoryId }));
+              }
+              if (product.brandId) {
+                setBrandMode('existing');
+                savedBrandId.current = product.brandId;
+                setInventoryForm(prev => ({ ...prev, brandId: product.brandId }));
+              }
+              
+              toast.info('Product found! Please enter quantity and cost price.');
+            }
+          } catch (invError) {
+            // If inventory check fails, just fill with product data
+            setInventoryForm({
+              name: product.name,
+              description: product.description || '',
+              quantity: '',
+              costCents: '',
+              priceCents: product.priceCents ? formatNumber(product.priceCents / 100) : '',
+              barcode: product.barcode || barcode,
+              categoryId: product.categoryId || '',
+              categoryName: product.category?.name || '',
+              brandId: product.brandId || '',
+              brandName: product.brand?.name || '',
+            });
+            
+            if (product.categoryId) {
+              setCategoryMode('existing');
+              savedCategoryId.current = product.categoryId;
+              setInventoryForm(prev => ({ ...prev, categoryId: product.categoryId }));
+            }
+            if (product.brandId) {
+              setBrandMode('existing');
+              savedBrandId.current = product.brandId;
+              setInventoryForm(prev => ({ ...prev, brandId: product.brandId }));
+            }
+          }
+        } else {
+          // No location - just fill with product data
+          setInventoryForm({
+            name: product.name,
+            description: product.description || '',
+            quantity: '',
+            costCents: '',
+            priceCents: product.priceCents ? formatNumber(product.priceCents / 100) : '',
+            barcode: product.barcode || barcode,
+            categoryId: product.categoryId || '',
+            categoryName: '',
+            brandId: product.brandId || '',
+            brandName: '',
+          });
+          
+          if (product.categoryId) {
+            setCategoryMode('existing');
+            savedCategoryId.current = product.categoryId;
+          }
+          if (product.brandId) {
+            setBrandMode('existing');
+            savedBrandId.current = product.brandId;
+          }
+        }
+      } else {
+        // Product not found - just keep the barcode
+        toast.info('Product not found. You can create a new product with this barcode.');
+      }
+    } catch (error: any) {
+      console.error('Barcode scan failed:', error);
+      // If search fails, just keep the barcode in the form
+      toast.error('Failed to search product by barcode. You can still create a new product.');
     }
   };
 
@@ -565,14 +719,12 @@ export function AddInventoryPage() {
                   required
                 />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="theme-text-secondary mb-2 block text-sm font-medium">Barcode</label>
-                <input
-                  type="text"
-                  value={inventoryForm.barcode}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, barcode: e.target.value })}
-                  className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-                  placeholder="Optional barcode"
+                <ScannerInput
+                  onScan={handleBarcodeScan}
+                  placeholder="Scan barcode/QR or type barcode..."
+                  autoFocus={false}
                 />
               </div>
               <div>

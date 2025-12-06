@@ -28,6 +28,160 @@ import { API_URL } from '../config';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
+function ReceiptCustomizationSection() {
+  const { accessToken } = useAuthStore();
+  const [customization, setCustomization] = useState<{
+    companyName: string;
+    logoUrl: string;
+    footerMessage: string;
+  }>({
+    companyName: '',
+    logoUrl: '',
+    footerMessage: 'Thank you for your purchase!',
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadCustomization();
+  }, [accessToken]);
+
+  const loadCustomization = async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/customization`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setCustomization(response.data);
+    } catch (error: any) {
+      console.error('Failed to load customization:', error);
+      // If 404, use defaults
+      if (error.response?.status !== 404) {
+        toast.error('Failed to load customization settings');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessToken) return;
+    
+    setSaving(true);
+    try {
+      await axios.put(
+        `${API_URL}/api/v1/customization`,
+        customization,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      toast.success('Customization settings saved successfully');
+    } catch (error: any) {
+      console.error('Failed to save customization:', error);
+      toast.error(error.response?.data?.message || 'Failed to save customization settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+        <p className="theme-text-secondary mt-2 text-sm">Loading customization settings...</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Institution/Company Name <span className="text-rose-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={customization.companyName}
+            onChange={(e) => setCustomization({ ...customization, companyName: e.target.value })}
+            placeholder="Enter your company or institution name"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+            required
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            This will appear at the top of receipts, above the branch name.
+          </p>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Logo URL
+          </label>
+          <input
+            type="url"
+            value={customization.logoUrl}
+            onChange={(e) => setCustomization({ ...customization, logoUrl: e.target.value })}
+            placeholder="https://example.com/logo.png"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            Enter a URL to your company logo. The logo will appear at the top of receipts.
+          </p>
+          {customization.logoUrl && (
+            <div className="mt-3">
+              <p className="theme-text-secondary mb-2 text-xs font-medium">Logo Preview:</p>
+              <img
+                src={customization.logoUrl}
+                alt="Logo preview"
+                className="max-h-20 rounded-lg border border-white/10"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  toast.error('Failed to load logo image. Please check the URL.');
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Footer Message
+          </label>
+          <input
+            type="text"
+            value={customization.footerMessage}
+            onChange={(e) => setCustomization({ ...customization, footerMessage: e.target.value })}
+            placeholder="Thank you for your purchase!"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            This message will appear at the bottom of receipts.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+        >
+          {saving ? 'Saving...' : 'Save Customization'}
+        </button>
+        <button
+          type="button"
+          onClick={loadCustomization}
+          disabled={saving}
+          className="theme-chip rounded-full border px-6 py-3 text-sm font-semibold transition hover:border-sky-400 disabled:opacity-50 touch-manipulation"
+        >
+          Reset
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function SectionContainer({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
     <section className="theme-card rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl">
@@ -706,6 +860,16 @@ export function SettingsPage() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState<string>('general');
+
+  const tabs = [
+    { id: 'general', label: 'General', icon: '⚙️' },
+    { id: 'receipts', label: 'Receipts', icon: '🧾' },
+    ...(isTenantAdmin ? [{ id: 'payments', label: 'Payments', icon: '💳' }] : []),
+    ...(isTenantAdmin ? [{ id: 'users', label: 'Users & Locations', icon: '👥' }] : []),
+    { id: 'devices', label: 'Devices', icon: '🔌' },
+  ];
+
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
@@ -723,328 +887,707 @@ export function SettingsPage() {
           </div>
         </div>
 
-        {isTenantAdmin && (
-          <SectionContainer
-            title="Location Management"
-            description="Create and manage store locations. Users can be assigned to specific locations."
-          >
-            <div className="space-y-4 sm:space-y-6">
-              {/* Create/Edit Location Form */}
-              <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-                <h3 className="theme-text-primary mb-3 sm:mb-4 text-xs sm:text-sm font-semibold">
-                  {editingLocation ? 'Edit Location' : 'Create New Location'}
-                </h3>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (editingLocation) {
-                      handleUpdateLocationDetails(editingLocation);
-                    } else {
-                      handleCreateLocation(e);
-                    }
-                  }}
-                  className="space-y-3 sm:space-y-4"
-                >
-                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">
-                        Location Name <span className="text-rose-500">*</span>
+        {/* Tabs Navigation */}
+        <div className="theme-card rounded-xl sm:rounded-2xl border p-2 sm:p-3 backdrop-blur-xl">
+          <div className="flex flex-wrap gap-2 sm:gap-3 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold transition-all touch-manipulation min-h-[44px] ${
+                  activeTab === tab.id
+                    ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
+                }`}
+              >
+                <span className="text-base sm:text-lg">{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="space-y-4 sm:space-y-6">
+          {/* General Tab */}
+          {activeTab === 'general' && (
+            <>
+              <SectionContainer
+                title="My Location"
+                description="Set your location for checkout. This is required to process orders."
+              >
+                <div className="space-y-4">
+                  {loadingLocations ? (
+                    <div className="text-center py-8">
+                      <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                      <p className="theme-text-secondary mt-2 text-sm">Loading locations...</p>
+                    </div>
+                  ) : locations.length === 0 ? (
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                      <p className="theme-text-primary text-sm font-semibold text-amber-400 mb-2">
+                        ⚠️ No Locations Available
+                      </p>
+                      <p className="theme-text-secondary text-xs">
+                        No locations have been created for your tenant. Please contact your administrator to create a location.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="theme-text-primary mb-2 block text-sm font-medium">
+                          Select Location
+                        </label>
+                        <select
+                          value={selectedLocationId}
+                          onChange={(e) => setSelectedLocationId(e.target.value)}
+                          className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        >
+                          <option value="">-- No Location Selected --</option>
+                          {locations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name} {location.address ? `(${location.address})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {!user?.locationId && (
+                          <p className="theme-text-secondary mt-2 text-xs text-amber-400">
+                            ⚠️ Location is required to process orders. Please select a location.
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleUpdateLocation}
+                        disabled={updatingLocation || selectedLocationId === (user?.locationId || '')}
+                        className="w-full rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-2 font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {updatingLocation ? 'Updating...' : 'Save Location'}
+                      </button>
+                      {user?.locationId && (
+                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                          <p className="theme-text-primary text-sm font-semibold text-emerald-400">
+                            ✓ Current Location: {locations.find(l => l.id === user.locationId)?.name || user.locationId}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </SectionContainer>
+
+              <SectionContainer
+                title="Security"
+                description="Keep your point-of-sale secure by rotating staff PINs regularly."
+              >
+                <form className="space-y-4" onSubmit={handleChangePin}>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="current-pin" className="theme-text-secondary text-sm font-medium">
+                        Current PIN
                       </label>
                       <input
-                        type="text"
-                        value={locationForm.name}
-                        onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
-                        placeholder="e.g., Main Store, Downtown Branch"
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        id="current-pin"
+                        type="password"
+                        value={currentPin}
+                        onChange={(e) => setCurrentPin(e.target.value)}
+                        className="theme-surface rounded-2xl border px-4 py-3 text-center text-lg outline-none focus:ring-2 focus:ring-sky-400"
+                        maxLength={64}
+                        autoComplete="current-password"
                         required
                       />
                     </div>
-                    <div>
-                      <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">Timezone</label>
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="new-pin" className="theme-text-secondary text-sm font-medium">
+                        New PIN
+                      </label>
                       <input
-                        type="text"
-                        value={locationForm.timezone}
-                        onChange={(e) => setLocationForm({ ...locationForm, timezone: e.target.value })}
-                        placeholder="UTC"
-                        className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        id="new-pin"
+                        type="password"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value)}
+                        className="theme-surface rounded-2xl border px-4 py-3 text-center text-lg outline-none focus:ring-2 focus:ring-sky-400"
+                        maxLength={64}
+                        autoComplete="new-password"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="confirm-pin" className="theme-text-secondary text-sm font-medium">
+                        Confirm PIN
+                      </label>
+                      <input
+                        id="confirm-pin"
+                        type="password"
+                        value={confirmPin}
+                        onChange={(e) => setConfirmPin(e.target.value)}
+                        className="theme-surface rounded-2xl border px-4 py-3 text-center text-lg outline-none focus:ring-2 focus:ring-sky-400"
+                        maxLength={64}
+                        required
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">Address</label>
-                    <textarea
-                      value={locationForm.address}
-                      onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })}
-                      placeholder="Street address, city, state, zip code"
-                      rows={2}
-                      className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                    />
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                    <button
-                      type="submit"
-                      disabled={creatingLocation || !locationForm.name.trim()}
-                      className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-4 sm:px-6 py-2 text-xs sm:text-sm font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
-                    >
-                      {creatingLocation ? 'Saving...' : editingLocation ? 'Update Location' : 'Create Location'}
-                    </button>
-                    {editingLocation && (
-                      <button
-                        type="button"
-                        onClick={cancelEditingLocation}
-                        className="theme-chip rounded-full border px-4 sm:px-6 py-2 text-xs sm:text-sm font-semibold transition hover:border-sky-400 touch-manipulation"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingPin}
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-emerald-950 shadow-[0_25px_45px_-30px_rgba(16,185,129,0.65)] transition hover:shadow-[0_30px_60px_-35px_rgba(16,185,129,0.8)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isUpdatingPin ? 'Updating...' : 'Update PIN'}
+                  </button>
                 </form>
-              </div>
+              </SectionContainer>
 
-              {/* Locations List */}
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="theme-text-primary mb-4 text-sm font-semibold">All Locations</h3>
-                {loadingLocations ? (
-                  <div className="text-center py-8">
-                    <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-                    <p className="theme-text-secondary mt-2 text-sm">Loading locations...</p>
+              <SectionContainer
+                title="Company profile"
+                description="Customize how your company appears across receipts, reports, and internal dashboards."
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="company-name" className="theme-text-secondary text-sm font-medium">
+                      Company name
+                    </label>
+                    <input
+                      id="company-name"
+                      type="text"
+                      value={tenant?.name ?? ''}
+                      placeholder="Your company name"
+                      className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+                      disabled
+                    />
+                    <p className="theme-text-secondary text-xs">
+                      Slug: <span className="theme-text-primary font-medium lowercase">{tenant?.slug ?? 'n/a'}</span>
+                    </p>
                   </div>
-                ) : locations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="theme-text-secondary text-sm">No locations created yet. Create your first location above.</p>
+                  <div className="flex flex-col gap-2">
+                    <label className="theme-text-secondary text-sm font-medium">Subscription plan</label>
+                    <div className="theme-surface rounded-2xl border px-4 py-3">
+                      <p className="theme-text-primary text-sm font-semibold capitalize">
+                        {tenant?.plan ?? 'unassigned'} plan
+                      </p>
+                      <div className="theme-text-secondary mt-1 text-xs space-y-1">
+                        <p>
+                          Status:{' '}
+                          <span className="theme-text-primary font-semibold capitalize">
+                            {tenant?.status ?? 'pending'}
+                          </span>
+                        </p>
+                        <p>
+                          Seats:{' '}
+                          <span className="theme-text-primary font-semibold">
+                            {tenant?.seatLimit !== undefined ? tenant.seatLimit : 'unlimited'}
+                          </span>
+                        </p>
+                        {tenant?.billingCycleStart && tenant?.billingCycleEnd && (
+                          <p>
+                            Cycle:{' '}
+                            <span className="theme-text-primary font-medium">
+                              {new Date(tenant.billingCycleStart).toLocaleDateString()} —{' '}
+                              {new Date(tenant.billingCycleEnd).toLocaleDateString()}
+                            </span>
+                          </p>
+                        )}
+                        <p>Licensing management will be enabled soon.</p>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {locations.map((location) => (
-                      <div
-                        key={location.id}
-                        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3"
-                      >
-                        <div className="flex-1">
-                          <p className="theme-text-primary text-sm font-semibold">{location.name}</p>
-                          {location.address && (
-                            <p className="theme-text-secondary text-xs mt-1">{location.address}</p>
-                          )}
-                          <p className="theme-text-secondary text-xs mt-1">
-                            Timezone: {location.timezone || 'UTC'}
+                </div>
+              </SectionContainer>
+            </>
+          )}
+
+          {/* Receipts Tab */}
+          {activeTab === 'receipts' && (
+            <>
+              {isTenantAdmin && (
+                <SectionContainer
+                  title="Receipt Customization"
+                  description="Customize how your receipts appear. Configure company name, logo, and footer message for printed and digital receipts."
+                >
+                  <ReceiptCustomizationSection />
+                </SectionContainer>
+              )}
+
+              {isTenantAdmin && (
+                <SectionContainer
+                  title="Tax Settings"
+                  description="Configure tax settings for your tenant. Cashiers can toggle tax on/off at checkout."
+                >
+                  {loadingTaxSettings ? (
+                    <div className="py-8 text-center">
+                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+                      <p className="theme-text-secondary mt-2 text-sm">Loading tax settings...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                        <div>
+                          <h3 className="theme-text-primary text-sm font-semibold">Enable Tax</h3>
+                          <p className="theme-text-secondary text-xs">
+                            When enabled, tax can be applied at checkout (cashiers can toggle it on/off)
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => startEditingLocation(location)}
-                            disabled={editingLocation === location.id}
-                            className="theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400 disabled:opacity-50"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteLocation(location.id)}
-                            className="theme-chip rounded-full border border-red-500/60 px-3 py-1 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
-                          >
-                            Delete
-                          </button>
+                        <label className="relative inline-flex cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            checked={taxForm.enabled}
+                            onChange={(e) => setTaxForm({ ...taxForm, enabled: e.target.checked })}
+                            className="peer sr-only"
+                          />
+                          <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-sky-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300" />
+                        </label>
+                      </div>
+
+                      {taxForm.enabled && (
+                        <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                          <div>
+                            <label className="theme-text-primary mb-2 block text-sm font-medium">
+                              Tax Description
+                            </label>
+                            <input
+                              type="text"
+                              value={taxForm.description}
+                              onChange={(e) => setTaxForm({ ...taxForm, description: e.target.value })}
+                              placeholder="e.g., VAT, Sales Tax, GST"
+                              className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                            />
+                            <p className="theme-text-secondary mt-1 text-xs">
+                              This name will appear on receipts and at checkout
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="theme-text-primary mb-2 block text-sm font-medium">
+                              Tax Percentage
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={taxForm.percentage}
+                                onChange={(e) => setTaxForm({ ...taxForm, percentage: e.target.value })}
+                                placeholder="7.5"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                              />
+                              <span className="theme-text-secondary text-sm">%</span>
+                            </div>
+                            <p className="theme-text-secondary mt-1 text-xs">
+                              Enter the tax percentage (e.g., 7.5 for 7.5%)
+                            </p>
+                          </div>
+
+                          <div className="flex gap-3 pt-2">
+                            <button
+                              onClick={async () => {
+                                if (!taxForm.description || !taxForm.percentage) {
+                                  toast.error('Please fill in tax description and percentage');
+                                  return;
+                                }
+                                const percentage = parseFloat(taxForm.percentage);
+                                if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                                  toast.error('Please enter a valid tax percentage (0-100)');
+                                  return;
+                                }
+                                setSavingTaxSettings(true);
+                                try {
+                                  const response = await axios.put(
+                                    `${API_URL}/api/v1/tax-settings`,
+                                    {
+                                      enabled: taxForm.enabled,
+                                      description: taxForm.description,
+                                      percentage,
+                                    },
+                                    {
+                                      headers: { Authorization: `Bearer ${accessToken}` },
+                                    }
+                                  );
+                                  const updated = response.data;
+                                  setTaxSettings(updated);
+                                  toast.success('Tax settings saved successfully');
+                                } catch (error: any) {
+                                  toast.error(error?.response?.data?.message || 'Failed to save tax settings');
+                                } finally {
+                                  setSavingTaxSettings(false);
+                                }
+                              }}
+                              disabled={savingTaxSettings}
+                              className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-2 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {savingTaxSettings ? 'Saving...' : 'Save Settings'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </SectionContainer>
+              )}
+            </>
+          )}
+
+          {/* Payments Tab */}
+          {activeTab === 'payments' && isTenantAdmin && (
+            <SectionContainer
+              title="Payment Gateway"
+              description="Configure payment gateway settings for card and QR code payments."
+            >
+              {loadingPaymentSettings ? (
+                <div className="text-center py-8">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+                  <p className="theme-text-secondary mt-2 text-sm">Loading payment settings...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="theme-text-primary text-sm font-semibold">Active Payment Gateway</h3>
+                      <p className="theme-text-secondary text-xs">
+                        Choose which provider your tenant will use for card/QR payments.
+                      </p>
+                    </div>
+                    <select
+                      value={activeGateway}
+                      onChange={(e) => setActiveGateway(e.target.value as GatewayKey)}
+                      className="mt-2 w-full rounded-xl border border-white/20 bg-slate-900 px-3 py-2 text-sm text-slate-100 md:mt-0 md:w-64"
+                    >
+                      <option value="monnify">Monnify</option>
+                      <option value="opay">Opay</option>
+                      <option value="palmpay">Palmpay</option>
+                      <option value="firstbank">FirstBank</option>
+                    </select>
+                  </div>
+
+                  {(() => {
+                    const form = gatewayForms[activeGateway];
+                    const setForm = (patch: Partial<typeof form>) =>
+                      setGatewayForms((prev) => ({
+                        ...prev,
+                        [activeGateway]: { ...prev[activeGateway], ...patch },
+                      }));
+
+                    const isMonnify = activeGateway === 'monnify';
+                    const isOpay = activeGateway === 'opay';
+                    const isPalmpay = activeGateway === 'palmpay';
+                    const isFirstBank = activeGateway === 'firstbank';
+
+                    const gatewayLabel =
+                      activeGateway === 'monnify'
+                        ? 'Monnify'
+                        : activeGateway === 'opay'
+                        ? 'Opay'
+                        : activeGateway === 'palmpay'
+                        ? 'Palmpay'
+                        : 'FirstBank';
+
+                    return (
+                      <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="theme-text-primary text-sm font-semibold">
+                              Enable {gatewayLabel} Payments
+                            </h3>
+                            <p className="theme-text-secondary text-xs">
+                              When enabled, card and QR payments can be routed through {gatewayLabel}.
+                            </p>
+                          </div>
+                          <label className="relative inline-flex cursor-pointer items-center">
+                            <input
+                              type="checkbox"
+                              checked={form.enabled}
+                              onChange={(e) => setForm({ enabled: e.target.checked })}
+                              className="peer sr-only"
+                            />
+                            <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-sky-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300" />
+                          </label>
+                        </div>
+
+                        {form.enabled && (
+                          <>
+                            <div>
+                              <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                {gatewayLabel} API Key
+                              </label>
+                              <input
+                                type="text"
+                                value={form.apiKey}
+                                onChange={(e) => setForm({ apiKey: e.target.value })}
+                                placeholder="Enter API Key"
+                                className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                {gatewayLabel} Secret Key
+                              </label>
+                              <input
+                                type="password"
+                                value={form.secretKey}
+                                onChange={(e) => setForm({ secretKey: e.target.value })}
+                                placeholder="Enter Secret Key"
+                                className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                              />
+                            </div>
+
+                            {isMonnify && (
+                              <div>
+                                <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                  Monnify Contract Code
+                                </label>
+                                <input
+                                  type="text"
+                                  value={form.contractCode}
+                                  onChange={(e) => setForm({ contractCode: e.target.value })}
+                                  placeholder="Enter Contract Code"
+                                  className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                                />
+                              </div>
+                            )}
+
+                            {(isOpay || isPalmpay || isFirstBank) && (
+                              <>
+                                <div>
+                                  <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                    Merchant ID
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={form.merchantId}
+                                    onChange={(e) => setForm({ merchantId: e.target.value })}
+                                    placeholder="Enter Merchant ID"
+                                    className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                    Terminal ID
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={form.terminalId}
+                                    onChange={(e) => setForm({ terminalId: e.target.value })}
+                                    placeholder="Enter Terminal ID"
+                                    className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                                  />
+                                </div>
+                              </>
+                            )}
+
+                            <div>
+                              <label className="theme-text-primary mb-2 block text-sm font-medium">
+                                Webhook Secret (Optional)
+                              </label>
+                              <input
+                                type="password"
+                                value={form.webhookSecret}
+                                onChange={(e) => setForm({ webhookSecret: e.target.value })}
+                                placeholder="Enter webhook secret"
+                                className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                              />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                              <button
+                                onClick={async () => {
+                                  if (
+                                    activeGateway === 'monnify' &&
+                                    (!form.apiKey || !form.secretKey || !form.contractCode)
+                                  ) {
+                                    toast.error('Please fill in API Key, Secret Key, and Contract Code');
+                                    return;
+                                  }
+
+                                  setSavingPaymentSettings(true);
+                                  try {
+                                    const buildGatewayPayload = (
+                                      key: GatewayKey,
+                                      f: (typeof gatewayForms)[GatewayKey],
+                                    ): GatewayConfig => {
+                                      const cfg: GatewayConfig = {
+                                        enabled: f.enabled,
+                                      };
+                                      if (f.apiKey && !f.apiKey.includes('...')) cfg.apiKey = f.apiKey;
+                                      if (f.secretKey && !f.secretKey.includes('...')) cfg.secretKey = f.secretKey;
+                                      if (f.contractCode && !f.contractCode.includes('...'))
+                                        cfg.contractCode = f.contractCode;
+                                      if (f.merchantId && !f.merchantId.includes('...')) cfg.merchantId = f.merchantId;
+                                      if (f.terminalId && !f.terminalId.includes('...')) cfg.terminalId = f.terminalId;
+                                      if (f.webhookSecret && !f.webhookSecret.includes('...'))
+                                        cfg.webhookSecret = f.webhookSecret;
+                                      return cfg;
+                                    };
+
+                                    const gatewaysPayload: Record<string, GatewayConfig> = {};
+                                    gatewayKeys.forEach((key) => {
+                                      gatewaysPayload[key] = buildGatewayPayload(key, gatewayForms[key]);
+                                    });
+
+                                    const monnifyForm = gatewayForms.monnify;
+
+                                    const updateData: UpdatePaymentSettingsRequest = {
+                                      activeGateway,
+                                      monnifyEnabled: monnifyForm.enabled,
+                                      gateways: gatewaysPayload,
+                                    };
+
+                                    const updated = await PaymentSettingsService.updatePaymentSettings(updateData);
+                                    setPaymentSettings(updated);
+                                    toast.success('Payment settings saved successfully');
+                                  } catch (error: any) {
+                                    toast.error(error?.response?.data?.message || 'Failed to save payment settings');
+                                  } finally {
+                                    setSavingPaymentSettings(false);
+                                  }
+                                }}
+                                disabled={savingPaymentSettings}
+                                className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-2 font-semibold text-white shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {savingPaymentSettings ? 'Saving...' : 'Save Settings'}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </SectionContainer>
+          )}
+
+          {/* Users & Locations Tab */}
+          {activeTab === 'users' && isTenantAdmin && (
+            <>
+              <SectionContainer
+                title="Location Management"
+                description="Create and manage store locations. Users can be assigned to specific locations."
+              >
+                <div className="space-y-4 sm:space-y-6">
+                  {/* Create/Edit Location Form */}
+                  <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
+                    <h3 className="theme-text-primary mb-3 sm:mb-4 text-xs sm:text-sm font-semibold">
+                      {editingLocation ? 'Edit Location' : 'Create New Location'}
+                    </h3>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (editingLocation) {
+                          handleUpdateLocationDetails(editingLocation);
+                        } else {
+                          handleCreateLocation(e);
+                        }
+                      }}
+                      className="space-y-3 sm:space-y-4"
+                    >
+                      <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">
+                            Location Name <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={locationForm.name}
+                            onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
+                            placeholder="e.g., Main Store, Downtown Branch"
+                            className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">Timezone</label>
+                          <input
+                            type="text"
+                            value={locationForm.timezone}
+                            onChange={(e) => setLocationForm({ ...locationForm, timezone: e.target.value })}
+                            placeholder="UTC"
+                            className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                          />
                         </div>
                       </div>
-                    ))}
+                      <div>
+                        <label className="theme-text-secondary mb-1.5 sm:mb-2 block text-[10px] sm:text-xs font-medium">Address</label>
+                        <textarea
+                          value={locationForm.address}
+                          onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })}
+                          placeholder="Street address, city, state, zip code"
+                          rows={2}
+                          className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2 text-xs sm:text-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
+                        />
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                        <button
+                          type="submit"
+                          disabled={creatingLocation || !locationForm.name.trim()}
+                          className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-4 sm:px-6 py-2 text-xs sm:text-sm font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                        >
+                          {creatingLocation ? 'Saving...' : editingLocation ? 'Update Location' : 'Create Location'}
+                        </button>
+                        {editingLocation && (
+                          <button
+                            type="button"
+                            onClick={cancelEditingLocation}
+                            className="theme-chip rounded-full border px-4 sm:px-6 py-2 text-xs sm:text-sm font-semibold transition hover:border-sky-400 touch-manipulation"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </form>
                   </div>
-                )}
-              </div>
-            </div>
-          </SectionContainer>
-        )}
 
-        {!isTenantAdmin && (
-          <div className="rounded-3xl border border-amber-500/40 bg-amber-500/10 p-5 backdrop-blur-xl">
-            <h2 className="theme-text-primary text-lg font-semibold">Limited access</h2>
-            <p className="theme-text-secondary text-sm mt-1">
-              You're signed in as staff. Company-wide settings (locations, user management, payment gateway, and device controls) are only available to tenant administrators.
-              Please contact an admin if you need something changed.
-            </p>
-          </div>
-        )}
-
-        <SectionContainer
-          title="My Location"
-          description="Set your location for checkout. This is required to process orders."
-        >
-          <div className="space-y-4">
-            {loadingLocations ? (
-              <div className="text-center py-8">
-                <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-                <p className="theme-text-secondary mt-2 text-sm">Loading locations...</p>
-              </div>
-            ) : locations.length === 0 ? (
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                <p className="theme-text-primary text-sm font-semibold text-amber-400 mb-2">
-                  ⚠️ No Locations Available
-                </p>
-                <p className="theme-text-secondary text-xs">
-                  No locations have been created for your tenant. Please contact your administrator to create a location.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="theme-text-primary mb-2 block text-sm font-medium">
-                    Select Location
-                  </label>
-                  <select
-                    value={selectedLocationId}
-                    onChange={(e) => setSelectedLocationId(e.target.value)}
-                    className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                  >
-                    <option value="">-- No Location Selected --</option>
-                    {locations.map((location) => (
-                      <option key={location.id} value={location.id}>
-                        {location.name} {location.address ? `(${location.address})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {!user?.locationId && (
-                    <p className="theme-text-secondary mt-2 text-xs text-amber-400">
-                      ⚠️ Location is required to process orders. Please select a location.
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={handleUpdateLocation}
-                  disabled={updatingLocation || selectedLocationId === (user?.locationId || '')}
-                  className="w-full rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-2 font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {updatingLocation ? 'Updating...' : 'Save Location'}
-                </button>
-                {user?.locationId && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                    <p className="theme-text-primary text-sm font-semibold text-emerald-400">
-                      ✓ Current Location: {locations.find(l => l.id === user.locationId)?.name || user.locationId}
-                    </p>
+                  {/* Locations List */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <h3 className="theme-text-primary mb-4 text-sm font-semibold">All Locations</h3>
+                    {loadingLocations ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                        <p className="theme-text-secondary mt-2 text-sm">Loading locations...</p>
+                      </div>
+                    ) : locations.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="theme-text-secondary text-sm">No locations created yet. Create your first location above.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {locations.map((location) => (
+                          <div
+                            key={location.id}
+                            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3"
+                          >
+                            <div className="flex-1">
+                              <p className="theme-text-primary text-sm font-semibold">{location.name}</p>
+                              {location.address && (
+                                <p className="theme-text-secondary text-xs mt-1">{location.address}</p>
+                              )}
+                              <p className="theme-text-secondary text-xs mt-1">
+                                Timezone: {location.timezone || 'UTC'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => startEditingLocation(location)}
+                                disabled={editingLocation === location.id}
+                                className="theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400 disabled:opacity-50"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLocation(location.id)}
+                                className="theme-chip rounded-full border border-red-500/60 px-3 py-1 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </>
-            )}
-          </div>
-        </SectionContainer>
-
-        <SectionContainer
-          title="Security"
-          description="Keep your point-of-sale secure by rotating staff PINs regularly."
-        >
-          <form className="space-y-4" onSubmit={handleChangePin}>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="current-pin" className="theme-text-secondary text-sm font-medium">
-                  Current PIN
-                </label>
-                <input
-                  id="current-pin"
-                  type="password"
-                  value={currentPin}
-                  onChange={(e) => setCurrentPin(e.target.value)}
-                  className="theme-surface rounded-2xl border px-4 py-3 text-center text-lg outline-none focus:ring-2 focus:ring-sky-400"
-                  maxLength={64}
-                  autoComplete="current-password"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="new-pin" className="theme-text-secondary text-sm font-medium">
-                  New PIN
-                </label>
-                <input
-                  id="new-pin"
-                  type="password"
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  className="theme-surface rounded-2xl border px-4 py-3 text-center text-lg outline-none focus:ring-2 focus:ring-sky-400"
-                  maxLength={64}
-                  autoComplete="new-password"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="confirm-pin" className="theme-text-secondary text-sm font-medium">
-                  Confirm PIN
-                </label>
-                <input
-                  id="confirm-pin"
-                  type="password"
-                  value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value)}
-                  className="theme-surface rounded-2xl border px-4 py-3 text-center text-lg outline-none focus:ring-2 focus:ring-sky-400"
-                  maxLength={64}
-                  required
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={isUpdatingPin}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-emerald-950 shadow-[0_25px_45px_-30px_rgba(16,185,129,0.65)] transition hover:shadow-[0_30px_60px_-35px_rgba(16,185,129,0.8)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isUpdatingPin ? 'Updating...' : 'Update PIN'}
-            </button>
-          </form>
-        </SectionContainer>
-
-        <SectionContainer
-          title="Company profile"
-          description="Customize how your company appears across receipts, reports, and internal dashboards."
-        >
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="company-name" className="theme-text-secondary text-sm font-medium">
-                Company name
-              </label>
-              <input
-                id="company-name"
-                type="text"
-                value={tenant?.name ?? ''}
-                placeholder="Your company name"
-                className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
-                disabled
-              />
-              <p className="theme-text-secondary text-xs">
-                Slug: <span className="theme-text-primary font-medium lowercase">{tenant?.slug ?? 'n/a'}</span>
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="theme-text-secondary text-sm font-medium">Subscription plan</label>
-              <div className="theme-surface rounded-2xl border px-4 py-3">
-                <p className="theme-text-primary text-sm font-semibold capitalize">
-                  {tenant?.plan ?? 'unassigned'} plan
-                </p>
-                <div className="theme-text-secondary mt-1 text-xs space-y-1">
-                  <p>
-                    Status:{' '}
-                    <span className="theme-text-primary font-semibold capitalize">
-                      {tenant?.status ?? 'pending'}
-                    </span>
-                  </p>
-                  <p>
-                    Seats:{' '}
-                    <span className="theme-text-primary font-semibold">
-                      {tenant?.seatLimit !== undefined ? tenant.seatLimit : 'unlimited'}
-                    </span>
-                  </p>
-                  {tenant?.billingCycleStart && tenant?.billingCycleEnd && (
-                    <p>
-                      Cycle:{' '}
-                      <span className="theme-text-primary font-medium">
-                        {new Date(tenant.billingCycleStart).toLocaleDateString()} —{' '}
-                        {new Date(tenant.billingCycleEnd).toLocaleDateString()}
-                      </span>
-                    </p>
-                  )}
-                  <p>Licensing management will be enabled soon.</p>
                 </div>
-              </div>
-            </div>
-          </div>
-        </SectionContainer>
+              </SectionContainer>
 
-        {isTenantAdmin && (
-          <SectionContainer
-            title="User management"
+              <SectionContainer
+                title="User management"
             description="Invite new team members and maintain access across the company."
           >
             <div className="grid gap-6 xl:grid-cols-[2fr,3fr]">
@@ -1223,13 +1766,17 @@ export function SettingsPage() {
               </div>
             </div>
           </SectionContainer>
-        )}
+            </>
+          )}
 
-        {isTenantAdmin && (
-          <SectionContainer
-            title="Payment Gateway"
-            description="Configure your preferred payment provider (Monnify, Opay, Palmpay, FirstBank). Payments will use the active gateway when enabled."
-          >
+          {/* Devices Tab */}
+          {activeTab === 'devices' && (
+            <>
+              {isTenantAdmin && (
+                <SectionContainer
+                  title="Barcode/QR Scanners"
+                  description="Configure and manage barcode and QR code scanners for product lookup."
+                >
             {loadingPaymentSettings ? (
               <div className="py-8 text-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
@@ -2122,6 +2669,9 @@ export function SettingsPage() {
             </div>
           </div>
         </SectionContainer>
+            </>
+          )}
+        </div>
 
         <div className="theme-text-secondary text-xs">
           Logged in as <span className="theme-text-primary font-medium">{user?.name}</span> on tenant{' '}

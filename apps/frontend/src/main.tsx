@@ -51,6 +51,18 @@ const initializeAuth = () => {
   if (accessToken) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
   }
+  
+  // For Supabase requests, set apikey as default header
+  // This ensures the browser includes it in OPTIONS preflight requests
+  // IMPORTANT: Supabase infrastructure requires apikey header for ALL requests including OPTIONS
+  // NOTE: The browser will include this header in OPTIONS if it's set as a default header
+  // The authStore interceptor also ensures it's set on every request
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (supabaseAnonKey) {
+    // Set apikey as default header for all requests
+    // The browser should include this in OPTIONS preflight if it's a default header
+    axios.defaults.headers.common['apikey'] = supabaseAnonKey;
+  }
 };
 
 // Initialize auth before rendering

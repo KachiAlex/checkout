@@ -4,10 +4,14 @@ import { parseRequestBody } from '../_shared/request.ts';
 import { getFirestoreInstance } from '../_shared/firestore.ts';
 import { requireAuth } from '../_shared/jwt.ts';
 
-function formatReceipt(order: any, payment?: any, location?: any, user?: any): string {
+function formatReceipt(order: any, payment?: any, location?: any, user?: any, tenant?: any, customization?: any): string {
+  const companyName = customization?.companyName || tenant?.name || 'Company';
+  const branchName = location?.name || 'Store';
+  
   const receipt = [
     '╔═══════════════════════════════════╗',
-    `║    ${(location?.name || 'Store').padEnd(12).substring(0, 12)}    ║`,
+    `║    ${companyName.padEnd(12).substring(0, 12)}    ║`,
+    `║    ${branchName.padEnd(12).substring(0, 12)}    ║`,
     location?.address ? `║  ${location.address.padEnd(33).substring(0, 33)}  ║` : '',
     '╠═══════════════════════════════════╣',
     `Order: ${order.orderNumber}`,
@@ -45,14 +49,14 @@ function formatReceipt(order: any, payment?: any, location?: any, user?: any): s
     receipt.push(`Transaction ID:     ${payment.transactionId || 'N/A'}`);
   }
 
-  receipt.push('');
-  receipt.push('Thank you for your purchase!');
-  receipt.push('╚═══════════════════════════════════╝');
+    receipt.push('');
+    receipt.push(customization?.footerMessage || 'Thank you for your purchase!');
+    receipt.push('╚═══════════════════════════════════╝');
 
   return receipt.filter((line) => line !== '').join('\n');
 }
 
-function formatReceiptHTML(order: any, payment?: any, location?: any, user?: any): string {
+function formatReceiptHTML(order: any, payment?: any, location?: any, user?: any, tenant?: any, customization?: any): string {
   const itemsHTML = order.items
     .map((item: any) => {
       const subtotal = item.priceCents * item.quantity;
@@ -163,7 +167,9 @@ function formatReceiptHTML(order: any, payment?: any, location?: any, user?: any
       <body>
         <div class="receipt-container">
           <div class="header">
-            <h1>${location?.name || 'Store'}</h1>
+            ${customization?.logoUrl ? `<img src="${customization.logoUrl}" alt="Logo" style="max-width: 150px; max-height: 80px; margin-bottom: 10px;" />` : ''}
+            <h1>${customization?.companyName || tenant?.name || 'Company'}</h1>
+            <h2 style="margin: 5px 0; font-size: 18px; color: #666;">${location?.name || 'Store'}</h2>
             ${location?.address ? `<p>${location.address}</p>` : ''}
           </div>
 
@@ -214,7 +220,7 @@ function formatReceiptHTML(order: any, payment?: any, location?: any, user?: any
           ` : ''}
 
           <div class="footer">
-            <p>Thank you for your purchase!</p>
+            <p>${customization?.footerMessage || 'Thank you for your purchase!'}</p>
           </div>
         </div>
       </body>
@@ -280,6 +286,19 @@ export async function handleReceipts(req: Request, path: string, method: string)
 
       // Get location
       const location = locationDoc.exists ? locationDoc.data() : undefined;
+      const tenantId = location?.tenantId || user.tenantId;
+
+      // Get tenant
+      let tenant = undefined;
+      if (tenantId) {
+        const tenantDoc = await db.collection('tenants').doc(tenantId).get();
+        if (tenantDoc.exists) {
+          tenant = tenantDoc.data();
+        }
+      }
+
+      // Get customization settings
+      const customization = tenant?.metadata?.customization || {};
 
       // Get user
       let userData = undefined;
@@ -291,7 +310,7 @@ export async function handleReceipts(req: Request, path: string, method: string)
         }
       }
 
-      const receipt = formatReceipt(orderData, payment, location, userData);
+      const receipt = formatReceipt(orderData, payment, location, userData, tenant, customization);
 
       return new Response(
         JSON.stringify({ receipt, orderId }),
@@ -338,6 +357,19 @@ export async function handleReceipts(req: Request, path: string, method: string)
 
       // Get location
       const location = locationDoc.exists ? locationDoc.data() : undefined;
+      const tenantId = location?.tenantId || user.tenantId;
+
+      // Get tenant
+      let tenant = undefined;
+      if (tenantId) {
+        const tenantDoc = await db.collection('tenants').doc(tenantId).get();
+        if (tenantDoc.exists) {
+          tenant = tenantDoc.data();
+        }
+      }
+
+      // Get customization settings
+      const customization = tenant?.metadata?.customization || {};
 
       // Get user
       let userData = undefined;
@@ -349,7 +381,7 @@ export async function handleReceipts(req: Request, path: string, method: string)
         }
       }
 
-      const text = formatReceipt(orderData, payment, location, userData);
+      const text = formatReceipt(orderData, payment, location, userData, tenant, customization);
       const escpos = convertToESCPOS(text);
 
       return new Response(
@@ -405,6 +437,19 @@ export async function handleReceipts(req: Request, path: string, method: string)
 
       // Get location
       const location = locationDoc.exists ? locationDoc.data() : undefined;
+      const tenantId = location?.tenantId || user.tenantId;
+
+      // Get tenant
+      let tenant = undefined;
+      if (tenantId) {
+        const tenantDoc = await db.collection('tenants').doc(tenantId).get();
+        if (tenantDoc.exists) {
+          tenant = tenantDoc.data();
+        }
+      }
+
+      // Get customization settings
+      const customization = tenant?.metadata?.customization || {};
 
       // Get user
       let userData = undefined;
@@ -416,8 +461,8 @@ export async function handleReceipts(req: Request, path: string, method: string)
         }
       }
 
-      const receiptText = formatReceipt(orderData, payment, location, userData);
-      const receiptHTML = formatReceiptHTML(orderData, payment, location, userData);
+      const receiptText = formatReceipt(orderData, payment, location, userData, tenant, customization);
+      const receiptHTML = formatReceiptHTML(orderData, payment, location, userData, tenant, customization);
 
       // TODO: Integrate with email service (e.g., SendGrid, Resend, etc.)
       // For now, just return success
