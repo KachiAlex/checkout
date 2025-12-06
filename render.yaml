@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: pos-checkout-api
+    env: node
+    buildCommand: npm install && npm run build --workspace=apps/backend
+    startCommand: npm run start:prod --workspace=apps/backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: API_PREFIX
+        value: api/v1
+      - key: CORS_ORIGIN
+        value: https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174
+      # Firebase/Firestore configuration - set these in Render dashboard
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      # JWT Secret - set this in Render dashboard
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 7d
+
