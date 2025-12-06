@@ -216,7 +216,13 @@ axios.interceptors.request.use(
       const { accessToken } = useAuthStore.getState();
       const apiUrl = API_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const isSupabaseRequest = apiUrl.includes('supabase.co') || config.url?.includes('supabase.co');
+      
+      // Check if this is a Supabase request - check both base URL and request URL
+      const requestUrl = config.url || '';
+      const fullUrl = requestUrl.startsWith('http') ? requestUrl : `${apiUrl}${requestUrl}`;
+      const isSupabaseRequest = apiUrl.includes('supabase.co') || 
+                                config.url?.includes('supabase.co') ||
+                                fullUrl.includes('supabase.co');
       const isAuthEndpoint = config.url?.includes('/auth/login') || 
                             config.url?.includes('/auth/superadmin/login');
       const isOptionsRequest = config.method?.toUpperCase() === 'OPTIONS';
