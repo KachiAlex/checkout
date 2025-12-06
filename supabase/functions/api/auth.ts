@@ -182,10 +182,16 @@ async function handleTenantLogin(req: Request): Promise<Response> {
     }
 
     // Create JWT tokens using simple Web Crypto API
-    const jwtSecret = Deno.env.get('JWT_SECRET') || '';
+    const jwtSecret = Deno.env.get('JWT_SECRET');
     if (!jwtSecret) {
-      console.error('[Auth] JWT_SECRET not configured');
-      throw new Error('JWT_SECRET not configured');
+      console.error('[Auth] JWT_SECRET not configured in Supabase secrets');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Server configuration error', 
+          message: 'JWT_SECRET is not configured. Please contact support.',
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('[Auth] Creating access token...');
@@ -214,6 +220,16 @@ async function handleTenantLogin(req: Request): Promise<Response> {
     try {
       // Use JWT_REFRESH_SECRET if available, otherwise fall back to JWT_SECRET
       const refreshSecret = Deno.env.get('JWT_REFRESH_SECRET') || jwtSecret;
+      if (!refreshSecret) {
+        console.error('[Auth] JWT_REFRESH_SECRET and JWT_SECRET not configured');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Server configuration error', 
+            message: 'JWT secrets are not configured. Please contact support.',
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       refreshToken = await createJWT(
         {
           sub: userDoc.id,

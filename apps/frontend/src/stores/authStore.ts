@@ -214,10 +214,15 @@ axios.interceptors.request.use(
           delete (config.headers as any).Authorization;
         }
       } else {
-        // For login endpoints, don't send Authorization header - only apikey
-        // Supabase will validate the apikey header, not Authorization
+        // For login endpoints, don't send app JWT token
+        // But we still need apikey header for Supabase infrastructure
+        // Clear any stale Authorization header that might be an app token
         if (config.headers && (config.headers as any).Authorization) {
-          delete (config.headers as any).Authorization;
+          const authHeader = (config.headers as any).Authorization;
+          // Only clear if it's not the anon key (which we might have set above)
+          if (!authHeader.includes(supabaseAnonKey || '')) {
+            delete (config.headers as any).Authorization;
+          }
         }
       }
     } catch (error) {
