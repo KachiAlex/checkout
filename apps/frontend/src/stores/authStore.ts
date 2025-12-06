@@ -341,6 +341,10 @@ axios.interceptors.request.use(
 );
 
 // Set up axios interceptor to handle 401 errors
+// Retry logic for CORS/401 errors
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 100; // 100ms delay between retries
+
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -350,6 +354,36 @@ axios.interceptors.response.use(
     const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
                           originalRequest?.url?.includes('/auth/superadmin/login') ||
                           originalRequest?.url?.includes('/auth/refresh');
+
+    // Handle CORS/401 errors with retry logic
+    const isCorsError = error.code === 'ERR_NETWORK' || 
+                       error.message?.includes('CORS') ||
+                       error.message?.includes('blocked by CORS');
+    const is401Error = error.response?.status === 401;
+    const isSupabaseRequest = API_URL.includes('supabase.co') || originalRequest?.url?.includes('supabase.co');
+    
+    // Retry logic for Supabase CORS/401 errors
+    if ((isCorsError || is401Error) && isSupabaseRequest && !isAuthEndpoint) {
+      const retryCount = originalRequest._retryCount || 0;
+      
+      if (retryCount < MAX_RETRIES) {
+        originalRequest._retryCount = retryCount + 1;
+        
+        // Ensure apikey is set before retry
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (supabaseAnonKey && originalRequest.headers) {
+          originalRequest.headers['apikey'] = supabaseAnonKey;
+          originalRequest.headers['Apikey'] = supabaseAnonKey;
+          originalRequest.headers['APIKEY'] = supabaseAnonKey;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
+        
+        console.log(`[Auth] Retrying request (attempt ${retryCount + 1}/${MAX_RETRIES}):`, originalRequest.url);
+        return axios(originalRequest);
+      }
+    }
 
     // If we get a 401 on login endpoint, clear any invalid tokens
     if (error.response?.status === 401 && isAuthEndpoint) {

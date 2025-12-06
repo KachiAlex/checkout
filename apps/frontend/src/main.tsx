@@ -66,10 +66,25 @@ const initializeAuth = () => {
     axios.defaults.headers.common['Apikey'] = supabaseAnonKey;
     axios.defaults.headers.common['APIKEY'] = supabaseAnonKey;
     
+    // Also set it on the defaults object directly
+    if (!axios.defaults.headers) {
+      axios.defaults.headers = {} as any;
+    }
+    if (!axios.defaults.headers.common) {
+      axios.defaults.headers.common = {} as any;
+    }
+    (axios.defaults.headers.common as any).apikey = supabaseAnonKey;
+    
     // Also set Authorization with anon key as fallback for OPTIONS
     // This ensures OPTIONS requests have a valid Authorization header
     if (!useAuthStore.getState().accessToken) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${supabaseAnonKey}`;
+    }
+    
+    // CRITICAL: Also set it on the request defaults to catch any edge cases
+    if (!axios.defaults.headers.get) {
+      // Ensure it's available for all request types
+      (axios.defaults as any).apikey = supabaseAnonKey;
     }
   } else {
     console.error('[Main] CRITICAL: VITE_SUPABASE_ANON_KEY is not set!');
