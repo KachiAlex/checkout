@@ -51,7 +51,7 @@
       }
     ],
     "predeploy": [
-      "npm run build --workspace=apps/frontend"
+      "powershell -ExecutionPolicy Bypass -File scripts/build-frontend-with-env.ps1"
     ]
   },
   "firestore": {
