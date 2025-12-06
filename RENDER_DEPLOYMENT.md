@@ -1,5 +1,9 @@
 # Render Deployment Guide
 
+## ⚠️ IMPORTANT: Manual Configuration Required
+
+Render may not automatically use `render.yaml`. You **MUST** manually set the build command in the Render dashboard.
+
 ## Quick Start
 
 1. **Sign up at [render.com](https://render.com)** (or log in)
@@ -9,13 +13,13 @@
    - Connect your GitHub repository
    - Select the `checkout` repository
 
-3. **Configure the Service**
+3. **Configure the Service** (CRITICAL - Set these manually!)
    - **Name:** `pos-checkout-api`
    - **Environment:** `Node`
    - **Root Directory:** Leave empty (root of repo)
    - **Build Command:** `npm ci --omit=optional && npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend`
    - **Start Command:** `npm run start:prod --workspace=apps/backend`
-   - **Important:** Make sure to set these in the Render dashboard, NOT just in render.yaml (Render may not use render.yaml automatically)
+   - **⚠️ CRITICAL:** Copy the build command exactly as shown above and paste it into the Render dashboard. Do NOT use the default `npm install; npm run build` command!
 
 4. **Set Environment Variables**
    Go to the "Environment" tab and add:
