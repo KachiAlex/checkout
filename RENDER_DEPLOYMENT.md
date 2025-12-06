@@ -13,8 +13,9 @@
    - **Name:** `pos-checkout-api`
    - **Environment:** `Node`
    - **Root Directory:** Leave empty (root of repo)
-   - **Build Command:** `npm install && npm run build --workspace=apps/backend`
+   - **Build Command:** `npm ci --omit=optional && npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend`
    - **Start Command:** `npm run start:prod --workspace=apps/backend`
+   - **Important:** Make sure to set these in the Render dashboard, NOT just in render.yaml (Render may not use render.yaml automatically)
 
 4. **Set Environment Variables**
    Go to the "Environment" tab and add:
