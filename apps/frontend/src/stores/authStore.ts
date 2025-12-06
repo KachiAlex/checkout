@@ -216,7 +216,7 @@ axios.interceptors.request.use(
       const { accessToken } = useAuthStore.getState();
       const apiUrl = API_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const isSupabaseRequest = apiUrl.includes('supabase.co');
+      const isSupabaseRequest = apiUrl.includes('supabase.co') || config.url?.includes('supabase.co');
       const isAuthEndpoint = config.url?.includes('/auth/login') || 
                             config.url?.includes('/auth/superadmin/login');
       const isOptionsRequest = config.method?.toUpperCase() === 'OPTIONS';
@@ -234,8 +234,16 @@ axios.interceptors.request.use(
           // Set apikey header (required by Supabase infrastructure for ALL requests including OPTIONS)
           // This must be set so the browser includes it in the OPTIONS preflight request
           // Use lowercase 'apikey' as Supabase expects it
+          // CRITICAL: Set it multiple ways to ensure it's always present
           (config.headers as any).apikey = supabaseAnonKey;
           (config.headers as any)['apikey'] = supabaseAnonKey;
+          (config.headers as any)['Apikey'] = supabaseAnonKey; // Case variations
+          (config.headers as any)['APIKEY'] = supabaseAnonKey;
+          
+          // Force set on the raw headers object if it exists
+          if ((config as any).headers && typeof (config as any).headers.set === 'function') {
+            (config as any).headers.set('apikey', supabaseAnonKey);
+          }
           
           // Also ensure it's in the headers that will trigger OPTIONS to include it
           // The browser automatically includes custom headers in OPTIONS if the actual request has them

@@ -61,7 +61,19 @@ const initializeAuth = () => {
   if (supabaseAnonKey) {
     // Set apikey as default header for all requests
     // The browser should include this in OPTIONS preflight if it's a default header
+    // CRITICAL: Set it multiple ways to ensure it's always present
     axios.defaults.headers.common['apikey'] = supabaseAnonKey;
+    axios.defaults.headers.common['Apikey'] = supabaseAnonKey;
+    axios.defaults.headers.common['APIKEY'] = supabaseAnonKey;
+    
+    // Also set Authorization with anon key as fallback for OPTIONS
+    // This ensures OPTIONS requests have a valid Authorization header
+    if (!useAuthStore.getState().accessToken) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${supabaseAnonKey}`;
+    }
+  } else {
+    console.error('[Main] CRITICAL: VITE_SUPABASE_ANON_KEY is not set!');
+    console.error('[Main] This will cause CORS and 401 errors with Supabase Edge Functions.');
   }
 };
 
