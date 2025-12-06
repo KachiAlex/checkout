@@ -69,9 +69,8 @@ export function ReportsPage() {
   const loadLocations = useCallback(async () => {
     if (!accessToken) return;
     try {
-      const response = await axios.get(`${API_URL}/api/v1/locations`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+      const response = await axios.get(`${API_URL}/api/v1/locations`);
       setLocations(response.data || []);
       if (!locationId && response.data?.length > 0) {
         setLocationId(response.data[0].id);
@@ -92,82 +91,70 @@ export function ReportsPage() {
 
       switch (activeTab) {
         case 'sales':
-          const salesRes = await axios.get(`${API_URL}/api/v1/reports/sales?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const salesRes = await axios.get(`${API_URL}/api/v1/reports/sales?${params}`);
           setSalesReport(salesRes.data);
           break;
 
         case 'top-sellers':
           params.append('limit', '20');
-          const topRes = await axios.get(`${API_URL}/api/v1/reports/top-sellers?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const topRes = await axios.get(`${API_URL}/api/v1/reports/top-sellers?${params}`);
           setTopSellers(topRes.data);
           // Also load staff performance for staff top sellers view
           if (!staffPerformance) {
-            const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`, {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
+            const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
             setStaffPerformance(staffRes.data);
           }
           break;
 
         case 'analytics':
           params.append('period', 'daily');
-          const analyticsRes = await axios.get(`${API_URL}/api/v1/reports/sales-analytics?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const analyticsRes = await axios.get(`${API_URL}/api/v1/reports/sales-analytics?${params}`);
           setSalesAnalytics(analyticsRes.data);
           break;
 
         case 'alerts':
-          const alertsRes = await axios.get(`${API_URL}/api/v1/reports/alerts?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const alertsRes = await axios.get(`${API_URL}/api/v1/reports/alerts?${params}`);
           setAlerts(alertsRes.data);
           break;
 
         case 'fraud':
-          const fraudRes = await axios.get(`${API_URL}/api/v1/reports/fraud-detection?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const fraudRes = await axios.get(`${API_URL}/api/v1/reports/fraud-detection?${params}`);
           setFraudAlerts(fraudRes.data);
           break;
 
         case 'expiry':
-          const expiryRes = await axios.get(`${API_URL}/api/v1/reports/expiry-analytics?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const expiryRes = await axios.get(`${API_URL}/api/v1/reports/expiry-analytics?${params}`);
           setExpiryAnalytics(expiryRes.data);
           break;
 
         case 'shrinkage':
-          const shrinkageRes = await axios.get(`${API_URL}/api/v1/reports/shrinkage-detection?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const shrinkageRes = await axios.get(`${API_URL}/api/v1/reports/shrinkage-detection?${params}`);
           setShrinkageAlerts(shrinkageRes.data);
           break;
 
         case 'staff':
-          const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
           setStaffPerformance(staffRes.data);
           break;
 
         case 'inventory':
           params.append('period', 'daily');
-          const invRes = await axios.get(`${API_URL}/api/v1/reports/inventory-analytics?${params}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const invRes = await axios.get(`${API_URL}/api/v1/reports/inventory-analytics?${params}`);
           setInventoryAnalytics(invRes.data);
           break;
 
         case 'purchase-orders':
-          const poRes = await axios.get(`${API_URL}/api/v1/purchase-orders`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+          const poRes = await axios.get(`${API_URL}/api/v1/purchase-orders`);
           setPurchaseOrders(poRes.data || []);
           break;
       }

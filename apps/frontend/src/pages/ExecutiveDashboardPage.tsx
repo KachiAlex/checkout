@@ -52,7 +52,8 @@ export function ExecutiveDashboardPage() {
       setError(null);
 
       try {
-        const headers = { Authorization: `Bearer ${accessToken}` };
+        // Don't explicitly set headers - let the interceptor handle apikey and Authorization
+        // This ensures apikey is included in OPTIONS preflight requests
         const location_id = user.locationId;
 
         const today = new Date();
@@ -68,23 +69,18 @@ export function ExecutiveDashboardPage() {
           salesAnalyticsRes,
         ] = await Promise.all([
           axios.get(`${API_URL}/api/v1/reports/sales`, {
-            headers,
             params: { from: todayStr, to: todayStr, location_id },
           }),
           axios.get(`${API_URL}/api/v1/reports/sales`, {
-            headers,
             params: { from: weekAgoStr, to: todayStr, location_id },
           }),
           axios.get(`${API_URL}/api/v1/reports/top-sellers`, {
-            headers,
             params: { from: weekAgoStr, to: todayStr, location_id, limit: 5 },
           }),
           axios.get(`${API_URL}/api/v1/reports/alerts`, {
-            headers,
             params: { location_id },
           }),
           axios.get(`${API_URL}/api/v1/reports/sales-analytics`, {
-            headers,
             params: { period: 'daily', location_id },
           }),
         ]);
