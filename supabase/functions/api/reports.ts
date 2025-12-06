@@ -1,11 +1,18 @@
 // Reports Handler for Supabase Edge Functions
-import { corsHeaders } from '../_shared/cors.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
 import { getQueryParams } from '../_shared/request.ts';
 import { getFirestoreInstance } from '../_shared/firestore.ts';
 import { requireAuth } from '../_shared/jwt.ts';
 import { Timestamp } from 'npm:firebase-admin@11.11.0/firestore';
 
 export async function handleReports(req: Request, path: string, method: string): Promise<Response> {
+  const corsHeaders = getCorsHeaders(req);
+
+  // Handle CORS preflight
+  if (method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   try {
     const user = await requireAuth(req);
     const db = getFirestoreInstance();
