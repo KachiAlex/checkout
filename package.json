@@ -15,6 +15,7 @@
     "dev:desktop": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev --workspace=apps/desktop\"",
     "desktop": "npm run dev:desktop",
     "build": "npm run build --workspaces",
+    "build:backend": "npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend",
     "build:desktop": "npm run build --workspace=apps/frontend && npm run build --workspace=apps/desktop && npm run package --workspace=apps/desktop",
     "test": "npm run test --workspaces",
     "test:e2e": "npm run test:e2e --workspace=apps/backend",

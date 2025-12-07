@@ -110,7 +110,10 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
       corsOrigins === true ? 'ALL' : corsOrigins.join(',')
     }`,
   );
+  console.log(`🔧 CORS Configuration - Allowed Origins:`, corsOrigins === true ? 'ALL (*)' : corsOrigins);
+  console.log(`🔧 CORS Configuration - CORS_ORIGIN env var:`, corsOriginConfig);
 
+  // Enable CORS BEFORE other middleware
   app.enableCors(corsConfig);
 
   // Configure Content Security Policy

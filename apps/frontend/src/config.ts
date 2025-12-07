@@ -1,6 +1,7 @@
-// Default to Render backend (update this after deploying to Render)
+// Render backend is live and configured
 // Format: https://your-service-name.onrender.com
 // You can override this by setting VITE_API_URL in your .env file
+// Default URL: https://pos-checkout-api.onrender.com
 const DEFAULT_API_BASE = import.meta.env.VITE_API_URL || 'https://pos-checkout-api.onrender.com';
 const FIREBASE_STORAGE_BUCKET = 'checkout-77d99.firebasestorage.app';
 
@@ -23,7 +24,7 @@ const getApiUrl = () => {
     return '';
   }
   
-  // In production, use Firebase
+  // In production, use Render backend
   return DEFAULT_API_BASE;
 };
 

@@ -17,7 +17,7 @@ Render may not automatically use `render.yaml`. You **MUST** manually set the bu
    - **Name:** `pos-checkout-api`
    - **Environment:** `Node`
    - **Root Directory:** Leave empty (root of repo)
-   - **Build Command:** `npm install --no-optional --include=dev && npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend`
+   - **Build Command:** `npm install --no-optional --include=dev && npm run build:backend`
    - **Start Command:** `cd apps/backend && node dist/src/main.js`
    - **⚠️ CRITICAL:** Copy the build command exactly as shown above and paste it into the Render dashboard. Do NOT use the default `npm install; npm run build` command!
 
@@ -99,8 +99,22 @@ After deployment, update your frontend to use the Render backend:
 ## Troubleshooting
 
 ### Build Fails
+
+#### Missing Rollup Module Error
+If you see `Cannot find module '@rollup/rollup-linux-x64-gnu'`:
+- **Solution:** This has been fixed by adding the Linux rollup dependency to the frontend package
+- Ensure you're using the correct build command: `npm install --no-optional --include=dev && npm run build:backend`
+- Do NOT use `npm run build` (which builds all workspaces including frontend)
+
+#### Missing Build Script Error
+If you see `Missing script: "build"` for print-proxy:
+- **Solution:** This has been fixed by adding a build script to print-proxy
+- Ensure you're using `npm run build:backend` instead of building all workspaces
+
+#### General Build Issues
 - Check that all dependencies are in `package.json`
 - Ensure Node.js version is compatible (Render uses Node 20 by default)
+- Verify the build command is set correctly in Render dashboard (not using default)
 
 ### Service Won't Start
 - Check logs in Render dashboard
@@ -120,5 +134,4 @@ After deployment, update your frontend to use the Render backend:
 1. Deploy backend to Render
 2. Update frontend config to point to Render
 3. Test the application
-4. Remove Supabase dependencies (optional)
 
