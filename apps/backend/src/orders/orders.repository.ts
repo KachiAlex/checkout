@@ -1,5 +1,5 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, Query, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { v4 as uuid } from 'uuid';
 import { OrderStatus } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
@@ -100,8 +100,36 @@ export class OrdersRepository {
       query = query.where('customerId', '==', params.customerId);
     }
 
-    const snapshot = await query.get();
-    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    // Firestore limits queries to 1000 documents, so we need to paginate to get all results
+    const allOrders: OrderRecord[] = [];
+    let lastDoc: QueryDocumentSnapshot<OrderDocument> | null = null;
+    const batchSize = 1000; // Firestore's maximum limit per query
+
+    while (true) {
+      let batchQuery: Query<OrderDocument> = query;
+      if (lastDoc) {
+        batchQuery = query.startAfter(lastDoc);
+      }
+      
+      const snapshot = await batchQuery.limit(batchSize).get();
+      
+      if (snapshot.empty) {
+        break;
+      }
+
+      const batchOrders = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+      allOrders.push(...batchOrders);
+
+      // If we got fewer than batchSize, we've reached the end
+      if (snapshot.docs.length < batchSize) {
+        break;
+      }
+
+      // Set the last document for the next iteration
+      lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    }
+
+    return allOrders;
   }
 
   async findHeldOrders(locationId?: string): Promise<OrderRecord[]> {
