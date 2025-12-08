@@ -56,8 +56,9 @@ export class ReportsController {
   async getInventoryAnalytics(
     @Query('period') period: 'daily' | 'weekly' | 'monthly' = 'daily',
     @Query('location_id') locationId?: string,
+    @Request() req?: any,
   ) {
-    return this.reportsService.getInventoryAnalytics(period, locationId);
+    return this.reportsService.getInventoryAnalytics(period, locationId, req?.user?.tenantId);
   }
 
   @Get('staff-performance')

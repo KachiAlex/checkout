@@ -10,6 +10,12 @@ import toast from 'react-hot-toast';
 import { receiptService } from '../services/receiptService';
 import { ReceiptOptionsModal } from '../components/ReceiptOptionsModal';
 
+// Helper to get today's date in YYYY-MM-DD format
+const getTodayDate = () => {
+  const today = new Date();
+  return format(today, 'yyyy-MM-dd');
+};
+
 interface PurchaseOrder {
   id: string;
   orderNumber: string;
@@ -36,7 +42,7 @@ export function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [locationId, setLocationId] = useState<string | null>(user?.locationId || null);
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
-  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [dateRange, setDateRange] = useState({ from: getTodayDate(), to: getTodayDate() });
 
   // Report data states
   const [salesReport, setSalesReport] = useState<any>(null);
@@ -57,11 +63,20 @@ export function ReportsPage() {
   const [analyticsPage, setAnalyticsPage] = useState(1);
   const [staffPage, setStaffPage] = useState(1);
   const [purchaseOrdersPage, setPurchaseOrdersPage] = useState(1);
+  const [alertsPage, setAlertsPage] = useState(1);
+  const [fraudPage, setFraudPage] = useState(1);
+  const [expiryPage, setExpiryPage] = useState(1);
+  const [shrinkagePage, setShrinkagePage] = useState(1);
+  const [inventoryPage, setInventoryPage] = useState(1);
   const itemsPerPage = 10;
   
   // Receipt modal state
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  
+  // Detail modal state
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<any>(null);
 
   // Memoize date range string to avoid unnecessary re-renders
   const dateRangeKey = useMemo(() => `${dateRange.from}-${dateRange.to}`, [dateRange.from, dateRange.to]);
@@ -193,6 +208,16 @@ export function ReportsPage() {
     } catch (error) {
       toast.error('Failed to print receipt');
     }
+  }, []);
+
+  const handleViewDetails = useCallback((detail: any) => {
+    setSelectedDetail(detail);
+    setDetailModalOpen(true);
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setDetailModalOpen(false);
+    setSelectedDetail(null);
   }, []);
 
   // Memoize pagination helper
@@ -451,46 +476,55 @@ export function ReportsPage() {
                     
                     {salesRows.length > 0 ? (
                     <div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b theme-border">
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Product</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Price</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Total Order</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Avg Order Value</th>
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Order Number</th>
-                                <th className="text-center p-3 theme-text-secondary font-medium text-sm">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {paginated.items.map((row, idx) => (
-                                <tr key={`${row.orderId}-${row.productId}-${idx}`} className="border-b theme-border hover:bg-white/5">
-                                  <td className="p-3 theme-text-primary">{row.productName}</td>
-                                  <td className="p-3 theme-text-primary text-right">{formatCurrency(row.price)}</td>
-                                  <td className="p-3 theme-text-primary text-right">{row.totalOrder}</td>
-                                  <td className="p-3 theme-text-primary text-right">{formatCurrency(row.avgOrderValue)}</td>
-                                  <td className="p-3 theme-text-primary">{row.orderNumber}</td>
-                                  <td className="p-3">
-                                    <div className="flex gap-2 justify-center">
-                                      <button
-                                        onClick={() => handleViewReceipt(row.orderId)}
-                                        className="px-3 py-1 text-xs rounded-lg border theme-border hover:bg-white/10 theme-text-primary"
-                                      >
-                                        View
-                                      </button>
-                                      <button
-                                        onClick={() => handlePrintReceipt(row.orderId)}
-                                        className="px-3 py-1 text-xs rounded-lg border theme-border hover:bg-white/10 theme-text-primary"
-                                      >
-                                        Print
-                                      </button>
+                        <div className="space-y-2">
+                          {paginated.items.map((row, idx) => (
+                            <div
+                              key={`${row.orderId}-${row.productId}-${idx}`}
+                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">📦</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium theme-text-primary truncate">{row.productName}</p>
+                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                    <span>Order: {row.orderNumber}</span>
+                                    <span>Qty: {row.totalOrder}</span>
+                                    <span>Price: {formatCurrency(row.price)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  onClick={() => handleViewDetails({ ...row, type: 'sales' })}
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
+                                  title="View Details"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleViewReceipt(row.orderId)}
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
+                                  title="View Receipt"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handlePrintReceipt(row.orderId)}
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
+                                  title="Print Receipt"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          ))}
                         </div>
                         
                         {/* Pagination */}
@@ -559,28 +593,38 @@ export function ReportsPage() {
                       const paginated = paginate(topSellers.topSellers, topSellersPage, itemsPerPage);
                       return (
                         <>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b theme-border">
-                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">Rank</th>
-                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">Product</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Quantity Sold</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Revenue</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {paginated.items.map((item: any, idx: number) => (
-                                  <tr key={item.productId} className="border-b theme-border hover:bg-white/5">
-                                    <td className="p-3 theme-text-primary font-bold">#{(topSellersPage - 1) * itemsPerPage + idx + 1}</td>
-                                    <td className="p-3 theme-text-primary">{item.productId}</td>
-                                    <td className="p-3 theme-text-primary text-right">{item.quantitySold}</td>
-                                    <td className="p-3 theme-text-primary text-right">{formatCurrency(item.revenue)}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                    </div>
+                          <div className="space-y-2">
+                            {paginated.items.map((item: any, idx: number) => (
+                              <div
+                                key={item.productId}
+                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl font-bold theme-text-primary">
+                                    #{(topSellersPage - 1) * itemsPerPage + idx + 1}
+                                  </div>
+                                  <div className="flex-shrink-0 text-2xl">🏆</div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium theme-text-primary truncate">{item.productId}</p>
+                                    <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                      <span>Qty: {item.quantitySold}</span>
+                                      <span>Revenue: {formatCurrency(item.revenue)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleViewDetails({ ...item, type: 'top-seller-product' })}
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                  title="View Details"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                           
                           {paginated.totalPages > 1 && (
                             <div className="flex items-center justify-between mt-4">
@@ -623,27 +667,37 @@ export function ReportsPage() {
                       
                       return (
                         <>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b theme-border">
-                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">Rank</th>
-                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">Staff Name</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Total Sales</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Orders</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {paginated.items.map((staff: any, idx: number) => (
-                                  <tr key={staff.userId} className="border-b theme-border hover:bg-white/5">
-                                    <td className="p-3 theme-text-primary font-bold">#{(topSellersPage - 1) * itemsPerPage + idx + 1}</td>
-                                    <td className="p-3 theme-text-primary">{staff.userName}</td>
-                                    <td className="p-3 theme-text-primary text-right">{formatCurrency(staff.totalSales)}</td>
-                                    <td className="p-3 theme-text-primary text-right">{staff.orderCount}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                          <div className="space-y-2">
+                            {paginated.items.map((staff: any, idx: number) => (
+                              <div
+                                key={staff.userId}
+                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl font-bold theme-text-primary">
+                                    #{(topSellersPage - 1) * itemsPerPage + idx + 1}
+                                  </div>
+                                  <div className="flex-shrink-0 text-2xl">👤</div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium theme-text-primary truncate">{staff.userName}</p>
+                                    <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                      <span>Sales: {formatCurrency(staff.totalSales)}</span>
+                                      <span>Orders: {staff.orderCount}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleViewDetails({ ...staff, type: 'top-seller-staff' })}
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                  title="View Details"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
                           </div>
                           
                           {paginated.totalPages > 1 && (
@@ -700,30 +754,37 @@ export function ReportsPage() {
                     
                     {paginated.items.length > 0 ? (
                       <>
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b theme-border">
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Period</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Sales</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Orders</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Items</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Avg Order Value</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {paginated.items.map((period: any) => (
-                                <tr key={period.period} className="border-b theme-border hover:bg-white/5">
-                                  <td className="p-3 theme-text-primary">{period.period}</td>
-                                  <td className="p-3 theme-text-primary text-right">{formatCurrency(period.sales)}</td>
-                                  <td className="p-3 theme-text-primary text-right">{period.orders}</td>
-                                  <td className="p-3 theme-text-primary text-right">{period.items}</td>
-                                  <td className="p-3 theme-text-primary text-right">{formatCurrency(period.averageOrderValue)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                      </div>
+                        <div className="space-y-2">
+                          {paginated.items.map((period: any) => (
+                            <div
+                              key={period.period}
+                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">📊</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium theme-text-primary">{period.period}</p>
+                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                    <span>Sales: {formatCurrency(period.sales)}</span>
+                                    <span>Orders: {period.orders}</span>
+                                    <span>Items: {period.items}</span>
+                                    <span>Avg: {formatCurrency(period.averageOrderValue)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...period, type: 'analytics' })}
+                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                         
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
@@ -773,16 +834,62 @@ export function ReportsPage() {
                       <p className="text-2xl font-bold text-yellow-400">{alerts.warningCount || 0}</p>
                     </div>
                   </div>
-                  {alerts.alerts && alerts.alerts.length > 0 ? (
-                    <div className="space-y-2">
-                      {alerts.alerts.map((alert: any, idx: number) => (
-                        <div key={idx} className={`p-4 rounded-lg border ${getSeverityColor(alert.severity)}`}>
-                          <p className="font-semibold mb-1">{alert.title}</p>
-                          <p className="text-sm opacity-90">{alert.message}</p>
+                  {alerts.alerts && alerts.alerts.length > 0 ? (() => {
+                    const paginated = paginate(alerts.alerts, alertsPage, itemsPerPage);
+                    return (
+                      <>
+                        <div className="space-y-2">
+                          {paginated.items.map((alert: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">🔔</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold mb-1">{alert.title}</p>
+                                  <p className="text-sm opacity-90 truncate">{alert.message}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...alert, type: 'alert' })}
+                                className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
+                        {paginated.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-sm theme-text-secondary">
+                              Showing {((alertsPage - 1) * itemsPerPage) + 1} to {Math.min(alertsPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setAlertsPage(p => Math.max(1, p - 1))}
+                                disabled={alertsPage === 1}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => setAlertsPage(p => Math.min(paginated.totalPages, p + 1))}
+                                disabled={alertsPage === paginated.totalPages}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
                     <p className="theme-text-secondary text-center py-8">No alerts at this time</p>
                   )}
                 </div>
@@ -805,20 +912,65 @@ export function ReportsPage() {
                       <p className="text-2xl font-bold text-yellow-400">{fraudAlerts.warningCount || 0}</p>
                     </div>
                   </div>
-                  {fraudAlerts.fraudAlerts && fraudAlerts.fraudAlerts.length > 0 ? (
-                    <div className="space-y-2">
-                      {fraudAlerts.fraudAlerts.map((alert: any, idx: number) => (
-                        <div key={idx} className={`p-4 rounded-lg border ${getSeverityColor(alert.severity)}`}>
-                          <p className="font-semibold mb-1">{alert.title}</p>
-                          <p className="text-sm opacity-90 mb-2">{alert.message}</p>
-                          <div className="text-xs opacity-75">
-                            <p>Order: {alert.orderNumber}</p>
-                            <p>Date: {format(new Date(alert.createdAt), 'MMM d, yyyy HH:mm')}</p>
-                          </div>
+                  {fraudAlerts.fraudAlerts && fraudAlerts.fraudAlerts.length > 0 ? (() => {
+                    const paginated = paginate(fraudAlerts.fraudAlerts, fraudPage, itemsPerPage);
+                    return (
+                      <>
+                        <div className="space-y-2">
+                          {paginated.items.map((alert: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">🛡️</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold mb-1">{alert.title}</p>
+                                  <p className="text-sm opacity-90 truncate mb-2">{alert.message}</p>
+                                  <div className="text-xs opacity-75">
+                                    <p>Order: {alert.orderNumber} • {format(new Date(alert.createdAt), 'MMM d, yyyy HH:mm')}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...alert, type: 'fraud' })}
+                                className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
+                        {paginated.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-sm theme-text-secondary">
+                              Showing {((fraudPage - 1) * itemsPerPage) + 1} to {Math.min(fraudPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setFraudPage(p => Math.max(1, p - 1))}
+                                disabled={fraudPage === 1}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => setFraudPage(p => Math.min(paginated.totalPages, p + 1))}
+                                disabled={fraudPage === paginated.totalPages}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
                     <p className="theme-text-secondary text-center py-8">No fraud alerts detected</p>
                   )}
                 </div>
@@ -841,34 +993,80 @@ export function ReportsPage() {
                       <p className="text-2xl font-bold theme-text-primary">{formatCurrency(expiryAnalytics.lossForecast || 0)}</p>
                     </div>
                   </div>
-                  {expiryAnalytics.expiringSoon && expiryAnalytics.expiringSoon.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold theme-text-primary mb-4">Expiring Soon</h3>
-                      <div className="space-y-2">
-                        {expiryAnalytics.expiringSoon.map((item: any, idx: number) => (
-                          <div key={idx} className="p-4 rounded-lg border border-yellow-500/50">
-                            <p className="font-medium theme-text-primary">{item.productName}</p>
-                            <p className="text-sm theme-text-secondary">Expires in {item.daysUntilExpiry} days</p>
-                            <p className="text-sm theme-text-secondary">Potential Loss: {formatCurrency(item.potentialLoss)}</p>
+                  {(() => {
+                    const allExpiryItems = [
+                      ...(expiryAnalytics.expiringSoon || []).map((item: any) => ({ ...item, status: 'expiring' })),
+                      ...(expiryAnalytics.expiredItems || []).map((item: any) => ({ ...item, status: 'expired' })),
+                    ];
+                    const paginated = paginate(allExpiryItems, expiryPage, itemsPerPage);
+                    
+                    if (allExpiryItems.length === 0) {
+                      return <p className="theme-text-secondary text-center py-8">No expiry data available</p>;
+                    }
+                    
+                    return (
+                      <>
+                        <div className="space-y-2">
+                          {paginated.items.map((item: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between p-4 rounded-lg border ${
+                                item.status === 'expired' ? 'border-red-500/50 bg-red-500/10' : 'border-yellow-500/50 bg-yellow-500/10'
+                              } hover:opacity-80 transition`}
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">⏰</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium theme-text-primary">{item.productName}</p>
+                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                    <span>
+                                      {item.status === 'expired' 
+                                        ? `Expired ${item.daysExpired} days ago`
+                                        : `Expires in ${item.daysUntilExpiry} days`}
+                                    </span>
+                                    <span>Loss: {formatCurrency(item.potentialLoss)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...item, type: 'expiry' })}
+                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        {paginated.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-sm theme-text-secondary">
+                              Showing {((expiryPage - 1) * itemsPerPage) + 1} to {Math.min(expiryPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setExpiryPage(p => Math.max(1, p - 1))}
+                                disabled={expiryPage === 1}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => setExpiryPage(p => Math.min(paginated.totalPages, p + 1))}
+                                disabled={expiryPage === paginated.totalPages}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next
+                              </button>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {expiryAnalytics.expiredItems && expiryAnalytics.expiredItems.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold theme-text-primary mb-4">Expired Items</h3>
-                      <div className="space-y-2">
-                        {expiryAnalytics.expiredItems.map((item: any, idx: number) => (
-                          <div key={idx} className="p-4 rounded-lg border border-red-500/50">
-                            <p className="font-medium theme-text-primary">{item.productName}</p>
-                            <p className="text-sm theme-text-secondary">Expired {item.daysExpired} days ago</p>
-                            <p className="text-sm theme-text-secondary">Potential Loss: {formatCurrency(item.potentialLoss)}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -889,19 +1087,65 @@ export function ReportsPage() {
                       <p className="text-2xl font-bold text-yellow-400">{shrinkageAlerts.warningCount || 0}</p>
                     </div>
                   </div>
-                  {shrinkageAlerts.shrinkageAlerts && shrinkageAlerts.shrinkageAlerts.length > 0 ? (
-                    <div className="space-y-2">
-                      {shrinkageAlerts.shrinkageAlerts.map((alert: any, idx: number) => (
-                        <div key={idx} className={`p-4 rounded-lg border ${getSeverityColor(alert.severity)}`}>
-                          <p className="font-semibold mb-1">{alert.title}</p>
-                          <p className="text-sm opacity-90 mb-2">{alert.message}</p>
-                          <div className="text-xs opacity-75">
-                            <p>Actual: {alert.actualStock} | Theoretical: {alert.theoreticalStock} | Difference: {alert.discrepancy}</p>
-                          </div>
+                  {shrinkageAlerts.shrinkageAlerts && shrinkageAlerts.shrinkageAlerts.length > 0 ? (() => {
+                    const paginated = paginate(shrinkageAlerts.shrinkageAlerts, shrinkagePage, itemsPerPage);
+                    return (
+                      <>
+                        <div className="space-y-2">
+                          {paginated.items.map((alert: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">📉</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold mb-1">{alert.title}</p>
+                                  <p className="text-sm opacity-90 truncate mb-2">{alert.message}</p>
+                                  <div className="text-xs opacity-75">
+                                    <p>Actual: {alert.actualStock} | Theoretical: {alert.theoreticalStock} | Difference: {alert.discrepancy}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...alert, type: 'shrinkage' })}
+                                className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
+                        {paginated.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-sm theme-text-secondary">
+                              Showing {((shrinkagePage - 1) * itemsPerPage) + 1} to {Math.min(shrinkagePage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setShrinkagePage(p => Math.max(1, p - 1))}
+                                disabled={shrinkagePage === 1}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => setShrinkagePage(p => Math.min(paginated.totalPages, p + 1))}
+                                disabled={shrinkagePage === paginated.totalPages}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
                     <p className="theme-text-secondary text-center py-8">{shrinkageAlerts.message || 'No discrepancies detected'}</p>
                   )}
                 </div>
@@ -918,38 +1162,40 @@ export function ReportsPage() {
                     
                     {paginated.items.length > 0 ? (
                       <>
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b theme-border">
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Rank</th>
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Staff Name</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Total Sales</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Orders</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Items</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Avg Order Value</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Items/Order</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {paginated.items.map((staff: any, idx: number) => (
-                                <tr key={staff.userId} className="border-b theme-border hover:bg-white/5">
-                                  <td className="p-3 theme-text-primary font-bold">#{(staffPage - 1) * itemsPerPage + idx + 1}</td>
-                                  <td className="p-3 theme-text-primary">{staff.userName}</td>
-                                  <td className="p-3 theme-text-primary text-right">{formatCurrency(staff.sales?.totalSales || 0)}</td>
-                                  <td className="p-3 theme-text-primary text-right">{staff.sales?.orderCount || 0}</td>
-                                  <td className="p-3 theme-text-primary text-right">{staff.sales?.itemCount || 0}</td>
-                                  <td className="p-3 theme-text-primary text-right">{formatCurrency(staff.sales?.averageOrderValue || 0)}</td>
-                                  <td className="p-3 theme-text-primary text-right">
-                                    {staff.sales?.orderCount > 0 
-                                      ? ((staff.sales?.itemCount || 0) / staff.sales.orderCount).toFixed(1)
-                                      : '0.0'}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        <div className="space-y-2">
+                          {paginated.items.map((staff: any, idx: number) => (
+                            <div
+                              key={staff.userId}
+                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl font-bold theme-text-primary">
+                                  #{(staffPage - 1) * itemsPerPage + idx + 1}
+                                </div>
+                                <div className="flex-shrink-0 text-2xl">👥</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium theme-text-primary truncate">{staff.userName}</p>
+                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                    <span>Sales: {formatCurrency(staff.sales?.totalSales || 0)}</span>
+                                    <span>Orders: {staff.sales?.orderCount || 0}</span>
+                                    <span>Items: {staff.sales?.itemCount || 0}</span>
+                                    <span>Avg: {formatCurrency(staff.sales?.averageOrderValue || 0)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...staff, type: 'staff' })}
+                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
                             </div>
+                          ))}
+                        </div>
                         
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
@@ -984,27 +1230,108 @@ export function ReportsPage() {
 
               {/* Inventory Analytics */}
               {activeTab === 'inventory' && inventoryAnalytics && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Received</p>
-                      <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalReceived || 0}</p>
-                    </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Sold</p>
-                      <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalSold || 0}</p>
-                    </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Returned</p>
-                      <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalReturned || 0}</p>
-                    </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Net Change</p>
-                      <p className={`text-2xl font-bold ${(inventoryAnalytics.netChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {inventoryAnalytics.netChange >= 0 ? '+' : ''}{inventoryAnalytics.netChange || 0}
-                      </p>
+                <div className="space-y-6">
+                  {/* Transaction Metrics */}
+                  <div>
+                    <h3 className="text-lg font-semibold theme-text-primary mb-4">Transaction Metrics</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div className="theme-surface rounded-xl border theme-border p-4">
+                        <p className="text-sm theme-text-secondary mb-1">Total Received</p>
+                        <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalReceived || 0}</p>
+                      </div>
+                      <div className="theme-surface rounded-xl border theme-border p-4">
+                        <p className="text-sm theme-text-secondary mb-1">Total Sold</p>
+                        <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalSold || 0}</p>
+                      </div>
+                      <div className="theme-surface rounded-xl border theme-border p-4">
+                        <p className="text-sm theme-text-secondary mb-1">Total Returned</p>
+                        <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalReturned || 0}</p>
+                      </div>
+                      <div className="theme-surface rounded-xl border theme-border p-4">
+                        <p className="text-sm theme-text-secondary mb-1">Net Change</p>
+                        <p className={`text-2xl font-bold ${(inventoryAnalytics.netChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {inventoryAnalytics.netChange >= 0 ? '+' : ''}{inventoryAnalytics.netChange || 0}
+                        </p>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Inventorized Products Metrics */}
+                  {inventoryAnalytics.inventorizedProducts && (
+                    <div>
+                      <h3 className="text-lg font-semibold theme-text-primary mb-4">Inventorized Products</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">Total Products</p>
+                          <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.inventorizedProducts.totalProducts || 0}</p>
+                        </div>
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">Total Stock</p>
+                          <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.inventorizedProducts.totalCurrentStock || 0}</p>
+                        </div>
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">Inventory Value</p>
+                          <p className="text-2xl font-bold theme-text-primary">{formatCurrency(inventoryAnalytics.inventorizedProducts.totalInventoryValue || 0)}</p>
+                        </div>
+                        <div className="theme-surface rounded-xl border border-yellow-500/50 p-4">
+                          <p className="text-sm text-yellow-400 mb-1">Low Stock Items</p>
+                          <p className="text-2xl font-bold text-yellow-400">{inventoryAnalytics.inventorizedProducts.lowStockCount || 0}</p>
+                        </div>
+                      </div>
+
+                      {/* Inventorized Products List */}
+                      {inventoryAnalytics.inventorizedProducts.products && inventoryAnalytics.inventorizedProducts.products.length > 0 && (
+                        <div className="mt-6">
+                          <h4 className="text-md font-semibold theme-text-primary mb-3">Product Details</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="border-b theme-border">
+                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">Product</th>
+                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">SKU</th>
+                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Quantity</th>
+                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Reorder Point</th>
+                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Cost Value</th>
+                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Sales Value</th>
+                                  <th className="text-center p-3 theme-text-secondary font-medium text-sm">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {inventoryAnalytics.inventorizedProducts.products.slice(0, 20).map((product: any, idx: number) => (
+                                  <tr key={`${product.productId}-${idx}`} className="border-b theme-border hover:bg-white/5">
+                                    <td className="p-3 theme-text-primary">{product.productName}</td>
+                                    <td className="p-3 theme-text-secondary text-sm">{product.sku}</td>
+                                    <td className="p-3 theme-text-primary text-right font-semibold">{product.quantity}</td>
+                                    <td className="p-3 theme-text-secondary text-right">{product.reorderPoint || '—'}</td>
+                                    <td className="p-3 theme-text-primary text-right">{formatCurrency(product.inventoryValue / 100)}</td>
+                                    <td className="p-3 theme-text-primary text-right">{formatCurrency(product.salesValue / 100)}</td>
+                                    <td className="p-3 text-center">
+                                      {product.isLowStock ? (
+                                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/50">
+                                          Low Stock
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+                                          In Stock
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {inventoryAnalytics.inventorizedProducts.products.length > 20 && (
+                              <p className="text-sm theme-text-secondary mt-4 text-center">
+                                Showing first 20 of {inventoryAnalytics.inventorizedProducts.products.length} products
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Period Breakdown */}
                   {inventoryAnalytics.data && inventoryAnalytics.data.length > 0 && (
                     <div>
                       <h3 className="text-lg font-semibold theme-text-primary mb-4">Period Breakdown</h3>

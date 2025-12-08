@@ -176,8 +176,8 @@ export class ReportsService {
     };
   }
 
-  // Inventory Analytics by Period
-  async getInventoryAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string) {
+  // Inventory Analytics by Period - ENHANCED with inventorized products
+  async getInventoryAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string, tenantId?: string) {
     const now = new Date();
     let fromDate: Date;
     let groupBy: (date: Date) => string;
@@ -205,7 +205,11 @@ export class ReportsService {
         break;
     }
 
-    const transactions = await this.inventoryRepository.listTransactions(locationId || '', fromDate, now);
+    // Parallelize queries for better performance
+    const [transactions, inventoryStock] = await Promise.all([
+      this.inventoryRepository.listTransactions(locationId || '', fromDate, now),
+      locationId ? this.inventoryRepository.listStock(locationId) : Promise.resolve([]),
+    ]);
 
     const grouped: Record<string, {
       received: number;
@@ -248,16 +252,67 @@ export class ReportsService {
     const totalSold = data.reduce((sum, d) => sum + d.sold, 0);
     const totalReturned = data.reduce((sum, d) => sum + d.returned, 0);
 
+    // Calculate inventorized products statistics
+    const totalProductsInventorized = inventoryStock.length;
+    const totalCurrentStock = inventoryStock.reduce((sum, inv) => sum + inv.quantity, 0);
+    const totalInventoryValue = inventoryStock.reduce((sum, inv) => {
+      const cost = inv.costCents || 0;
+      return sum + (cost * inv.quantity);
+    }, 0);
+    const totalInventorySalesValue = inventoryStock.reduce((sum, inv) => {
+      const salesPrice = inv.salesPriceCents || 0;
+      return sum + (salesPrice * inv.quantity);
+    }, 0);
+
+    // Get low stock products (below reorder point)
+    const lowStockProducts = inventoryStock.filter(
+      (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint
+    );
+
+    // Batch fetch product names for inventorized products
+    const productIds = inventoryStock.map((inv) => inv.productId);
+    const productsMap = tenantId && productIds.length > 0
+      ? await this.productsService.findByIds(productIds, tenantId)
+      : new Map<string, any>();
+
+    // Build inventorized products list with product names
+    const inventorizedProducts = inventoryStock.map((inv) => {
+      const product = productsMap.get(inv.productId);
+      return {
+        productId: inv.productId,
+        productName: product?.name || inv.productId,
+        sku: product?.sku || '—',
+        quantity: inv.quantity,
+        reorderPoint: inv.reorderPoint,
+        maxStock: inv.maxStock,
+        costCents: inv.costCents,
+        salesPriceCents: inv.salesPriceCents,
+        inventoryValue: (inv.costCents || 0) * inv.quantity,
+        salesValue: (inv.salesPriceCents || 0) * inv.quantity,
+        isLowStock: inv.reorderPoint ? inv.quantity <= inv.reorderPoint : false,
+      };
+    });
+
     return {
       period,
       from: fromDate.toISOString(),
       to: now.toISOString(),
       locationId,
+      // Transaction-based metrics
       totalReceived,
       totalSold,
       totalReturned,
       netChange: totalReceived + totalReturned - totalSold,
       data,
+      // Inventorized products metrics
+      inventorizedProducts: {
+        totalProducts: totalProductsInventorized,
+        totalCurrentStock,
+        totalInventoryValue: totalInventoryValue / 100, // Convert cents to currency
+        totalInventorySalesValue: totalInventorySalesValue / 100, // Convert cents to currency
+        lowStockCount: lowStockProducts.length,
+        products: inventorizedProducts.sort((a, b) => b.quantity - a.quantity), // Sort by quantity descending
+      },
     };
   }
 
