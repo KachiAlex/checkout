@@ -240,6 +240,12 @@ export function CheckoutPage() {
     searchInputRef.current?.focus();
   };
 
+  // Helper to validate UUID format
+  const isValidUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
   // Helper to map cart items to order items
   const mapCartToOrderItems = useCallback((cartItems: typeof cart) => {
     // Calculate tax per item using tenant tax settings or default 7.5% VAT (if enabled)
@@ -248,19 +254,29 @@ export function CheckoutPage() {
       ? (taxSettings?.percentage || defaultVATPercentage) / 100 
       : 0;
     
-    return cartItems.map((item) => {
-      const itemSubtotal = item.priceCents * item.quantity;
-      const itemDiscount = item.discountCents || 0;
-      const itemTaxCents = (itemSubtotal - itemDiscount) * taxPercentage;
-      
-      return {
-        productId: item.productId,
-        quantity: item.quantity,
-        priceCents: item.priceCents,
-        taxCents: Math.round(itemTaxCents),
-        discountCents: item.discountCents || 0,
-      };
-    });
+    return cartItems
+      .filter((item) => {
+        // Filter out items with invalid UUID productIds
+        if (!isValidUUID(item.productId)) {
+          console.error(`Invalid productId format: ${item.productId} for product: ${item.name}`);
+          toast.error(`Invalid product ID for ${item.name}. Please remove and re-add this item.`);
+          return false;
+        }
+        return true;
+      })
+      .map((item) => {
+        const itemSubtotal = item.priceCents * item.quantity;
+        const itemDiscount = item.discountCents || 0;
+        const itemTaxCents = (itemSubtotal - itemDiscount) * taxPercentage;
+        
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          priceCents: item.priceCents,
+          taxCents: Math.round(itemTaxCents),
+          discountCents: item.discountCents || 0,
+        };
+      });
   }, [taxEnabled, taxSettings]);
 
   // Helper to calculate totals from cart
