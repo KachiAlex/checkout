@@ -5,7 +5,6 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  Body,
   BadRequestException,
   Request,
 } from '@nestjs/common';
@@ -63,14 +62,33 @@ export class UploadController {
   @ApiResponse({ status: 400, description: 'Invalid file or request' })
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
-    @Body('folder') folder: string,
-    @Body('tenantId') tenantId: string,
     @Request() req: any,
   ) {
+    // With multipart/form-data, body fields are parsed by multer and available in req.body
+    const folder = req.body?.folder;
+    const tenantId = req.body?.tenantId;
+
+    console.log('[UploadController] Upload request received:', {
+      hasFile: !!file,
+      fileName: file?.originalname,
+      fileSize: file?.size,
+      fileMimetype: file?.mimetype,
+      folder,
+      tenantId,
+      bodyFields: Object.keys(req.body || {}),
+      userTenantId: req.user?.tenantId,
+    });
+
+    if (!file) {
+      console.error('[UploadController] No file provided in request');
+      throw new BadRequestException('No file provided');
+    }
+
     // Use tenantId from JWT if not provided in body
     const effectiveTenantId = tenantId || req.user?.tenantId;
     
     if (!effectiveTenantId) {
+      console.error('[UploadController] No tenant ID available:', { tenantId, userTenantId: req.user?.tenantId });
       throw new BadRequestException('Tenant ID is required');
     }
 

@@ -105,13 +105,14 @@ function ReceiptCustomizationSection() {
       formData.append('tenantId', user?.tenantId || '');
 
       // Upload to backend endpoint
+      // Note: Don't set Content-Type manually - let axios set it with the correct boundary
       const response = await axios.post(
         `${API_URL}/api/v1/upload`,
         formData,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'multipart/form-data',
+            // Let axios set Content-Type automatically with boundary
           },
         }
       );
