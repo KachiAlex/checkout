@@ -111,7 +111,8 @@ export class ReportsController {
     @Query('location_id') locationId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Request() req?: any,
   ) {
-    return this.reportsService.getShrinkageDetection(locationId, from, to);
+    return this.reportsService.getShrinkageDetection(locationId, from, to, req?.user?.tenantId);
   }
 }

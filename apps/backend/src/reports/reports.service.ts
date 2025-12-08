@@ -261,24 +261,23 @@ export class ReportsService {
     };
   }
 
-  // Staff Performance Analytics
+  // Staff Performance Analytics - OPTIMIZED with parallel queries
   async getStaffPerformance(locationId?: string, from?: string, to?: string) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
 
-    // Get all orders
-    const orders = await this.ordersRepository.list({
-      status: OrderStatus.COMPLETED,
-      locationId,
-      from: fromDate,
-      to: toDate,
-    });
+    // Parallelize independent queries for better performance
+    const [orders, transactions, allUsers] = await Promise.all([
+      this.ordersRepository.list({
+        status: OrderStatus.COMPLETED,
+        locationId,
+        from: fromDate,
+        to: toDate,
+      }),
+      this.inventoryRepository.listTransactions(locationId || '', fromDate, toDate),
+      this.usersRepository.findAll(),
+    ]);
 
-    // Get all inventory transactions
-    const transactions = await this.inventoryRepository.listTransactions(locationId || '', fromDate, toDate);
-
-    // Get all users for the location/tenant
-    const allUsers = await this.usersRepository.findAll();
     const locationUsers = locationId
       ? allUsers.filter((u) => u.locationId === locationId)
       : allUsers;
@@ -434,16 +433,24 @@ export class ReportsService {
       return { alerts: [], locationId, generatedAt: now.toISOString() };
     }
 
-    // 1. Stock-out predictions (3 days ahead)
+    // Parallelize independent queries for better performance
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const last120Days = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+
+    // 1. Stock-out predictions (3 days ahead) - OPTIMIZED with batch product lookup
     try {
-      const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const recentOrders = await this.ordersRepository.list({
-        status: OrderStatus.COMPLETED,
-        locationId,
-        from: last30Days,
-        to: now,
-      });
+      const [inventoryRecords, recentOrders] = await Promise.all([
+        this.inventoryRepository.listStock(locationId),
+        this.ordersRepository.list({
+          status: OrderStatus.COMPLETED,
+          locationId,
+          from: last30Days,
+          to: now,
+        }),
+      ]);
 
       // Calculate average daily sales per product
       const productSalesRate: Record<string, { totalSold: number; days: number }> = {};
@@ -456,6 +463,20 @@ export class ReportsService {
         });
       });
 
+      // Batch fetch all products at once instead of individual queries
+      const productIdsToFetch = inventoryRecords
+        .filter((inv) => {
+          const salesRate = productSalesRate[inv.productId];
+          if (!salesRate || salesRate.totalSold === 0) return false;
+          const avgDailySales = salesRate.totalSold / salesRate.days;
+          return avgDailySales > 0 && inv.quantity > 0;
+        })
+        .map((inv) => inv.productId);
+
+      const productsMap = tenantId && productIdsToFetch.length > 0
+        ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+        : new Map<string, any>();
+
       for (const inventory of inventoryRecords) {
         const salesRate = productSalesRate[inventory.productId];
         if (salesRate && salesRate.totalSold > 0) {
@@ -463,9 +484,7 @@ export class ReportsService {
           if (avgDailySales > 0 && inventory.quantity > 0) {
             const daysUntilStockout = Math.floor(inventory.quantity / avgDailySales);
             if (daysUntilStockout <= 3 && daysUntilStockout > 0) {
-              const product = tenantId
-                ? await this.productsService.findByIds([inventory.productId], tenantId).then((m) => m.get(inventory.productId))
-                : null;
+              const product = productsMap.get(inventory.productId);
               alerts.push({
                 type: 'stockout',
                 severity: daysUntilStockout <= 1 ? 'critical' : 'warning',
@@ -485,23 +504,22 @@ export class ReportsService {
       console.error('Error calculating stock-out predictions:', error);
     }
 
-    // 2. Low sales trends (compare last 7 days vs previous 7 days)
+    // 2. Low sales trends (compare last 7 days vs previous 7 days) - OPTIMIZED with parallel queries
     try {
-      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-      
-      const recentSales = await this.ordersRepository.list({
-        status: OrderStatus.COMPLETED,
-        locationId,
-        from: last7Days,
-        to: now,
-      });
-      const previousSales = await this.ordersRepository.list({
-        status: OrderStatus.COMPLETED,
-        locationId,
-        from: previous7Days,
-        to: last7Days,
-      });
+      const [recentSales, previousSales] = await Promise.all([
+        this.ordersRepository.list({
+          status: OrderStatus.COMPLETED,
+          locationId,
+          from: last7Days,
+          to: now,
+        }),
+        this.ordersRepository.list({
+          status: OrderStatus.COMPLETED,
+          locationId,
+          from: previous7Days,
+          to: last7Days,
+        }),
+      ]);
 
       const recentTotal = recentSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
       const previousTotal = previousSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
@@ -523,28 +541,39 @@ export class ReportsService {
     }
 
     // 3. Customer inactivity (customers who haven't purchased in 60+ days but used to purchase regularly)
+    // OPTIMIZED: Batch customer order queries instead of individual queries per customer
     try {
       if (tenantId && locationId) {
         const allCustomers = await this.customersRepository.findAll(tenantId);
-        const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-        const last120Days = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+        const limitedCustomers = allCustomers.slice(0, 50); // Limit to first 50 to avoid performance issues
 
-        for (const customer of allCustomers.slice(0, 50)) { // Limit to first 50 to avoid performance issues
-          const recentOrders = await this.ordersRepository.list({
-            status: OrderStatus.COMPLETED,
-            locationId,
-            customerId: customer.id,
-            from: last60Days,
-            to: now,
-          });
-          const previousOrders = await this.ordersRepository.list({
-            status: OrderStatus.COMPLETED,
-            locationId,
-            customerId: customer.id,
-            from: last120Days,
-            to: last60Days,
-          });
+        // Fetch all orders for these customers in parallel batches
+        const customerOrderQueries = limitedCustomers.map((customer) =>
+          Promise.all([
+            this.ordersRepository.list({
+              status: OrderStatus.COMPLETED,
+              locationId,
+              customerId: customer.id,
+              from: last60Days,
+              to: now,
+            }),
+            this.ordersRepository.list({
+              status: OrderStatus.COMPLETED,
+              locationId,
+              customerId: customer.id,
+              from: last120Days,
+              to: last60Days,
+            }),
+          ]).then(([recentOrders, previousOrders]) => ({
+            customer,
+            recentOrders,
+            previousOrders,
+          }))
+        );
 
+        const customerOrderResults = await Promise.all(customerOrderQueries);
+
+        for (const { customer, recentOrders, previousOrders } of customerOrderResults) {
           if (recentOrders.length === 0 && previousOrders.length > 0) {
             const daysSinceLastPurchase = Math.floor(
               (now.getTime() - previousOrders[0].createdAt.getTime()) / (24 * 60 * 60 * 1000)
@@ -598,24 +627,30 @@ export class ReportsService {
       console.error('Error calculating staff performance gaps:', error);
     }
 
-    // 5. Low stock alerts (using reorder point)
+    // 5. Low stock alerts (using reorder point) - OPTIMIZED with batch product lookup
     try {
       const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-      for (const inventory of inventoryRecords) {
-        if (inventory.reorderPoint && inventory.quantity <= inventory.reorderPoint) {
-          const product = tenantId
-            ? await this.productsService.findByIds([inventory.productId], tenantId).then((m) => m.get(inventory.productId))
-            : null;
-          alerts.push({
-            type: 'low_stock',
-            severity: inventory.quantity === 0 ? 'critical' : 'warning',
-            title: `Low Stock: ${product?.name || inventory.productId}`,
-            message: `Current stock (${inventory.quantity}) is at or below reorder point (${inventory.reorderPoint}).`,
-            productId: inventory.productId,
-            productName: product?.name,
-            currentStock: inventory.quantity,
-          });
-        }
+      const lowStockItems = inventoryRecords.filter(
+        (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint
+      );
+
+      // Batch fetch all products at once
+      const productIdsToFetch = lowStockItems.map((inv) => inv.productId);
+      const productsMap = tenantId && productIdsToFetch.length > 0
+        ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+        : new Map<string, any>();
+
+      for (const inventory of lowStockItems) {
+        const product = productsMap.get(inventory.productId);
+        alerts.push({
+          type: 'low_stock',
+          severity: inventory.quantity === 0 ? 'critical' : 'warning',
+          title: `Low Stock: ${product?.name || inventory.productId}`,
+          message: `Current stock (${inventory.quantity}) is at or below reorder point (${inventory.reorderPoint}).`,
+          productId: inventory.productId,
+          productName: product?.name,
+          currentStock: inventory.quantity,
+        });
       }
     } catch (error) {
       console.error('Error calculating low stock alerts:', error);
@@ -636,16 +671,21 @@ export class ReportsService {
   }
 
   // ========== PHASE 1: FRAUD DETECTION MODULE ==========
+  // OPTIMIZED with parallel queries
   async getFraudDetection(locationId?: string, from?: string, to?: string) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
 
-    const orders = await this.ordersRepository.list({
-      status: OrderStatus.COMPLETED,
-      locationId,
-      from: fromDate,
-      to: toDate,
-    });
+    // Parallelize orders and users queries
+    const [orders, allUsers] = await Promise.all([
+      this.ordersRepository.list({
+        status: OrderStatus.COMPLETED,
+        locationId,
+        from: fromDate,
+        to: toDate,
+      }),
+      this.usersRepository.findAll(),
+    ]);
 
     const fraudAlerts: Array<{
       type: 'discount_abuse' | 'ghost_refund' | 'high_value_void' | 'midnight_sale' | 'below_cost';
@@ -662,6 +702,10 @@ export class ReportsService {
       timestamp?: string;
     }> = [];
 
+    const locationUsers = locationId
+      ? allUsers.filter((u) => u.locationId === locationId)
+      : allUsers;
+
     // 1. Discount abuse detection (per staff)
     const staffDiscounts: Record<string, { count: number; totalDiscount: number; totalSales: number }> = {};
     orders.forEach((order) => {
@@ -674,11 +718,6 @@ export class ReportsService {
         staffDiscounts[order.createdBy].totalSales += order.totalCents;
       }
     });
-
-    const allUsers = await this.usersRepository.findAll();
-    const locationUsers = locationId
-      ? allUsers.filter((u) => u.locationId === locationId)
-      : allUsers;
 
     Object.entries(staffDiscounts).forEach(([staffId, stats]) => {
       const discountRate = stats.totalSales > 0 ? (stats.totalDiscount / stats.totalSales) * 100 : 0;
@@ -774,7 +813,8 @@ export class ReportsService {
   }
 
   // ========== PHASE 1: SHRINKAGE DETECTION ==========
-  async getShrinkageDetection(locationId?: string, from?: string, to?: string) {
+  // OPTIMIZED with parallel queries and batch product lookup
+  async getShrinkageDetection(locationId?: string, from?: string, to?: string, tenantId?: string) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
 
@@ -786,11 +826,11 @@ export class ReportsService {
       };
     }
 
-    // Get all inventory records
-    const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-    
-    // Get all transactions in the period
-    const transactions = await this.inventoryRepository.listTransactions(locationId, fromDate, toDate);
+    // Parallelize inventory and transactions queries
+    const [inventoryRecords, transactions] = await Promise.all([
+      this.inventoryRepository.listStock(locationId),
+      this.inventoryRepository.listTransactions(locationId, fromDate, toDate),
+    ]);
 
     // Calculate theoretical stock based on transactions
     const theoreticalStock: Record<string, number> = {};
@@ -831,7 +871,8 @@ export class ReportsService {
       severity: 'critical' | 'warning';
     }> = [];
 
-    // Compare actual vs theoretical
+    // Compare actual vs theoretical and collect product IDs for batch lookup
+    const productIdsToFetch: string[] = [];
     inventoryRecords.forEach((inv) => {
       const theoretical = theoreticalStock[inv.productId] || 0;
       const actual = inv.quantity;
@@ -840,6 +881,7 @@ export class ReportsService {
 
       // Alert if discrepancy is significant (> 5% or > 10 units)
       if (Math.abs(discrepancy) > 10 || discrepancyPercent > 5) {
+        productIdsToFetch.push(inv.productId);
         shrinkageAlerts.push({
           productId: inv.productId,
           actualStock: actual,
@@ -848,6 +890,19 @@ export class ReportsService {
           discrepancyPercent,
           severity: Math.abs(discrepancy) > 50 || discrepancyPercent > 20 ? 'critical' : 'warning',
         });
+      }
+    });
+
+    // Batch fetch product names if tenantId is available
+    const productsMap = tenantId && productIdsToFetch.length > 0
+      ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+      : new Map<string, any>();
+
+    // Add product names to alerts
+    shrinkageAlerts.forEach((alert) => {
+      const product = productsMap.get(alert.productId);
+      if (product) {
+        alert.productName = product.name;
       }
     });
 
