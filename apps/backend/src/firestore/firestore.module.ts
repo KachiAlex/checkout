@@ -65,7 +65,7 @@ const firestoreSettings: Settings = {
     },
     FirestoreService,
   ],
-  exports: [FirestoreService, FIRESTORE],
+  exports: [FirestoreService, FIRESTORE, FIREBASE_APP],
 })
 export class FirestoreModule {}
 

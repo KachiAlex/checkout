@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   UseGuards,
   UseInterceptors,
@@ -20,6 +21,13 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiBearerAuth('JWT-auth')
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Check if upload endpoint is available' })
+  @ApiResponse({ status: 200, description: 'Upload endpoint is available' })
+  check() {
+    return { status: 'ok', message: 'Upload endpoint is available' };
+  }
 
   @Post()
   @UseInterceptors(

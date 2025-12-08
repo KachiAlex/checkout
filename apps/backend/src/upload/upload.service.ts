@@ -1,19 +1,26 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getStorage, Storage } from 'firebase-admin/storage';
-import { getApp } from 'firebase-admin/app';
+import { App } from 'firebase-admin/app';
 import { v4 as uuid } from 'uuid';
+import { FIREBASE_APP } from '../firestore/firestore.constants';
 
 @Injectable()
-export class UploadService {
-  private storage: Storage;
+export class UploadService implements OnModuleInit {
+  private storage: Storage | null = null;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(FIREBASE_APP) private readonly firebaseApp: App,
+  ) {}
+
+  onModuleInit() {
     try {
-      const app = getApp();
-      this.storage = getStorage(app);
+      this.storage = getStorage(this.firebaseApp);
+      console.log('✅ Firebase Storage initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Firebase Storage:', error);
+      console.error('❌ Failed to initialize Firebase Storage:', error);
+      this.storage = null;
     }
   }
 
