@@ -148,6 +148,23 @@ async function migrateProductsForTenant(tenantId, db) {
         console.log(`      ✅ Updated ${inventoryUpdates.length} inventory records`);
       }
       
+      // Update batch_inventory references
+      const batchInventorySnapshot = await db.collection('batch_inventory')
+        .where('productId', '==', oldProduct.id)
+        .get();
+      
+      const batchInventoryUpdates = [];
+      batchInventorySnapshot.forEach((doc) => {
+        batchInventoryUpdates.push(
+          doc.ref.update({ productId: newProductId })
+        );
+      });
+      
+      if (batchInventoryUpdates.length > 0) {
+        await Promise.all(batchInventoryUpdates);
+        console.log(`      ✅ Updated ${batchInventoryUpdates.length} batch inventory records`);
+      }
+      
       // Update order item references
       const ordersSnapshot = await db.collection('orders').get();
       const orderUpdates = [];
