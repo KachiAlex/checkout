@@ -36,7 +36,7 @@ import { TaxSettingsModule } from './tax-settings/tax-settings.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute
-        limit: 10, // 10 requests per minute (default)
+        limit: 200, // 200 requests per minute (increased to fix 429 errors on reports page)
       },
     ]),
     FirestoreModule,
