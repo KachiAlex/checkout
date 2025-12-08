@@ -27,6 +27,7 @@ import { ReturnsModule } from './returns/returns.module';
 import { PaymentSettingsModule } from './payment-settings/payment-settings.module';
 import { TaxSettingsModule } from './tax-settings/tax-settings.module';
 import { CustomizationModule } from './customization/customization.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { CustomizationModule } from './customization/customization.module';
     PaymentSettingsModule,
     TaxSettingsModule,
     CustomizationModule,
+    UploadModule,
   ],
   providers: [
     {
