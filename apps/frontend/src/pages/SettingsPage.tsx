@@ -33,10 +33,20 @@ function ReceiptCustomizationSection() {
   const [customization, setCustomization] = useState<{
     companyName: string;
     logoUrl: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    headerInfo?: string;
     footerMessage: string;
   }>({
     companyName: '',
     logoUrl: '',
+    address: '',
+    phone: '',
+    email: '',
+    website: '',
+    headerInfo: '',
     footerMessage: 'Thank you for your purchase!',
   });
   const [loading, setLoading] = useState(false);
@@ -247,6 +257,86 @@ function ReceiptCustomizationSection() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Address
+          </label>
+          <input
+            type="text"
+            value={customization.address || ''}
+            onChange={(e) => setCustomization({ ...customization, address: e.target.value })}
+            placeholder="123 Main Street, City, State, ZIP"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            Company address that will appear in the receipt header.
+          </p>
+        </div>
+
+        <div>
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Phone Number
+          </label>
+          <input
+            type="text"
+            value={customization.phone || ''}
+            onChange={(e) => setCustomization({ ...customization, phone: e.target.value })}
+            placeholder="+1 (555) 123-4567"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            Contact phone number for receipts.
+          </p>
+        </div>
+
+        <div>
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Email
+          </label>
+          <input
+            type="email"
+            value={customization.email || ''}
+            onChange={(e) => setCustomization({ ...customization, email: e.target.value })}
+            placeholder="contact@company.com"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            Contact email for receipts.
+          </p>
+        </div>
+
+        <div>
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Website
+          </label>
+          <input
+            type="url"
+            value={customization.website || ''}
+            onChange={(e) => setCustomization({ ...customization, website: e.target.value })}
+            placeholder="https://www.company.com"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            Company website URL.
+          </p>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="theme-text-secondary mb-2 block text-sm font-medium">
+            Additional Header Information
+          </label>
+          <input
+            type="text"
+            value={customization.headerInfo || ''}
+            onChange={(e) => setCustomization({ ...customization, headerInfo: e.target.value })}
+            placeholder="Registration No: ABC123 | Tax ID: 123456789"
+            className="theme-surface w-full rounded-xl border px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+          />
+          <p className="theme-text-secondary mt-1 text-xs">
+            Additional information to display in receipt header (e.g., registration number, tax ID, etc.).
+          </p>
         </div>
 
         <div className="md:col-span-2">

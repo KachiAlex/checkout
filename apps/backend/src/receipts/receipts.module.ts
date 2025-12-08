@@ -6,9 +6,10 @@ import { PaymentsModule } from '../payments/payments.module';
 import { LocationsModule } from '../locations/locations.module';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
+import { CustomizationModule } from '../customization/customization.module';
 
 @Module({
-  imports: [OrdersModule, PaymentsModule, LocationsModule, UsersModule, EmailModule],
+  imports: [OrdersModule, PaymentsModule, LocationsModule, UsersModule, EmailModule, CustomizationModule],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],
   exports: [ReceiptsService],

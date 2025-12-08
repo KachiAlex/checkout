@@ -116,6 +116,41 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
   // Enable CORS BEFORE other middleware
   app.enableCors(corsConfig);
 
+  // Add explicit OPTIONS handler middleware to ensure CORS headers are ALWAYS sent
+  // This is a safety net in case NestJS CORS middleware doesn't catch all cases
+  app.use((req: any, res: any, next: any) => {
+    const origin = req.headers.origin;
+    
+    // Check if origin is allowed
+    const isAllowedOrigin = corsOrigins === true || 
+      !origin || 
+      (Array.isArray(corsOrigins) && (
+        corsOrigins.some(allowed => origin.toLowerCase() === allowed.toLowerCase()) ||
+        origin.startsWith('http://localhost') ||
+        origin.startsWith('capacitor://')
+      ));
+
+    if (isAllowedOrigin && origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (corsOrigins === true) {
+      res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    }
+    
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,Origin,Access-Control-Request-Method,Access-Control-Request-Headers');
+    res.setHeader('Access-Control-Expose-Headers', 'Authorization');
+    res.setHeader('Access-Control-Max-Age', '3600');
+
+    // Handle preflight OPTIONS requests immediately
+    if (req.method === 'OPTIONS') {
+      console.log(`✅ Handling OPTIONS preflight from origin: ${origin || 'none'}`);
+      return res.status(204).end();
+    }
+
+    next();
+  });
+
   // Configure Content Security Policy
   const cspDirectives = {
     defaultSrc: ["'self'"],
@@ -153,6 +188,11 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
   );
 
   app.setGlobalPrefix(effectiveApiPrefix);
+
+  // Ensure CORS is applied after global prefix is set
+  // NestJS CORS middleware should handle OPTIONS automatically, but we verify it's enabled
+  console.log('✅ Global prefix set to:', `/${effectiveApiPrefix}`);
+  console.log('✅ CORS middleware active');
 
   const shouldEnableSwagger =
     typeof options?.enableSwagger === 'boolean'

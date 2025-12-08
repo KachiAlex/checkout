@@ -13,4 +13,10 @@ export class HealthController {
       service: 'pos-backend',
     };
   }
+
+  // Also register at root level for easier health checks
+  @Get('ping')
+  ping() {
+    return { pong: true, timestamp: new Date().toISOString() };
+  }
 }

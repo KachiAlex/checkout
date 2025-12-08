@@ -26,6 +26,7 @@ import { CustomersModule } from './customers/customers.module';
 import { ReturnsModule } from './returns/returns.module';
 import { PaymentSettingsModule } from './payment-settings/payment-settings.module';
 import { TaxSettingsModule } from './tax-settings/tax-settings.module';
+import { CustomizationModule } from './customization/customization.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { TaxSettingsModule } from './tax-settings/tax-settings.module';
     ReturnsModule,
     PaymentSettingsModule,
     TaxSettingsModule,
+    CustomizationModule,
   ],
   providers: [
     {
