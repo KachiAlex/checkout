@@ -159,6 +159,20 @@ button, a, input[type="button"], input[type="submit"] {
   min-width: 44px;
 }
 
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Better spacing for tablets */
+  .theme-card {
+    padding: 1.25rem;
+  }
+  
+  /* Optimize grid layouts for tablets */
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+}
+
 /* Mobile-specific optimizations */
 @media (max-width: 640px) {
   /* Improve text readability on mobile */
@@ -194,7 +208,51 @@ button, a, input[type="button"], input[type="submit"] {
   * {
     -webkit-overflow-scrolling: touch;
   }
-  min-width: 44px;
+  
+  /* Safe area insets for iOS notch */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  }
+  
+  .pt-safe {
+    padding-top: calc(env(safe-area-inset-top) + 1rem);
+  }
+  
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  @supports (padding: max(0px)) {
+    .pb-safe {
+      padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+    }
+    
+    .pt-safe {
+      padding-top: max(env(safe-area-inset-top), 1rem);
+    }
+  }
+  
+  /* Better modal handling on mobile */
+  [role="dialog"] {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  /* Optimize tables for mobile - use horizontal scroll */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better card layouts on mobile */
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 /* Improve focus visibility for accessibility */
@@ -231,4 +289,139 @@ button, a, input[type="button"], input[type="submit"] {
 
 .skip-to-main:focus {
   top: 0;
+}
+
+/* Responsive table wrapper */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
+.table-responsive table {
+  min-width: 600px; /* Ensure table doesn't get too narrow */
+}
+
+/* Mobile-friendly card table alternative */
+@media (max-width: 640px) {
+  .table-responsive table {
+    display: block;
+  }
+  
+  .table-responsive thead {
+    display: none;
+  }
+  
+  .table-responsive tbody {
+    display: block;
+  }
+  
+  .table-responsive tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid var(--surface-card-border);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background: var(--surface-card-bg);
+  }
+  
+  .table-responsive td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border: none;
+  }
+  
+  .table-responsive td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-right: 1rem;
+  }
+}
+
+/* Better modal handling on mobile */
+@media (max-width: 640px) {
+  [role="dialog"],
+  .modal,
+  .modal-content {
+    max-height: 90vh;
+    max-width: 95vw;
+    margin: 1rem auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Improve form responsiveness */
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  /* Better input groups on mobile */
+  .input-group {
+    flex-direction: column;
+  }
+  
+  .input-group > * {
+    width: 100%;
+  }
+}
+
+/* Optimize images for mobile */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Better button groups on mobile */
+@media (max-width: 640px) {
+  .button-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .button-group > * {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Better text wrapping */
+p, span, div {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Improve list responsiveness */
+@media (max-width: 640px) {
+  ul, ol {
+    padding-left: 1.25rem;
+  }
+}
+
+/* Better spacing utilities for mobile */
+@media (max-width: 640px) {
+  .mobile-p-0 { padding: 0; }
+  .mobile-p-2 { padding: 0.5rem; }
+  .mobile-p-4 { padding: 1rem; }
+  .mobile-m-0 { margin: 0; }
+  .mobile-m-2 { margin: 0.5rem; }
+  .mobile-m-4 { margin: 1rem; }
+  .mobile-text-sm { font-size: 0.875rem; }
+  .mobile-text-xs { font-size: 0.75rem; }
+  .mobile-hidden { display: none; }
+  .mobile-block { display: block; }
+  .mobile-flex { display: flex; }
+  .mobile-flex-col { flex-direction: column; }
+  .mobile-w-full { width: 100%; }
 }

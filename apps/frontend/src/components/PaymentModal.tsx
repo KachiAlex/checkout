@@ -102,12 +102,24 @@ export function PaymentModal({
         setCheckoutUrl(payment.processorData.checkoutUrl as string);
         setStage('redirecting');
         
-        // Open Monnify checkout in new window/tab
-        const checkoutWindow = window.open(
-          payment.processorData.checkoutUrl as string,
-          'MonnifyCheckout',
-          'width=600,height=700,scrollbars=yes'
-        );
+        // On mobile, open in same window; on desktop, open in popup
+        const isMobile = window.innerWidth < 640;
+        if (isMobile) {
+          // On mobile, redirect in same window
+          window.location.href = payment.processorData.checkoutUrl as string;
+          // Note: Payment status will be checked when user returns via callback URL
+        } else {
+          // On desktop, open in popup
+          const checkoutWindow = window.open(
+            payment.processorData.checkoutUrl as string,
+            'MonnifyCheckout',
+            'width=600,height=700,scrollbars=yes'
+          );
+          // Poll for payment status
+          if (checkoutWindow) {
+            pollPaymentStatus(payment.id, checkoutWindow);
+          }
+        }
 
         // Poll for payment status
         pollPaymentStatus(payment.id, checkoutWindow);

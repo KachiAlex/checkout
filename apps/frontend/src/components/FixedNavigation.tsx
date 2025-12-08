@@ -23,13 +23,13 @@ export const FixedNavigation = memo(function FixedNavigation() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-white/10 bg-slate-950 backdrop-blur-xl sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-lg">
-      <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-3 sm:justify-start sm:gap-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-white/10 bg-slate-950/95 backdrop-blur-xl sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-lg pb-safe sm:pb-0 pt-safe sm:pt-0">
+      <div className="mx-auto flex max-w-7xl items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 sm:justify-start sm:gap-4 overflow-x-auto">
         {/* Dashboard - Admin and Manager only (Cashiers restricted) */}
         {(isAdmin || isManager) && (
           <Link
             to="/dashboard"
-            className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
+            className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
               isActive('/dashboard')
                 ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
                 : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
@@ -55,7 +55,7 @@ export const FixedNavigation = memo(function FixedNavigation() {
         {(isAdmin || isManager) && (
           <Link
             to="/reports"
-            className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
+            className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
               isActive('/reports')
                 ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
                 : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
@@ -69,7 +69,7 @@ export const FixedNavigation = memo(function FixedNavigation() {
         {isAdmin && (
           <Link
             to="/inventory"
-            className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
+            className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
               isActive('/inventory')
                 ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
                 : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
@@ -83,7 +83,7 @@ export const FixedNavigation = memo(function FixedNavigation() {
         {isAdmin && (
           <Link
             to="/settings"
-            className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
+            className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
               isActive('/settings')
                 ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
                 : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'

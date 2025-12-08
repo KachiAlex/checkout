@@ -399,8 +399,8 @@ export function InventoryPage() {
               <p className="theme-text-secondary mt-4 text-sm">Loading inventory...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="table-responsive overflow-x-auto -webkit-overflow-scrolling-touch">
+              <table className="w-full min-w-[800px] sm:min-w-0">
                 <thead className="bg-white/5">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
