@@ -50,11 +50,17 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (tenantSlug: string, pin: string, deviceId?: string) => {
         try {
-          const response = await axios.post(`${API_URL}/api/v1/auth/login`, {
-            tenantSlug,
-            pin,
-            deviceId,
-          });
+          const response = await axios.post(
+            `${API_URL}/api/v1/auth/login`,
+            {
+              tenantSlug,
+              pin,
+              deviceId,
+            },
+            {
+              timeout: 30000, // 30 second timeout
+            },
+          );
 
           const { accessToken, refreshToken, user, tenant } = response.data;
 
@@ -73,6 +79,11 @@ export const useAuthStore = create<AuthState>()(
           // Set default authorization header
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error: any) {
+          // Handle timeout errors
+          if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            error.customMessage = 'Login request timed out. Please check your connection and try again.';
+            throw error;
+          }
           const message = error.response?.data?.message || error.response?.data?.error || 'Login failed';
           if (error && typeof error === 'object') {
             error.customMessage = message;
@@ -83,10 +94,16 @@ export const useAuthStore = create<AuthState>()(
 
       loginSuperAdmin: async (email: string, password: string) => {
         try {
-          const response = await axios.post(`${API_URL}/api/v1/auth/superadmin/login`, {
-            email,
-            password,
-          });
+          const response = await axios.post(
+            `${API_URL}/api/v1/auth/superadmin/login`,
+            {
+              email,
+              password,
+            },
+            {
+              timeout: 30000, // 30 second timeout
+            },
+          );
 
           const { accessToken, refreshToken, user, tenant } = response.data;
 

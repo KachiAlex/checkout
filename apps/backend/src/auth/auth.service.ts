@@ -22,18 +22,18 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  private async getTenantUsers(tenantId: string): Promise<UserRecord[]> {
+  private async getTenantUsers(tenantId: string, limit?: number): Promise<UserRecord[]> {
     const CACHE_TTL_MS = 60_000; // 60 seconds
     const cached = this.userCache.get(tenantId);
     const now = Date.now();
 
     if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
-      return cached.users;
+      return limit ? cached.users.slice(0, limit) : cached.users;
     }
 
     const users = await this.usersRepository.findAll(tenantId);
     this.userCache.set(tenantId, { users, fetchedAt: now });
-    return users;
+    return limit ? users.slice(0, limit) : users;
   }
 
   async validateUser(pin: string, tenantId: string, deviceId?: string): Promise<UserRecord | null> {
@@ -53,12 +53,19 @@ export class AuthService {
     }
 
     // Fallback: scan tenant users, using a short-lived cache to avoid repeated Firestore reads
-    const users = await this.getTenantUsers(tenantId);
+    // Limit to 100 users to prevent performance issues with large tenant user bases
+    const startTime = Date.now();
+    const users = await this.getTenantUsers(tenantId, 100);
+    const fetchTime = Date.now() - startTime;
+    console.log(`[AuthService] Fetched ${users.length} users in ${fetchTime}ms`);
 
+    // Sequential validation with early exit
     for (const user of users) {
       try {
         const isValid = await bcrypt.compare(pin, user.pinHash);
         if (isValid) {
+          const validationTime = Date.now() - startTime;
+          console.log(`[AuthService] PIN validated in ${validationTime}ms (user: ${user.id})`);
           // Update device ID if provided
           if (deviceId && user.deviceId !== deviceId) {
             try {
@@ -75,6 +82,9 @@ export class AuthService {
         console.error('[AuthService] Error comparing PIN for user', user.id, (error as any)?.message);
       }
     }
+    
+    const totalTime = Date.now() - startTime;
+    console.log(`[AuthService] PIN validation failed after checking ${users.length} users in ${totalTime}ms`);
 
     return null;
   }
