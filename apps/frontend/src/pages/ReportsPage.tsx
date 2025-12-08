@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuthStore } from '../stores/authStore';
-import { useFeatureFlags } from '../hooks/useFeatureFlags';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { format } from 'date-fns';
@@ -138,6 +137,7 @@ export function ReportsPage() {
 
         case 'analytics':
           params.append('period', 'daily');
+          // Date range is already in params from above
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const analyticsRes = await axios.get(`${API_URL}/api/v1/reports/sales-analytics?${params}`);
           setSalesAnalytics(analyticsRes.data);
@@ -256,27 +256,19 @@ export function ReportsPage() {
     }
   }, []);
 
-  // Memoize tabs array - conditionally show industry-specific tabs
-  const tabs: Array<{ id: ReportTab; label: string; icon: string }> = useMemo(() => {
-    const baseTabs = [
-      { id: 'sales' as ReportTab, label: 'Sales Report', icon: '💰' },
-      { id: 'top-sellers' as ReportTab, label: 'Top Sellers', icon: '🏆' },
-      { id: 'analytics' as ReportTab, label: 'Sales Analytics', icon: '📊' },
-      { id: 'alerts' as ReportTab, label: 'Smart Alerts', icon: '🔔' },
-      { id: 'fraud' as ReportTab, label: 'Fraud Detection', icon: '🛡️' },
-      { id: 'shrinkage' as ReportTab, label: 'Shrinkage Detection', icon: '📉' },
-      { id: 'staff' as ReportTab, label: 'Staff Performance', icon: '👥' },
-      { id: 'inventory' as ReportTab, label: 'Inventory Analytics', icon: '📦' },
-      { id: 'purchase-orders' as ReportTab, label: 'Purchase Orders', icon: '📋' },
-    ];
-
-    // Add industry-specific tabs based on feature flags
-    if (isFeatureEnabled('expiryTracking')) {
-      baseTabs.splice(5, 0, { id: 'expiry' as ReportTab, label: 'Expiry Analytics', icon: '⏰' });
-    }
-
-    return baseTabs;
-  }, [isFeatureEnabled]);
+  // Memoize tabs array
+  const tabs: Array<{ id: ReportTab; label: string; icon: string }> = useMemo(() => [
+    { id: 'sales', label: 'Sales Report', icon: '💰' },
+    { id: 'top-sellers', label: 'Top Sellers', icon: '🏆' },
+    { id: 'analytics', label: 'Sales Analytics', icon: '📊' },
+    { id: 'alerts', label: 'Smart Alerts', icon: '🔔' },
+    { id: 'fraud', label: 'Fraud Detection', icon: '🛡️' },
+    { id: 'expiry', label: 'Expiry Analytics', icon: '⏰' },
+    { id: 'shrinkage', label: 'Shrinkage Detection', icon: '📉' },
+    { id: 'staff', label: 'Staff Performance', icon: '👥' },
+    { id: 'inventory', label: 'Inventory Analytics', icon: '📦' },
+    { id: 'purchase-orders', label: 'Purchase Orders', icon: '📋' },
+  ], []);
 
   // Memoize sales rows computation
   const salesRows = useMemo(() => {
@@ -640,10 +632,13 @@ export function ReportsPage() {
                                   </div>
                                   <div className="flex-shrink-0 text-2xl">🏆</div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-medium theme-text-primary truncate">{item.productId}</p>
+                                    <p className="font-medium theme-text-primary truncate">{item.productName || item.productId}</p>
                                     <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
                                       <span>Qty: {item.quantitySold}</span>
                                       <span>Revenue: {formatCurrency(item.revenue)}</span>
+                                      {item.productName && item.productId !== item.productName && (
+                                        <span className="text-xs opacity-60">ID: {item.productId}</span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>

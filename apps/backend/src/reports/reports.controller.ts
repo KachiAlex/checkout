@@ -24,8 +24,9 @@ export class ReportsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('location_id') locationId?: string,
+    @Request() req?: any,
   ) {
-    return this.reportsService.getSales(from, to, locationId);
+    return this.reportsService.getSales(from, to, locationId, req?.user?.tenantId);
   }
 
   @Get('top-sellers')
@@ -36,8 +37,9 @@ export class ReportsController {
     @Query('to') to?: string,
     @Query('location_id') locationId?: string,
     @Query('limit') limit?: number,
+    @Request() req?: any,
   ) {
-    return this.reportsService.getTopSellers(from, to, locationId, limit);
+    return this.reportsService.getTopSellers(from, to, locationId, limit, req?.user?.tenantId);
   }
 
   @Get('sales-analytics')
@@ -46,8 +48,11 @@ export class ReportsController {
   async getSalesAnalytics(
     @Query('period') period: 'daily' | 'weekly' | 'monthly' = 'daily',
     @Query('location_id') locationId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Request() req?: any,
   ) {
-    return this.reportsService.getSalesAnalytics(period, locationId);
+    return this.reportsService.getSalesAnalytics(period, locationId, from, to, req?.user?.tenantId);
   }
 
   @Get('inventory-analytics')

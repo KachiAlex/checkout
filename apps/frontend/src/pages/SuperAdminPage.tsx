@@ -22,8 +22,6 @@ import {
   updateSubscriptionPricing,
   SubscriptionPricing,
 } from '../services/subscriptionPricingService';
-import { Industry } from '@pos-checkout/shared';
-
 const PLAN_OPTIONS = [
   { label: 'Monthly', value: 'monthly' },
   { label: 'Annual', value: 'annual' },
@@ -32,14 +30,14 @@ const PLAN_OPTIONS = [
 ];
 
 const INDUSTRY_OPTIONS = [
-  { label: 'General', value: Industry.GENERAL },
-  { label: 'Pharmaceutical', value: Industry.PHARMACEUTICAL },
-  { label: 'Restaurant', value: Industry.RESTAURANT },
-  { label: 'Retail', value: Industry.RETAIL },
-  { label: 'Grocery', value: Industry.GROCERY },
-  { label: 'Electronics', value: Industry.ELECTRONICS },
-  { label: 'Fashion', value: Industry.FASHION },
-  { label: 'Hardware', value: Industry.HARDWARE },
+  { label: 'General', value: 'general' },
+  { label: 'Pharmaceutical', value: 'pharmaceutical' },
+  { label: 'Restaurant', value: 'restaurant' },
+  { label: 'Retail', value: 'retail' },
+  { label: 'Grocery', value: 'grocery' },
+  { label: 'Electronics', value: 'electronics' },
+  { label: 'Fashion', value: 'fashion' },
+  { label: 'Hardware', value: 'hardware' },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -77,7 +75,7 @@ export function SuperAdminPage() {
     name: '',
     slug: '',
     plan: 'monthly',
-    industry: Industry.GENERAL,
+    industry: 'general',
     seatLimit: '',
     adminName: '',
     adminEmail: '',
@@ -340,7 +338,7 @@ export function SuperAdminPage() {
         name: '',
         slug: '',
         plan: 'monthly',
-        industry: Industry.GENERAL,
+        industry: 'general',
         seatLimit: '',
         adminName: '',
         adminEmail: '',
@@ -907,7 +905,7 @@ export function SuperAdminPage() {
               <select
                 id="tenant-industry"
                 value={form.industry}
-                onChange={(event) => setForm((prev) => ({ ...prev, industry: event.target.value as Industry }))}
+                onChange={(event) => setForm((prev) => ({ ...prev, industry: event.target.value }))}
                 className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
               >
                 {INDUSTRY_OPTIONS.map((industry) => (

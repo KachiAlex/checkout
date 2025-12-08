@@ -21,19 +21,39 @@ export class ReportsService {
     private readonly inventoryService: InventoryService,
   ) {}
 
-  async getSales(from?: string, to?: string, locationId?: string) {
+  async getSales(from?: string, to?: string, locationId?: string, tenantId?: string) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
     const toDate = to ? new Date(to) : new Date();
 
+    // Ensure we include orders up to the end of the day
+    const toDateEndOfDay = new Date(toDate);
+    toDateEndOfDay.setHours(23, 59, 59, 999);
+
     const orders = await this.ordersRepository.list({
       status: OrderStatus.COMPLETED,
+      tenantId, // Filter by tenant to ensure data isolation
       locationId,
       from: fromDate,
-      to: toDate,
+      to: toDateEndOfDay, // Include full day
     });
+
+    console.log(`📊 Sales Report Query: Found ${orders.length} completed orders for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}, from ${fromDate.toISOString()} to ${toDateEndOfDay.toISOString()}`);
 
     const totalSales = orders.reduce((sum, order) => sum + order.totalCents, 0);
     const totalOrders = orders.length;
+
+    // Collect all unique product IDs
+    const productIds = new Set<string>();
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        productIds.add(item.productId);
+      });
+    });
+
+    // Batch fetch product names
+    const productsMap = tenantId && productIds.size > 0
+      ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+      : new Map<string, any>();
 
     return {
       from: fromDate.toISOString(),
@@ -47,26 +67,35 @@ export class ReportsService {
         orderNumber: order.orderNumber,
         total: order.totalCents / 100,
         createdAt: order.createdAt,
-        items: order.items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          priceCents: item.priceCents,
-          taxCents: item.taxCents,
-          discountCents: item.discountCents || 0,
-        })),
+        items: order.items.map((item) => {
+          const product = productsMap.get(item.productId);
+          return {
+            productId: item.productId,
+            productName: product?.name || item.productId,
+            quantity: item.quantity,
+            priceCents: item.priceCents,
+            taxCents: item.taxCents,
+            discountCents: item.discountCents || 0,
+          };
+        }),
       })),
     };
   }
 
-  async getTopSellers(from?: string, to?: string, locationId?: string, limit: number = 10) {
+  async getTopSellers(from?: string, to?: string, locationId?: string, limit: number = 10, tenantId?: string) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
 
+    // Ensure we include orders up to the end of the day
+    const toDateEndOfDay = new Date(toDate);
+    toDateEndOfDay.setHours(23, 59, 59, 999);
+
     const orders = await this.ordersRepository.list({
       status: OrderStatus.COMPLETED,
+      tenantId, // Filter by tenant to ensure data isolation
       locationId,
       from: fromDate,
-      to: toDate,
+      to: toDateEndOfDay, // Include full day
     });
 
     // Aggregate product sales
@@ -88,14 +117,25 @@ export class ReportsService {
     });
 
     // Sort by quantity and take top N
-    const topSellers = Object.values(productSales)
+    const topSellersData = Object.values(productSales)
       .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, limit)
-      .map((item) => ({
+      .slice(0, limit);
+
+    // Batch fetch product names
+    const productIds = topSellersData.map((item) => item.productId);
+    const productsMap = tenantId && productIds.length > 0
+      ? await this.productsService.findByIds(productIds, tenantId)
+      : new Map<string, any>();
+
+    const topSellers = topSellersData.map((item) => {
+      const product = productsMap.get(item.productId);
+      return {
         productId: item.productId,
+        productName: product?.name || item.productId,
         quantitySold: item.quantity,
         revenue: item.revenue / 100, // Convert cents to currency units
-      }));
+      };
+    });
 
     return {
       from: fromDate.toISOString(),
@@ -106,18 +146,33 @@ export class ReportsService {
   }
 
   // Sales Analytics by Period
-  async getSalesAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string) {
-    const now = new Date();
+  async getSalesAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string, from?: string, to?: string, tenantId?: string) {
+    const toDate = to ? new Date(to) : new Date();
     let fromDate: Date;
     let groupBy: (date: Date) => string;
 
+    // If from/to dates are provided, use them; otherwise use period-based defaults
+    if (from) {
+      fromDate = new Date(from);
+    } else {
+      switch (period) {
+        case 'daily':
+          fromDate = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate() - 29); // Last 30 days
+          break;
+        case 'weekly':
+          fromDate = new Date(toDate.getTime() - 12 * 7 * 24 * 60 * 60 * 1000); // Last 12 weeks
+          break;
+        case 'monthly':
+          fromDate = new Date(toDate.getFullYear() - 1, toDate.getMonth(), 1); // Last 12 months
+          break;
+      }
+    }
+
     switch (period) {
       case 'daily':
-        fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29); // Last 30 days
         groupBy = (date: Date) => date.toISOString().split('T')[0]; // YYYY-MM-DD
         break;
       case 'weekly':
-        fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000); // Last 12 weeks
         groupBy = (date: Date) => {
           const weekStart = new Date(date);
           weekStart.setDate(date.getDate() - date.getDay());
@@ -129,16 +184,20 @@ export class ReportsService {
         };
         break;
       case 'monthly':
-        fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1); // Last 12 months
         groupBy = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         break;
     }
 
+    // Ensure we include orders up to the end of the day
+    const toDateEndOfDay = new Date(toDate);
+    toDateEndOfDay.setHours(23, 59, 59, 999);
+
     const orders = await this.ordersRepository.list({
       status: OrderStatus.COMPLETED,
+      tenantId, // Filter by tenant to ensure data isolation
       locationId,
       from: fromDate,
-      to: now,
+      to: toDateEndOfDay, // Include full day
     });
 
     const grouped: Record<string, { sales: number; orders: number; items: number }> = {};
@@ -169,7 +228,7 @@ export class ReportsService {
     return {
       period,
       from: fromDate.toISOString(),
-      to: now.toISOString(),
+      to: toDate.toISOString(),
       locationId,
       totalSales,
       totalOrders,
@@ -1065,24 +1124,29 @@ export class ReportsService {
       ? await this.productsService.findByIds(productIdsToFetch, tenantId)
       : new Map<string, any>();
 
-    // Add product names to alerts
-    shrinkageAlerts.forEach((alert) => {
+    // Add product names, title, and message to alerts
+    const enrichedAlerts = shrinkageAlerts.map((alert) => {
       const product = productsMap.get(alert.productId);
-      if (product) {
-        alert.productName = product.name;
-      }
+      const productName = product?.name || alert.productId;
+      return {
+        ...alert,
+        productName,
+        title: `Inventory Discrepancy: ${productName}`,
+        message: `Actual stock (${alert.actualStock}) differs from theoretical stock (${alert.theoreticalStock}) by ${Math.abs(alert.discrepancy)} units (${alert.discrepancyPercent.toFixed(1)}%).`,
+      };
     });
 
     return {
       from: fromDate.toISOString(),
       to: toDate.toISOString(),
       locationId,
-      shrinkageAlerts,
-      totalDiscrepancies: shrinkageAlerts.length,
-      criticalCount: shrinkageAlerts.filter((a) => a.severity === 'critical').length,
-      message: shrinkageAlerts.length === 0 
+      shrinkageAlerts: enrichedAlerts,
+      totalDiscrepancies: enrichedAlerts.length,
+      criticalCount: enrichedAlerts.filter((a) => a.severity === 'critical').length,
+      warningCount: enrichedAlerts.filter((a) => a.severity === 'warning').length,
+      message: enrichedAlerts.length === 0 
         ? 'No significant inventory discrepancies detected.'
-        : `${shrinkageAlerts.length} products have inventory discrepancies.`,
+        : `${enrichedAlerts.length} products have inventory discrepancies.`,
     };
   }
 

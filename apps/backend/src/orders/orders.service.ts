@@ -59,12 +59,13 @@ export class OrdersService {
     
     // If order is held, don't decrement inventory yet
     if (!createOrderDto.isHeld) {
-      await this.validateAndDecrementInventory({ ...createOrderDto, locationId });
+      await this.validateAndDecrementInventory({ ...createOrderDto, locationId }, userId);
     }
 
     const order = await this.ordersRepository.create({
       ...createOrderDto,
       locationId,
+      tenantId, // Add tenantId for better data organization
       orderNumber,
       status: createOrderDto.isHeld ? OrderStatus.PENDING : OrderStatus.COMPLETED,
       createdBy: userId,
@@ -73,6 +74,8 @@ export class OrdersService {
       isHeld: createOrderDto.isHeld ?? false,
       heldAt: createOrderDto.isHeld ? new Date() : undefined,
     });
+
+    console.log(`✅ Order created and saved: ${order.id} (${order.orderNumber}) for tenant ${tenantId}, status: ${order.status}, locationId: ${locationId}, createdAt: ${order.createdAt.toISOString()}`);
 
     // Award loyalty points if order is completed and has a customer
     if (!createOrderDto.isHeld && order.status === OrderStatus.COMPLETED && createOrderDto.customerId) {
@@ -137,7 +140,7 @@ export class OrdersService {
     }
   }
 
-  private async validateAndDecrementInventory(dto: CreateOrderDto): Promise<void> {
+  private async validateAndDecrementInventory(dto: CreateOrderDto, userId: string): Promise<void> {
     for (const item of dto.items) {
       const stock = await this.inventoryService.getStockByProduct(item.productId, dto.locationId);
 
@@ -152,6 +155,7 @@ export class OrdersService {
         dto.locationId,
         item.quantity,
         dto.uuid,
+        userId, // Pass userId to track who made the sale
       );
     }
   }
@@ -278,7 +282,7 @@ export class OrdersService {
       throw new Error('Order is not held');
     }
     
-    // Now decrement inventory
+    // Now decrement inventory with userId
     await this.validateAndDecrementInventory({
       uuid: order.uuid,
       locationId: order.locationId,
@@ -293,7 +297,7 @@ export class OrdersService {
       taxCents: order.taxCents,
       discountCents: order.discountCents,
       totalCents: order.totalCents,
-    });
+    }, order.createdBy); // Pass userId from order
 
     const completedOrder = await this.ordersRepository.update(id, {
       isHeld: false,

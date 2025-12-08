@@ -9,6 +9,7 @@ export interface OrderRecord {
   uuid: string;
   orderNumber: string;
   locationId: string; // Always set (derived if not provided)
+  tenantId?: string; // Added for better data organization and filtering
   customerId?: string;
   items: Array<{
     productId: string;
@@ -69,6 +70,7 @@ export class OrdersRepository {
 
   async list(params: {
     locationId?: string;
+    tenantId?: string; // Added for tenant filtering
     from?: Date;
     to?: Date;
     status?: OrderStatus;
@@ -78,6 +80,10 @@ export class OrdersRepository {
   }): Promise<OrderRecord[]> {
     let query = this.collection.orderBy('createdAt', 'desc');
 
+    // Filter by tenantId first if provided (important for multi-tenant isolation)
+    if (params.tenantId) {
+      query = query.where('tenantId', '==', params.tenantId);
+    }
     if (params.locationId) {
       query = query.where('locationId', '==', params.locationId);
     }
@@ -150,6 +156,7 @@ export class OrdersRepository {
 
     const doc: OrderDocument = {
       ...data,
+      tenantId: data.tenantId,
       customerId: data.customerId,
       items: serializedItems,
       isHeld: data.isHeld ?? false,
@@ -159,9 +166,18 @@ export class OrdersRepository {
       updatedAt: now,
     };
 
-    await this.collection.doc(id).set(doc);
-    const created = await this.collection.doc(id).get();
-    return this.toRecord(id, created.data() as OrderDocument);
+    try {
+      await this.collection.doc(id).set(doc);
+      const created = await this.collection.doc(id).get();
+      if (!created.exists) {
+        throw new Error(`Failed to create order: document ${id} does not exist after creation`);
+      }
+      console.log(`✅ Order saved to Firestore: ${id} (${data.orderNumber})`);
+      return this.toRecord(id, created.data() as OrderDocument);
+    } catch (error) {
+      console.error(`❌ Failed to save order to Firestore:`, error);
+      throw error;
+    }
   }
 
   async update(id: string, update: Partial<OrderRecord>): Promise<OrderRecord> {
@@ -215,6 +231,7 @@ export class OrdersRepository {
       uuid: data.uuid,
       orderNumber: data.orderNumber,
       locationId: data.locationId,
+      tenantId: data.tenantId,
       customerId: data.customerId,
       items: data.items.map((item) => ({
         productId: item.productId,

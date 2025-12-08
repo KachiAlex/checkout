@@ -21,7 +21,7 @@ export interface CreateTenantPayload {
   name: string;
   slug: string;
   plan: string;
-  industry?: Industry;
+  industry?: string; // Changed from Industry enum to string to avoid build issues
   featureFlags?: Partial<IndustryFeatureFlags>;
   seatLimit?: number;
   adminEmail: string;
