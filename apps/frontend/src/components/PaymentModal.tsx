@@ -104,6 +104,7 @@ export function PaymentModal({
         
         // On mobile, open in same window; on desktop, open in popup
         const isMobile = window.innerWidth < 640;
+        
         if (isMobile) {
           // On mobile, redirect in same window
           window.location.href = payment.processorData.checkoutUrl as string;
@@ -120,9 +121,6 @@ export function PaymentModal({
             pollPaymentStatus(payment.id, checkoutWindow);
           }
         }
-
-        // Poll for payment status
-        pollPaymentStatus(payment.id, checkoutWindow);
       } else {
         // No checkout URL - might be a direct payment or error
         toast.error('Payment initiation failed. Please try again.');

@@ -92,6 +92,14 @@ export const useCartStore = create<CartState>()(
         activeSessionId: 'cart-1',
 
         addItem: (item) => {
+          // Validate product ID format (must be UUID) before adding to cart
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(item.productId)) {
+            console.error(`Invalid productId format: ${item.productId} for product: ${item.name}`);
+            // Don't add invalid items - validation error should be shown by caller
+            return;
+          }
+          
           set((state) => {
             const sessions = [...state.sessions];
             const idx = sessions.findIndex(

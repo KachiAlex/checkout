@@ -227,6 +227,15 @@ export function CheckoutPage() {
   };
 
   const handleQuantityConfirm = (product: { id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] }, quantity: number) => {
+    // Validate product ID before adding to cart
+    if (!isValidUUID(product.id)) {
+      console.error(`Invalid productId format: ${product.id} for product: ${product.name}`);
+      toast.error(`Invalid product ID for "${product.name}". This product needs to be recreated with a valid ID.`);
+      setQuantitySelectorOpen(false);
+      setSelectedProduct(null);
+      return;
+    }
+    
     addItem({
       productId: product.id,
       name: product.name,

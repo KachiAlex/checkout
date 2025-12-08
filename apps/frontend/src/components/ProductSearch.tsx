@@ -258,6 +258,14 @@ export function ProductSearch({
   };
 
   const handleProductClick = async (product: ProductWithStock) => {
+    // Validate product ID format (must be UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(product.id)) {
+      console.error(`Invalid productId format: ${product.id} for product: ${product.name}`);
+      toast.error(`Invalid product ID for "${product.name}". This product needs to be recreated.`);
+      return;
+    }
+    
     // Check stock before opening quantity selector
     if (product.stock !== undefined && product.stock <= 0) {
       toast.error(`${product.name} is out of stock`);
