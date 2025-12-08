@@ -18,15 +18,17 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('sales')
-  @ApiOperation({ summary: 'Get sales report' })
+  @ApiOperation({ summary: 'Get sales report (paginated)' })
   @ApiResponse({ status: 200, description: 'Sales data' })
   async getSales(
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('location_id') locationId?: string,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
     @Request() req?: any,
   ) {
-    return this.reportsService.getSales(from, to, locationId, req?.user?.tenantId);
+    return this.reportsService.getSales(from, to, locationId, req?.user?.tenantId, limit, offset);
   }
 
   @Get('top-sellers')

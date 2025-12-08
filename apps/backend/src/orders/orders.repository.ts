@@ -78,23 +78,23 @@ export class OrdersRepository {
     isHeld?: boolean;
     customerId?: string;
   }): Promise<OrderRecord[]> {
-    let query = this.collection.orderBy('createdAt', 'desc');
-
-    // Filter by tenantId first if provided (important for multi-tenant isolation)
+    // Optimize query structure: equality filters first, then range filters, then orderBy
+    // This order is important for Firestore performance and index requirements
+    
+    // Start with equality filters (most selective first)
+    let query: any = this.collection;
+    
+    // TenantId is the most selective filter (multi-tenant isolation)
     if (params.tenantId) {
       query = query.where('tenantId', '==', params.tenantId);
     }
-    if (params.locationId) {
-      query = query.where('locationId', '==', params.locationId);
-    }
+    
+    // Then other equality filters
     if (params.status) {
       query = query.where('status', '==', params.status);
     }
-    if (params.from) {
-      query = query.where('createdAt', '>=', Timestamp.fromDate(params.from));
-    }
-    if (params.to) {
-      query = query.where('createdAt', '<=', Timestamp.fromDate(params.to));
+    if (params.locationId) {
+      query = query.where('locationId', '==', params.locationId);
     }
     if (params.deviceId) {
       query = query.where('deviceId', '==', params.deviceId);
@@ -105,6 +105,18 @@ export class OrdersRepository {
     if (params.customerId) {
       query = query.where('customerId', '==', params.customerId);
     }
+    
+    // Range filters (must come before orderBy)
+    if (params.from) {
+      query = query.where('createdAt', '>=', Timestamp.fromDate(params.from));
+    }
+    if (params.to) {
+      query = query.where('createdAt', '<=', Timestamp.fromDate(params.to));
+    }
+    
+    // orderBy must come last and must match one of the where clauses for range queries
+    // If we have date range filters, orderBy must use createdAt
+    query = query.orderBy('createdAt', 'desc');
 
     // Firestore limits queries to 1000 documents, so we need to paginate to get all results
     const allOrders: OrderRecord[] = [];

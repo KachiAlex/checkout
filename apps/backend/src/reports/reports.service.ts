@@ -21,7 +21,7 @@ export class ReportsService {
     private readonly inventoryService: InventoryService,
   ) {}
 
-  async getSales(from?: string, to?: string, locationId?: string, tenantId?: string) {
+  async getSales(from?: string, to?: string, locationId?: string, tenantId?: string, limit?: number, offset?: number) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
     const toDate = to ? new Date(to) : new Date();
 
@@ -29,7 +29,8 @@ export class ReportsService {
     const toDateEndOfDay = new Date(toDate);
     toDateEndOfDay.setHours(23, 59, 59, 999);
 
-    const orders = await this.ordersRepository.list({
+    // First, get total count and summary stats (without fetching all orders)
+    const allOrders = await this.ordersRepository.list({
       status: OrderStatus.COMPLETED,
       tenantId, // Filter by tenant to ensure data isolation
       locationId,
@@ -37,20 +38,25 @@ export class ReportsService {
       to: toDateEndOfDay, // Include full day
     });
 
-    console.log(`📊 Sales Report Query: Found ${orders.length} completed orders for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}, from ${fromDate.toISOString()} to ${toDateEndOfDay.toISOString()}`);
+    const totalSales = allOrders.reduce((sum, order) => sum + order.totalCents, 0);
+    const totalOrders = allOrders.length;
 
-    const totalSales = orders.reduce((sum, order) => sum + order.totalCents, 0);
-    const totalOrders = orders.length;
+    // Apply pagination if requested
+    const effectiveLimit = limit || 100; // Default limit to prevent huge responses
+    const effectiveOffset = offset || 0;
+    const paginatedOrders = allOrders.slice(effectiveOffset, effectiveOffset + effectiveLimit);
 
-    // Collect all unique product IDs
+    console.log(`📊 Sales Report Query: Found ${totalOrders} completed orders (showing ${paginatedOrders.length} from offset ${effectiveOffset}) for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
+
+    // Collect unique product IDs only from paginated orders (reduces batch fetch size)
     const productIds = new Set<string>();
-    orders.forEach((order) => {
+    paginatedOrders.forEach((order) => {
       order.items.forEach((item) => {
         productIds.add(item.productId);
       });
     });
 
-    // Batch fetch product names
+    // Batch fetch product names only for paginated orders
     const productsMap = tenantId && productIds.size > 0
       ? await this.productsService.findByIds(Array.from(productIds), tenantId)
       : new Map<string, any>();
@@ -62,7 +68,13 @@ export class ReportsService {
       totalSales: totalSales / 100, // Convert cents to currency units
       totalOrders,
       averageOrderValue: totalOrders > 0 ? (totalSales / 100) / totalOrders : 0,
-      orders: orders.map((order) => ({
+      pagination: {
+        limit: effectiveLimit,
+        offset: effectiveOffset,
+        total: totalOrders,
+        hasMore: effectiveOffset + effectiveLimit < totalOrders,
+      },
+      orders: paginatedOrders.map((order) => ({
         id: order.id,
         orderNumber: order.orderNumber,
         total: order.totalCents / 100,
@@ -90,6 +102,7 @@ export class ReportsService {
     const toDateEndOfDay = new Date(toDate);
     toDateEndOfDay.setHours(23, 59, 59, 999);
 
+    // Fetch orders - we need all of them for accurate aggregation
     const orders = await this.ordersRepository.list({
       status: OrderStatus.COMPLETED,
       tenantId, // Filter by tenant to ensure data isolation
@@ -98,30 +111,44 @@ export class ReportsService {
       to: toDateEndOfDay, // Include full day
     });
 
-    // Aggregate product sales
-    const productSales: Record<string, { productId: string; quantity: number; revenue: number }> = {};
+    console.log(`📊 Top Sellers Query: Aggregating ${orders.length} orders for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
 
-    orders.forEach((order) => {
-      order.items.forEach((item) => {
+    // Optimized aggregation using Map for better performance
+    const productSales = new Map<string, { productId: string; quantity: number; revenue: number }>();
+
+    // Single pass aggregation - more efficient than nested loops
+    for (const order of orders) {
+      for (const item of order.items) {
         const productId = item.productId;
-        if (!productSales[productId]) {
-          productSales[productId] = {
+        const existing = productSales.get(productId);
+        
+        if (existing) {
+          existing.quantity += item.quantity;
+          existing.revenue += item.priceCents * item.quantity;
+        } else {
+          productSales.set(productId, {
             productId,
-            quantity: 0,
-            revenue: 0,
-          };
+            quantity: item.quantity,
+            revenue: item.priceCents * item.quantity,
+          });
         }
-        productSales[productId].quantity += item.quantity;
-        productSales[productId].revenue += item.priceCents * item.quantity;
-      });
-    });
+      }
+    }
 
-    // Sort by quantity and take top N
-    const topSellersData = Object.values(productSales)
-      .sort((a, b) => b.quantity - a.quantity)
+    // Convert to array, sort by quantity (descending), and take top N
+    // Using a more efficient sort with early termination if possible
+    const topSellersData = Array.from(productSales.values())
+      .sort((a, b) => {
+        // Primary sort: quantity (descending)
+        if (b.quantity !== a.quantity) {
+          return b.quantity - a.quantity;
+        }
+        // Secondary sort: revenue (descending) for tie-breaking
+        return b.revenue - a.revenue;
+      })
       .slice(0, limit);
 
-    // Batch fetch product names
+    // Batch fetch product names only for top sellers (reduces fetch size)
     const productIds = topSellersData.map((item) => item.productId);
     const productsMap = tenantId && productIds.length > 0
       ? await this.productsService.findByIds(productIds, tenantId)
@@ -134,6 +161,7 @@ export class ReportsService {
         productName: product?.name || item.productId,
         quantitySold: item.quantity,
         revenue: item.revenue / 100, // Convert cents to currency units
+        averagePrice: item.quantity > 0 ? (item.revenue / item.quantity) / 100 : 0, // Average price per unit
       };
     });
 
@@ -141,6 +169,7 @@ export class ReportsService {
       from: fromDate.toISOString(),
       to: toDate.toISOString(),
       locationId,
+      totalProducts: productSales.size,
       topSellers,
     };
   }

@@ -118,6 +118,9 @@ export function ReportsPage() {
 
       switch (activeTab) {
         case 'sales':
+          // Add pagination parameters for server-side pagination
+          params.append('limit', itemsPerPage.toString());
+          params.append('offset', ((salesPage - 1) * itemsPerPage).toString());
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const salesRes = await axios.get(`${API_URL}/api/v1/reports/sales?${params}`);
           setSalesReport(salesRes.data);
@@ -194,7 +197,7 @@ export function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, staffPerformance]);
+  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, salesPage, itemsPerPage, staffPerformance]);
 
   // Memoize format functions
   const formatCurrency = useCallback((amount: number) => {
@@ -270,7 +273,7 @@ export function ReportsPage() {
     { id: 'purchase-orders', label: 'Purchase Orders', icon: '📋' },
   ], []);
 
-  // Memoize sales rows computation
+  // Memoize sales rows computation (now from server-paginated data)
   const salesRows = useMemo(() => {
     if (!salesReport?.orders) return [];
     const rows: Array<{
@@ -299,12 +302,6 @@ export function ReportsPage() {
     
     return rows;
   }, [salesReport]);
-
-  // Memoize paginated sales data
-  const paginatedSales = useMemo(() => {
-    if (activeTab !== 'sales' || salesRows.length === 0) return null;
-    return paginate(salesRows, salesPage, itemsPerPage);
-  }, [salesRows, salesPage, activeTab, paginate]);
 
   // Load locations on mount
   useEffect(() => {
@@ -481,8 +478,10 @@ export function ReportsPage() {
                 </div>
               )}
               {/* Sales Report */}
-              {activeTab === 'sales' && salesReport && paginatedSales && (() => {
-                const paginated = paginatedSales;
+              {activeTab === 'sales' && salesReport && (() => {
+                const pagination = salesReport.pagination || { limit: itemsPerPage, offset: 0, total: salesReport.totalOrders || 0, hasMore: false };
+                const totalPages = Math.ceil(pagination.total / pagination.limit);
+                const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
 
                 return (
                 <div className="space-y-6">
@@ -504,7 +503,7 @@ export function ReportsPage() {
                     {salesRows.length > 0 ? (
                     <div>
                         <div className="space-y-2">
-                          {paginated.items.map((row, idx) => (
+                          {salesRows.map((row, idx) => (
                             <div
                               key={`${row.orderId}-${row.productId}-${idx}`}
                               className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
@@ -555,29 +554,29 @@ export function ReportsPage() {
                         </div>
                         
                         {/* Pagination */}
-                        {paginated.totalPages > 1 && (
+                        {totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
                             <p className="text-sm theme-text-secondary">
-                              Showing {((salesPage - 1) * itemsPerPage) + 1} to {Math.min(salesPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                              Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
                             </p>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => setSalesPage(p => Math.max(1, p - 1))}
-                                disabled={salesPage === 1}
+                                disabled={currentPage === 1}
                                 className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Previous
                               </button>
                               <button
-                                onClick={() => setSalesPage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={salesPage === paginated.totalPages}
+                                onClick={() => setSalesPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages || !pagination.hasMore}
                                 className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Next
                               </button>
                       </div>
                     </div>
-                  )}
+                    )}
                 </div>
                     ) : (
                       <p className="theme-text-secondary text-center py-8">No sales data available</p>
