@@ -45,6 +45,13 @@ export class OrdersService {
       }
     }
 
+    // Final validation: ensure locationId is set (should never be null/undefined at this point)
+    if (!locationId) {
+      throw new BadRequestException(
+        'Location ID is required. Please ensure you have a location assigned or create a location first.',
+      );
+    }
+
     // Validate prices against product catalog and inventory
     await this.validateOrderPrices(createOrderDto, locationId, tenantId);
 
