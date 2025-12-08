@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { TenantPlan, TenantStatus } from '@pos-checkout/shared';
+import { TenantPlan, TenantStatus, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 
 export interface TenantRecord {
@@ -9,6 +9,8 @@ export interface TenantRecord {
   slug: string;
   plan: TenantPlan;
   status: TenantStatus;
+  industry?: Industry;
+  featureFlags?: IndustryFeatureFlags;
   seatLimit?: number;
   contactEmail?: string;
   billingCycleStart?: Date;
@@ -66,6 +68,8 @@ export class TenantsRepository {
       slug: data.slug,
       plan: data.plan,
       status: data.status,
+      industry: data.industry,
+      featureFlags: data.featureFlags,
       seatLimit: data.seatLimit,
       contactEmail: data.contactEmail,
       billingCycleStart: data.billingCycleStart ? Timestamp.fromDate(data.billingCycleStart) : undefined,
@@ -109,6 +113,12 @@ export class TenantsRepository {
     if (update.contactEmail !== undefined) {
       payload.contactEmail = update.contactEmail;
     }
+    if (update.industry !== undefined) {
+      payload.industry = update.industry;
+    }
+    if (update.featureFlags !== undefined) {
+      payload.featureFlags = update.featureFlags;
+    }
     if (update.metadata !== undefined) {
       payload.metadata = update.metadata;
     }
@@ -138,6 +148,8 @@ export class TenantsRepository {
       slug: data.slug,
       plan: data.plan,
       status: data.status,
+      industry: data.industry,
+      featureFlags: data.featureFlags,
       seatLimit: data.seatLimit,
       contactEmail: data.contactEmail,
       billingCycleStart: this.timestampToDate(data.billingCycleStart),

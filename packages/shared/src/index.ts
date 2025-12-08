@@ -59,6 +59,44 @@ export enum TenantStatus {
   PENDING = 'pending',
 }
 
+export enum Industry {
+  GENERAL = 'general',
+  PHARMACEUTICAL = 'pharmaceutical',
+  RESTAURANT = 'restaurant',
+  RETAIL = 'retail',
+  GROCERY = 'grocery',
+  ELECTRONICS = 'electronics',
+  FASHION = 'fashion',
+  HARDWARE = 'hardware',
+}
+
+export interface IndustryFeatureFlags {
+  // Pharmaceutical features
+  expiryTracking?: boolean;
+  batchTracking?: boolean;
+  prescriptionManagement?: boolean;
+  drugInteractionWarnings?: boolean;
+  prescriptionRefills?: boolean;
+  
+  // Restaurant features
+  tableManagement?: boolean;
+  kitchenOrders?: boolean;
+  menuModifiers?: boolean;
+  splitBills?: boolean;
+  reservations?: boolean;
+  
+  // Retail features
+  variantManagement?: boolean;
+  layaway?: boolean;
+  giftCards?: boolean;
+  loyaltyPrograms?: boolean;
+  
+  // General features
+  multiLocation?: boolean;
+  advancedReports?: boolean;
+  apiAccess?: boolean;
+}
+
 export interface BaseEntity {
   id: string;
   created_at: Date;
@@ -195,6 +233,8 @@ export interface Tenant extends BaseEntity {
   slug: string;
   plan: TenantPlan;
   status: TenantStatus;
+  industry?: Industry;
+  feature_flags?: IndustryFeatureFlags;
   seat_limit?: number;
   contact_email?: string;
   billing_cycle_start?: Date;

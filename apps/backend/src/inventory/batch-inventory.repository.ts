@@ -52,6 +52,14 @@ export class BatchInventoryRepository {
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
   }
 
+  async findByLocation(locationId: string): Promise<BatchInventoryRecord[]> {
+    const snapshot = await this.collection
+      .where('locationId', '==', locationId)
+      .orderBy('expiryDate', 'asc')
+      .get();
+    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+  }
+
   async create(data: CreateBatchInventoryInput): Promise<BatchInventoryRecord> {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;

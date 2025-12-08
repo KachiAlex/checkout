@@ -22,12 +22,24 @@ import {
   updateSubscriptionPricing,
   SubscriptionPricing,
 } from '../services/subscriptionPricingService';
+import { Industry } from '@pos-checkout/shared';
 
 const PLAN_OPTIONS = [
   { label: 'Monthly', value: 'monthly' },
   { label: 'Annual', value: 'annual' },
   { label: 'Lifetime', value: 'lifetime' },
   { label: 'Trial', value: 'trial' },
+];
+
+const INDUSTRY_OPTIONS = [
+  { label: 'General', value: Industry.GENERAL },
+  { label: 'Pharmaceutical', value: Industry.PHARMACEUTICAL },
+  { label: 'Restaurant', value: Industry.RESTAURANT },
+  { label: 'Retail', value: Industry.RETAIL },
+  { label: 'Grocery', value: Industry.GROCERY },
+  { label: 'Electronics', value: Industry.ELECTRONICS },
+  { label: 'Fashion', value: Industry.FASHION },
+  { label: 'Hardware', value: Industry.HARDWARE },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -65,6 +77,7 @@ export function SuperAdminPage() {
     name: '',
     slug: '',
     plan: 'monthly',
+    industry: Industry.GENERAL,
     seatLimit: '',
     adminName: '',
     adminEmail: '',
@@ -285,6 +298,7 @@ export function SuperAdminPage() {
         name: form.name.trim(),
         slug: form.slug.trim().toLowerCase(),
         plan: form.plan,
+        industry: form.industry,
         seatLimit: form.seatLimit ? Number(form.seatLimit) : undefined,
         adminEmail: form.adminEmail.trim().toLowerCase(),
         adminName: form.adminName.trim() || undefined,
@@ -326,6 +340,7 @@ export function SuperAdminPage() {
         name: '',
         slug: '',
         plan: 'monthly',
+        industry: Industry.GENERAL,
         seatLimit: '',
         adminName: '',
         adminEmail: '',
@@ -881,6 +896,23 @@ export function SuperAdminPage() {
                 {PLAN_OPTIONS.map((plan) => (
                   <option key={plan.value} value={plan.value}>
                     {plan.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="theme-text-secondary text-sm font-medium" htmlFor="tenant-industry">
+                Industry
+              </label>
+              <select
+                id="tenant-industry"
+                value={form.industry}
+                onChange={(event) => setForm((prev) => ({ ...prev, industry: event.target.value as Industry }))}
+                className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
+              >
+                {INDUSTRY_OPTIONS.map((industry) => (
+                  <option key={industry.value} value={industry.value}>
+                    {industry.label}
                   </option>
                 ))}
               </select>

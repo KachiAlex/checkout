@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 
 interface TenantInfo {
   id: string;
@@ -9,6 +10,8 @@ interface TenantInfo {
   slug: string;
   plan: string;
   status: string;
+  industry?: Industry;
+  feature_flags?: IndustryFeatureFlags;
   seatLimit?: number;
   contactEmail?: string;
   billingCycleStart?: string;

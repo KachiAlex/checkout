@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
-import { TenantPlan } from '@pos-checkout/shared';
+import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { TenantPlan, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 
 export class CreateTenantDto {
   @ApiProperty({ description: 'Company name', example: 'Acme Retail' })
@@ -43,5 +44,16 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   billingCycleEnd?: string;
+
+  @ApiProperty({ enum: Industry, description: 'Industry type', required: false, default: Industry.GENERAL })
+  @IsOptional()
+  @IsEnum(Industry)
+  industry?: Industry;
+
+  @ApiProperty({ description: 'Custom feature flags (will be merged with industry defaults)', required: false })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => Object)
+  featureFlags?: Partial<IndustryFeatureFlags>;
 }
 

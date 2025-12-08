@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { OrderStatus, InventoryTransactionType } from '@pos-checkout/shared';
 import { OrdersRepository } from '../orders/orders.repository';
 import { InventoryRepository } from '../inventory/inventory.repository';
+import { BatchInventoryRepository } from '../inventory/batch-inventory.repository';
 import { UsersRepository } from '../users/users.repository';
 import { ProductsService } from '../products/products.service';
 import { CustomersRepository } from '../customers/customers.repository';
@@ -13,6 +14,7 @@ export class ReportsService {
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly inventoryRepository: InventoryRepository,
+    private readonly batchInventoryRepository: BatchInventoryRepository,
     private readonly usersRepository: UsersRepository,
     private readonly productsService: ProductsService,
     private readonly customersRepository: CustomersRepository,
@@ -852,18 +854,128 @@ export class ReportsService {
   }
 
   // ========== PHASE 1: EXPIRY & BATCH ANALYTICS ==========
+  // ENHANCED with actual batch inventory expiry tracking
   async getExpiryAnalytics(locationId?: string, tenantId?: string) {
-    // Note: This requires expiry date tracking in inventory/batch system
-    // For now, this is a placeholder structure
-    // Would need batch inventory repository with expiry dates
+    if (!locationId) {
+      return {
+        locationId,
+        expiryAlerts: [],
+        expiringSoon: [],
+        expiredItems: [],
+        lossForecast: 0,
+        message: 'Location ID required for expiry analytics',
+      };
+    }
+
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    // Get all batch inventory for the location
+    const batchInventory = await this.batchInventoryRepository.findByLocation(locationId);
+
+    // Filter batches with expiry dates
+    const batchesWithExpiry = batchInventory.filter((batch) => batch.expiryDate && batch.quantity > 0);
+
+    const expiringSoon: Array<{
+      productId: string;
+      productName?: string;
+      batchNumber: string;
+      quantity: number;
+      expiryDate: string;
+      daysUntilExpiry: number;
+      potentialLoss: number;
+      unitCostCents?: number;
+    }> = [];
+
+    const expiredItems: Array<{
+      productId: string;
+      productName?: string;
+      batchNumber: string;
+      quantity: number;
+      expiryDate: string;
+      daysExpired: number;
+      potentialLoss: number;
+      unitCostCents?: number;
+    }> = [];
+
+    // Batch fetch product names
+    const productIds = new Set(batchesWithExpiry.map((batch) => batch.productId));
+    const productsMap = tenantId && productIds.size > 0
+      ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+      : new Map<string, any>();
+
+    batchesWithExpiry.forEach((batch) => {
+      if (!batch.expiryDate) return;
+
+      const expiryDate = batch.expiryDate;
+      const daysUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+      const potentialLoss = (batch.unitCostCents || 0) * batch.quantity;
+      const product = productsMap.get(batch.productId);
+
+      if (expiryDate < now) {
+        // Already expired
+        expiredItems.push({
+          productId: batch.productId,
+          productName: product?.name,
+          batchNumber: batch.batchNumber,
+          quantity: batch.quantity,
+          expiryDate: expiryDate.toISOString(),
+          daysExpired: Math.abs(daysUntilExpiry),
+          potentialLoss: potentialLoss / 100, // Convert to currency
+          unitCostCents: batch.unitCostCents,
+        });
+      } else if (expiryDate <= sevenDaysFromNow) {
+        // Expiring within 7 days
+        expiringSoon.push({
+          productId: batch.productId,
+          productName: product?.name,
+          batchNumber: batch.batchNumber,
+          quantity: batch.quantity,
+          expiryDate: expiryDate.toISOString(),
+          daysUntilExpiry,
+          potentialLoss: potentialLoss / 100, // Convert to currency
+          unitCostCents: batch.unitCostCents,
+        });
+      }
+    });
+
+    // Sort by urgency (expiring soonest first)
+    expiringSoon.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+    expiredItems.sort((a, b) => b.daysExpired - a.daysExpired);
+
+    const totalLossForecast = [...expiringSoon, ...expiredItems].reduce(
+      (sum, item) => sum + item.potentialLoss,
+      0,
+    );
 
     return {
       locationId,
-      expiryAlerts: [],
-      expiringSoon: [], // Items expiring in next 7 days
-      expiredItems: [], // Already expired items
-      lossForecast: 0, // Potential loss if expiring items aren't sold
-      message: 'Expiry tracking requires batch inventory system with expiry dates. Feature coming soon.',
+      expiryAlerts: [
+        ...expiredItems.map((item) => ({
+          type: 'expired' as const,
+          severity: 'critical' as const,
+          productId: item.productId,
+          productName: item.productName,
+          batchNumber: item.batchNumber,
+          message: `${item.productName || item.productId} (Batch: ${item.batchNumber}) expired ${item.daysExpired} day(s) ago`,
+        })),
+        ...expiringSoon.map((item) => ({
+          type: 'expiring_soon' as const,
+          severity: item.daysUntilExpiry <= 3 ? ('critical' as const) : ('warning' as const),
+          productId: item.productId,
+          productName: item.productName,
+          batchNumber: item.batchNumber,
+          message: `${item.productName || item.productId} (Batch: ${item.batchNumber}) expires in ${item.daysUntilExpiry} day(s)`,
+        })),
+      ],
+      expiringSoon,
+      expiredItems,
+      lossForecast: totalLossForecast,
+      totalBatchesTracked: batchesWithExpiry.length,
+      message: batchesWithExpiry.length === 0
+        ? 'No batch inventory with expiry dates found. Enable batch tracking in GRN to track expiry dates.'
+        : `Tracking ${batchesWithExpiry.length} batches with expiry dates.`,
     };
   }
 

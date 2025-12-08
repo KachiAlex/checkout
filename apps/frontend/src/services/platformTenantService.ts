@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config';
+import { Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 
 export interface TenantSummary {
   id: string;
@@ -7,6 +8,8 @@ export interface TenantSummary {
   slug: string;
   plan: string;
   status: string;
+  industry?: Industry;
+  feature_flags?: IndustryFeatureFlags;
   seatLimit?: number;
   contactEmail?: string;
   billingCycleStart?: string;
@@ -18,6 +21,8 @@ export interface CreateTenantPayload {
   name: string;
   slug: string;
   plan: string;
+  industry?: Industry;
+  featureFlags?: Partial<IndustryFeatureFlags>;
   seatLimit?: number;
   adminEmail: string;
   adminName?: string;

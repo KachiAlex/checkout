@@ -4,10 +4,11 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantsRepository, TenantRecord } from './tenants.repository';
 import { UsersRepository } from '../users/users.repository';
-import { TenantPlan, TenantStatus, UserRole } from '@pos-checkout/shared';
+import { TenantPlan, TenantStatus, UserRole, Industry } from '@pos-checkout/shared';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { ResetTenantAdminPinDto } from './dto/reset-tenant-admin-pin.dto';
 import { SuspendTenantDto } from './dto/suspend-tenant.dto';
+import { IndustryFeaturesService } from './industry-features.service';
 
 const normalizeSlug = (value: string) => value.trim().toLowerCase();
 const generateDefaultPin = () => Math.floor(Math.random() * 900000 + 100000).toString();
@@ -17,6 +18,7 @@ export class TenantsService {
   constructor(
     private readonly tenantsRepository: TenantsRepository,
     private readonly usersRepository: UsersRepository,
+    private readonly industryFeaturesService: IndustryFeaturesService,
   ) {}
 
   async create(dto: CreateTenantDto): Promise<{
@@ -34,11 +36,20 @@ export class TenantsService {
     const billingCycleEnd =
       dto.billingCycleEnd && shouldApplyBillingEnd ? new Date(dto.billingCycleEnd) : undefined;
 
+    // Get industry and set default feature flags
+    const industry = dto.industry || Industry.GENERAL;
+    const featureFlags = this.industryFeaturesService.mergeFeatureFlags(
+      industry,
+      dto.featureFlags,
+    );
+
     const tenant = await this.tenantsRepository.create({
       name: dto.name.trim(),
       slug,
       plan: dto.plan,
       status: TenantStatus.PENDING,
+      industry,
+      featureFlags,
       seatLimit: dto.seatLimit,
       contactEmail: dto.adminEmail.toLowerCase(),
       billingCycleStart,
