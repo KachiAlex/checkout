@@ -16,6 +16,18 @@ const getTodayDate = () => {
   return format(today, 'yyyy-MM-dd');
 };
 
+// Helper to safely format dates
+const safeFormatDate = (dateValue: string | Date | undefined | null, formatStr: string = 'MMM d, yyyy HH:mm'): string => {
+  if (!dateValue) return 'N/A';
+  try {
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    if (isNaN(date.getTime())) return 'N/A';
+    return format(date, formatStr);
+  } catch (error) {
+    return 'N/A';
+  }
+};
+
 interface PurchaseOrder {
   id: string;
   orderNumber: string;
@@ -297,6 +309,20 @@ export function ReportsPage() {
   useEffect(() => {
     loadLocations();
   }, [loadLocations]);
+
+  // Reset pagination when tab or date range changes
+  useEffect(() => {
+    setSalesPage(1);
+    setTopSellersPage(1);
+    setAnalyticsPage(1);
+    setStaffPage(1);
+    setPurchaseOrdersPage(1);
+    setAlertsPage(1);
+    setFraudPage(1);
+    setExpiryPage(1);
+    setShrinkagePage(1);
+    setInventoryPage(1);
+  }, [activeTab, dateRangeKey, locationId]);
 
   // Load report data when dependencies change
   useEffect(() => {
@@ -928,7 +954,7 @@ export function ReportsPage() {
                                   <p className="font-semibold mb-1">{alert.title}</p>
                                   <p className="text-sm opacity-90 truncate mb-2">{alert.message}</p>
                                   <div className="text-xs opacity-75">
-                                    <p>Order: {alert.orderNumber} • {format(new Date(alert.createdAt), 'MMM d, yyyy HH:mm')}</p>
+                                    <p>Order: {alert.orderNumber} • {safeFormatDate(alert.timestamp, 'MMM d, yyyy HH:mm')}</p>
                                   </div>
                                 </div>
                               </div>
@@ -1332,41 +1358,73 @@ export function ReportsPage() {
                   )}
 
                   {/* Period Breakdown */}
-                  {inventoryAnalytics.data && inventoryAnalytics.data.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold theme-text-primary mb-4">Period Breakdown</h3>
-                      <div className="space-y-2">
-                        {inventoryAnalytics.data.map((period: any) => (
-                          <div key={period.period} className="p-4 rounded-lg border theme-border">
-                            <div className="flex justify-between items-center mb-2">
-                              <p className="font-medium theme-text-primary">{period.period}</p>
-                              <p className={`font-semibold ${period.netChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {period.netChange >= 0 ? '+' : ''}{period.netChange}
-                              </p>
+                  {inventoryAnalytics.data && inventoryAnalytics.data.length > 0 && (() => {
+                    const paginated = paginate(inventoryAnalytics.data, inventoryPage, itemsPerPage);
+                    return (
+                      <div>
+                        <h3 className="text-lg font-semibold theme-text-primary mb-4">Period Breakdown</h3>
+                        <div className="space-y-2">
+                          {paginated.items.map((period: any) => (
+                            <div
+                              key={period.period}
+                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">📦</div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <p className="font-medium theme-text-primary">{period.period}</p>
+                                    <p className={`font-semibold ${period.netChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                      {period.netChange >= 0 ? '+' : ''}{period.netChange}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-3 text-sm theme-text-secondary">
+                                    <span>Received: {period.received}</span>
+                                    <span>Sold: {period.sold}</span>
+                                    <span>Returned: {period.returned}</span>
+                                    <span>Adjusted: {period.adjusted}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...period, type: 'inventory-period' })}
+                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
                             </div>
-                            <div className="grid grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <span className="theme-text-secondary">Received: </span>
-                                <span className="theme-text-primary">{period.received}</span>
-                              </div>
-                              <div>
-                                <span className="theme-text-secondary">Sold: </span>
-                                <span className="theme-text-primary">{period.sold}</span>
-                              </div>
-                              <div>
-                                <span className="theme-text-secondary">Returned: </span>
-                                <span className="theme-text-primary">{period.returned}</span>
-                              </div>
-                              <div>
-                                <span className="theme-text-secondary">Adjusted: </span>
-                                <span className="theme-text-primary">{period.adjusted}</span>
-                              </div>
+                          ))}
+                        </div>
+                        {paginated.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-sm theme-text-secondary">
+                              Showing {((inventoryPage - 1) * itemsPerPage) + 1} to {Math.min(inventoryPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
+                                disabled={inventoryPage === 1}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => setInventoryPage(p => Math.min(paginated.totalPages, p + 1))}
+                                disabled={inventoryPage === paginated.totalPages}
+                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next
+                              </button>
                             </div>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1388,40 +1446,44 @@ export function ReportsPage() {
                     
                     {paginated.items.length > 0 ? (
                       <>
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b theme-border">
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Order Number</th>
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Supplier</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Total</th>
-                                <th className="text-right p-3 theme-text-secondary font-medium text-sm">Items</th>
-                                <th className="text-left p-3 theme-text-secondary font-medium text-sm">Created</th>
-                                <th className="text-center p-3 theme-text-secondary font-medium text-sm">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {paginated.items.map((po) => (
-                                <tr key={po.id} className="border-b theme-border hover:bg-white/5">
-                                  <td className="p-3 theme-text-primary font-medium">{po.orderNumber}</td>
-                                  <td className="p-3 theme-text-primary">{po.supplierName}</td>
-                                  <td className="p-3 theme-text-primary text-right">{formatCurrencyCents(po.totalCents)}</td>
-                                  <td className="p-3 theme-text-primary text-right">{po.items.length}</td>
-                                  <td className="p-3 theme-text-primary">{format(new Date(po.createdAt), 'MMM d, yyyy')}</td>
-                                  <td className="p-3">
-                                    <span className={`px-2 py-1 rounded-full text-xs inline-block ${
-                                      po.status === 'received' ? 'bg-green-500/20 text-green-400' 
-                                      : po.status === 'approved' ? 'bg-blue-500/20 text-blue-400' 
-                                      : 'bg-yellow-500/20 text-yellow-400'
-                                    }`}>
-                              {po.status.toUpperCase()}
-                            </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          </div>
+                        <div className="space-y-2">
+                          {paginated.items.map((po) => (
+                            <div
+                              key={po.id}
+                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex-shrink-0 text-2xl">📋</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium theme-text-primary truncate">{po.orderNumber}</p>
+                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                    <span>Supplier: {po.supplierName}</span>
+                                    <span>Total: {formatCurrencyCents(po.totalCents)}</span>
+                                    <span>Items: {po.items.length}</span>
+                                    <span>{safeFormatDate(po.createdAt, 'MMM d, yyyy')}</span>
+                                  </div>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                  po.status === 'received' ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
+                                  : po.status === 'approved' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' 
+                                  : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                }`}>
+                                  {po.status.toUpperCase()}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => handleViewDetails({ ...po, type: 'purchase-order' })}
+                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
+                                title="View Details"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                         
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
@@ -1468,6 +1530,365 @@ export function ReportsPage() {
             setSelectedOrderId(null);
           }}
         />
+      )}
+
+      {/* Detail Modal */}
+      {detailModalOpen && selectedDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="theme-surface rounded-2xl border theme-border max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 theme-surface border-b theme-border p-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold theme-text-primary">Details</h3>
+              <button
+                onClick={handleCloseDetail}
+                className="p-2 rounded-lg hover:bg-white/10 theme-text-primary transition"
+                title="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {selectedDetail.type === 'sales' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Product Name</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.productName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Order Number</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.orderNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Price</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.price)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Quantity</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.totalOrder}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.avgOrderValue)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Product ID</p>
+                      <p className="font-mono text-xs theme-text-secondary">{selectedDetail.productId}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'top-seller-product' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Product ID</p>
+                      <p className="font-mono text-xs theme-text-primary">{selectedDetail.productId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Quantity Sold</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.quantitySold}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Revenue</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.revenue)}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'top-seller-staff' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Staff Name</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.userName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">User ID</p>
+                      <p className="font-mono text-xs theme-text-secondary">{selectedDetail.userId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.totalSales)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Order Count</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.orderCount}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'alert' && (
+                <>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Title</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.title}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Message</p>
+                      <p className="theme-text-primary">{selectedDetail.message}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Severity</p>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}>
+                        {selectedDetail.severity.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'fraud' && (
+                <>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Title</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.title}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Message</p>
+                      <p className="theme-text-primary">{selectedDetail.message}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Order Number</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.orderNumber}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Date</p>
+                        <p className="font-medium theme-text-primary">{safeFormatDate(selectedDetail.createdAt || selectedDetail.timestamp, 'MMM d, yyyy HH:mm')}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Severity</p>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}>
+                          {selectedDetail.severity.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'expiry' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Product Name</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.productName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Status</p>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        selectedDetail.status === 'expired' ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                      }`}>
+                        {selectedDetail.status === 'expired' ? 'EXPIRED' : 'EXPIRING SOON'}
+                      </span>
+                    </div>
+                    {selectedDetail.status === 'expired' ? (
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Days Expired</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.daysExpired} days ago</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Days Until Expiry</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.daysUntilExpiry} days</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Potential Loss</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.potentialLoss)}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'shrinkage' && (
+                <>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Title</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.title}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Message</p>
+                      <p className="theme-text-primary">{selectedDetail.message}</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Actual Stock</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.actualStock}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Theoretical Stock</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.theoreticalStock}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Difference</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.discrepancy}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Severity</p>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}>
+                          {selectedDetail.severity.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'staff' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Staff Name</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.userName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">User ID</p>
+                      <p className="font-mono text-xs theme-text-secondary">{selectedDetail.userId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.sales?.totalSales || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Order Count</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.sales?.orderCount || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Item Count</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.sales?.itemCount || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.sales?.averageOrderValue || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Items per Order</p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.sales?.orderCount > 0 
+                          ? ((selectedDetail.sales?.itemCount || 0) / selectedDetail.sales.orderCount).toFixed(1)
+                          : '0.0'}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'analytics' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Period</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.period}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Sales</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.sales)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Orders</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.orders}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Items</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.items}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
+                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.averageOrderValue)}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'inventory-period' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Period</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.period}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Net Change</p>
+                      <p className={`font-medium ${selectedDetail.netChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {selectedDetail.netChange >= 0 ? '+' : ''}{selectedDetail.netChange}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Received</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.received}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Sold</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.sold}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Returned</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.returned}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Adjusted</p>
+                      <p className="font-medium theme-text-primary">{selectedDetail.adjusted}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === 'purchase-order' && (
+                <>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Order Number</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.orderNumber}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Status</p>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          selectedDetail.status === 'received' ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
+                          : selectedDetail.status === 'approved' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' 
+                          : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                        }`}>
+                          {selectedDetail.status.toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Supplier</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.supplierName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Total</p>
+                        <p className="font-medium theme-text-primary">{formatCurrencyCents(selectedDetail.totalCents)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Items Count</p>
+                        <p className="font-medium theme-text-primary">{selectedDetail.items.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-1">Created</p>
+                        <p className="font-medium theme-text-primary">{safeFormatDate(selectedDetail.createdAt || selectedDetail.timestamp, 'MMM d, yyyy HH:mm')}</p>
+                      </div>
+                    </div>
+                    {selectedDetail.items && selectedDetail.items.length > 0 && (
+                      <div>
+                        <p className="text-sm theme-text-secondary mb-2">Items</p>
+                        <div className="space-y-2">
+                          {selectedDetail.items.map((item: any, idx: number) => (
+                            <div key={idx} className="p-3 rounded-lg border theme-border">
+                              <p className="font-medium theme-text-primary">{item.productName}</p>
+                              <div className="flex gap-4 mt-1 text-sm theme-text-secondary">
+                                <span>Qty: {item.quantity}</span>
+                                <span>Unit Cost: {formatCurrencyCents(item.unitCostCents)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
