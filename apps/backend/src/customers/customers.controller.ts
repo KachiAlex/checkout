@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, Query, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Query, UseGuards, Request, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -15,25 +15,46 @@ export class CustomersController {
   @ApiOperation({ summary: 'Get all customers for tenant' })
   @ApiResponse({ status: 200, description: 'List of customers' })
   async findAll(@Request() req: any, @Query('search') search?: string) {
-    if (!req?.user?.tenantId) {
-      throw new UnauthorizedException('Tenant ID is required');
-    }
-    
-    const customers = await this.customersService.findAll(req.user.tenantId);
-    
-    // Simple search filter with null safety
-    if (search) {
-      const searchLower = search.toLowerCase().trim();
-      return customers.filter(
-        (c) =>
-          (c.name && c.name.toLowerCase().includes(searchLower)) ||
-          (c.phone && c.phone.toLowerCase().includes(searchLower)) ||
-          (c.email && c.email.toLowerCase().includes(searchLower)) ||
-          (c.loyaltyId && c.loyaltyId.toLowerCase().includes(searchLower)),
+    try {
+      if (!req?.user?.tenantId) {
+        throw new UnauthorizedException('Tenant ID is required');
+      }
+      
+      const customers = await this.customersService.findAll(req.user.tenantId);
+      
+      // Simple search filter with null safety
+      if (search) {
+        const searchLower = search.toLowerCase().trim();
+        return customers.filter(
+          (c) =>
+            (c.name && c.name.toLowerCase().includes(searchLower)) ||
+            (c.phone && c.phone.toLowerCase().includes(searchLower)) ||
+            (c.email && c.email.toLowerCase().includes(searchLower)) ||
+            (c.loyaltyId && c.loyaltyId.toLowerCase().includes(searchLower)),
+        );
+      }
+      
+      return customers;
+    } catch (error: any) {
+      console.error('Error in customers.findAll:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+        tenantId: req?.user?.tenantId,
+        search,
+      });
+      
+      // If it's already a NestJS exception, re-throw it
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      
+      // Otherwise, wrap in InternalServerErrorException with helpful message
+      throw new InternalServerErrorException(
+        `Failed to fetch customers: ${error.message || 'Unknown error'}. Please check server logs for details.`
       );
     }
-    
-    return customers;
   }
 
   @Get('search')

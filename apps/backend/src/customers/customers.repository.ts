@@ -51,23 +51,54 @@ export class CustomersRepository {
         .where('tenantId', '==', tenantId)
         .orderBy('name', 'asc')
         .get();
-      return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+      
+      // Map documents to records with error handling for individual records
+      const customers: CustomerRecord[] = [];
+      for (const doc of snapshot.docs) {
+        try {
+          const record = this.toRecord(doc.id, doc.data());
+          customers.push(record);
+        } catch (error: any) {
+          console.error(`Error converting customer document ${doc.id} to record:`, error.message);
+          // Skip invalid documents instead of failing the entire query
+          continue;
+        }
+      }
+      return customers;
     } catch (error: any) {
       // If index error, fallback to query without orderBy and sort in memory
       if (error?.code === 9 || error?.message?.includes('index') || error?.message?.includes('FAILED_PRECONDITION')) {
         console.warn('Firestore index missing for customers query, falling back to in-memory sort:', error.message);
-        const snapshot = await this.collection
-          .where('tenantId', '==', tenantId)
-          .get();
-        const customers = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
-        // Sort in memory by name
-        return customers.sort((a, b) => {
-          const nameA = (a.name || '').toLowerCase();
-          const nameB = (b.name || '').toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
+        try {
+          const snapshot = await this.collection
+            .where('tenantId', '==', tenantId)
+            .get();
+          
+          // Map documents to records with error handling
+          const customers: CustomerRecord[] = [];
+          for (const doc of snapshot.docs) {
+            try {
+              const record = this.toRecord(doc.id, doc.data());
+              customers.push(record);
+            } catch (err: any) {
+              console.error(`Error converting customer document ${doc.id} to record:`, err.message);
+              continue;
+            }
+          }
+          
+          // Sort in memory by name
+          return customers.sort((a, b) => {
+            const nameA = (a.name || '').toLowerCase();
+            const nameB = (b.name || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
+        } catch (fallbackError: any) {
+          console.error('Fallback query also failed:', fallbackError);
+          throw fallbackError;
+        }
       }
       // Re-throw other errors
+      console.error('Error in customers.findAll:', error);
       throw error;
     }
   }
@@ -232,10 +263,18 @@ export class CustomersRepository {
       throw new Error(`Customer document ${id} has no data.`);
     }
 
+    // Validate required fields
+    if (!data.tenantId) {
+      throw new Error(`Customer document ${id} is missing tenantId.`);
+    }
+    if (!data.name) {
+      console.warn(`Customer document ${id} is missing name field.`);
+    }
+
     return {
       id,
       tenantId: data.tenantId,
-      name: data.name,
+      name: data.name || 'Unknown', // Provide default for missing name
       phone: data.phone,
       email: data.email,
       loyaltyId: data.loyaltyId,
