@@ -31,6 +31,52 @@ export class OrdersController {
     return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId, req.user.locationId);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'Get all orders (sales)' })
+  @ApiResponse({ status: 200, description: 'List of orders' })
+  async findAll(
+    @Request() req: any,
+    @Query('location_id') locationId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('status') status?: string,
+  ) {
+    // Ensure location belongs to tenant if provided
+    if (locationId) {
+      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+    }
+    
+    return this.ordersService.findAll(locationId, from, to, status, req.user.tenantId);
+  }
+
+  // Specific routes must come before parameterized routes (:id)
+  @Get('held')
+  @ApiOperation({ summary: 'Get all held/suspended orders' })
+  @ApiResponse({ status: 200, description: 'List of held orders' })
+  async findHeldOrders(@Request() req: any, @Query('location_id') locationId?: string) {
+    // Ensure location belongs to tenant if provided
+    if (locationId) {
+      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+    }
+    
+    return this.ordersService.findHeldOrders(locationId, req.user.tenantId);
+  }
+
+  @Get('credit')
+  @ApiOperation({ summary: 'Get all credit orders (products taken on credit)' })
+  @ApiResponse({ status: 200, description: 'List of credit orders' })
+  async getCreditOrders(
+    @Request() req: any,
+    @Query('location_id') locationId?: string,
+  ) {
+    // Ensure location belongs to tenant if provided
+    if (locationId) {
+      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+    }
+    
+    return this.ordersService.findCreditOrders(locationId, req.user.tenantId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get order by ID' })
   @ApiResponse({ status: 200, description: 'Order found' })
@@ -68,36 +114,6 @@ export class OrdersController {
     return this.ordersService.update(id, updateDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all orders (sales)' })
-  @ApiResponse({ status: 200, description: 'List of orders' })
-  async findAll(
-    @Request() req: any,
-    @Query('location_id') locationId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Query('status') status?: string,
-  ) {
-    // Ensure location belongs to tenant if provided
-    if (locationId) {
-      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
-    }
-    
-    return this.ordersService.findAll(locationId, from, to, status, req.user.tenantId);
-  }
-
-  @Get('held')
-  @ApiOperation({ summary: 'Get all held/suspended orders' })
-  @ApiResponse({ status: 200, description: 'List of held orders' })
-  async findHeldOrders(@Request() req: any, @Query('location_id') locationId?: string) {
-    // Ensure location belongs to tenant if provided
-    if (locationId) {
-      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
-    }
-    
-    return this.ordersService.findHeldOrders(locationId, req.user.tenantId);
-  }
-
   @Post(':id/hold')
   @ApiOperation({ summary: 'Hold/suspend an order' })
   @ApiResponse({ status: 200, description: 'Order held' })
@@ -133,21 +149,6 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: 'Held order completed' })
   async completeHeldOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     return this.ordersService.completeHeldOrder(id, req.user.tenantId);
-  }
-
-  @Get('credit')
-  @ApiOperation({ summary: 'Get all credit orders (products taken on credit)' })
-  @ApiResponse({ status: 200, description: 'List of credit orders' })
-  async getCreditOrders(
-    @Request() req: any,
-    @Query('location_id') locationId?: string,
-  ) {
-    // Ensure location belongs to tenant if provided
-    if (locationId) {
-      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
-    }
-    
-    return this.ordersService.findCreditOrders(locationId, req.user.tenantId);
   }
 
   @Post(':id/credit/mark-paid')
