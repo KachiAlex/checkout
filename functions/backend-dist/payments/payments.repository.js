@@ -22,21 +22,31 @@ let PaymentsRepository = class PaymentsRepository {
     async create(data) {
         const now = firestore_1.FieldValue.serverTimestamp();
         const id = (0, uuid_1.v4)();
-        await this.collection.doc(id).set({
-            orderId: data.orderId,
-            amountCents: data.amountCents,
-            currency: data.currency,
-            method: data.method,
-            status: data.status,
-            processorData: data.processorData,
-            transactionId: data.transactionId,
-            error: data.error,
-            processedAt: data.processedAt ? firestore_1.Timestamp.fromDate(data.processedAt) : undefined,
-            createdAt: now,
-            updatedAt: now,
-        });
-        const created = await this.collection.doc(id).get();
-        return this.toRecord(created.id, created.data());
+        try {
+            await this.collection.doc(id).set({
+                orderId: data.orderId,
+                amountCents: data.amountCents,
+                currency: data.currency,
+                method: data.method,
+                status: data.status,
+                processorData: data.processorData,
+                transactionId: data.transactionId,
+                error: data.error,
+                processedAt: data.processedAt ? firestore_1.Timestamp.fromDate(data.processedAt) : undefined,
+                createdAt: now,
+                updatedAt: now,
+            });
+            const created = await this.collection.doc(id).get();
+            if (!created.exists) {
+                throw new Error(`Failed to create payment: document ${id} does not exist after creation`);
+            }
+            console.log(`✅ Payment saved to Firestore: ${id} (order: ${data.orderId}, amount: ${data.amountCents / 100} ${data.currency})`);
+            return this.toRecord(created.id, created.data());
+        }
+        catch (error) {
+            console.error(`❌ Failed to save payment to Firestore:`, error);
+            throw error;
+        }
     }
     async findById(id) {
         const doc = await this.collection.doc(id).get();

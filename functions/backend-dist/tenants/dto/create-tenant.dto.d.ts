@@ -1,4 +1,4 @@
-import { TenantPlan } from '@pos-checkout/shared';
+import { TenantPlan, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 export declare class CreateTenantDto {
     name: string;
     slug: string;
@@ -8,4 +8,6 @@ export declare class CreateTenantDto {
     adminName?: string;
     billingCycleStart?: string;
     billingCycleEnd?: string;
+    industry?: Industry;
+    featureFlags?: Partial<IndustryFeatureFlags>;
 }

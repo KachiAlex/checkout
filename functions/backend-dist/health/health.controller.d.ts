@@ -4,4 +4,8 @@ export declare class HealthController {
         timestamp: string;
         service: string;
     };
+    ping(): {
+        pong: boolean;
+        timestamp: string;
+    };
 }

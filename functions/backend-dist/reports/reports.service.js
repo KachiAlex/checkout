@@ -14,102 +14,174 @@ const common_1 = require("@nestjs/common");
 const shared_1 = require("@pos-checkout/shared");
 const orders_repository_1 = require("../orders/orders.repository");
 const inventory_repository_1 = require("../inventory/inventory.repository");
+const batch_inventory_repository_1 = require("../inventory/batch-inventory.repository");
 const users_repository_1 = require("../users/users.repository");
 const products_service_1 = require("../products/products.service");
 const customers_repository_1 = require("../customers/customers.repository");
 const inventory_service_1 = require("../inventory/inventory.service");
+const locations_repository_1 = require("../locations/locations.repository");
 let ReportsService = class ReportsService {
-    constructor(ordersRepository, inventoryRepository, usersRepository, productsService, customersRepository, inventoryService) {
+    constructor(ordersRepository, inventoryRepository, batchInventoryRepository, usersRepository, productsService, customersRepository, inventoryService, locationsRepository) {
         this.ordersRepository = ordersRepository;
         this.inventoryRepository = inventoryRepository;
+        this.batchInventoryRepository = batchInventoryRepository;
         this.usersRepository = usersRepository;
         this.productsService = productsService;
         this.customersRepository = customersRepository;
         this.inventoryService = inventoryService;
+        this.locationsRepository = locationsRepository;
     }
-    async getSales(from, to, locationId) {
-        const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const toDate = to ? new Date(to) : new Date();
-        const orders = await this.ordersRepository.list({
-            status: shared_1.OrderStatus.COMPLETED,
-            locationId,
-            from: fromDate,
-            to: toDate,
-        });
-        const totalSales = orders.reduce((sum, order) => sum + order.totalCents, 0);
-        const totalOrders = orders.length;
-        return {
-            from: fromDate.toISOString(),
-            to: toDate.toISOString(),
-            locationId,
-            totalSales: totalSales / 100,
-            totalOrders,
-            averageOrderValue: totalOrders > 0 ? (totalSales / 100) / totalOrders : 0,
-            orders: orders.map((order) => ({
-                id: order.id,
-                orderNumber: order.orderNumber,
-                total: order.totalCents / 100,
-                createdAt: order.createdAt,
-                items: order.items.map((item) => ({
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    priceCents: item.priceCents,
-                    taxCents: item.taxCents,
-                    discountCents: item.discountCents || 0,
-                })),
-            })),
-        };
-    }
-    async getTopSellers(from, to, locationId, limit = 10) {
-        const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const toDate = to ? new Date(to) : new Date();
-        const orders = await this.ordersRepository.list({
-            status: shared_1.OrderStatus.COMPLETED,
-            locationId,
-            from: fromDate,
-            to: toDate,
-        });
-        const productSales = {};
-        orders.forEach((order) => {
-            order.items.forEach((item) => {
-                const productId = item.productId;
-                if (!productSales[productId]) {
-                    productSales[productId] = {
-                        productId,
-                        quantity: 0,
-                        revenue: 0,
-                    };
-                }
-                productSales[productId].quantity += item.quantity;
-                productSales[productId].revenue += item.priceCents * item.quantity;
+    async getSales(from, to, locationId, tenantId, limit, offset) {
+        try {
+            const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+            const toDate = to ? new Date(to) : new Date();
+            const toDateEndOfDay = new Date(toDate);
+            toDateEndOfDay.setHours(23, 59, 59, 999);
+            const effectiveLimit = limit && limit > 0 ? Math.min(limit, 1000) : 100;
+            const effectiveOffset = offset && offset >= 0 ? offset : 0;
+            const allOrders = await this.ordersRepository.list({
+                status: shared_1.OrderStatus.COMPLETED,
+                tenantId,
+                locationId,
+                from: fromDate,
+                to: toDateEndOfDay,
             });
+            const totalSales = allOrders.reduce((sum, order) => sum + order.totalCents, 0);
+            const totalOrders = allOrders.length;
+            const paginatedOrders = allOrders.slice(effectiveOffset, effectiveOffset + effectiveLimit);
+            console.log(`📊 Sales Report Query: Found ${totalOrders} completed orders (showing ${paginatedOrders.length} from offset ${effectiveOffset}) for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
+            const productIds = new Set();
+            paginatedOrders.forEach((order) => {
+                order.items.forEach((item) => {
+                    productIds.add(item.productId);
+                });
+            });
+            const productsMap = tenantId && productIds.size > 0
+                ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+                : new Map();
+            return {
+                from: fromDate.toISOString(),
+                to: toDate.toISOString(),
+                locationId,
+                totalSales: totalSales / 100,
+                totalOrders,
+                averageOrderValue: totalOrders > 0 ? (totalSales / 100) / totalOrders : 0,
+                pagination: {
+                    limit: effectiveLimit,
+                    offset: effectiveOffset,
+                    total: totalOrders,
+                    hasMore: effectiveOffset + effectiveLimit < totalOrders,
+                },
+                orders: paginatedOrders.map((order) => ({
+                    id: order.id,
+                    orderNumber: order.orderNumber,
+                    total: order.totalCents / 100,
+                    createdAt: order.createdAt,
+                    items: order.items.map((item) => {
+                        const product = productsMap.get(item.productId);
+                        return {
+                            productId: item.productId,
+                            productName: product?.name || item.productId,
+                            quantity: item.quantity,
+                            priceCents: item.priceCents,
+                            taxCents: item.taxCents,
+                            discountCents: item.discountCents || 0,
+                        };
+                    }),
+                })),
+            };
+        }
+        catch (error) {
+            console.error('❌ Error in getSales:', error);
+            throw error;
+        }
+    }
+    async getTopSellers(from, to, locationId, limit = 10, tenantId) {
+        const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const toDate = to ? new Date(to) : new Date();
+        const toDateEndOfDay = new Date(toDate);
+        toDateEndOfDay.setHours(23, 59, 59, 999);
+        const orders = await this.ordersRepository.list({
+            status: shared_1.OrderStatus.COMPLETED,
+            tenantId,
+            locationId,
+            from: fromDate,
+            to: toDateEndOfDay,
         });
-        const topSellers = Object.values(productSales)
-            .sort((a, b) => b.quantity - a.quantity)
-            .slice(0, limit)
-            .map((item) => ({
-            productId: item.productId,
-            quantitySold: item.quantity,
-            revenue: item.revenue / 100,
-        }));
+        console.log(`📊 Top Sellers Query: Aggregating ${orders.length} orders for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
+        const productSales = new Map();
+        for (const order of orders) {
+            for (const item of order.items) {
+                const productId = item.productId;
+                const existing = productSales.get(productId);
+                if (existing) {
+                    existing.quantity += item.quantity;
+                    existing.revenue += item.priceCents * item.quantity;
+                }
+                else {
+                    productSales.set(productId, {
+                        productId,
+                        quantity: item.quantity,
+                        revenue: item.priceCents * item.quantity,
+                    });
+                }
+            }
+        }
+        const topSellersData = Array.from(productSales.values())
+            .sort((a, b) => {
+            if (b.quantity !== a.quantity) {
+                return b.quantity - a.quantity;
+            }
+            return b.revenue - a.revenue;
+        })
+            .slice(0, limit);
+        const productIds = topSellersData.map((item) => item.productId);
+        const productsMap = tenantId && productIds.length > 0
+            ? await this.productsService.findByIds(productIds, tenantId)
+            : new Map();
+        const topSellers = topSellersData.map((item) => {
+            const product = productsMap.get(item.productId);
+            return {
+                productId: item.productId,
+                productName: product?.name || item.productId,
+                quantitySold: item.quantity,
+                revenue: item.revenue / 100,
+                averagePrice: item.quantity > 0 ? (item.revenue / item.quantity) / 100 : 0,
+            };
+        });
         return {
             from: fromDate.toISOString(),
             to: toDate.toISOString(),
             locationId,
+            totalProducts: productSales.size,
             topSellers,
         };
     }
-    async getSalesAnalytics(period, locationId) {
-        const now = new Date();
+    async getSalesAnalytics(period, locationId, from, to, tenantId) {
+        const toDate = to ? new Date(to) : new Date();
         let fromDate;
         let groupBy;
+        if (from) {
+            fromDate = new Date(from);
+        }
+        else {
+            switch (period) {
+                case 'daily':
+                    fromDate = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate() - 29);
+                    break;
+                case 'weekly':
+                    fromDate = new Date(toDate.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'monthly':
+                    fromDate = new Date(toDate.getFullYear() - 1, toDate.getMonth(), 1);
+                    break;
+            }
+        }
         switch (period) {
             case 'daily':
-                fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
                 groupBy = (date) => date.toISOString().split('T')[0];
                 break;
             case 'weekly':
-                fromDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000);
                 groupBy = (date) => {
                     const weekStart = new Date(date);
                     weekStart.setDate(date.getDate() - date.getDay());
@@ -121,15 +193,17 @@ let ReportsService = class ReportsService {
                 };
                 break;
             case 'monthly':
-                fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
                 groupBy = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 break;
         }
+        const toDateEndOfDay = new Date(toDate);
+        toDateEndOfDay.setHours(23, 59, 59, 999);
         const orders = await this.ordersRepository.list({
             status: shared_1.OrderStatus.COMPLETED,
+            tenantId,
             locationId,
             from: fromDate,
-            to: now,
+            to: toDateEndOfDay,
         });
         const grouped = {};
         orders.forEach((order) => {
@@ -155,7 +229,7 @@ let ReportsService = class ReportsService {
         return {
             period,
             from: fromDate.toISOString(),
-            to: now.toISOString(),
+            to: toDate.toISOString(),
             locationId,
             totalSales,
             totalOrders,
@@ -163,7 +237,16 @@ let ReportsService = class ReportsService {
             data,
         };
     }
-    async getInventoryAnalytics(period, locationId) {
+    async getInventoryAnalytics(period, locationId, tenantId) {
+        if (locationId && tenantId) {
+            const location = await this.locationsRepository.findById(locationId);
+            if (!location) {
+                throw new Error(`Location ${locationId} not found`);
+            }
+            if (location.tenantId && location.tenantId !== tenantId) {
+                throw new Error(`Location ${locationId} does not belong to tenant ${tenantId}`);
+            }
+        }
         const now = new Date();
         let fromDate;
         let groupBy;
@@ -189,7 +272,10 @@ let ReportsService = class ReportsService {
                 groupBy = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 break;
         }
-        const transactions = await this.inventoryRepository.listTransactions(locationId || '', fromDate, now);
+        const [transactions, inventoryStock] = await Promise.all([
+            this.inventoryRepository.listTransactions(locationId || '', fromDate, now),
+            locationId ? this.inventoryRepository.listStock(locationId) : Promise.resolve([]),
+        ]);
         const grouped = {};
         transactions.forEach((tx) => {
             const key = groupBy(tx.ts);
@@ -224,6 +310,37 @@ let ReportsService = class ReportsService {
         const totalReceived = data.reduce((sum, d) => sum + d.received, 0);
         const totalSold = data.reduce((sum, d) => sum + d.sold, 0);
         const totalReturned = data.reduce((sum, d) => sum + d.returned, 0);
+        const totalProductsInventorized = inventoryStock.length;
+        const totalCurrentStock = inventoryStock.reduce((sum, inv) => sum + inv.quantity, 0);
+        const totalInventoryValue = inventoryStock.reduce((sum, inv) => {
+            const cost = inv.costCents || 0;
+            return sum + (cost * inv.quantity);
+        }, 0);
+        const totalInventorySalesValue = inventoryStock.reduce((sum, inv) => {
+            const salesPrice = inv.salesPriceCents || 0;
+            return sum + (salesPrice * inv.quantity);
+        }, 0);
+        const lowStockProducts = inventoryStock.filter((inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint);
+        const productIds = inventoryStock.map((inv) => inv.productId);
+        const productsMap = tenantId && productIds.length > 0
+            ? await this.productsService.findByIds(productIds, tenantId)
+            : new Map();
+        const inventorizedProducts = inventoryStock.map((inv) => {
+            const product = productsMap.get(inv.productId);
+            return {
+                productId: inv.productId,
+                productName: product?.name || inv.productId,
+                sku: product?.sku || '—',
+                quantity: inv.quantity,
+                reorderPoint: inv.reorderPoint,
+                maxStock: inv.maxStock,
+                costCents: inv.costCents,
+                salesPriceCents: inv.salesPriceCents,
+                inventoryValue: (inv.costCents || 0) * inv.quantity,
+                salesValue: (inv.salesPriceCents || 0) * inv.quantity,
+                isLowStock: inv.reorderPoint ? inv.quantity <= inv.reorderPoint : false,
+            };
+        });
         return {
             period,
             from: fromDate.toISOString(),
@@ -234,22 +351,33 @@ let ReportsService = class ReportsService {
             totalReturned,
             netChange: totalReceived + totalReturned - totalSold,
             data,
+            inventorizedProducts: {
+                totalProducts: totalProductsInventorized,
+                totalCurrentStock,
+                totalInventoryValue: totalInventoryValue / 100,
+                totalInventorySalesValue: totalInventorySalesValue / 100,
+                lowStockCount: lowStockProducts.length,
+                products: inventorizedProducts.sort((a, b) => b.quantity - a.quantity),
+            },
         };
     }
-    async getStaffPerformance(locationId, from, to) {
+    async getStaffPerformance(locationId, from, to, tenantId) {
         const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const toDate = to ? new Date(to) : new Date();
-        const orders = await this.ordersRepository.list({
-            status: shared_1.OrderStatus.COMPLETED,
-            locationId,
-            from: fromDate,
-            to: toDate,
-        });
-        const transactions = await this.inventoryRepository.listTransactions(locationId || '', fromDate, toDate);
-        const allUsers = await this.usersRepository.findAll();
-        const locationUsers = locationId
-            ? allUsers.filter((u) => u.locationId === locationId)
-            : allUsers;
+        const toDateEndOfDay = new Date(toDate);
+        toDateEndOfDay.setHours(23, 59, 59, 999);
+        const [orders, transactions, allUsers] = await Promise.all([
+            this.ordersRepository.list({
+                status: shared_1.OrderStatus.COMPLETED,
+                tenantId,
+                locationId,
+                from: fromDate,
+                to: toDateEndOfDay,
+            }),
+            this.inventoryRepository.listTransactions(locationId || '', fromDate, toDateEndOfDay),
+            this.usersRepository.findAll(tenantId),
+        ]);
+        const locationUsers = allUsers;
         const staffSales = {};
         orders.forEach((order) => {
             if (!order.createdBy)
@@ -356,15 +484,21 @@ let ReportsService = class ReportsService {
         if (!locationId) {
             return { alerts: [], locationId, generatedAt: now.toISOString() };
         }
+        const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        const last120Days = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
         try {
-            const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-            const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            const recentOrders = await this.ordersRepository.list({
-                status: shared_1.OrderStatus.COMPLETED,
-                locationId,
-                from: last30Days,
-                to: now,
-            });
+            const [inventoryRecords, recentOrders] = await Promise.all([
+                this.inventoryRepository.listStock(locationId),
+                this.ordersRepository.list({
+                    status: shared_1.OrderStatus.COMPLETED,
+                    locationId,
+                    from: last30Days,
+                    to: now,
+                }),
+            ]);
             const productSalesRate = {};
             recentOrders.forEach((order) => {
                 order.items.forEach((item) => {
@@ -374,6 +508,18 @@ let ReportsService = class ReportsService {
                     productSalesRate[item.productId].totalSold += item.quantity;
                 });
             });
+            const productIdsToFetch = inventoryRecords
+                .filter((inv) => {
+                const salesRate = productSalesRate[inv.productId];
+                if (!salesRate || salesRate.totalSold === 0)
+                    return false;
+                const avgDailySales = salesRate.totalSold / salesRate.days;
+                return avgDailySales > 0 && inv.quantity > 0;
+            })
+                .map((inv) => inv.productId);
+            const productsMap = tenantId && productIdsToFetch.length > 0
+                ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+                : new Map();
             for (const inventory of inventoryRecords) {
                 const salesRate = productSalesRate[inventory.productId];
                 if (salesRate && salesRate.totalSold > 0) {
@@ -381,9 +527,7 @@ let ReportsService = class ReportsService {
                     if (avgDailySales > 0 && inventory.quantity > 0) {
                         const daysUntilStockout = Math.floor(inventory.quantity / avgDailySales);
                         if (daysUntilStockout <= 3 && daysUntilStockout > 0) {
-                            const product = tenantId
-                                ? await this.productsService.findByIds([inventory.productId], tenantId).then((m) => m.get(inventory.productId))
-                                : null;
+                            const product = productsMap.get(inventory.productId);
                             alerts.push({
                                 type: 'stockout',
                                 severity: daysUntilStockout <= 1 ? 'critical' : 'warning',
@@ -404,20 +548,20 @@ let ReportsService = class ReportsService {
             console.error('Error calculating stock-out predictions:', error);
         }
         try {
-            const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-            const recentSales = await this.ordersRepository.list({
-                status: shared_1.OrderStatus.COMPLETED,
-                locationId,
-                from: last7Days,
-                to: now,
-            });
-            const previousSales = await this.ordersRepository.list({
-                status: shared_1.OrderStatus.COMPLETED,
-                locationId,
-                from: previous7Days,
-                to: last7Days,
-            });
+            const [recentSales, previousSales] = await Promise.all([
+                this.ordersRepository.list({
+                    status: shared_1.OrderStatus.COMPLETED,
+                    locationId,
+                    from: last7Days,
+                    to: now,
+                }),
+                this.ordersRepository.list({
+                    status: shared_1.OrderStatus.COMPLETED,
+                    locationId,
+                    from: previous7Days,
+                    to: last7Days,
+                }),
+            ]);
             const recentTotal = recentSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
             const previousTotal = previousSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
             if (previousTotal > 0) {
@@ -439,23 +583,29 @@ let ReportsService = class ReportsService {
         try {
             if (tenantId && locationId) {
                 const allCustomers = await this.customersRepository.findAll(tenantId);
-                const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-                const last120Days = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
-                for (const customer of allCustomers.slice(0, 50)) {
-                    const recentOrders = await this.ordersRepository.list({
+                const limitedCustomers = allCustomers.slice(0, 50);
+                const customerOrderQueries = limitedCustomers.map((customer) => Promise.all([
+                    this.ordersRepository.list({
                         status: shared_1.OrderStatus.COMPLETED,
                         locationId,
                         customerId: customer.id,
                         from: last60Days,
                         to: now,
-                    });
-                    const previousOrders = await this.ordersRepository.list({
+                    }),
+                    this.ordersRepository.list({
                         status: shared_1.OrderStatus.COMPLETED,
                         locationId,
                         customerId: customer.id,
                         from: last120Days,
                         to: last60Days,
-                    });
+                    }),
+                ]).then(([recentOrders, previousOrders]) => ({
+                    customer,
+                    recentOrders,
+                    previousOrders,
+                })));
+                const customerOrderResults = await Promise.all(customerOrderQueries);
+                for (const { customer, recentOrders, previousOrders } of customerOrderResults) {
                     if (recentOrders.length === 0 && previousOrders.length > 0) {
                         const daysSinceLastPurchase = Math.floor((now.getTime() - previousOrders[0].createdAt.getTime()) / (24 * 60 * 60 * 1000));
                         if (daysSinceLastPurchase >= 60) {
@@ -506,21 +656,22 @@ let ReportsService = class ReportsService {
         }
         try {
             const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-            for (const inventory of inventoryRecords) {
-                if (inventory.reorderPoint && inventory.quantity <= inventory.reorderPoint) {
-                    const product = tenantId
-                        ? await this.productsService.findByIds([inventory.productId], tenantId).then((m) => m.get(inventory.productId))
-                        : null;
-                    alerts.push({
-                        type: 'low_stock',
-                        severity: inventory.quantity === 0 ? 'critical' : 'warning',
-                        title: `Low Stock: ${product?.name || inventory.productId}`,
-                        message: `Current stock (${inventory.quantity}) is at or below reorder point (${inventory.reorderPoint}).`,
-                        productId: inventory.productId,
-                        productName: product?.name,
-                        currentStock: inventory.quantity,
-                    });
-                }
+            const lowStockItems = inventoryRecords.filter((inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint);
+            const productIdsToFetch = lowStockItems.map((inv) => inv.productId);
+            const productsMap = tenantId && productIdsToFetch.length > 0
+                ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+                : new Map();
+            for (const inventory of lowStockItems) {
+                const product = productsMap.get(inventory.productId);
+                alerts.push({
+                    type: 'low_stock',
+                    severity: inventory.quantity === 0 ? 'critical' : 'warning',
+                    title: `Low Stock: ${product?.name || inventory.productId}`,
+                    message: `Current stock (${inventory.quantity}) is at or below reorder point (${inventory.reorderPoint}).`,
+                    productId: inventory.productId,
+                    productName: product?.name,
+                    currentStock: inventory.quantity,
+                });
             }
         }
         catch (error) {
@@ -540,13 +691,19 @@ let ReportsService = class ReportsService {
     async getFraudDetection(locationId, from, to) {
         const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const toDate = to ? new Date(to) : new Date();
-        const orders = await this.ordersRepository.list({
-            status: shared_1.OrderStatus.COMPLETED,
-            locationId,
-            from: fromDate,
-            to: toDate,
-        });
+        const [orders, allUsers] = await Promise.all([
+            this.ordersRepository.list({
+                status: shared_1.OrderStatus.COMPLETED,
+                locationId,
+                from: fromDate,
+                to: toDate,
+            }),
+            this.usersRepository.findAll(),
+        ]);
         const fraudAlerts = [];
+        const locationUsers = locationId
+            ? allUsers.filter((u) => u.locationId === locationId)
+            : allUsers;
         const staffDiscounts = {};
         orders.forEach((order) => {
             if (order.createdBy && order.discountCents > 0) {
@@ -558,10 +715,6 @@ let ReportsService = class ReportsService {
                 staffDiscounts[order.createdBy].totalSales += order.totalCents;
             }
         });
-        const allUsers = await this.usersRepository.findAll();
-        const locationUsers = locationId
-            ? allUsers.filter((u) => u.locationId === locationId)
-            : allUsers;
         Object.entries(staffDiscounts).forEach(([staffId, stats]) => {
             const discountRate = stats.totalSales > 0 ? (stats.totalDiscount / stats.totalSales) * 100 : 0;
             const avgDiscountPerOrder = stats.count > 0 ? stats.totalDiscount / stats.count : 0;
@@ -625,16 +778,122 @@ let ReportsService = class ReportsService {
         };
     }
     async getExpiryAnalytics(locationId, tenantId) {
+        if (!locationId) {
+            return {
+                locationId,
+                expiryAlerts: [],
+                expiringSoon: [],
+                expiredItems: [],
+                lossForecast: 0,
+                message: 'Location ID required for expiry analytics',
+            };
+        }
+        if (tenantId) {
+            try {
+                const location = await this.locationsRepository.findById(locationId);
+                if (!location) {
+                    throw new Error(`Location ${locationId} not found`);
+                }
+                if (location.tenantId && location.tenantId !== tenantId) {
+                    throw new Error(`Location ${locationId} does not belong to tenant ${tenantId}`);
+                }
+            }
+            catch (error) {
+                console.error('Error validating location in getExpiryAnalytics:', error);
+                throw error;
+            }
+        }
+        const now = new Date();
+        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        let batchInventory = [];
+        try {
+            batchInventory = await this.batchInventoryRepository.findByLocation(locationId);
+        }
+        catch (error) {
+            console.error('Error fetching batch inventory in getExpiryAnalytics:', error);
+            return {
+                locationId,
+                expiryAlerts: [],
+                expiringSoon: [],
+                expiredItems: [],
+                lossForecast: 0,
+                totalBatchesTracked: 0,
+                message: 'Failed to load batch inventory. Please try again.',
+            };
+        }
+        const batchesWithExpiry = batchInventory.filter((batch) => batch.expiryDate && batch.quantity > 0);
+        const expiringSoon = [];
+        const expiredItems = [];
+        const productIds = new Set(batchesWithExpiry.map((batch) => batch.productId));
+        const productsMap = tenantId && productIds.size > 0
+            ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+            : new Map();
+        batchesWithExpiry.forEach((batch) => {
+            if (!batch.expiryDate)
+                return;
+            const expiryDate = batch.expiryDate;
+            const daysUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+            const potentialLoss = (batch.unitCostCents || 0) * batch.quantity;
+            const product = productsMap.get(batch.productId);
+            if (expiryDate < now) {
+                expiredItems.push({
+                    productId: batch.productId,
+                    productName: product?.name,
+                    batchNumber: batch.batchNumber,
+                    quantity: batch.quantity,
+                    expiryDate: expiryDate.toISOString(),
+                    daysExpired: Math.abs(daysUntilExpiry),
+                    potentialLoss: potentialLoss / 100,
+                    unitCostCents: batch.unitCostCents,
+                });
+            }
+            else if (expiryDate <= sevenDaysFromNow) {
+                expiringSoon.push({
+                    productId: batch.productId,
+                    productName: product?.name,
+                    batchNumber: batch.batchNumber,
+                    quantity: batch.quantity,
+                    expiryDate: expiryDate.toISOString(),
+                    daysUntilExpiry,
+                    potentialLoss: potentialLoss / 100,
+                    unitCostCents: batch.unitCostCents,
+                });
+            }
+        });
+        expiringSoon.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+        expiredItems.sort((a, b) => b.daysExpired - a.daysExpired);
+        const totalLossForecast = [...expiringSoon, ...expiredItems].reduce((sum, item) => sum + item.potentialLoss, 0);
         return {
             locationId,
-            expiryAlerts: [],
-            expiringSoon: [],
-            expiredItems: [],
-            lossForecast: 0,
-            message: 'Expiry tracking requires batch inventory system with expiry dates. Feature coming soon.',
+            expiryAlerts: [
+                ...expiredItems.map((item) => ({
+                    type: 'expired',
+                    severity: 'critical',
+                    productId: item.productId,
+                    productName: item.productName,
+                    batchNumber: item.batchNumber,
+                    message: `${item.productName || item.productId} (Batch: ${item.batchNumber}) expired ${item.daysExpired} day(s) ago`,
+                })),
+                ...expiringSoon.map((item) => ({
+                    type: 'expiring_soon',
+                    severity: item.daysUntilExpiry <= 3 ? 'critical' : 'warning',
+                    productId: item.productId,
+                    productName: item.productName,
+                    batchNumber: item.batchNumber,
+                    message: `${item.productName || item.productId} (Batch: ${item.batchNumber}) expires in ${item.daysUntilExpiry} day(s)`,
+                })),
+            ],
+            expiringSoon,
+            expiredItems,
+            lossForecast: totalLossForecast,
+            totalBatchesTracked: batchesWithExpiry.length,
+            message: batchesWithExpiry.length === 0
+                ? 'No batch inventory with expiry dates found. Enable batch tracking in GRN to track expiry dates.'
+                : `Tracking ${batchesWithExpiry.length} batches with expiry dates.`,
         };
     }
-    async getShrinkageDetection(locationId, from, to) {
+    async getShrinkageDetection(locationId, from, to, tenantId) {
         const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const toDate = to ? new Date(to) : new Date();
         if (!locationId) {
@@ -644,8 +903,10 @@ let ReportsService = class ReportsService {
                 message: 'Location ID required for shrinkage detection',
             };
         }
-        const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-        const transactions = await this.inventoryRepository.listTransactions(locationId, fromDate, toDate);
+        const [inventoryRecords, transactions] = await Promise.all([
+            this.inventoryRepository.listStock(locationId),
+            this.inventoryRepository.listTransactions(locationId, fromDate, toDate),
+        ]);
         const theoreticalStock = {};
         const initialStock = {};
         inventoryRecords.forEach((inv) => {
@@ -670,12 +931,14 @@ let ReportsService = class ReportsService {
             }
         });
         const shrinkageAlerts = [];
+        const productIdsToFetch = [];
         inventoryRecords.forEach((inv) => {
             const theoretical = theoreticalStock[inv.productId] || 0;
             const actual = inv.quantity;
             const discrepancy = actual - theoretical;
             const discrepancyPercent = theoretical > 0 ? Math.abs((discrepancy / theoretical) * 100) : 0;
             if (Math.abs(discrepancy) > 10 || discrepancyPercent > 5) {
+                productIdsToFetch.push(inv.productId);
                 shrinkageAlerts.push({
                     productId: inv.productId,
                     actualStock: actual,
@@ -686,16 +949,30 @@ let ReportsService = class ReportsService {
                 });
             }
         });
+        const productsMap = tenantId && productIdsToFetch.length > 0
+            ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+            : new Map();
+        const enrichedAlerts = shrinkageAlerts.map((alert) => {
+            const product = productsMap.get(alert.productId);
+            const productName = product?.name || alert.productId;
+            return {
+                ...alert,
+                productName,
+                title: `Inventory Discrepancy: ${productName}`,
+                message: `Actual stock (${alert.actualStock}) differs from theoretical stock (${alert.theoreticalStock}) by ${Math.abs(alert.discrepancy)} units (${alert.discrepancyPercent.toFixed(1)}%).`,
+            };
+        });
         return {
             from: fromDate.toISOString(),
             to: toDate.toISOString(),
             locationId,
-            shrinkageAlerts,
-            totalDiscrepancies: shrinkageAlerts.length,
-            criticalCount: shrinkageAlerts.filter((a) => a.severity === 'critical').length,
-            message: shrinkageAlerts.length === 0
+            shrinkageAlerts: enrichedAlerts,
+            totalDiscrepancies: enrichedAlerts.length,
+            criticalCount: enrichedAlerts.filter((a) => a.severity === 'critical').length,
+            warningCount: enrichedAlerts.filter((a) => a.severity === 'warning').length,
+            message: enrichedAlerts.length === 0
                 ? 'No significant inventory discrepancies detected.'
-                : `${shrinkageAlerts.length} products have inventory discrepancies.`,
+                : `${enrichedAlerts.length} products have inventory discrepancies.`,
         };
     }
 };
@@ -704,9 +981,11 @@ exports.ReportsService = ReportsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [orders_repository_1.OrdersRepository,
         inventory_repository_1.InventoryRepository,
+        batch_inventory_repository_1.BatchInventoryRepository,
         users_repository_1.UsersRepository,
         products_service_1.ProductsService,
         customers_repository_1.CustomersRepository,
-        inventory_service_1.InventoryService])
+        inventory_service_1.InventoryService,
+        locations_repository_1.LocationsRepository])
 ], ReportsService);
 //# sourceMappingURL=reports.service.js.map

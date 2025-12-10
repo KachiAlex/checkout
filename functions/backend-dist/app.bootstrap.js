@@ -82,7 +82,33 @@ async function configureApp(app, options) {
         optionsSuccessStatus: 204,
     };
     console.log(`🔧 Bootstrap - NODE_ENV: ${nodeEnv}, Prefix: /${effectiveApiPrefix}, Origin: ${corsOrigins === true ? 'ALL' : corsOrigins.join(',')}`);
+    console.log(`🔧 CORS Configuration - Allowed Origins:`, corsOrigins === true ? 'ALL (*)' : corsOrigins);
+    console.log(`🔧 CORS Configuration - CORS_ORIGIN env var:`, corsOriginConfig);
     app.enableCors(corsConfig);
+    app.use((req, res, next) => {
+        const origin = req.headers.origin;
+        const isAllowedOrigin = corsOrigins === true ||
+            !origin ||
+            (Array.isArray(corsOrigins) && (corsOrigins.some(allowed => origin.toLowerCase() === allowed.toLowerCase()) ||
+                origin.startsWith('http://localhost') ||
+                origin.startsWith('capacitor://')));
+        if (isAllowedOrigin && origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        }
+        else if (corsOrigins === true) {
+            res.setHeader('Access-Control-Allow-Origin', origin || '*');
+        }
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,Origin,Access-Control-Request-Method,Access-Control-Request-Headers');
+        res.setHeader('Access-Control-Expose-Headers', 'Authorization');
+        res.setHeader('Access-Control-Max-Age', '3600');
+        if (req.method === 'OPTIONS') {
+            console.log(`✅ Handling OPTIONS preflight from origin: ${origin || 'none'}`);
+            return res.status(204).end();
+        }
+        next();
+    });
     const cspDirectives = {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
@@ -111,6 +137,8 @@ async function configureApp(app, options) {
         },
     }));
     app.setGlobalPrefix(effectiveApiPrefix);
+    console.log('✅ Global prefix set to:', `/${effectiveApiPrefix}`);
+    console.log('✅ CORS middleware active');
     const shouldEnableSwagger = typeof options?.enableSwagger === 'boolean'
         ? options.enableSwagger
         : nodeEnv !== 'production';

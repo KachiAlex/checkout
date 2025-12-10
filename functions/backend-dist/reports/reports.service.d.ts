@@ -1,24 +1,34 @@
 import { OrdersRepository } from '../orders/orders.repository';
 import { InventoryRepository } from '../inventory/inventory.repository';
+import { BatchInventoryRepository } from '../inventory/batch-inventory.repository';
 import { UsersRepository } from '../users/users.repository';
 import { ProductsService } from '../products/products.service';
 import { CustomersRepository } from '../customers/customers.repository';
 import { InventoryService } from '../inventory/inventory.service';
+import { LocationsRepository } from '../locations/locations.repository';
 export declare class ReportsService {
     private readonly ordersRepository;
     private readonly inventoryRepository;
+    private readonly batchInventoryRepository;
     private readonly usersRepository;
     private readonly productsService;
     private readonly customersRepository;
     private readonly inventoryService;
-    constructor(ordersRepository: OrdersRepository, inventoryRepository: InventoryRepository, usersRepository: UsersRepository, productsService: ProductsService, customersRepository: CustomersRepository, inventoryService: InventoryService);
-    getSales(from?: string, to?: string, locationId?: string): Promise<{
+    private readonly locationsRepository;
+    constructor(ordersRepository: OrdersRepository, inventoryRepository: InventoryRepository, batchInventoryRepository: BatchInventoryRepository, usersRepository: UsersRepository, productsService: ProductsService, customersRepository: CustomersRepository, inventoryService: InventoryService, locationsRepository: LocationsRepository);
+    getSales(from?: string, to?: string, locationId?: string, tenantId?: string, limit?: number, offset?: number): Promise<{
         from: string;
         to: string;
         locationId: string;
         totalSales: number;
         totalOrders: number;
         averageOrderValue: number;
+        pagination: {
+            limit: number;
+            offset: number;
+            total: number;
+            hasMore: boolean;
+        };
         orders: {
             id: string;
             orderNumber: string;
@@ -26,6 +36,7 @@ export declare class ReportsService {
             createdAt: Date;
             items: {
                 productId: string;
+                productName: any;
                 quantity: number;
                 priceCents: number;
                 taxCents: number;
@@ -33,17 +44,20 @@ export declare class ReportsService {
             }[];
         }[];
     }>;
-    getTopSellers(from?: string, to?: string, locationId?: string, limit?: number): Promise<{
+    getTopSellers(from?: string, to?: string, locationId?: string, limit?: number, tenantId?: string): Promise<{
         from: string;
         to: string;
         locationId: string;
+        totalProducts: number;
         topSellers: {
             productId: string;
+            productName: any;
             quantitySold: number;
             revenue: number;
+            averagePrice: number;
         }[];
     }>;
-    getSalesAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string): Promise<{
+    getSalesAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string, from?: string, to?: string, tenantId?: string): Promise<{
         period: "daily" | "weekly" | "monthly";
         from: string;
         to: string;
@@ -59,7 +73,7 @@ export declare class ReportsService {
             averageOrderValue: number;
         }[];
     }>;
-    getInventoryAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string): Promise<{
+    getInventoryAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string, tenantId?: string): Promise<{
         period: "daily" | "weekly" | "monthly";
         from: string;
         to: string;
@@ -77,8 +91,28 @@ export declare class ReportsService {
             transactions: number;
             netChange: number;
         }[];
+        inventorizedProducts: {
+            totalProducts: number;
+            totalCurrentStock: any;
+            totalInventoryValue: number;
+            totalInventorySalesValue: number;
+            lowStockCount: number;
+            products: {
+                productId: any;
+                productName: any;
+                sku: any;
+                quantity: any;
+                reorderPoint: any;
+                maxStock: any;
+                costCents: any;
+                salesPriceCents: any;
+                inventoryValue: number;
+                salesValue: number;
+                isLowStock: boolean;
+            }[];
+        };
     }>;
-    getStaffPerformance(locationId?: string, from?: string, to?: string): Promise<{
+    getStaffPerformance(locationId?: string, from?: string, to?: string, tenantId?: string): Promise<{
         from: string;
         to: string;
         locationId: string;
@@ -161,8 +195,49 @@ export declare class ReportsService {
         expiredItems: any[];
         lossForecast: number;
         message: string;
+        totalBatchesTracked?: undefined;
+    } | {
+        locationId: string;
+        expiryAlerts: ({
+            type: "expired";
+            severity: "critical";
+            productId: string;
+            productName: string;
+            batchNumber: string;
+            message: string;
+        } | {
+            type: "expiring_soon";
+            severity: "critical" | "warning";
+            productId: string;
+            productName: string;
+            batchNumber: string;
+            message: string;
+        })[];
+        expiringSoon: {
+            productId: string;
+            productName?: string;
+            batchNumber: string;
+            quantity: number;
+            expiryDate: string;
+            daysUntilExpiry: number;
+            potentialLoss: number;
+            unitCostCents?: number;
+        }[];
+        expiredItems: {
+            productId: string;
+            productName?: string;
+            batchNumber: string;
+            quantity: number;
+            expiryDate: string;
+            daysExpired: number;
+            potentialLoss: number;
+            unitCostCents?: number;
+        }[];
+        lossForecast: number;
+        totalBatchesTracked: number;
+        message: string;
     }>;
-    getShrinkageDetection(locationId?: string, from?: string, to?: string): Promise<{
+    getShrinkageDetection(locationId?: string, from?: string, to?: string, tenantId?: string): Promise<{
         locationId: string;
         shrinkageAlerts: any[];
         message: string;
@@ -170,13 +245,16 @@ export declare class ReportsService {
         to?: undefined;
         totalDiscrepancies?: undefined;
         criticalCount?: undefined;
+        warningCount?: undefined;
     } | {
         from: string;
         to: string;
         locationId: string;
         shrinkageAlerts: {
+            productName: any;
+            title: string;
+            message: string;
             productId: string;
-            productName?: string;
             actualStock: number;
             theoreticalStock: number;
             discrepancy: number;
@@ -185,6 +263,7 @@ export declare class ReportsService {
         }[];
         totalDiscrepancies: number;
         criticalCount: number;
+        warningCount: number;
         message: string;
     }>;
 }

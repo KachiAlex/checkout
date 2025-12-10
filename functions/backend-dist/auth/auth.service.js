@@ -58,16 +58,16 @@ let AuthService = class AuthService {
         this.configService = configService;
         this.userCache = new Map();
     }
-    async getTenantUsers(tenantId) {
+    async getTenantUsers(tenantId, limit) {
         const CACHE_TTL_MS = 60_000;
         const cached = this.userCache.get(tenantId);
         const now = Date.now();
         if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
-            return cached.users;
+            return limit ? cached.users.slice(0, limit) : cached.users;
         }
         const users = await this.usersRepository.findAll(tenantId);
         this.userCache.set(tenantId, { users, fetchedAt: now });
-        return users;
+        return limit ? users.slice(0, limit) : users;
     }
     async validateUser(pin, tenantId, deviceId) {
         if (deviceId) {
@@ -84,11 +84,19 @@ let AuthService = class AuthService {
                 console.warn('[AuthService] Device-based lookup failed, falling back to full scan:', error?.message);
             }
         }
+        const startTime = Date.now();
         const users = await this.getTenantUsers(tenantId);
+        const fetchTime = Date.now() - startTime;
+        console.log(`[AuthService] Fetched ${users.length} users in ${fetchTime}ms`);
+        if (users.length > 200) {
+            console.warn(`[AuthService] Tenant ${tenantId} has ${users.length} users - consider optimizing authentication for large tenants`);
+        }
         for (const user of users) {
             try {
                 const isValid = await bcrypt.compare(pin, user.pinHash);
                 if (isValid) {
+                    const validationTime = Date.now() - startTime;
+                    console.log(`[AuthService] PIN validated in ${validationTime}ms (user: ${user.id})`);
                     if (deviceId && user.deviceId !== deviceId) {
                         try {
                             const updated = await this.usersRepository.update(user.id, { deviceId });
@@ -105,6 +113,8 @@ let AuthService = class AuthService {
                 console.error('[AuthService] Error comparing PIN for user', user.id, error?.message);
             }
         }
+        const totalTime = Date.now() - startTime;
+        console.log(`[AuthService] PIN validation failed after checking ${users.length} users in ${totalTime}ms`);
         return null;
     }
     async login(loginDto) {

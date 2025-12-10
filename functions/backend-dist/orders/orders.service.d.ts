@@ -31,4 +31,7 @@ export declare class OrdersService {
     verifyLocationAccess(locationId: string, tenantId: string): Promise<void>;
     completeHeldOrder(id: string, tenantId: string): Promise<OrderRecord>;
     private awardLoyaltyPoints;
+    findCreditOrders(locationId?: string, tenantId?: string): Promise<OrderRecord[]>;
+    markCreditOrderAsPaid(orderId: string, userId: string, tenantId: string): Promise<OrderRecord>;
+    markCreditOrderAsReturned(orderId: string, userId: string, tenantId: string): Promise<OrderRecord>;
 }

@@ -2,13 +2,19 @@ import { ReportsService } from './reports.service';
 export declare class ReportsController {
     private readonly reportsService;
     constructor(reportsService: ReportsService);
-    getSales(from?: string, to?: string, locationId?: string): Promise<{
+    getSales(from?: string, to?: string, locationId?: string, limit?: string, offset?: string, req?: any): Promise<{
         from: string;
         to: string;
         locationId: string;
         totalSales: number;
         totalOrders: number;
         averageOrderValue: number;
+        pagination: {
+            limit: number;
+            offset: number;
+            total: number;
+            hasMore: boolean;
+        };
         orders: {
             id: string;
             orderNumber: string;
@@ -16,6 +22,7 @@ export declare class ReportsController {
             createdAt: Date;
             items: {
                 productId: string;
+                productName: any;
                 quantity: number;
                 priceCents: number;
                 taxCents: number;
@@ -23,17 +30,20 @@ export declare class ReportsController {
             }[];
         }[];
     }>;
-    getTopSellers(from?: string, to?: string, locationId?: string, limit?: number): Promise<{
+    getTopSellers(from?: string, to?: string, locationId?: string, limit?: number, req?: any): Promise<{
         from: string;
         to: string;
         locationId: string;
+        totalProducts: number;
         topSellers: {
             productId: string;
+            productName: any;
             quantitySold: number;
             revenue: number;
+            averagePrice: number;
         }[];
     }>;
-    getSalesAnalytics(period?: 'daily' | 'weekly' | 'monthly', locationId?: string): Promise<{
+    getSalesAnalytics(period?: 'daily' | 'weekly' | 'monthly', locationId?: string, from?: string, to?: string, req?: any): Promise<{
         period: "daily" | "weekly" | "monthly";
         from: string;
         to: string;
@@ -49,7 +59,7 @@ export declare class ReportsController {
             averageOrderValue: number;
         }[];
     }>;
-    getInventoryAnalytics(period?: 'daily' | 'weekly' | 'monthly', locationId?: string): Promise<{
+    getInventoryAnalytics(period?: 'daily' | 'weekly' | 'monthly', locationId?: string, req?: any): Promise<{
         period: "daily" | "weekly" | "monthly";
         from: string;
         to: string;
@@ -67,8 +77,28 @@ export declare class ReportsController {
             transactions: number;
             netChange: number;
         }[];
+        inventorizedProducts: {
+            totalProducts: number;
+            totalCurrentStock: any;
+            totalInventoryValue: number;
+            totalInventorySalesValue: number;
+            lowStockCount: number;
+            products: {
+                productId: any;
+                productName: any;
+                sku: any;
+                quantity: any;
+                reorderPoint: any;
+                maxStock: any;
+                costCents: any;
+                salesPriceCents: any;
+                inventoryValue: number;
+                salesValue: number;
+                isLowStock: boolean;
+            }[];
+        };
     }>;
-    getStaffPerformance(locationId?: string, from?: string, to?: string): Promise<{
+    getStaffPerformance(locationId?: string, from?: string, to?: string, req?: any): Promise<{
         from: string;
         to: string;
         locationId: string;
@@ -151,8 +181,49 @@ export declare class ReportsController {
         expiredItems: any[];
         lossForecast: number;
         message: string;
+        totalBatchesTracked?: undefined;
+    } | {
+        locationId: string;
+        expiryAlerts: ({
+            type: "expired";
+            severity: "critical";
+            productId: string;
+            productName: string;
+            batchNumber: string;
+            message: string;
+        } | {
+            type: "expiring_soon";
+            severity: "critical" | "warning";
+            productId: string;
+            productName: string;
+            batchNumber: string;
+            message: string;
+        })[];
+        expiringSoon: {
+            productId: string;
+            productName?: string;
+            batchNumber: string;
+            quantity: number;
+            expiryDate: string;
+            daysUntilExpiry: number;
+            potentialLoss: number;
+            unitCostCents?: number;
+        }[];
+        expiredItems: {
+            productId: string;
+            productName?: string;
+            batchNumber: string;
+            quantity: number;
+            expiryDate: string;
+            daysExpired: number;
+            potentialLoss: number;
+            unitCostCents?: number;
+        }[];
+        lossForecast: number;
+        totalBatchesTracked: number;
+        message: string;
     }>;
-    getShrinkageDetection(locationId?: string, from?: string, to?: string): Promise<{
+    getShrinkageDetection(locationId?: string, from?: string, to?: string, req?: any): Promise<{
         locationId: string;
         shrinkageAlerts: any[];
         message: string;
@@ -160,13 +231,16 @@ export declare class ReportsController {
         to?: undefined;
         totalDiscrepancies?: undefined;
         criticalCount?: undefined;
+        warningCount?: undefined;
     } | {
         from: string;
         to: string;
         locationId: string;
         shrinkageAlerts: {
+            productName: any;
+            title: string;
+            message: string;
             productId: string;
-            productName?: string;
             actualStock: number;
             theoreticalStock: number;
             discrepancy: number;
@@ -175,6 +249,7 @@ export declare class ReportsController {
         }[];
         totalDiscrepancies: number;
         criticalCount: number;
+        warningCount: number;
         message: string;
     }>;
 }

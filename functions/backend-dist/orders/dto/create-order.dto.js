@@ -125,4 +125,9 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], CreateOrderDto.prototype, "isHeld", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Whether this is a credit order (products taken on credit)', default: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], CreateOrderDto.prototype, "isCreditOrder", void 0);
 //# sourceMappingURL=create-order.dto.js.map

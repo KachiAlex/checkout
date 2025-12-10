@@ -5,10 +5,12 @@ import { UsersRepository } from '../users/users.repository';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { ResetTenantAdminPinDto } from './dto/reset-tenant-admin-pin.dto';
 import { SuspendTenantDto } from './dto/suspend-tenant.dto';
+import { IndustryFeaturesService } from './industry-features.service';
 export declare class TenantsService {
     private readonly tenantsRepository;
     private readonly usersRepository;
-    constructor(tenantsRepository: TenantsRepository, usersRepository: UsersRepository);
+    private readonly industryFeaturesService;
+    constructor(tenantsRepository: TenantsRepository, usersRepository: UsersRepository, industryFeaturesService: IndustryFeaturesService);
     create(dto: CreateTenantDto): Promise<{
         tenant: TenantRecord;
         admin: {

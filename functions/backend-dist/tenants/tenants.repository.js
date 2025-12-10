@@ -47,6 +47,8 @@ let TenantsRepository = class TenantsRepository {
             slug: data.slug,
             plan: data.plan,
             status: data.status,
+            industry: data.industry,
+            featureFlags: data.featureFlags,
             seatLimit: data.seatLimit,
             contactEmail: data.contactEmail,
             billingCycleStart: data.billingCycleStart ? firestore_1.Timestamp.fromDate(data.billingCycleStart) : undefined,
@@ -86,6 +88,12 @@ let TenantsRepository = class TenantsRepository {
         if (update.contactEmail !== undefined) {
             payload.contactEmail = update.contactEmail;
         }
+        if (update.industry !== undefined) {
+            payload.industry = update.industry;
+        }
+        if (update.featureFlags !== undefined) {
+            payload.featureFlags = update.featureFlags;
+        }
         if (update.metadata !== undefined) {
             payload.metadata = update.metadata;
         }
@@ -111,6 +119,8 @@ let TenantsRepository = class TenantsRepository {
             slug: data.slug,
             plan: data.plan,
             status: data.status,
+            industry: data.industry,
+            featureFlags: data.featureFlags,
             seatLimit: data.seatLimit,
             contactEmail: data.contactEmail,
             billingCycleStart: this.timestampToDate(data.billingCycleStart),

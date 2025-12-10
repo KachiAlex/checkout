@@ -35,18 +35,15 @@ let OrdersRepository = class OrdersRepository {
         return this.toRecord(doc.id, doc.data());
     }
     async list(params) {
-        let query = this.collection.orderBy('createdAt', 'desc');
-        if (params.locationId) {
-            query = query.where('locationId', '==', params.locationId);
+        let query = this.collection;
+        if (params.tenantId) {
+            query = query.where('tenantId', '==', params.tenantId);
         }
         if (params.status) {
             query = query.where('status', '==', params.status);
         }
-        if (params.from) {
-            query = query.where('createdAt', '>=', firestore_1.Timestamp.fromDate(params.from));
-        }
-        if (params.to) {
-            query = query.where('createdAt', '<=', firestore_1.Timestamp.fromDate(params.to));
+        if (params.locationId) {
+            query = query.where('locationId', '==', params.locationId);
         }
         if (params.deviceId) {
             query = query.where('deviceId', '==', params.deviceId);
@@ -57,8 +54,96 @@ let OrdersRepository = class OrdersRepository {
         if (params.customerId) {
             query = query.where('customerId', '==', params.customerId);
         }
-        const snapshot = await query.get();
-        return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        if (params.isCreditOrder !== undefined) {
+            query = query.where('isCreditOrder', '==', params.isCreditOrder);
+        }
+        if (params.paymentStatus) {
+            query = query.where('paymentStatus', '==', params.paymentStatus);
+        }
+        query = query.orderBy('createdAt', 'desc');
+        if (params.from) {
+            query = query.where('createdAt', '>=', firestore_1.Timestamp.fromDate(params.from));
+        }
+        if (params.to) {
+            query = query.where('createdAt', '<=', firestore_1.Timestamp.fromDate(params.to));
+        }
+        const allOrders = [];
+        let lastDoc = null;
+        const batchSize = 1000;
+        try {
+            while (true) {
+                let batchQuery = query;
+                if (lastDoc) {
+                    batchQuery = query.startAfter(lastDoc);
+                }
+                const snapshot = await batchQuery.limit(batchSize).get();
+                if (snapshot.empty) {
+                    break;
+                }
+                const batchOrders = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+                allOrders.push(...batchOrders);
+                if (snapshot.docs.length < batchSize) {
+                    break;
+                }
+                lastDoc = snapshot.docs[snapshot.docs.length - 1];
+            }
+        }
+        catch (error) {
+            console.error('❌ Firestore query error:', error.message);
+            console.error('Query params:', params);
+            console.error('Error code:', error.code);
+            console.error('Full error:', error);
+            if (error.code === 9 || error.message?.includes('index') || error.message?.includes('requires an index')) {
+                console.warn('⚠️ Firestore index missing, attempting fallback query...');
+                try {
+                    let fallbackQuery = this.collection.orderBy('createdAt', 'desc');
+                    if (params.tenantId) {
+                        fallbackQuery = fallbackQuery.where('tenantId', '==', params.tenantId);
+                    }
+                    if (params.status) {
+                        fallbackQuery = fallbackQuery.where('status', '==', params.status);
+                    }
+                    const fallbackSnapshot = await fallbackQuery.limit(5000).get();
+                    const fallbackOrders = fallbackSnapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+                    let filtered = fallbackOrders;
+                    if (params.locationId) {
+                        filtered = filtered.filter(o => o.locationId === params.locationId);
+                    }
+                    if (params.deviceId) {
+                        filtered = filtered.filter(o => o.deviceId === params.deviceId);
+                    }
+                    if (params.isHeld !== undefined) {
+                        filtered = filtered.filter(o => o.isHeld === params.isHeld);
+                    }
+                    if (params.customerId) {
+                        filtered = filtered.filter(o => o.customerId === params.customerId);
+                    }
+                    if (params.isCreditOrder !== undefined) {
+                        filtered = filtered.filter(o => o.isCreditOrder === params.isCreditOrder);
+                    }
+                    if (params.paymentStatus) {
+                        filtered = filtered.filter(o => o.paymentStatus === params.paymentStatus);
+                    }
+                    if (params.from) {
+                        filtered = filtered.filter(o => o.createdAt >= params.from);
+                    }
+                    if (params.to) {
+                        filtered = filtered.filter(o => o.createdAt <= params.to);
+                    }
+                    filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+                    console.log(`✅ Fallback query successful: ${filtered.length} orders after filtering`);
+                    return filtered;
+                }
+                catch (fallbackError) {
+                    console.error('❌ Fallback query also failed:', fallbackError);
+                    throw new Error(`Firestore query failed. Indexes are being built - please wait a few minutes and try again. ` +
+                        `If the error persists, check Firebase Console for index build status. ` +
+                        `Original error: ${error.message}`);
+                }
+            }
+            throw error;
+        }
+        return allOrders;
     }
     async findHeldOrders(locationId) {
         return this.list({ locationId, isHeld: true });
@@ -75,17 +160,32 @@ let OrdersRepository = class OrdersRepository {
         }));
         const doc = {
             ...data,
+            tenantId: data.tenantId,
             customerId: data.customerId,
             items: serializedItems,
             isHeld: data.isHeld ?? false,
+            isCreditOrder: data.isCreditOrder ?? false,
+            paymentStatus: data.paymentStatus,
             heldAt: data.heldAt ? firestore_1.Timestamp.fromDate(data.heldAt) : undefined,
+            paidAt: data.paidAt ? firestore_1.Timestamp.fromDate(data.paidAt) : undefined,
+            returnedAt: data.returnedAt ? firestore_1.Timestamp.fromDate(data.returnedAt) : undefined,
             completedAt: data.completedAt ? firestore_1.Timestamp.fromDate(data.completedAt) : undefined,
             createdAt: now,
             updatedAt: now,
         };
-        await this.collection.doc(id).set(doc);
-        const created = await this.collection.doc(id).get();
-        return this.toRecord(id, created.data());
+        try {
+            await this.collection.doc(id).set(doc);
+            const created = await this.collection.doc(id).get();
+            if (!created.exists) {
+                throw new Error(`Failed to create order: document ${id} does not exist after creation`);
+            }
+            console.log(`✅ Order saved to Firestore: ${id} (${data.orderNumber})`);
+            return this.toRecord(id, created.data());
+        }
+        catch (error) {
+            console.error(`❌ Failed to save order to Firestore:`, error);
+            throw error;
+        }
     }
     async update(id, update) {
         const docRef = this.collection.doc(id);
@@ -112,6 +212,18 @@ let OrdersRepository = class OrdersRepository {
         else {
             updateDoc.heldAt = data.heldAt;
         }
+        if (update.paidAt !== undefined) {
+            updateDoc.paidAt = update.paidAt ? firestore_1.Timestamp.fromDate(update.paidAt) : undefined;
+        }
+        else {
+            updateDoc.paidAt = data.paidAt;
+        }
+        if (update.returnedAt !== undefined) {
+            updateDoc.returnedAt = update.returnedAt ? firestore_1.Timestamp.fromDate(update.returnedAt) : undefined;
+        }
+        else {
+            updateDoc.returnedAt = data.returnedAt;
+        }
         if (update.status !== undefined)
             updateDoc.status = update.status;
         if (update.notes !== undefined)
@@ -120,6 +232,10 @@ let OrdersRepository = class OrdersRepository {
             updateDoc.customerId = update.customerId;
         if (update.isHeld !== undefined)
             updateDoc.isHeld = update.isHeld;
+        if (update.isCreditOrder !== undefined)
+            updateDoc.isCreditOrder = update.isCreditOrder;
+        if (update.paymentStatus !== undefined)
+            updateDoc.paymentStatus = update.paymentStatus;
         await docRef.set(updateDoc, { merge: true });
         const updated = await docRef.get();
         return this.toRecord(updated.id, updated.data());
@@ -133,6 +249,7 @@ let OrdersRepository = class OrdersRepository {
             uuid: data.uuid,
             orderNumber: data.orderNumber,
             locationId: data.locationId,
+            tenantId: data.tenantId,
             customerId: data.customerId,
             items: data.items.map((item) => ({
                 productId: item.productId,
@@ -152,7 +269,11 @@ let OrdersRepository = class OrdersRepository {
             notes: data.notes,
             synced: data.synced,
             isHeld: data.isHeld ?? false,
+            isCreditOrder: data.isCreditOrder ?? false,
+            paymentStatus: data.paymentStatus,
             heldAt: this.timestampToDate(data.heldAt),
+            paidAt: this.timestampToDate(data.paidAt),
+            returnedAt: this.timestampToDate(data.returnedAt),
             createdAt: this.timestampToDate(data.createdAt),
             updatedAt: this.timestampToDate(data.updatedAt),
         };

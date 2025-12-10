@@ -134,4 +134,51 @@ export class OrdersController {
   async completeHeldOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     return this.ordersService.completeHeldOrder(id, req.user.tenantId);
   }
+
+  @Get('credit')
+  @ApiOperation({ summary: 'Get all credit orders (products taken on credit)' })
+  @ApiResponse({ status: 200, description: 'List of credit orders' })
+  async getCreditOrders(
+    @Request() req: any,
+    @Query('location_id') locationId?: string,
+  ) {
+    // Ensure location belongs to tenant if provided
+    if (locationId) {
+      await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+    }
+    
+    return this.ordersService.findCreditOrders(locationId, req.user.tenantId);
+  }
+
+  @Post(':id/credit/mark-paid')
+  @ApiOperation({ summary: 'Mark a credit order as paid' })
+  @ApiResponse({ status: 200, description: 'Credit order marked as paid' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  @ApiResponse({ status: 400, description: 'Order is not a credit order or already paid' })
+  async markCreditOrderAsPaid(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    const order = await this.ordersService.findOne(id);
+    
+    const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+    
+    return this.ordersService.markCreditOrderAsPaid(id, req.user.sub, req.user.tenantId);
+  }
+
+  @Post(':id/credit/mark-returned')
+  @ApiOperation({ summary: 'Mark a credit order as returned (products returned)' })
+  @ApiResponse({ status: 200, description: 'Credit order marked as returned' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  @ApiResponse({ status: 400, description: 'Order is not a credit order or already returned' })
+  async markCreditOrderAsReturned(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    const order = await this.ordersService.findOne(id);
+    
+    const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+    
+    return this.ordersService.markCreditOrderAsReturned(id, req.user.sub, req.user.tenantId);
+  }
 }

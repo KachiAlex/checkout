@@ -19,5 +19,6 @@ export declare class CreateOrderDto {
     deviceId?: string;
     notes?: string;
     isHeld?: boolean;
+    isCreditOrder?: boolean;
 }
 export {};

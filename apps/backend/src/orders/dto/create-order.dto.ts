@@ -103,4 +103,8 @@ export class CreateOrderDto {
   @ApiProperty({ description: 'Whether this order is held/suspended', default: false })
   @IsOptional()
   isHeld?: boolean;
+
+  @ApiProperty({ description: 'Whether this is a credit order (products taken on credit)', default: false })
+  @IsOptional()
+  isCreditOrder?: boolean;
 }

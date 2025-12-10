@@ -169,6 +169,17 @@ let InventoryService = class InventoryService {
             userId,
         });
     }
+    async decrementForCreditSale(productId, locationId, quantity, orderId, userId) {
+        await this.adjust({
+            productId,
+            locationId,
+            delta: -quantity,
+            type: shared_1.InventoryTransactionType.CREDIT_SALE,
+            referenceId: orderId,
+            userId,
+            notes: `Credit sale - pending payment`,
+        });
+    }
     async incrementForReturn(productId, locationId, quantity, returnId, userId) {
         await this.adjust({
             productId,

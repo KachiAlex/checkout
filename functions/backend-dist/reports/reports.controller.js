@@ -21,20 +21,22 @@ let ReportsController = class ReportsController {
     constructor(reportsService) {
         this.reportsService = reportsService;
     }
-    async getSales(from, to, locationId) {
-        return this.reportsService.getSales(from, to, locationId);
+    async getSales(from, to, locationId, limit, offset, req) {
+        const limitNum = limit ? parseInt(limit, 10) : undefined;
+        const offsetNum = offset ? parseInt(offset, 10) : undefined;
+        return this.reportsService.getSales(from, to, locationId, req?.user?.tenantId, limitNum, offsetNum);
     }
-    async getTopSellers(from, to, locationId, limit) {
-        return this.reportsService.getTopSellers(from, to, locationId, limit);
+    async getTopSellers(from, to, locationId, limit, req) {
+        return this.reportsService.getTopSellers(from, to, locationId, limit, req?.user?.tenantId);
     }
-    async getSalesAnalytics(period = 'daily', locationId) {
-        return this.reportsService.getSalesAnalytics(period, locationId);
+    async getSalesAnalytics(period = 'daily', locationId, from, to, req) {
+        return this.reportsService.getSalesAnalytics(period, locationId, from, to, req?.user?.tenantId);
     }
-    async getInventoryAnalytics(period = 'daily', locationId) {
-        return this.reportsService.getInventoryAnalytics(period, locationId);
+    async getInventoryAnalytics(period = 'daily', locationId, req) {
+        return this.reportsService.getInventoryAnalytics(period, locationId, req?.user?.tenantId);
     }
-    async getStaffPerformance(locationId, from, to) {
-        return this.reportsService.getStaffPerformance(locationId, from, to);
+    async getStaffPerformance(locationId, from, to, req) {
+        return this.reportsService.getStaffPerformance(locationId, from, to, req?.user?.tenantId);
     }
     async getAlerts(locationId, req) {
         return this.reportsService.getAlerts(locationId, req?.user?.tenantId);
@@ -45,20 +47,23 @@ let ReportsController = class ReportsController {
     async getExpiryAnalytics(locationId, req) {
         return this.reportsService.getExpiryAnalytics(locationId, req?.user?.tenantId);
     }
-    async getShrinkageDetection(locationId, from, to) {
-        return this.reportsService.getShrinkageDetection(locationId, from, to);
+    async getShrinkageDetection(locationId, from, to, req) {
+        return this.reportsService.getShrinkageDetection(locationId, from, to, req?.user?.tenantId);
     }
 };
 exports.ReportsController = ReportsController;
 __decorate([
     (0, common_1.Get)('sales'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get sales report' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Get sales report (paginated)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Sales data' }),
     __param(0, (0, common_1.Query)('from')),
     __param(1, (0, common_1.Query)('to')),
     __param(2, (0, common_1.Query)('location_id')),
+    __param(3, (0, common_1.Query)('limit')),
+    __param(4, (0, common_1.Query)('offset')),
+    __param(5, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, Object]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getSales", null);
 __decorate([
@@ -69,8 +74,9 @@ __decorate([
     __param(1, (0, common_1.Query)('to')),
     __param(2, (0, common_1.Query)('location_id')),
     __param(3, (0, common_1.Query)('limit')),
+    __param(4, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, Number]),
+    __metadata("design:paramtypes", [String, String, String, Number, Object]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getTopSellers", null);
 __decorate([
@@ -79,8 +85,11 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Sales analytics data' }),
     __param(0, (0, common_1.Query)('period')),
     __param(1, (0, common_1.Query)('location_id')),
+    __param(2, (0, common_1.Query)('from')),
+    __param(3, (0, common_1.Query)('to')),
+    __param(4, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, Object]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getSalesAnalytics", null);
 __decorate([
@@ -89,8 +98,9 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Inventory analytics data' }),
     __param(0, (0, common_1.Query)('period')),
     __param(1, (0, common_1.Query)('location_id')),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getInventoryAnalytics", null);
 __decorate([
@@ -100,8 +110,9 @@ __decorate([
     __param(0, (0, common_1.Query)('location_id')),
     __param(1, (0, common_1.Query)('from')),
     __param(2, (0, common_1.Query)('to')),
+    __param(3, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, Object]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getStaffPerformance", null);
 __decorate([
@@ -142,8 +153,9 @@ __decorate([
     __param(0, (0, common_1.Query)('location_id')),
     __param(1, (0, common_1.Query)('from')),
     __param(2, (0, common_1.Query)('to')),
+    __param(3, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, Object]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getShrinkageDetection", null);
 exports.ReportsController = ReportsController = __decorate([

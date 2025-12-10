@@ -49,14 +49,19 @@ let OrdersService = class OrdersService {
                 locationId = locations[0].id;
             }
         }
+        if (!locationId) {
+            throw new common_1.BadRequestException('Location ID is required. Please ensure you have a location assigned or create a location first.');
+        }
         await this.validateOrderPrices(createOrderDto, locationId, tenantId);
         const orderNumber = await this.generateOrderNumber(locationId);
+        const isCreditOrder = createOrderDto.isCreditOrder ?? false;
         if (!createOrderDto.isHeld) {
-            await this.validateAndDecrementInventory({ ...createOrderDto, locationId });
+            await this.validateAndDecrementInventory({ ...createOrderDto, locationId }, userId, isCreditOrder);
         }
         const order = await this.ordersRepository.create({
             ...createOrderDto,
             locationId,
+            tenantId,
             orderNumber,
             status: createOrderDto.isHeld ? shared_1.OrderStatus.PENDING : shared_1.OrderStatus.COMPLETED,
             createdBy: userId,
@@ -64,7 +69,10 @@ let OrdersService = class OrdersService {
             discountCents: createOrderDto.discountCents ?? 0,
             isHeld: createOrderDto.isHeld ?? false,
             heldAt: createOrderDto.isHeld ? new Date() : undefined,
+            isCreditOrder,
+            paymentStatus: isCreditOrder ? shared_1.PaymentStatus.PENDING : undefined,
         });
+        console.log(`✅ Order created and saved: ${order.id} (${order.orderNumber}) for tenant ${tenantId}, status: ${order.status}, locationId: ${locationId}, createdAt: ${order.createdAt.toISOString()}`);
         if (!createOrderDto.isHeld && order.status === shared_1.OrderStatus.COMPLETED && createOrderDto.customerId) {
             await this.awardLoyaltyPoints(createOrderDto.customerId, tenantId, order.totalCents, order.id);
         }
@@ -91,13 +99,18 @@ let OrdersService = class OrdersService {
             }
         }
     }
-    async validateAndDecrementInventory(dto) {
+    async validateAndDecrementInventory(dto, userId, isCreditOrder = false) {
         for (const item of dto.items) {
             const stock = await this.inventoryService.getStockByProduct(item.productId, dto.locationId);
             if (stock < item.quantity) {
                 throw new common_1.ConflictException(`Insufficient stock for product ${item.productId}. Available: ${stock}, Requested: ${item.quantity}`);
             }
-            await this.inventoryService.decrementForSale(item.productId, dto.locationId, item.quantity, dto.uuid);
+            if (isCreditOrder) {
+                await this.inventoryService.decrementForCreditSale(item.productId, dto.locationId, item.quantity, dto.uuid, userId);
+            }
+            else {
+                await this.inventoryService.decrementForSale(item.productId, dto.locationId, item.quantity, dto.uuid, userId);
+            }
         }
     }
     async generateOrderNumber(locationId) {
@@ -203,7 +216,7 @@ let OrdersService = class OrdersService {
             taxCents: order.taxCents,
             discountCents: order.discountCents,
             totalCents: order.totalCents,
-        });
+        }, order.createdBy, order.isCreditOrder ?? false);
         const completedOrder = await this.ordersRepository.update(id, {
             isHeld: false,
             heldAt: undefined,
@@ -226,6 +239,59 @@ let OrdersService = class OrdersService {
         catch (error) {
             console.error(`Failed to award loyalty points to customer ${customerId}:`, error);
         }
+    }
+    async findCreditOrders(locationId, tenantId) {
+        const orders = await this.ordersRepository.list({
+            locationId,
+            tenantId,
+            isCreditOrder: true,
+        });
+        if (tenantId && !locationId) {
+            const locations = await this.locationsRepository.findByTenant(tenantId);
+            const locationIds = new Set(locations.map(loc => loc.id));
+            return orders.filter(order => locationIds.has(order.locationId));
+        }
+        return orders;
+    }
+    async markCreditOrderAsPaid(orderId, userId, tenantId) {
+        const order = await this.findOne(orderId);
+        const hasAccess = await this.verifyTenantAccess(order, tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
+        if (!order.isCreditOrder) {
+            throw new common_1.BadRequestException('Order is not a credit order');
+        }
+        if (order.paymentStatus === shared_1.PaymentStatus.COMPLETED) {
+            throw new common_1.BadRequestException('Credit order is already marked as paid');
+        }
+        if (order.paymentStatus === shared_1.PaymentStatus.REFUNDED) {
+            throw new common_1.BadRequestException('Cannot mark returned credit order as paid');
+        }
+        return this.ordersRepository.update(orderId, {
+            paymentStatus: shared_1.PaymentStatus.COMPLETED,
+            paidAt: new Date(),
+        });
+    }
+    async markCreditOrderAsReturned(orderId, userId, tenantId) {
+        const order = await this.findOne(orderId);
+        const hasAccess = await this.verifyTenantAccess(order, tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
+        if (!order.isCreditOrder) {
+            throw new common_1.BadRequestException('Order is not a credit order');
+        }
+        if (order.paymentStatus === shared_1.PaymentStatus.REFUNDED) {
+            throw new common_1.BadRequestException('Credit order is already marked as returned');
+        }
+        for (const item of order.items) {
+            await this.inventoryService.incrementForReturn(item.productId, order.locationId, item.quantity, order.id, userId);
+        }
+        return this.ordersRepository.update(orderId, {
+            paymentStatus: shared_1.PaymentStatus.REFUNDED,
+            returnedAt: new Date(),
+        });
     }
 };
 exports.OrdersService = OrdersService;

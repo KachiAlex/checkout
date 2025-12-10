@@ -68,7 +68,7 @@ exports.FirestoreModule = FirestoreModule = __decorate([
             },
             firestore_service_1.FirestoreService,
         ],
-        exports: [firestore_service_1.FirestoreService, firestore_constants_1.FIRESTORE],
+        exports: [firestore_service_1.FirestoreService, firestore_constants_1.FIRESTORE, firestore_constants_1.FIREBASE_APP],
     })
 ], FirestoreModule);
 //# sourceMappingURL=firestore.module.js.map

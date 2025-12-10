@@ -71,6 +71,10 @@ export function CheckoutPage() {
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
   const [cashChange, setCashChange] = useState<number>(0);
   const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string; phone?: string } | null>(null);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState<Array<{ id: string; name: string; phone?: string; email?: string }>>([]);
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
   const [taxSettings, setTaxSettings] = useState<{ description?: string; percentage?: number; enabled: boolean } | null>(null);
   const [discountInput, setDiscountInput] = useState('');
   const [discountType, setDiscountType] = useState<'percent' | 'amount'>('amount');
@@ -84,6 +88,57 @@ export function CheckoutPage() {
   const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] } | null>(null);
   const [quantitySelectorOpen, setQuantitySelectorOpen] = useState(false);
+
+  // Search customers
+  const searchCustomers = useCallback(async (query: string) => {
+    if (!accessToken || !query.trim()) {
+      setCustomerSearchResults([]);
+      return;
+    }
+
+    setIsSearchingCustomer(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/customers`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { search: query },
+      });
+      const customers = response.data || [];
+      setCustomerSearchResults(customers.slice(0, 10)); // Limit to 10 results
+    } catch (error) {
+      console.error('Failed to search customers:', error);
+      setCustomerSearchResults([]);
+    } finally {
+      setIsSearchingCustomer(false);
+    }
+  }, [accessToken]);
+
+  // Debounce customer search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (customerSearchQuery.trim()) {
+        searchCustomers(customerSearchQuery);
+      } else {
+        setCustomerSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [customerSearchQuery, searchCustomers]);
+
+  // Close customer search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.customer-search-container')) {
+        setShowCustomerSearch(false);
+      }
+    };
+
+    if (showCustomerSearch) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showCustomerSearch]);
 
   // Load all products once, then filter on the client as the cashier types
   const loadAllProducts = useCallback(async () => {
@@ -406,6 +461,8 @@ export function CheckoutPage() {
       setLastCompletedOrderId(order.id);
       clearCart();
       setSelectedCustomer(null);
+      setCustomerSearchQuery('');
+      setCustomerSearchResults([]);
       setReceiptOptionsOpen(true);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to create credit order';
@@ -458,6 +515,8 @@ export function CheckoutPage() {
       setLastCompletedOrderId(order.id);
       clearCart();
       setSelectedCustomer(null);
+      setCustomerSearchQuery('');
+      setCustomerSearchResults([]);
       // Open receipt options modal for user to choose how to handle receipt
       setReceiptOptionsOpen(true);
     } catch (error: any) {
@@ -743,6 +802,78 @@ export function CheckoutPage() {
             <div className="w-full lg:w-80">
               <div className="theme-card sticky top-20 sm:top-6 rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
                 <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Summary</h2>
+                
+                {/* Customer Selector */}
+                <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10 customer-search-container">
+                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">Customer (Optional)</label>
+                  {selectedCustomer ? (
+                    <div className="flex items-center justify-between rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="theme-text-primary text-sm font-medium truncate">{selectedCustomer.name}</p>
+                        {selectedCustomer.phone && (
+                          <p className="theme-text-secondary text-xs truncate">{selectedCustomer.phone}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedCustomer(null);
+                          setCustomerSearchQuery('');
+                          setCustomerSearchResults([]);
+                        }}
+                        className="ml-2 rounded px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={customerSearchQuery}
+                        onChange={(e) => {
+                          setCustomerSearchQuery(e.target.value);
+                          setShowCustomerSearch(true);
+                        }}
+                        onFocus={() => setShowCustomerSearch(true)}
+                        placeholder="Search by name or phone..."
+                        className="theme-surface w-full rounded-lg border border-white/20 px-3 py-2 text-xs sm:text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
+                      />
+                      {isSearchingCustomer && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                        </div>
+                      )}
+                      {showCustomerSearch && customerSearchResults.length > 0 && (
+                        <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-white/20 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
+                          {customerSearchResults.map((customer) => (
+                            <button
+                              key={customer.id}
+                              onClick={() => {
+                                setSelectedCustomer({
+                                  id: customer.id,
+                                  name: customer.name,
+                                  phone: customer.phone,
+                                });
+                                setCustomerSearchQuery('');
+                                setCustomerSearchResults([]);
+                                setShowCustomerSearch(false);
+                              }}
+                              className="w-full border-b border-white/10 px-3 py-2 text-left transition hover:bg-white/10 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
+                            >
+                              <p className="theme-text-primary text-sm font-medium">{customer.name}</p>
+                              {customer.phone && (
+                                <p className="theme-text-secondary text-xs">{customer.phone}</p>
+                              )}
+                              {customer.email && (
+                                <p className="theme-text-secondary text-xs">{customer.email}</p>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 
                 {/* VAT Toggle - Always visible, optional for cashier */}
                 <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">

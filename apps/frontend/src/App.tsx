@@ -38,6 +38,9 @@ const CustomersPage = lazy(() =>
 const ReturnsPage = lazy(() =>
   import('./pages/ReturnsPage').then((module) => ({ default: module.ReturnsPage })),
 );
+const CreditOrdersPage = lazy(() =>
+  import('./pages/CreditOrdersPage').then((module) => ({ default: module.CreditOrdersPage })),
+);
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
 );
@@ -243,6 +246,18 @@ function App() {
               element={
                 isCompanyUser && isAdmin ? (
                   <ReturnsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/credit-orders"
+              element={
+                isCompanyUser && (isAdmin || isManager) ? (
+                  <CreditOrdersPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
                 ) : (

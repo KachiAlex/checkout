@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const throttler_1 = require("@nestjs/throttler");
 const core_1 = require("@nestjs/core");
+const throttler_behind_proxy_guard_1 = require("./common/guards/throttler-behind-proxy.guard");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const locations_module_1 = require("./locations/locations.module");
@@ -34,6 +35,8 @@ const customers_module_1 = require("./customers/customers.module");
 const returns_module_1 = require("./returns/returns.module");
 const payment_settings_module_1 = require("./payment-settings/payment-settings.module");
 const tax_settings_module_1 = require("./tax-settings/tax-settings.module");
+const customization_module_1 = require("./customization/customization.module");
+const upload_module_1 = require("./upload/upload.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -47,7 +50,7 @@ exports.AppModule = AppModule = __decorate([
             throttler_1.ThrottlerModule.forRoot([
                 {
                     ttl: 60000,
-                    limit: 10,
+                    limit: 200,
                 },
             ]),
             firestore_module_1.FirestoreModule,
@@ -73,11 +76,13 @@ exports.AppModule = AppModule = __decorate([
             returns_module_1.ReturnsModule,
             payment_settings_module_1.PaymentSettingsModule,
             tax_settings_module_1.TaxSettingsModule,
+            customization_module_1.CustomizationModule,
+            upload_module_1.UploadModule,
         ],
         providers: [
             {
                 provide: core_1.APP_GUARD,
-                useClass: throttler_1.ThrottlerGuard,
+                useClass: throttler_behind_proxy_guard_1.ThrottlerBehindProxyGuard,
             },
         ],
     })

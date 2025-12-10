@@ -15,12 +15,13 @@ const payments_module_1 = require("../payments/payments.module");
 const locations_module_1 = require("../locations/locations.module");
 const users_module_1 = require("../users/users.module");
 const email_module_1 = require("../email/email.module");
+const customization_module_1 = require("../customization/customization.module");
 let ReceiptsModule = class ReceiptsModule {
 };
 exports.ReceiptsModule = ReceiptsModule;
 exports.ReceiptsModule = ReceiptsModule = __decorate([
     (0, common_1.Module)({
-        imports: [orders_module_1.OrdersModule, payments_module_1.PaymentsModule, locations_module_1.LocationsModule, users_module_1.UsersModule, email_module_1.EmailModule],
+        imports: [orders_module_1.OrdersModule, payments_module_1.PaymentsModule, locations_module_1.LocationsModule, users_module_1.UsersModule, email_module_1.EmailModule, customization_module_1.CustomizationModule],
         controllers: [receipts_controller_1.ReceiptsController],
         providers: [receipts_service_1.ReceiptsService],
         exports: [receipts_service_1.ReceiptsService],

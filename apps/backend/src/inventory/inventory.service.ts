@@ -199,6 +199,24 @@ export class InventoryService {
     });
   }
 
+  async decrementForCreditSale(
+    productId: string,
+    locationId: string,
+    quantity: number,
+    orderId: string,
+    userId?: string,
+  ): Promise<void> {
+    await this.adjust({
+      productId,
+      locationId,
+      delta: -quantity,
+      type: InventoryTransactionType.CREDIT_SALE,
+      referenceId: orderId,
+      userId,
+      notes: `Credit sale - pending payment`,
+    });
+  }
+
   async incrementForReturn(
     productId: string,
     locationId: string,

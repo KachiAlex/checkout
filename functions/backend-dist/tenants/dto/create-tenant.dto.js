@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateTenantDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const shared_1 = require("@pos-checkout/shared");
 class CreateTenantDto {
     constructor() {
@@ -68,4 +69,17 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateTenantDto.prototype, "billingCycleEnd", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: shared_1.Industry, description: 'Industry type', required: false, default: shared_1.Industry.GENERAL }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(shared_1.Industry),
+    __metadata("design:type", String)
+], CreateTenantDto.prototype, "industry", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Custom feature flags (will be merged with industry defaults)', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateNested)(),
+    (0, class_transformer_1.Type)(() => Object),
+    __metadata("design:type", Object)
+], CreateTenantDto.prototype, "featureFlags", void 0);
 //# sourceMappingURL=create-tenant.dto.js.map

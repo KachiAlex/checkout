@@ -67,14 +67,24 @@ let InventoryRepository = class InventoryRepository {
         const now = firestore_1.FieldValue.serverTimestamp();
         const docRef = this.transactionsCollection.doc(id);
         const timestampValue = record.ts instanceof Date ? firestore_1.Timestamp.fromDate(record.ts) : record.ts ?? now;
-        await docRef.set({
-            ...record,
-            ts: timestampValue,
-            createdAt: now,
-            updatedAt: now,
-        });
-        const created = await docRef.get();
-        return this.toTransactionRecord(created.id, created.data());
+        try {
+            await docRef.set({
+                ...record,
+                ts: timestampValue,
+                createdAt: now,
+                updatedAt: now,
+            });
+            const created = await docRef.get();
+            if (!created.exists) {
+                throw new Error(`Failed to create inventory transaction: document ${id} does not exist after creation`);
+            }
+            console.log(`✅ Inventory transaction saved: ${id} (${record.type}, product: ${record.productId}, delta: ${record.delta})`);
+            return this.toTransactionRecord(created.id, created.data());
+        }
+        catch (error) {
+            console.error(`❌ Failed to save inventory transaction to Firestore:`, error);
+            throw error;
+        }
     }
     async listTransactions(locationId, from, to) {
         let query = this.transactionsCollection.where('locationId', '==', locationId).orderBy('ts', 'desc');

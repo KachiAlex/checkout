@@ -1,7 +1,7 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { FieldValue, Timestamp, Query, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { v4 as uuid } from 'uuid';
-import { OrderStatus } from '@pos-checkout/shared';
+import { OrderStatus, PaymentStatus } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 
 export interface OrderRecord {
@@ -23,6 +23,10 @@ export interface OrderRecord {
   discountCents: number;
   totalCents: number;
   status: OrderStatus;
+  paymentStatus?: PaymentStatus; // Track payment status for credit orders
+  isCreditOrder?: boolean; // Flag to identify credit orders
+  paidAt?: Date; // When credit order was paid
+  returnedAt?: Date; // When credit order was returned
   createdBy: string;
   deviceId?: string;
   completedAt?: Date;
@@ -36,10 +40,14 @@ export interface OrderRecord {
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type OrderDocument = Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt' | 'completedAt' | 'heldAt'> & {
+type OrderDocument = Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt' | 'completedAt' | 'heldAt' | 'paidAt' | 'returnedAt'> & {
   customerId?: string;
   isHeld?: boolean;
+  isCreditOrder?: boolean;
+  paymentStatus?: PaymentStatus;
   heldAt?: TimestampField;
+  paidAt?: TimestampField;
+  returnedAt?: TimestampField;
   createdAt?: TimestampField;
   updatedAt?: TimestampField;
   completedAt?: TimestampField;
@@ -77,6 +85,8 @@ export class OrdersRepository {
     deviceId?: string;
     isHeld?: boolean;
     customerId?: string;
+    isCreditOrder?: boolean;
+    paymentStatus?: PaymentStatus;
   }): Promise<OrderRecord[]> {
     // Firestore query structure:
     // When using range queries (>=, <=) with orderBy:
@@ -106,6 +116,12 @@ export class OrdersRepository {
     }
     if (params.customerId) {
       query = query.where('customerId', '==', params.customerId);
+    }
+    if (params.isCreditOrder !== undefined) {
+      query = query.where('isCreditOrder', '==', params.isCreditOrder);
+    }
+    if (params.paymentStatus) {
+      query = query.where('paymentStatus', '==', params.paymentStatus);
     }
     
     // orderBy comes after equality filters
@@ -189,6 +205,12 @@ export class OrdersRepository {
           if (params.customerId) {
             filtered = filtered.filter(o => o.customerId === params.customerId);
           }
+          if (params.isCreditOrder !== undefined) {
+            filtered = filtered.filter(o => o.isCreditOrder === params.isCreditOrder);
+          }
+          if (params.paymentStatus) {
+            filtered = filtered.filter(o => o.paymentStatus === params.paymentStatus);
+          }
           if (params.from) {
             filtered = filtered.filter(o => o.createdAt >= params.from!);
           }
@@ -240,7 +262,11 @@ export class OrdersRepository {
       customerId: data.customerId,
       items: serializedItems,
       isHeld: data.isHeld ?? false,
+      isCreditOrder: data.isCreditOrder ?? false,
+      paymentStatus: data.paymentStatus,
       heldAt: data.heldAt ? Timestamp.fromDate(data.heldAt) : undefined,
+      paidAt: data.paidAt ? Timestamp.fromDate(data.paidAt) : undefined,
+      returnedAt: data.returnedAt ? Timestamp.fromDate(data.returnedAt) : undefined,
       completedAt: data.completedAt ? Timestamp.fromDate(data.completedAt) : undefined,
       createdAt: now,
       updatedAt: now,
@@ -289,11 +315,25 @@ export class OrdersRepository {
       updateDoc.heldAt = data.heldAt;
     }
 
+    if (update.paidAt !== undefined) {
+      updateDoc.paidAt = update.paidAt ? Timestamp.fromDate(update.paidAt) : undefined;
+    } else {
+      updateDoc.paidAt = data.paidAt;
+    }
+
+    if (update.returnedAt !== undefined) {
+      updateDoc.returnedAt = update.returnedAt ? Timestamp.fromDate(update.returnedAt) : undefined;
+    } else {
+      updateDoc.returnedAt = data.returnedAt;
+    }
+
     // Copy other fields that can be updated
     if (update.status !== undefined) updateDoc.status = update.status;
     if (update.notes !== undefined) updateDoc.notes = update.notes;
     if (update.customerId !== undefined) updateDoc.customerId = update.customerId;
     if (update.isHeld !== undefined) updateDoc.isHeld = update.isHeld;
+    if (update.isCreditOrder !== undefined) updateDoc.isCreditOrder = update.isCreditOrder;
+    if (update.paymentStatus !== undefined) updateDoc.paymentStatus = update.paymentStatus;
     
     await docRef.set(updateDoc, { merge: true });
 
@@ -331,7 +371,11 @@ export class OrdersRepository {
       notes: data.notes,
       synced: data.synced,
       isHeld: data.isHeld ?? false,
+      isCreditOrder: data.isCreditOrder ?? false,
+      paymentStatus: data.paymentStatus,
       heldAt: this.timestampToDate(data.heldAt),
+      paidAt: this.timestampToDate(data.paidAt),
+      returnedAt: this.timestampToDate(data.returnedAt),
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),
     };

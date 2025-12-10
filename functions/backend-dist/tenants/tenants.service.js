@@ -48,12 +48,14 @@ const bcrypt = __importStar(require("bcrypt"));
 const tenants_repository_1 = require("./tenants.repository");
 const users_repository_1 = require("../users/users.repository");
 const shared_1 = require("@pos-checkout/shared");
+const industry_features_service_1 = require("./industry-features.service");
 const normalizeSlug = (value) => value.trim().toLowerCase();
 const generateDefaultPin = () => Math.floor(Math.random() * 900000 + 100000).toString();
 let TenantsService = class TenantsService {
-    constructor(tenantsRepository, usersRepository) {
+    constructor(tenantsRepository, usersRepository, industryFeaturesService) {
         this.tenantsRepository = tenantsRepository;
         this.usersRepository = usersRepository;
+        this.industryFeaturesService = industryFeaturesService;
     }
     async create(dto) {
         const slug = normalizeSlug(dto.slug);
@@ -64,11 +66,15 @@ let TenantsService = class TenantsService {
         const billingCycleStart = dto.billingCycleStart ? new Date(dto.billingCycleStart) : undefined;
         const shouldApplyBillingEnd = dto.plan !== shared_1.TenantPlan.LIFETIME;
         const billingCycleEnd = dto.billingCycleEnd && shouldApplyBillingEnd ? new Date(dto.billingCycleEnd) : undefined;
+        const industry = dto.industry || shared_1.Industry.GENERAL;
+        const featureFlags = this.industryFeaturesService.mergeFeatureFlags(industry, dto.featureFlags);
         const tenant = await this.tenantsRepository.create({
             name: dto.name.trim(),
             slug,
             plan: dto.plan,
             status: shared_1.TenantStatus.PENDING,
+            industry,
+            featureFlags,
             seatLimit: dto.seatLimit,
             contactEmail: dto.adminEmail.toLowerCase(),
             billingCycleStart,
@@ -218,6 +224,7 @@ exports.TenantsService = TenantsService;
 exports.TenantsService = TenantsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [tenants_repository_1.TenantsRepository,
-        users_repository_1.UsersRepository])
+        users_repository_1.UsersRepository,
+        industry_features_service_1.IndustryFeaturesService])
 ], TenantsService);
 //# sourceMappingURL=tenants.service.js.map

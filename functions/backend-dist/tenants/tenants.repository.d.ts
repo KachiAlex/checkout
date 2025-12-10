@@ -1,4 +1,4 @@
-import { TenantPlan, TenantStatus } from '@pos-checkout/shared';
+import { TenantPlan, TenantStatus, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 export interface TenantRecord {
     id: string;
@@ -6,6 +6,8 @@ export interface TenantRecord {
     slug: string;
     plan: TenantPlan;
     status: TenantStatus;
+    industry?: Industry;
+    featureFlags?: IndustryFeatureFlags;
     seatLimit?: number;
     contactEmail?: string;
     billingCycleStart?: Date;

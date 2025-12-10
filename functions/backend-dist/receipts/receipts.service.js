@@ -16,13 +16,15 @@ const payments_repository_1 = require("../payments/payments.repository");
 const locations_repository_1 = require("../locations/locations.repository");
 const users_repository_1 = require("../users/users.repository");
 const email_service_1 = require("../email/email.service");
+const customization_service_1 = require("../customization/customization.service");
 let ReceiptsService = class ReceiptsService {
-    constructor(ordersRepository, paymentsRepository, locationsRepository, usersRepository, emailService) {
+    constructor(ordersRepository, paymentsRepository, locationsRepository, usersRepository, emailService, customizationService) {
         this.ordersRepository = ordersRepository;
         this.paymentsRepository = paymentsRepository;
         this.locationsRepository = locationsRepository;
         this.usersRepository = usersRepository;
         this.emailService = emailService;
+        this.customizationService = customizationService;
     }
     async generateReceipt(orderId) {
         const order = await this.ordersRepository.findById(orderId);
@@ -32,22 +34,55 @@ let ReceiptsService = class ReceiptsService {
         const [payment] = await this.paymentsRepository.findByOrderId(order.id);
         const location = order.locationId ? await this.locationsRepository.findById(order.locationId) : null;
         const user = order.createdBy ? await this.usersRepository.findById(order.createdBy) : null;
-        return this.formatReceipt(order, payment ?? undefined, location ?? undefined, user ?? undefined);
+        let customization = null;
+        if (location?.tenantId) {
+            try {
+                customization = await this.customizationService.getCustomization(location.tenantId);
+            }
+            catch (error) {
+                console.warn(`Customization not found for tenant ${location.tenantId}, using defaults`);
+            }
+        }
+        return this.formatReceipt(order, payment ?? undefined, location ?? undefined, user ?? undefined, customization ?? undefined);
     }
-    formatReceipt(order, payment, location, user) {
+    formatReceipt(order, payment, location, user, customization) {
+        const companyName = customization?.companyName || '';
+        const headerInfo = customization?.headerInfo || '';
+        const address = customization?.address || location?.address || '';
+        const phone = customization?.phone || '';
+        const email = customization?.email || '';
+        const website = customization?.website || '';
+        const footerMessage = customization?.footerMessage || 'Thank you for your purchase!';
         const receipt = [
             '╔═══════════════════════════════════╗',
-            `║    ${(location?.name || 'Store').padEnd(12).substring(0, 12)}    ║`,
-            location?.address ? `║  ${location.address.padEnd(33).substring(0, 33)}  ║` : '',
-            '╠═══════════════════════════════════╣',
-            `Order: ${order.orderNumber}`,
-            `Date: ${order.createdAt.toLocaleString()}`,
-            `Cashier: ${user?.name || 'N/A'}`,
-            '╠═══════════════════════════════════╣',
-            '',
-            'Items:',
-            '',
         ];
+        if (companyName) {
+            receipt.push(`║    ${companyName.padEnd(33).substring(0, 33)}  ║`);
+        }
+        receipt.push(`║    ${(location?.name || 'Store').padEnd(33).substring(0, 33)}  ║`);
+        if (address) {
+            receipt.push(`║  ${address.padEnd(33).substring(0, 33)}  ║`);
+        }
+        if (phone) {
+            receipt.push(`║  ${phone.padEnd(33).substring(0, 33)}  ║`);
+        }
+        if (email) {
+            receipt.push(`║  ${email.padEnd(33).substring(0, 33)}  ║`);
+        }
+        if (website) {
+            receipt.push(`║  ${website.padEnd(33).substring(0, 33)}  ║`);
+        }
+        if (headerInfo) {
+            receipt.push(`║  ${headerInfo.padEnd(33).substring(0, 33)}  ║`);
+        }
+        receipt.push('╠═══════════════════════════════════╣');
+        receipt.push(`Order: ${order.orderNumber}`);
+        receipt.push(`Date: ${order.createdAt.toLocaleString()}`);
+        receipt.push(`Cashier: ${user?.name || 'N/A'}`);
+        receipt.push('╠═══════════════════════════════════╣');
+        receipt.push('');
+        receipt.push('Items:');
+        receipt.push('');
         order.items.forEach((item) => {
             const subtotal = item.priceCents * item.quantity;
             const tax = item.taxCents * item.quantity;
@@ -71,7 +106,7 @@ let ReceiptsService = class ReceiptsService {
             receipt.push(`Transaction ID:     ${payment.transactionId || 'N/A'}`);
         }
         receipt.push('');
-        receipt.push('Thank you for your purchase!');
+        receipt.push(footerMessage);
         receipt.push('╚═══════════════════════════════════╝');
         return receipt.filter((line) => line !== '').join('\n');
     }
@@ -85,7 +120,16 @@ let ReceiptsService = class ReceiptsService {
             const [payment] = await this.paymentsRepository.findByOrderId(order.id);
             const location = order.locationId ? await this.locationsRepository.findById(order.locationId) : null;
             const user = order.createdBy ? await this.usersRepository.findById(order.createdBy) : null;
-            const receiptHTML = this.formatReceiptHTML(order, payment ?? undefined, location ?? undefined, user ?? undefined);
+            let customization = null;
+            if (location?.tenantId) {
+                try {
+                    customization = await this.customizationService.getCustomization(location.tenantId);
+                }
+                catch (error) {
+                    console.warn(`Customization not found for tenant ${location.tenantId}, using defaults`);
+                }
+            }
+            const receiptHTML = this.formatReceiptHTML(order, payment ?? undefined, location ?? undefined, user ?? undefined, customization ?? undefined);
             const success = await this.emailService.sendEmail({
                 to: email,
                 subject: `Receipt for Order ${order.orderNumber}`,
@@ -99,7 +143,15 @@ let ReceiptsService = class ReceiptsService {
             return false;
         }
     }
-    formatReceiptHTML(order, payment, location, user) {
+    formatReceiptHTML(order, payment, location, user, customization) {
+        const companyName = customization?.companyName || '';
+        const logoUrl = customization?.logoUrl || '';
+        const address = customization?.address || location?.address || '';
+        const phone = customization?.phone || '';
+        const email = customization?.email || '';
+        const website = customization?.website || '';
+        const headerInfo = customization?.headerInfo || '';
+        const footerMessage = customization?.footerMessage || 'Thank you for your purchase!';
         const itemsHTML = order.items
             .map((item) => {
             const subtotal = item.priceCents * item.quantity;
@@ -209,8 +261,14 @@ let ReceiptsService = class ReceiptsService {
         <body>
           <div class="receipt-container">
             <div class="header">
-              <h1>${location?.name || 'Store'}</h1>
-              ${location?.address ? `<p>${location.address}</p>` : ''}
+              ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />` : ''}
+              ${companyName ? `<h1>${companyName}</h1>` : ''}
+              <h2 style="margin: 10px 0; font-size: 20px; color: #555;">${location?.name || 'Store'}</h2>
+              ${address ? `<p>${address}</p>` : ''}
+              ${phone ? `<p>Phone: ${phone}</p>` : ''}
+              ${email ? `<p>Email: ${email}</p>` : ''}
+              ${website ? `<p>Website: <a href="${website}" style="color: #333;">${website}</a></p>` : ''}
+              ${headerInfo ? `<p style="margin-top: 10px; font-size: 12px; color: #666;">${headerInfo}</p>` : ''}
             </div>
 
             <div class="order-info">
@@ -260,7 +318,7 @@ let ReceiptsService = class ReceiptsService {
             ` : ''}
 
             <div class="footer">
-              <p>Thank you for your purchase!</p>
+              <p>${footerMessage}</p>
             </div>
           </div>
         </body>
@@ -292,6 +350,7 @@ exports.ReceiptsService = ReceiptsService = __decorate([
         payments_repository_1.PaymentsRepository,
         locations_repository_1.LocationsRepository,
         users_repository_1.UsersRepository,
-        email_service_1.EmailService])
+        email_service_1.EmailService,
+        customization_service_1.CustomizationService])
 ], ReceiptsService);
 //# sourceMappingURL=receipts.service.js.map

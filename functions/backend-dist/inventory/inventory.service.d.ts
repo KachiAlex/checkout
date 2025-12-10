@@ -70,6 +70,7 @@ export declare class InventoryService {
     getInventoryRecord(productId: string, locationId: string): Promise<import("./inventory.repository").InventoryRecord>;
     adjust(adjustDto: AdjustInventoryDto): Promise<InventoryTransactionRecord>;
     decrementForSale(productId: string, locationId: string, quantity: number, orderId: string, userId?: string): Promise<void>;
+    decrementForCreditSale(productId: string, locationId: string, quantity: number, orderId: string, userId?: string): Promise<void>;
     incrementForReturn(productId: string, locationId: string, quantity: number, returnId: string, userId?: string): Promise<void>;
     getTransactions(locationId: string, from?: string, to?: string): Promise<InventoryTransactionRecord[]>;
     createInventoryItem(createDto: CreateInventoryItemDto, locationId: string, tenantId: string, userId: string): Promise<{

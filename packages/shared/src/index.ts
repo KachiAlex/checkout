@@ -11,6 +11,7 @@ export enum PaymentMethod {
   QR = 'qr',
   CASH = 'cash',
   TRANSFER = 'transfer',
+  CREDIT = 'credit',
 }
 
 export enum PaymentStatus {
@@ -30,6 +31,7 @@ export enum OrderStatus {
 
 export enum InventoryTransactionType {
   SALE = 'sale',
+  CREDIT_SALE = 'credit_sale',
   RETURN = 'return',
   ADJUST = 'adjust',
   RECEIVED = 'received',

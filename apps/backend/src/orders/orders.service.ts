@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderStatus } from '@pos-checkout/shared';
+import { OrderStatus, PaymentStatus, InventoryTransactionType } from '@pos-checkout/shared';
 import { InventoryService } from '../inventory/inventory.service';
 import { OrdersRepository, OrderRecord } from './orders.repository';
 import { CustomersService } from '../customers/customers.service';
@@ -56,10 +56,11 @@ export class OrdersService {
     await this.validateOrderPrices(createOrderDto, locationId, tenantId);
 
     const orderNumber = await this.generateOrderNumber(locationId);
+    const isCreditOrder = createOrderDto.isCreditOrder ?? false;
     
     // If order is held, don't decrement inventory yet
     if (!createOrderDto.isHeld) {
-      await this.validateAndDecrementInventory({ ...createOrderDto, locationId }, userId);
+      await this.validateAndDecrementInventory({ ...createOrderDto, locationId }, userId, isCreditOrder);
     }
 
     const order = await this.ordersRepository.create({
@@ -73,6 +74,8 @@ export class OrdersService {
       discountCents: createOrderDto.discountCents ?? 0,
       isHeld: createOrderDto.isHeld ?? false,
       heldAt: createOrderDto.isHeld ? new Date() : undefined,
+      isCreditOrder,
+      paymentStatus: isCreditOrder ? PaymentStatus.PENDING : undefined,
     });
 
     console.log(`✅ Order created and saved: ${order.id} (${order.orderNumber}) for tenant ${tenantId}, status: ${order.status}, locationId: ${locationId}, createdAt: ${order.createdAt.toISOString()}`);
@@ -140,7 +143,7 @@ export class OrdersService {
     }
   }
 
-  private async validateAndDecrementInventory(dto: CreateOrderDto, userId: string): Promise<void> {
+  private async validateAndDecrementInventory(dto: CreateOrderDto, userId: string, isCreditOrder: boolean = false): Promise<void> {
     for (const item of dto.items) {
       const stock = await this.inventoryService.getStockByProduct(item.productId, dto.locationId);
 
@@ -150,6 +153,16 @@ export class OrdersService {
         );
       }
 
+      // Use CREDIT_SALE transaction type for credit orders
+      if (isCreditOrder) {
+        await this.inventoryService.decrementForCreditSale(
+          item.productId,
+          dto.locationId,
+          item.quantity,
+          dto.uuid,
+          userId,
+        );
+      } else {
       await this.inventoryService.decrementForSale(
         item.productId,
         dto.locationId,
@@ -157,6 +170,7 @@ export class OrdersService {
         dto.uuid,
         userId, // Pass userId to track who made the sale
       );
+      }
     }
   }
 
@@ -297,7 +311,7 @@ export class OrdersService {
       taxCents: order.taxCents,
       discountCents: order.discountCents,
       totalCents: order.totalCents,
-    }, order.createdBy); // Pass userId from order
+    }, order.createdBy, order.isCreditOrder ?? false); // Pass userId from order
 
     const completedOrder = await this.ordersRepository.update(id, {
       isHeld: false,
@@ -343,6 +357,95 @@ export class OrdersService {
       // Log error but don't fail the order creation
       console.error(`Failed to award loyalty points to customer ${customerId}:`, error);
     }
+  }
+
+  /**
+   * Get all credit orders (orders taken on credit)
+   */
+  async findCreditOrders(locationId?: string, tenantId?: string): Promise<OrderRecord[]> {
+    const orders = await this.ordersRepository.list({
+      locationId,
+      tenantId,
+      isCreditOrder: true,
+    });
+    
+    // Filter by tenant if tenantId provided and no locationId specified
+    if (tenantId && !locationId) {
+      const locations = await this.locationsRepository.findByTenant(tenantId);
+      const locationIds = new Set(locations.map(loc => loc.id));
+      return orders.filter(order => locationIds.has(order.locationId));
+    }
+    
+    return orders;
+  }
+
+  /**
+   * Mark a credit order as paid
+   */
+  async markCreditOrderAsPaid(orderId: string, userId: string, tenantId: string): Promise<OrderRecord> {
+    const order = await this.findOne(orderId);
+    
+    // Verify tenant access
+    const hasAccess = await this.verifyTenantAccess(order, tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+
+    if (!order.isCreditOrder) {
+      throw new BadRequestException('Order is not a credit order');
+    }
+
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      throw new BadRequestException('Credit order is already marked as paid');
+    }
+
+    if (order.paymentStatus === PaymentStatus.REFUNDED) {
+      throw new BadRequestException('Cannot mark returned credit order as paid');
+    }
+
+    // Update order payment status
+    return this.ordersRepository.update(orderId, {
+      paymentStatus: PaymentStatus.COMPLETED,
+      paidAt: new Date(),
+    });
+  }
+
+  /**
+   * Mark a credit order as returned (products returned)
+   */
+  async markCreditOrderAsReturned(orderId: string, userId: string, tenantId: string): Promise<OrderRecord> {
+    const order = await this.findOne(orderId);
+    
+    // Verify tenant access
+    const hasAccess = await this.verifyTenantAccess(order, tenantId);
+    if (!hasAccess) {
+      throw new ForbiddenException('Access denied to this order');
+    }
+
+    if (!order.isCreditOrder) {
+      throw new BadRequestException('Order is not a credit order');
+    }
+
+    if (order.paymentStatus === PaymentStatus.REFUNDED) {
+      throw new BadRequestException('Credit order is already marked as returned');
+    }
+
+    // Restore inventory for returned products
+    for (const item of order.items) {
+      await this.inventoryService.incrementForReturn(
+        item.productId,
+        order.locationId,
+        item.quantity,
+        order.id,
+        userId,
+      );
+    }
+
+    // Update order payment status
+    return this.ordersRepository.update(orderId, {
+      paymentStatus: PaymentStatus.REFUNDED,
+      returnedAt: new Date(),
+    });
   }
 }
 

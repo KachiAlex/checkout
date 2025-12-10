@@ -72,6 +72,28 @@ let OrdersController = class OrdersController {
     async completeHeldOrder(id, req) {
         return this.ordersService.completeHeldOrder(id, req.user.tenantId);
     }
+    async getCreditOrders(req, locationId) {
+        if (locationId) {
+            await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
+        }
+        return this.ordersService.findCreditOrders(locationId, req.user.tenantId);
+    }
+    async markCreditOrderAsPaid(id, req) {
+        const order = await this.ordersService.findOne(id);
+        const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
+        return this.ordersService.markCreditOrderAsPaid(id, req.user.sub, req.user.tenantId);
+    }
+    async markCreditOrderAsReturned(id, req) {
+        const order = await this.ordersService.findOne(id);
+        const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
+        if (!hasAccess) {
+            throw new common_1.ForbiddenException('Access denied to this order');
+        }
+        return this.ordersService.markCreditOrderAsReturned(id, req.user.sub, req.user.tenantId);
+    }
 };
 exports.OrdersController = OrdersController;
 __decorate([
@@ -164,6 +186,40 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "completeHeldOrder", null);
+__decorate([
+    (0, common_1.Get)('credit'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all credit orders (products taken on credit)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of credit orders' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('location_id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "getCreditOrders", null);
+__decorate([
+    (0, common_1.Post)(':id/credit/mark-paid'),
+    (0, swagger_1.ApiOperation)({ summary: 'Mark a credit order as paid' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Credit order marked as paid' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Order is not a credit order or already paid' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "markCreditOrderAsPaid", null);
+__decorate([
+    (0, common_1.Post)(':id/credit/mark-returned'),
+    (0, swagger_1.ApiOperation)({ summary: 'Mark a credit order as returned (products returned)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Credit order marked as returned' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Access denied' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Order is not a credit order or already returned' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "markCreditOrderAsReturned", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('orders'),

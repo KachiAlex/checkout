@@ -14,4 +14,7 @@ export declare class OrdersController {
     holdOrder(id: string, req: any): Promise<import("./orders.repository").OrderRecord>;
     recallOrder(id: string, req: any): Promise<import("./orders.repository").OrderRecord>;
     completeHeldOrder(id: string, req: any): Promise<import("./orders.repository").OrderRecord>;
+    getCreditOrders(req: any, locationId?: string): Promise<import("./orders.repository").OrderRecord[]>;
+    markCreditOrderAsPaid(id: string, req: any): Promise<import("./orders.repository").OrderRecord>;
+    markCreditOrderAsReturned(id: string, req: any): Promise<import("./orders.repository").OrderRecord>;
 }

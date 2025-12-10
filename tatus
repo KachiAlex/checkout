@@ -1,0 +1,20 @@
+[1mdiff --git a/apps/backend/src/app.module.ts b/apps/backend/src/app.module.ts[m
+[1mindex a6bf70d..21535d2 100644[m
+[1m--- a/apps/backend/src/app.module.ts[m
+[1m+++ b/apps/backend/src/app.module.ts[m
+[36m@@ -27,6 +27,7 @@[m [mimport { ReturnsModule } from './returns/returns.module';[m
+ import { PaymentSettingsModule } from './payment-settings/payment-settings.module';[m
+ import { TaxSettingsModule } from './tax-settings/tax-settings.module';[m
+ import { CustomizationModule } from './customization/customization.module';[m
+[32m+[m[32mimport { UploadModule } from './upload/upload.module';[m
+ [m
+ @Module({[m
+   imports: [[m
+[36m@@ -64,6 +65,7 @@[m [mimport { CustomizationModule } from './customization/customization.module';[m
+     PaymentSettingsModule,[m
+     TaxSettingsModule,[m
+     CustomizationModule,[m
+[32m+[m[32m    UploadModule,[m
+   ],[m
+   providers: [[m
+     {[m

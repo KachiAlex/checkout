@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const tenants_repository_1 = require("./tenants.repository");
 const tenants_service_1 = require("./tenants.service");
 const tenants_controller_1 = require("./tenants.controller");
+const industry_features_service_1 = require("./industry-features.service");
 const users_module_1 = require("../users/users.module");
 let TenantsModule = class TenantsModule {
 };
@@ -18,9 +19,9 @@ exports.TenantsModule = TenantsModule;
 exports.TenantsModule = TenantsModule = __decorate([
     (0, common_1.Module)({
         imports: [users_module_1.UsersModule],
-        providers: [tenants_repository_1.TenantsRepository, tenants_service_1.TenantsService],
+        providers: [tenants_repository_1.TenantsRepository, tenants_service_1.TenantsService, industry_features_service_1.IndustryFeaturesService],
         controllers: [tenants_controller_1.TenantsController],
-        exports: [tenants_repository_1.TenantsRepository, tenants_service_1.TenantsService],
+        exports: [tenants_repository_1.TenantsRepository, tenants_service_1.TenantsService, industry_features_service_1.IndustryFeaturesService],
     })
 ], TenantsModule);
 //# sourceMappingURL=tenants.module.js.map
