@@ -449,9 +449,9 @@ export class ReportsService {
       this.usersRepository.findAll(tenantId), // Filter users by tenantId
     ]);
 
-    const locationUsers = locationId
-      ? allUsers.filter((u) => u.locationId === locationId)
-      : allUsers;
+    // Don't filter users by locationId - orders are already filtered by locationId
+    // This ensures we can match users to their orders even if user.locationId isn't set correctly
+    const locationUsers = allUsers;
 
     // Aggregate sales by staff
     const staffSales: Record<string, {
