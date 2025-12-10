@@ -99,7 +99,8 @@ export function PaymentModal({
 
       // If Monnify returned a checkout URL, redirect to it
       if (payment.processorData?.checkoutUrl) {
-        setCheckoutUrl(payment.processorData.checkoutUrl as string);
+        const checkoutUrlString = payment.processorData.checkoutUrl as string;
+        setCheckoutUrl(checkoutUrlString);
         setStage('redirecting');
         
         // On mobile, open in same window; on desktop, open in popup
@@ -107,18 +108,83 @@ export function PaymentModal({
         
         if (isMobile) {
           // On mobile, redirect in same window
-          window.location.href = payment.processorData.checkoutUrl as string;
-          // Note: Payment status will be checked when user returns via callback URL
+          try {
+            // Use setTimeout to allow UI to update before redirect
+            setTimeout(() => {
+              window.location.href = checkoutUrlString;
+            }, 100);
+            
+            // Set a timeout to detect if redirect was blocked or failed
+            setTimeout(() => {
+              // If we're still on the same page after 2 seconds, redirect likely failed
+              if (window.location.href !== checkoutUrlString && !checkoutUrlString.includes(window.location.href)) {
+                // Still on same page - redirect may have been blocked
+                toast.error('Redirect failed. Please click the link below to complete payment.');
+                setProcessing(false);
+                // Keep stage as 'redirecting' so user can see the manual link
+              }
+            }, 2000);
+          } catch (error) {
+            console.error('Mobile redirect error:', error);
+            toast.error('Failed to redirect. Please click the link below to complete payment.');
+            setStage('redirecting');
+            setProcessing(false);
+          }
         } else {
           // On desktop, open in popup
           const checkoutWindow = window.open(
-            payment.processorData.checkoutUrl as string,
+            checkoutUrlString,
             'MonnifyCheckout',
             'width=600,height=700,scrollbars=yes'
           );
-          // Poll for payment status
-          if (checkoutWindow) {
+          
+          // Check if popup was blocked
+          if (!checkoutWindow || checkoutWindow.closed || typeof checkoutWindow.closed === 'undefined') {
+            // Popup was blocked or failed to open
+            toast.error('Popup blocked. Please allow popups or click the link below to complete payment.');
+            setStage('redirecting');
+            setProcessing(false);
+            // Don't start polling if window didn't open
+          } else {
+            // Popup opened successfully, start polling
             pollPaymentStatus(payment.id, checkoutWindow);
+            
+            // Also set a timeout to detect if window closes unexpectedly
+            const windowCheckInterval = setInterval(() => {
+              if (checkoutWindow.closed) {
+                clearInterval(windowCheckInterval);
+                // Window was closed - give it a moment for webhook, then check status
+                setTimeout(async () => {
+                  try {
+                    if (orderId) {
+                      const status = await PaymentService.getOrderPaymentStatus(orderId);
+                      const paymentStatus = status.payments.find(p => p.id === payment.id);
+                      if (paymentStatus?.status === 'completed') {
+                        setStage('success');
+                        setProcessing(false);
+                        setTimeout(() => {
+                          onComplete();
+                        }, 1500);
+                      } else if (paymentStatus?.status === 'failed') {
+                        setStage('error');
+                        setProcessing(false);
+                        toast.error(paymentStatus.error || 'Payment failed');
+                      } else {
+                        // Still processing or unknown - keep redirecting state with manual link
+                        setStage('redirecting');
+                        setProcessing(false);
+                        toast.info('Payment window closed. Please check payment status or use the link below.');
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error checking payment status after window close:', error);
+                    setStage('redirecting');
+                    setProcessing(false);
+                    toast.info('Payment window closed. Please check payment status or use the link below.');
+                  }
+                }, 2000);
+              }
+            }, 1000);
           }
         }
       } else {
@@ -186,12 +252,13 @@ export function PaymentModal({
 
       if (attempts >= maxAttempts) {
         clearInterval(interval);
-        setStage('error');
+        // On timeout, keep redirecting state with manual link (don't show error)
+        setStage('redirecting');
         setProcessing(false);
         if (checkoutWindow && !checkoutWindow.closed) {
           checkoutWindow.close();
         }
-        toast.error('Payment timeout. Please check payment status manually.');
+        toast.error('Payment timeout. Please check payment status manually or use the link below.');
       }
     }, 5000); // Poll every 5 seconds
   };
@@ -378,26 +445,46 @@ export function PaymentModal({
 
         {stage === 'redirecting' && (
           <div className="py-8 sm:py-12 text-center">
-            <div className="mb-4 sm:mb-6 flex justify-center">
-              <div className="h-16 w-16 sm:h-20 sm:w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
-            </div>
-            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">Redirecting to Payment...</h3>
+            {processing && (
+              <div className="mb-4 sm:mb-6 flex justify-center">
+                <div className="h-16 w-16 sm:h-20 sm:w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
+              </div>
+            )}
+            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">
+              {processing ? 'Redirecting to Payment...' : 'Complete Your Payment'}
+            </h3>
             <p className="theme-text-secondary text-xs sm:text-sm mb-4">
-              A new window will open for you to complete your payment
+              {processing 
+                ? 'A new window will open for you to complete your payment'
+                : 'Click the button below to open the payment page'}
             </p>
             {checkoutUrl && (
-              <a
-                href={checkoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block rounded-full bg-sky-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white hover:bg-sky-600 touch-manipulation"
-              >
-                Open Payment Page
-              </a>
+              <>
+                <a
+                  href={checkoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-full bg-sky-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white hover:bg-sky-600 touch-manipulation mb-3"
+                >
+                  {processing ? 'Open Payment Page' : 'Click Here to Complete Payment'}
+                </a>
+                <button
+                  onClick={() => {
+                    setStage('input');
+                    setProcessing(false);
+                    setCheckoutUrl(null);
+                  }}
+                  className="block mx-auto mt-2 text-xs sm:text-sm text-sky-400 hover:text-sky-300 underline"
+                >
+                  Cancel Payment
+                </button>
+              </>
             )}
-            <p className="theme-text-secondary mt-4 text-xs">
-              Waiting for payment confirmation...
-            </p>
+            {processing && (
+              <p className="theme-text-secondary mt-4 text-xs">
+                Waiting for payment confirmation...
+              </p>
+            )}
           </div>
         )}
 
