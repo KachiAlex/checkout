@@ -134,8 +134,16 @@ export function CreditOrdersPage() {
           // Get customer from map if customerId exists
           const customer = order.customerId ? customersMap.get(order.customerId) || null : null;
           
-          if (order.customerId && !customer) {
-            console.warn(`Customer ${order.customerId} not found in batch fetch, order: ${order.orderNumber}`);
+          if (order.customerId) {
+            if (!customer) {
+              console.warn(`Customer ${order.customerId} not found in batch fetch, order: ${order.orderNumber}`);
+              console.log('Available customer IDs in map:', Array.from(customersMap.keys()));
+              console.log('Order customerId:', order.customerId);
+            } else {
+              console.log(`Found customer for order ${order.orderNumber}:`, customer.name);
+            }
+          } else {
+            console.warn(`Order ${order.orderNumber} has no customerId`);
           }
 
           // Fetch product details for items
