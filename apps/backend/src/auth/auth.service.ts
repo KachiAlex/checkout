@@ -53,11 +53,17 @@ export class AuthService {
     }
 
     // Fallback: scan tenant users, using a short-lived cache to avoid repeated Firestore reads
-    // Limit to 100 users to prevent performance issues with large tenant user bases
+    // Fetch all users without limit to ensure all users can log in, even in large tenants
+    // The cache helps prevent performance issues by avoiding repeated Firestore reads
     const startTime = Date.now();
-    const users = await this.getTenantUsers(tenantId, 100);
+    const users = await this.getTenantUsers(tenantId); // Remove limit to allow all users to log in
     const fetchTime = Date.now() - startTime;
     console.log(`[AuthService] Fetched ${users.length} users in ${fetchTime}ms`);
+    
+    // Warn if tenant has many users (potential performance concern)
+    if (users.length > 200) {
+      console.warn(`[AuthService] Tenant ${tenantId} has ${users.length} users - consider optimizing authentication for large tenants`);
+    }
 
     // Sequential validation with early exit
     for (const user of users) {

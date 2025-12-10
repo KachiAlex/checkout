@@ -8,6 +8,7 @@ import { ProductsService } from '../products/products.service';
 import { CustomersRepository } from '../customers/customers.repository';
 import { InventoryService } from '../inventory/inventory.service';
 import { SuppliersRepository } from '../suppliers/suppliers.repository';
+import { LocationsRepository } from '../locations/locations.repository';
 
 @Injectable()
 export class ReportsService {
@@ -19,6 +20,7 @@ export class ReportsService {
     private readonly productsService: ProductsService,
     private readonly customersRepository: CustomersRepository,
     private readonly inventoryService: InventoryService,
+    private readonly locationsRepository: LocationsRepository,
   ) {}
 
   async getSales(from?: string, to?: string, locationId?: string, tenantId?: string, limit?: number, offset?: number) {
@@ -275,6 +277,17 @@ export class ReportsService {
 
   // Inventory Analytics by Period - ENHANCED with inventorized products
   async getInventoryAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string, tenantId?: string) {
+    // Validate location belongs to tenant if both are provided
+    if (locationId && tenantId) {
+      const location = await this.locationsRepository.findById(locationId);
+      if (!location) {
+        throw new Error(`Location ${locationId} not found`);
+      }
+      if (location.tenantId && location.tenantId !== tenantId) {
+        throw new Error(`Location ${locationId} does not belong to tenant ${tenantId}`);
+      }
+    }
+
     const now = new Date();
     let fromDate: Date;
     let groupBy: (date: Date) => string;
@@ -303,6 +316,7 @@ export class ReportsService {
     }
 
     // Parallelize queries for better performance
+    // Note: Inventory queries filter by locationId, which is validated above to belong to tenantId
     const [transactions, inventoryStock] = await Promise.all([
       this.inventoryRepository.listTransactions(locationId || '', fromDate, now),
       locationId ? this.inventoryRepository.listStock(locationId) : Promise.resolve([]),
