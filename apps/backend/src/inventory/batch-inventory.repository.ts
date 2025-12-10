@@ -53,11 +53,36 @@ export class BatchInventoryRepository {
   }
 
   async findByLocation(locationId: string): Promise<BatchInventoryRecord[]> {
-    const snapshot = await this.collection
-      .where('locationId', '==', locationId)
-      .orderBy('expiryDate', 'asc')
-      .get();
-    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    try {
+      // Query without orderBy first to avoid issues with missing expiryDate fields
+      const snapshot = await this.collection
+        .where('locationId', '==', locationId)
+        .get();
+      
+      const records = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+      
+      // Sort in memory: batches with expiry dates first (sorted by expiry), then batches without expiry dates
+      records.sort((a, b) => {
+        // If both have expiry dates, sort by expiry date
+        if (a.expiryDate && b.expiryDate) {
+          return a.expiryDate.getTime() - b.expiryDate.getTime();
+        }
+        // Batches with expiry dates come first
+        if (a.expiryDate && !b.expiryDate) return -1;
+        if (!a.expiryDate && b.expiryDate) return 1;
+        // Both don't have expiry dates, maintain original order
+        return 0;
+      });
+      
+      return records;
+    } catch (error: any) {
+      console.error('Error fetching batch inventory by location:', error);
+      // If query fails, try without orderBy as fallback
+      const snapshot = await this.collection
+        .where('locationId', '==', locationId)
+        .get();
+      return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    }
   }
 
   async create(data: CreateBatchInventoryInput): Promise<BatchInventoryRecord> {

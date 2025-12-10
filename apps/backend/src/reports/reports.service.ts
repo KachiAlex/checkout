@@ -981,12 +981,43 @@ export class ReportsService {
       };
     }
 
+    // Validate location belongs to tenant
+    if (tenantId) {
+      try {
+        const location = await this.locationsRepository.findById(locationId);
+        if (!location) {
+          throw new Error(`Location ${locationId} not found`);
+        }
+        if (location.tenantId && location.tenantId !== tenantId) {
+          throw new Error(`Location ${locationId} does not belong to tenant ${tenantId}`);
+        }
+      } catch (error: any) {
+        console.error('Error validating location in getExpiryAnalytics:', error);
+        throw error;
+      }
+    }
+
     const now = new Date();
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     // Get all batch inventory for the location
-    const batchInventory = await this.batchInventoryRepository.findByLocation(locationId);
+    let batchInventory: any[] = [];
+    try {
+      batchInventory = await this.batchInventoryRepository.findByLocation(locationId);
+    } catch (error: any) {
+      console.error('Error fetching batch inventory in getExpiryAnalytics:', error);
+      // Return empty result if batch inventory fetch fails
+      return {
+        locationId,
+        expiryAlerts: [],
+        expiringSoon: [],
+        expiredItems: [],
+        lossForecast: 0,
+        totalBatchesTracked: 0,
+        message: 'Failed to load batch inventory. Please try again.',
+      };
+    }
 
     // Filter batches with expiry dates
     const batchesWithExpiry = batchInventory.filter((batch) => batch.expiryDate && batch.quantity > 0);
