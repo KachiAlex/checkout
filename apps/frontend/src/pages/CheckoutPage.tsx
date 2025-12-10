@@ -89,6 +89,29 @@ export function CheckoutPage() {
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] } | null>(null);
   const [quantitySelectorOpen, setQuantitySelectorOpen] = useState(false);
 
+  // Create a new customer
+  const createCustomer = useCallback(async (name: string, phone?: string) => {
+    if (!accessToken || !name.trim()) {
+      return null;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/v1/customers`,
+        {
+          name: name.trim(),
+          phone: phone?.trim() || undefined,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create customer:', error);
+      toast.error(error.response?.data?.message || 'Failed to create customer');
+      return null;
+    }
+  }, [accessToken]);
+
   // Search customers
   const searchCustomers = useCallback(async (query: string) => {
     if (!accessToken || !query.trim()) {
@@ -432,6 +455,21 @@ export function CheckoutPage() {
     setIsProcessing(true);
 
     try {
+      // If customer name is entered but not selected, create the customer first
+      let customerId = selectedCustomer?.id;
+      if (!customerId && customerSearchQuery.trim()) {
+        const newCustomer = await createCustomer(customerSearchQuery);
+        if (newCustomer) {
+          customerId = newCustomer.id;
+          setSelectedCustomer({
+            id: newCustomer.id,
+            name: newCustomer.name,
+            phone: newCustomer.phone,
+          });
+          toast.success(`Customer "${newCustomer.name}" created`);
+        }
+      }
+
       const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
       const orderUuid = generateUUID();
       const deviceId = localStorage.getItem('deviceId') || undefined;
@@ -441,7 +479,7 @@ export function CheckoutPage() {
         {
           uuid: orderUuid,
           locationId: user.locationId || undefined,
-          customerId: selectedCustomer?.id,
+          customerId: customerId,
           items: mapCartToOrderItems(cart),
           subtotalCents: subtotal,
           taxCents: tax,
@@ -487,6 +525,21 @@ export function CheckoutPage() {
     setPaymentModalOpen(false);
 
     try {
+      // If customer name is entered but not selected, create the customer first
+      let customerId = selectedCustomer?.id;
+      if (!customerId && customerSearchQuery.trim()) {
+        const newCustomer = await createCustomer(customerSearchQuery);
+        if (newCustomer) {
+          customerId = newCustomer.id;
+          setSelectedCustomer({
+            id: newCustomer.id,
+            name: newCustomer.name,
+            phone: newCustomer.phone,
+          });
+          toast.success(`Customer "${newCustomer.name}" created`);
+        }
+      }
+
       const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
       const orderUuid = generateUUID();
       const deviceId = localStorage.getItem('deviceId') || undefined;
@@ -496,7 +549,7 @@ export function CheckoutPage() {
         {
           uuid: orderUuid,
           locationId: user.locationId || undefined,
-          customerId: selectedCustomer?.id,
+          customerId: customerId,
           items: mapCartToOrderItems(cart),
           subtotalCents: subtotal,
           taxCents: tax,
@@ -835,7 +888,25 @@ export function CheckoutPage() {
                           setShowCustomerSearch(true);
                         }}
                         onFocus={() => setShowCustomerSearch(true)}
-                        placeholder="Search by name or phone..."
+                        onKeyDown={async (e) => {
+                          // Create customer on Enter if no results and query is not empty
+                          if (e.key === 'Enter' && customerSearchQuery.trim() && customerSearchResults.length === 0 && !isSearchingCustomer) {
+                            e.preventDefault();
+                            const newCustomer = await createCustomer(customerSearchQuery);
+                            if (newCustomer) {
+                              setSelectedCustomer({
+                                id: newCustomer.id,
+                                name: newCustomer.name,
+                                phone: newCustomer.phone,
+                              });
+                              setCustomerSearchQuery('');
+                              setCustomerSearchResults([]);
+                              setShowCustomerSearch(false);
+                              toast.success(`Customer "${newCustomer.name}" created`);
+                            }
+                          }
+                        }}
+                        placeholder="Search by name or phone, or type name to create..."
                         className="theme-surface w-full rounded-lg border border-white/20 px-3 py-2 text-xs sm:text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
                       />
                       {isSearchingCustomer && (
@@ -843,32 +914,57 @@ export function CheckoutPage() {
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
                         </div>
                       )}
-                      {showCustomerSearch && customerSearchResults.length > 0 && (
+                      {showCustomerSearch && (
                         <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-white/20 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
-                          {customerSearchResults.map((customer) => (
+                          {customerSearchResults.length > 0 ? (
+                            customerSearchResults.map((customer) => (
+                              <button
+                                key={customer.id}
+                                onClick={() => {
+                                  setSelectedCustomer({
+                                    id: customer.id,
+                                    name: customer.name,
+                                    phone: customer.phone,
+                                  });
+                                  setCustomerSearchQuery('');
+                                  setCustomerSearchResults([]);
+                                  setShowCustomerSearch(false);
+                                }}
+                                className="w-full border-b border-white/10 px-3 py-2 text-left transition hover:bg-white/10 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
+                              >
+                                <p className="theme-text-primary text-sm font-medium">{customer.name}</p>
+                                {customer.phone && (
+                                  <p className="theme-text-secondary text-xs">{customer.phone}</p>
+                                )}
+                                {customer.email && (
+                                  <p className="theme-text-secondary text-xs">{customer.email}</p>
+                                )}
+                              </button>
+                            ))
+                          ) : customerSearchQuery.trim() && !isSearchingCustomer ? (
                             <button
-                              key={customer.id}
-                              onClick={() => {
-                                setSelectedCustomer({
-                                  id: customer.id,
-                                  name: customer.name,
-                                  phone: customer.phone,
-                                });
-                                setCustomerSearchQuery('');
-                                setCustomerSearchResults([]);
-                                setShowCustomerSearch(false);
+                              onClick={async () => {
+                                const newCustomer = await createCustomer(customerSearchQuery);
+                                if (newCustomer) {
+                                  setSelectedCustomer({
+                                    id: newCustomer.id,
+                                    name: newCustomer.name,
+                                    phone: newCustomer.phone,
+                                  });
+                                  setCustomerSearchQuery('');
+                                  setCustomerSearchResults([]);
+                                  setShowCustomerSearch(false);
+                                  toast.success(`Customer "${newCustomer.name}" created`);
+                                }
                               }}
-                              className="w-full border-b border-white/10 px-3 py-2 text-left transition hover:bg-white/10 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
+                              className="w-full px-3 py-2 text-left transition hover:bg-white/10 rounded-lg border-b border-white/10"
                             >
-                              <p className="theme-text-primary text-sm font-medium">{customer.name}</p>
-                              {customer.phone && (
-                                <p className="theme-text-secondary text-xs">{customer.phone}</p>
-                              )}
-                              {customer.email && (
-                                <p className="theme-text-secondary text-xs">{customer.email}</p>
-                              )}
+                              <p className="theme-text-primary text-sm font-medium">
+                                ➕ Create customer: <span className="font-semibold">{customerSearchQuery}</span>
+                              </p>
+                              <p className="theme-text-secondary text-xs mt-0.5">Press Enter or click to create</p>
                             </button>
-                          ))}
+                          ) : null}
                         </div>
                       )}
                     </div>
