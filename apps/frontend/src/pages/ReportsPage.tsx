@@ -195,7 +195,7 @@ export function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, salesPage, itemsPerPage, staffPerformance]);
+  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, salesPage, itemsPerPage, topSellersPage]);
 
   // Memoize format functions
   const formatCurrency = useCallback((amount: number) => {
