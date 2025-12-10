@@ -46,11 +46,30 @@ export class CustomersRepository {
   constructor(private readonly firestore: FirestoreService) {}
 
   async findAll(tenantId: string): Promise<CustomerRecord[]> {
-    const snapshot = await this.collection
-      .where('tenantId', '==', tenantId)
-      .orderBy('name', 'asc')
-      .get();
-    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    try {
+      const snapshot = await this.collection
+        .where('tenantId', '==', tenantId)
+        .orderBy('name', 'asc')
+        .get();
+      return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    } catch (error: any) {
+      // If index error, fallback to query without orderBy and sort in memory
+      if (error?.code === 9 || error?.message?.includes('index') || error?.message?.includes('FAILED_PRECONDITION')) {
+        console.warn('Firestore index missing for customers query, falling back to in-memory sort:', error.message);
+        const snapshot = await this.collection
+          .where('tenantId', '==', tenantId)
+          .get();
+        const customers = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        // Sort in memory by name
+        return customers.sort((a, b) => {
+          const nameA = (a.name || '').toLowerCase();
+          const nameB = (b.name || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async findById(id: string, tenantId: string): Promise<CustomerRecord | null> {
