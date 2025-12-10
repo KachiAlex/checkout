@@ -49,9 +49,9 @@ export class CreateOrderDto {
   @IsString()
   locationId?: string;
 
-  @ApiProperty({ description: 'Customer ID', required: false })
+  @ApiProperty({ description: 'Customer ID (Firestore document ID)', required: false })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   customerId?: string;
 
   @ApiProperty({ description: 'Order items', type: [OrderItemDto] })
