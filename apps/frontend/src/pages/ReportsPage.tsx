@@ -132,8 +132,8 @@ export function ReportsPage() {
           const topRes = await axios.get(`${API_URL}/api/v1/reports/top-sellers?${params}`);
           setTopSellers(topRes.data);
           // Always load staff performance for staff top sellers view (reload when date range changes)
-          const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
-          setStaffPerformance(staffRes.data);
+          const topSellersStaffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
+          setStaffPerformance(topSellersStaffRes.data);
           break;
 
         case 'analytics':
