@@ -91,21 +91,51 @@ export function CreditOrdersPage() {
         // Continue without user data
       }
       
+      // Collect all unique customer IDs and batch fetch them
+      const customerIds = [...new Set(orders.map((order: CreditOrder) => order.customerId).filter(Boolean))];
+      const customersMap = new Map();
+      
+      // Batch fetch all customers at once
+      if (customerIds.length > 0) {
+        try {
+          // Fetch all customers and create a map
+          const allCustomersResponse = await axios.get(
+            `${API_URL}/api/v1/customers`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const allCustomers = allCustomersResponse.data || [];
+          allCustomers.forEach((customer: any) => {
+            if (customerIds.includes(customer.id)) {
+              customersMap.set(customer.id, customer);
+            }
+          });
+        } catch (error) {
+          console.error('Failed to batch fetch customers:', error);
+          // Fallback: try individual fetches
+          await Promise.all(
+            customerIds.map(async (customerId) => {
+              try {
+                const customerResponse = await axios.get(
+                  `${API_URL}/api/v1/customers/${customerId}`,
+                  { headers: { Authorization: `Bearer ${accessToken}` } }
+                );
+                customersMap.set(customerId, customerResponse.data);
+              } catch (err) {
+                console.error(`Failed to fetch customer ${customerId}:`, err);
+              }
+            })
+          );
+        }
+      }
+      
       // Fetch customer and product details for each order
       const enrichedOrders = await Promise.all(
         orders.map(async (order: CreditOrder) => {
-          // Fetch customer details if customerId exists
-          let customer = null;
-          if (order.customerId) {
-            try {
-              const customerResponse = await axios.get(
-                `${API_URL}/api/v1/customers/${order.customerId}`,
-                { headers: { Authorization: `Bearer ${accessToken}` } }
-              );
-              customer = customerResponse.data;
-            } catch (error) {
-              console.error(`Failed to fetch customer ${order.customerId}:`, error);
-            }
+          // Get customer from map if customerId exists
+          const customer = order.customerId ? customersMap.get(order.customerId) || null : null;
+          
+          if (order.customerId && !customer) {
+            console.warn(`Customer ${order.customerId} not found in batch fetch, order: ${order.orderNumber}`);
           }
 
           // Fetch product details for items
