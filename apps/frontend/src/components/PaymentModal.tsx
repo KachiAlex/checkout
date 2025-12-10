@@ -173,14 +173,14 @@ export function PaymentModal({
                         // Still processing or unknown - keep redirecting state with manual link
                         setStage('redirecting');
                         setProcessing(false);
-                        toast.info('Payment window closed. Please check payment status or use the link below.');
+                        toast('Payment window closed. Please check payment status or use the link below.', { icon: 'ℹ️' });
                       }
                     }
                   } catch (error) {
                     console.error('Error checking payment status after window close:', error);
                     setStage('redirecting');
                     setProcessing(false);
-                    toast.info('Payment window closed. Please check payment status or use the link below.');
+                    toast('Payment window closed. Please check payment status or use the link below.', { icon: 'ℹ️' });
                   }
                 }, 2000);
               }
