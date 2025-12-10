@@ -341,10 +341,17 @@ export function CreditOrdersPage() {
                         </span>
                       </div>
 
-                      {order.customer && (
+                      {order.customerId && (
                         <div className="mb-2 text-sm text-slate-400">
-                          <span className="font-medium">Customer:</span> {order.customer.name}
-                          {order.customer.phone && ` • ${order.customer.phone}`}
+                          <span className="font-medium">Customer:</span>{' '}
+                          {order.customer ? (
+                            <>
+                              {order.customer.name}
+                              {order.customer.phone && ` • ${order.customer.phone}`}
+                            </>
+                          ) : (
+                            <span className="text-slate-500 italic">Customer ID: {order.customerId.substring(0, 8)}...</span>
+                          )}
                         </div>
                       )}
 
@@ -359,14 +366,14 @@ export function CreditOrdersPage() {
                         {format(new Date(order.createdAt), 'MMM dd, yyyy HH:mm')}
                       </div>
 
-                      {order.paidAt && (
+                      {isPaid && order.paidAt && (
                         <div className="mb-2 text-sm text-green-400">
                           <span className="font-medium">Paid on:</span>{' '}
                           {format(new Date(order.paidAt), 'MMM dd, yyyy HH:mm')}
                         </div>
                       )}
 
-                      {order.returnedAt && (
+                      {isReturned && order.returnedAt && (
                         <div className="mb-2 text-sm text-red-400">
                           <span className="font-medium">Returned on:</span>{' '}
                           {format(new Date(order.returnedAt), 'MMM dd, yyyy HH:mm')}

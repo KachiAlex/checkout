@@ -421,6 +421,7 @@ export class OrdersService {
     return this.ordersRepository.update(orderId, {
       paymentStatus: PaymentStatus.COMPLETED,
       paidAt: new Date(),
+      returnedAt: undefined, // Clear returned date if it was set
     });
   }
 
@@ -459,6 +460,7 @@ export class OrdersService {
     return this.ordersRepository.update(orderId, {
       paymentStatus: PaymentStatus.REFUNDED,
       returnedAt: new Date(),
+      paidAt: undefined, // Clear paid date if it was set
     });
   }
 }

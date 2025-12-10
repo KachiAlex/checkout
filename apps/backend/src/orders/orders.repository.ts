@@ -316,13 +316,13 @@ export class OrdersRepository {
     }
 
     if (update.paidAt !== undefined) {
-      updateDoc.paidAt = update.paidAt ? Timestamp.fromDate(update.paidAt) : undefined;
+      updateDoc.paidAt = update.paidAt ? Timestamp.fromDate(update.paidAt) : FieldValue.delete();
     } else {
       updateDoc.paidAt = data.paidAt;
     }
 
     if (update.returnedAt !== undefined) {
-      updateDoc.returnedAt = update.returnedAt ? Timestamp.fromDate(update.returnedAt) : undefined;
+      updateDoc.returnedAt = update.returnedAt ? Timestamp.fromDate(update.returnedAt) : FieldValue.delete();
     } else {
       updateDoc.returnedAt = data.returnedAt;
     }
