@@ -22,76 +22,83 @@ export class ReportsService {
   ) {}
 
   async getSales(from?: string, to?: string, locationId?: string, tenantId?: string, limit?: number, offset?: number) {
-    const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
-    const toDate = to ? new Date(to) : new Date();
+    try {
+      const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
+      const toDate = to ? new Date(to) : new Date();
 
-    // Ensure we include orders up to the end of the day
-    const toDateEndOfDay = new Date(toDate);
-    toDateEndOfDay.setHours(23, 59, 59, 999);
+      // Ensure we include orders up to the end of the day
+      const toDateEndOfDay = new Date(toDate);
+      toDateEndOfDay.setHours(23, 59, 59, 999);
 
-    // First, get total count and summary stats (without fetching all orders)
-    const allOrders = await this.ordersRepository.list({
-      status: OrderStatus.COMPLETED,
-      tenantId, // Filter by tenant to ensure data isolation
-      locationId,
-      from: fromDate,
-      to: toDateEndOfDay, // Include full day
-    });
+      // Validate limit and offset
+      const effectiveLimit = limit && limit > 0 ? Math.min(limit, 1000) : 100; // Max 1000, default 100
+      const effectiveOffset = offset && offset >= 0 ? offset : 0;
 
-    const totalSales = allOrders.reduce((sum, order) => sum + order.totalCents, 0);
-    const totalOrders = allOrders.length;
-
-    // Apply pagination if requested
-    const effectiveLimit = limit || 100; // Default limit to prevent huge responses
-    const effectiveOffset = offset || 0;
-    const paginatedOrders = allOrders.slice(effectiveOffset, effectiveOffset + effectiveLimit);
-
-    console.log(`📊 Sales Report Query: Found ${totalOrders} completed orders (showing ${paginatedOrders.length} from offset ${effectiveOffset}) for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
-
-    // Collect unique product IDs only from paginated orders (reduces batch fetch size)
-    const productIds = new Set<string>();
-    paginatedOrders.forEach((order) => {
-      order.items.forEach((item) => {
-        productIds.add(item.productId);
+      // First, get total count and summary stats (without fetching all orders)
+      const allOrders = await this.ordersRepository.list({
+        status: OrderStatus.COMPLETED,
+        tenantId, // Filter by tenant to ensure data isolation
+        locationId,
+        from: fromDate,
+        to: toDateEndOfDay, // Include full day
       });
-    });
 
-    // Batch fetch product names only for paginated orders
-    const productsMap = tenantId && productIds.size > 0
-      ? await this.productsService.findByIds(Array.from(productIds), tenantId)
-      : new Map<string, any>();
+      const totalSales = allOrders.reduce((sum, order) => sum + order.totalCents, 0);
+      const totalOrders = allOrders.length;
 
-    return {
-      from: fromDate.toISOString(),
-      to: toDate.toISOString(),
-      locationId,
-      totalSales: totalSales / 100, // Convert cents to currency units
-      totalOrders,
-      averageOrderValue: totalOrders > 0 ? (totalSales / 100) / totalOrders : 0,
-      pagination: {
-        limit: effectiveLimit,
-        offset: effectiveOffset,
-        total: totalOrders,
-        hasMore: effectiveOffset + effectiveLimit < totalOrders,
-      },
-      orders: paginatedOrders.map((order) => ({
-        id: order.id,
-        orderNumber: order.orderNumber,
-        total: order.totalCents / 100,
-        createdAt: order.createdAt,
-        items: order.items.map((item) => {
-          const product = productsMap.get(item.productId);
-          return {
-            productId: item.productId,
-            productName: product?.name || item.productId,
-            quantity: item.quantity,
-            priceCents: item.priceCents,
-            taxCents: item.taxCents,
-            discountCents: item.discountCents || 0,
-          };
-        }),
-      })),
-    };
+      // Apply pagination
+      const paginatedOrders = allOrders.slice(effectiveOffset, effectiveOffset + effectiveLimit);
+
+      console.log(`📊 Sales Report Query: Found ${totalOrders} completed orders (showing ${paginatedOrders.length} from offset ${effectiveOffset}) for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
+
+      // Collect unique product IDs only from paginated orders (reduces batch fetch size)
+      const productIds = new Set<string>();
+      paginatedOrders.forEach((order) => {
+        order.items.forEach((item) => {
+          productIds.add(item.productId);
+        });
+      });
+
+      // Batch fetch product names only for paginated orders
+      const productsMap = tenantId && productIds.size > 0
+        ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+        : new Map<string, any>();
+
+      return {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+        locationId,
+        totalSales: totalSales / 100, // Convert cents to currency units
+        totalOrders,
+        averageOrderValue: totalOrders > 0 ? (totalSales / 100) / totalOrders : 0,
+        pagination: {
+          limit: effectiveLimit,
+          offset: effectiveOffset,
+          total: totalOrders,
+          hasMore: effectiveOffset + effectiveLimit < totalOrders,
+        },
+        orders: paginatedOrders.map((order) => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          total: order.totalCents / 100,
+          createdAt: order.createdAt,
+          items: order.items.map((item) => {
+            const product = productsMap.get(item.productId);
+            return {
+              productId: item.productId,
+              productName: product?.name || item.productId,
+              quantity: item.quantity,
+              priceCents: item.priceCents,
+              taxCents: item.taxCents,
+              discountCents: item.discountCents || 0,
+            };
+          }),
+        })),
+      };
+    } catch (error: any) {
+      console.error('❌ Error in getSales:', error);
+      throw error;
+    }
   }
 
   async getTopSellers(from?: string, to?: string, locationId?: string, limit: number = 10, tenantId?: string) {

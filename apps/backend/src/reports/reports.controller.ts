@@ -24,11 +24,14 @@ export class ReportsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('location_id') locationId?: string,
-    @Query('limit') limit?: number,
-    @Query('offset') offset?: number,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
     @Request() req?: any,
   ) {
-    return this.reportsService.getSales(from, to, locationId, req?.user?.tenantId, limit, offset);
+    // Parse limit and offset as numbers (they come as strings from query params)
+    const limitNum = limit ? parseInt(limit, 10) : undefined;
+    const offsetNum = offset ? parseInt(offset, 10) : undefined;
+    return this.reportsService.getSales(from, to, locationId, req?.user?.tenantId, limitNum, offsetNum);
   }
 
   @Get('top-sellers')

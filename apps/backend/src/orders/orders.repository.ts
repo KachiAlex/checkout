@@ -78,18 +78,21 @@ export class OrdersRepository {
     isHeld?: boolean;
     customerId?: string;
   }): Promise<OrderRecord[]> {
-    // Optimize query structure: equality filters first, then range filters, then orderBy
-    // This order is important for Firestore performance and index requirements
+    // Firestore query structure:
+    // 1. Start with orderBy (required when using range queries)
+    // 2. Add equality filters
+    // 3. Add range filters last
+    // Note: Composite indexes may be required for complex queries
     
-    // Start with equality filters (most selective first)
     let query: any = this.collection;
     
-    // TenantId is the most selective filter (multi-tenant isolation)
+    // Start with orderBy - required when using range queries on createdAt
+    query = query.orderBy('createdAt', 'desc');
+    
+    // Add equality filters (most selective first)
     if (params.tenantId) {
       query = query.where('tenantId', '==', params.tenantId);
     }
-    
-    // Then other equality filters
     if (params.status) {
       query = query.where('status', '==', params.status);
     }
@@ -106,45 +109,59 @@ export class OrdersRepository {
       query = query.where('customerId', '==', params.customerId);
     }
     
-    // Range filters (must come before orderBy)
+    // Range filters come last (must match orderBy field)
     if (params.from) {
       query = query.where('createdAt', '>=', Timestamp.fromDate(params.from));
     }
     if (params.to) {
       query = query.where('createdAt', '<=', Timestamp.fromDate(params.to));
     }
-    
-    // orderBy must come last and must match one of the where clauses for range queries
-    // If we have date range filters, orderBy must use createdAt
-    query = query.orderBy('createdAt', 'desc');
 
     // Firestore limits queries to 1000 documents, so we need to paginate to get all results
     const allOrders: OrderRecord[] = [];
     let lastDoc: QueryDocumentSnapshot<OrderDocument> | null = null;
     const batchSize = 1000; // Firestore's maximum limit per query
 
-    while (true) {
-      let batchQuery: Query<OrderDocument> = query;
-      if (lastDoc) {
-        batchQuery = query.startAfter(lastDoc);
+    try {
+      while (true) {
+        let batchQuery: Query<OrderDocument> = query;
+        if (lastDoc) {
+          batchQuery = query.startAfter(lastDoc);
+        }
+        
+        const snapshot = await batchQuery.limit(batchSize).get();
+        
+        if (snapshot.empty) {
+          break;
+        }
+
+        const batchOrders = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+        allOrders.push(...batchOrders);
+
+        // If we got fewer than batchSize, we've reached the end
+        if (snapshot.docs.length < batchSize) {
+          break;
+        }
+
+        // Set the last document for the next iteration
+        lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      }
+    } catch (error: any) {
+      // Log the error for debugging
+      console.error('❌ Firestore query error:', error.message);
+      console.error('Query params:', params);
+      
+      // If it's an index error, provide helpful message
+      if (error.message?.includes('index') || error.code === 9) {
+        throw new Error(
+          `Firestore index required. Please create a composite index for: ` +
+          `orders collection with fields: createdAt (desc), tenantId (asc), status (asc). ` +
+          `Error: ${error.message}`
+        );
       }
       
-      const snapshot = await batchQuery.limit(batchSize).get();
-      
-      if (snapshot.empty) {
-        break;
-      }
-
-      const batchOrders = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
-      allOrders.push(...batchOrders);
-
-      // If we got fewer than batchSize, we've reached the end
-      if (snapshot.docs.length < batchSize) {
-        break;
-      }
-
-      // Set the last document for the next iteration
-      lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      // Re-throw other errors
+      throw error;
     }
 
     return allOrders;
