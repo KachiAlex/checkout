@@ -414,20 +414,25 @@ export class ReportsService {
   }
 
   // Staff Performance Analytics - OPTIMIZED with parallel queries
-  async getStaffPerformance(locationId?: string, from?: string, to?: string) {
+  async getStaffPerformance(locationId?: string, from?: string, to?: string, tenantId?: string) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
+
+    // Ensure we include orders up to the end of the day
+    const toDateEndOfDay = new Date(toDate);
+    toDateEndOfDay.setHours(23, 59, 59, 999);
 
     // Parallelize independent queries for better performance
     const [orders, transactions, allUsers] = await Promise.all([
       this.ordersRepository.list({
         status: OrderStatus.COMPLETED,
+        tenantId, // Filter by tenant to ensure data isolation
         locationId,
         from: fromDate,
-        to: toDate,
+        to: toDateEndOfDay, // Include full day
       }),
-      this.inventoryRepository.listTransactions(locationId || '', fromDate, toDate),
-      this.usersRepository.findAll(),
+      this.inventoryRepository.listTransactions(locationId || '', fromDate, toDateEndOfDay),
+      this.usersRepository.findAll(tenantId), // Filter users by tenantId
     ]);
 
     const locationUsers = locationId

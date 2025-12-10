@@ -131,11 +131,9 @@ export function ReportsPage() {
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const topRes = await axios.get(`${API_URL}/api/v1/reports/top-sellers?${params}`);
           setTopSellers(topRes.data);
-          // Also load staff performance for staff top sellers view
-          if (!staffPerformance) {
-            const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
-            setStaffPerformance(staffRes.data);
-          }
+          // Always load staff performance for staff top sellers view (reload when date range changes)
+          const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
+          setStaffPerformance(staffRes.data);
           break;
 
         case 'analytics':
@@ -684,7 +682,7 @@ export function ReportsPage() {
                     <p className="theme-text-secondary text-center py-8">No sales data available</p>
                     )
                   ) : (
-                    staffPerformance && staffPerformance.staffPerformance ? (() => {
+                    staffPerformance && staffPerformance.staffPerformance && staffPerformance.staffPerformance.length > 0 ? (() => {
                       const staffList = staffPerformance.staffPerformance.map((staff: any) => ({
                         userId: staff.userId,
                         userName: staff.userName,
