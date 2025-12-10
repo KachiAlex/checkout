@@ -6,7 +6,7 @@ import { formatCurrency, parseFormattedNumber, handleNumberInputChange } from '.
 
 interface PaymentModalProps {
   isOpen: boolean;
-  method: 'card' | 'cash' | 'qr' | 'transfer' | null;
+  method: 'card' | 'cash' | 'qr' | 'transfer' | 'credit' | null;
   total: number;
   cart: CartItem[];
   orderId?: string; // Order ID if order is already created

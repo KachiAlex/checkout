@@ -63,9 +63,10 @@ export function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const theme = useThemeStore((state) => state.theme);
   const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash' | 'qr' | 'transfer' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash' | 'qr' | 'transfer' | 'credit' | null>(null);
   const [lastCompletedOrderId, setLastCompletedOrderId] = useState<string | null>(null);
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
   const [cashChange, setCashChange] = useState<number>(0);
@@ -342,13 +343,76 @@ export function CheckoutPage() {
     }
   }, []);
 
-  const handlePaymentClick = (method: 'card' | 'cash' | 'qr' | 'transfer') => {
+  const handlePaymentClick = (method: 'card' | 'cash' | 'qr' | 'transfer' | 'credit') => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
     }
+    
+    // For credit orders, create directly without payment modal
+    if (method === 'credit') {
+      handleCreditOrder();
+      return;
+    }
+    
     setSelectedPaymentMethod(method);
     setPaymentModalOpen(true);
+  };
+
+  const handleCreditOrder = async () => {
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+
+    if (!accessToken || !user) {
+      toast.error('Not authenticated. Please log in again.');
+      return;
+    }
+
+    if (!confirm('Create credit order? Customer will pay later.')) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
+      const orderUuid = generateUUID();
+      const deviceId = localStorage.getItem('deviceId') || undefined;
+
+      const orderResponse = await axios.post(
+        `${API_URL}/api/v1/orders`,
+        {
+          uuid: orderUuid,
+          locationId: user.locationId || undefined,
+          customerId: selectedCustomer?.id,
+          items: mapCartToOrderItems(cart),
+          subtotalCents: subtotal,
+          taxCents: tax,
+          discountCents: totalDiscountCents,
+          discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
+          discountReason: discountReason || undefined,
+          totalCents: totalAmount,
+          deviceId,
+          isCreditOrder: true,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      const order = orderResponse.data;
+
+      toast.success(`Credit order created! Order: ${order.orderNumber || orderUuid}`);
+      setLastCompletedOrderId(order.id);
+      clearCart();
+      setSelectedCustomer(null);
+      setReceiptOptionsOpen(true);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create credit order';
+      toast.error(errorMessage, { duration: 5000, icon: '❌' });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handlePayment = async (method: 'card' | 'cash' | 'qr' | 'transfer') => {
@@ -784,6 +848,15 @@ export function CheckoutPage() {
                   >
                     🏦 Pay Transfer
                   </button>
+                  {(isAdmin || isManager) && (
+                    <button
+                      onClick={() => handlePaymentClick('credit')}
+                      disabled={cart.length === 0 || isProcessing}
+                      className="w-full rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                    >
+                      💳 Credit Order
+                    </button>
+                  )}
                 </div>
 
                 {cart.length > 0 && (
@@ -814,7 +887,7 @@ export function CheckoutPage() {
           if (change !== undefined) {
             setCashChange(change);
           }
-          if (selectedPaymentMethod) {
+          if (selectedPaymentMethod && selectedPaymentMethod !== 'credit') {
             await handlePayment(selectedPaymentMethod);
           }
         }}
