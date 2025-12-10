@@ -152,14 +152,63 @@ export class OrdersRepository {
       // Log the error for debugging
       console.error('❌ Firestore query error:', error.message);
       console.error('Query params:', params);
+      console.error('Error code:', error.code);
+      console.error('Full error:', error);
       
-      // If it's an index error, provide helpful message
-      if (error.message?.includes('index') || error.code === 9) {
-        throw new Error(
-          `Firestore index required. Please create a composite index for: ` +
-          `orders collection with fields: createdAt (desc), tenantId (asc), status (asc). ` +
-          `Error: ${error.message}`
-        );
+      // If it's an index error (code 9 = FAILED_PRECONDITION), try a simpler query
+      if (error.code === 9 || error.message?.includes('index') || error.message?.includes('requires an index')) {
+        console.warn('⚠️ Firestore index missing, attempting fallback query...');
+        
+        // Fallback: Use a simpler query without some filters, then filter in memory
+        try {
+          let fallbackQuery: any = this.collection.orderBy('createdAt', 'desc');
+          
+          // Only use the most critical filters in the query
+          if (params.tenantId) {
+            fallbackQuery = fallbackQuery.where('tenantId', '==', params.tenantId);
+          }
+          if (params.status) {
+            fallbackQuery = fallbackQuery.where('status', '==', params.status);
+          }
+          
+          // Get all matching orders
+          const fallbackSnapshot = await fallbackQuery.limit(5000).get(); // Limit to prevent huge fetches
+          const fallbackOrders = fallbackSnapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+          
+          // Filter in memory
+          let filtered = fallbackOrders;
+          if (params.locationId) {
+            filtered = filtered.filter(o => o.locationId === params.locationId);
+          }
+          if (params.deviceId) {
+            filtered = filtered.filter(o => o.deviceId === params.deviceId);
+          }
+          if (params.isHeld !== undefined) {
+            filtered = filtered.filter(o => o.isHeld === params.isHeld);
+          }
+          if (params.customerId) {
+            filtered = filtered.filter(o => o.customerId === params.customerId);
+          }
+          if (params.from) {
+            filtered = filtered.filter(o => o.createdAt >= params.from!);
+          }
+          if (params.to) {
+            filtered = filtered.filter(o => o.createdAt <= params.to!);
+          }
+          
+          // Sort by createdAt desc (already sorted from query, but ensure it)
+          filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          
+          console.log(`✅ Fallback query successful: ${filtered.length} orders after filtering`);
+          return filtered;
+        } catch (fallbackError: any) {
+          console.error('❌ Fallback query also failed:', fallbackError);
+          throw new Error(
+            `Firestore query failed. Indexes are being built - please wait a few minutes and try again. ` +
+            `If the error persists, check Firebase Console for index build status. ` +
+            `Original error: ${error.message}`
+          );
+        }
       }
       
       // Re-throw other errors
