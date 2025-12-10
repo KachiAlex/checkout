@@ -2445,64 +2445,82 @@ export function SettingsPage() {
         {isTenantAdmin && (
           <SectionContainer
             title="Receipt Printer"
-            description="Configure ESC/POS receipt printers for automatic printing. Requires print proxy server running locally."
+            description="Connect your receipt printer for automatic printing"
           >
             <div className="space-y-6">
-            {/* Print Proxy URL */}
-            <div>
-              <label className="theme-text-primary mb-2 block text-sm font-medium">
-                Print Proxy WebSocket URL
-              </label>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={printProxyUrl}
-                  onChange={(e) => setPrintProxyUrl(e.target.value)}
-                  placeholder="ws://localhost:8080"
-                  className="theme-text-primary flex-1 rounded-xl border border-white/20 bg-transparent px-4 py-2 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
-                />
-                <button
-                  onClick={handleSavePrintProxyUrl}
-                  className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-2 font-semibold text-white transition hover:shadow-lg"
-                >
-                  Save & Connect
-                </button>
-              </div>
-              <p className="theme-text-secondary mt-2 text-xs">
-                Default: ws://localhost:8080. Start the print proxy server before connecting.
-              </p>
-            </div>
-
-            {/* Printer Status */}
+            {/* Connection Status - Simplified */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="theme-text-primary text-sm font-semibold">Printer Status</h3>
-                  <p className="theme-text-secondary text-xs mt-1">
-                    {printerAvailable === null
-                      ? 'Checking connection...'
-                      : printerAvailable
-                      ? '✓ Connected to print proxy'
-                      : '✗ Not connected. Start print proxy server.'}
-                  </p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`h-3 w-3 rounded-full ${printerAvailable ? 'bg-emerald-400' : printerAvailable === false ? 'bg-red-400' : 'bg-yellow-400 animate-pulse'}`} />
+                  <div>
+                    <h3 className="theme-text-primary text-sm font-semibold">
+                      {printerAvailable === null
+                        ? 'Connecting...'
+                        : printerAvailable
+                        ? 'Connected'
+                        : 'Not Connected'}
+                    </h3>
+                    <p className="theme-text-secondary text-xs mt-0.5">
+                      {printerAvailable === null
+                        ? 'Checking printer connection...'
+                        : printerAvailable
+                        ? 'Your printer is ready to use'
+                        : 'Connect to print proxy server to enable printing'}
+                    </p>
+                  </div>
                 </div>
                 {printerAvailable && (
                   <button
                     onClick={loadPrinters}
                     disabled={loadingPrinters}
-                    className="theme-chip rounded-full border px-4 py-2 text-xs font-semibold transition hover:border-sky-400"
+                    className="theme-chip rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:border-sky-400"
                   >
-                    {loadingPrinters ? 'Loading...' : '🔄 Refresh'}
+                    {loadingPrinters ? '...' : '🔄'}
                   </button>
                 )}
               </div>
+
+              {/* Quick Connect - Only show if not connected */}
+              {!printerAvailable && (
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <label className="theme-text-primary mb-2 block text-xs font-medium">
+                    Print Server URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={printProxyUrl}
+                      onChange={(e) => setPrintProxyUrl(e.target.value)}
+                      placeholder="ws://localhost:8080"
+                      className="theme-text-primary flex-1 rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400/20"
+                    />
+                    <button
+                      onClick={handleSavePrintProxyUrl}
+                      className="rounded-lg bg-gradient-to-r from-sky-400 to-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:shadow-lg whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                  <p className="theme-text-secondary mt-1.5 text-xs">
+                    Default: <code className="px-1 py-0.5 rounded bg-black/20">ws://localhost:8080</code>
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Register Printer Form */}
+            {/* Register Printer Form - Collapsible when connected */}
             {printerAvailable && (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="theme-text-primary mb-4 text-sm font-semibold">Register New Printer</h3>
-                <form onSubmit={handleRegisterPrinter} className="space-y-4">
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4" open={printers.length === 0}>
+                <summary className="theme-text-primary cursor-pointer text-sm font-semibold list-none mb-4">
+                  <span className="flex items-center justify-between">
+                    <span>➕ Add Printer</span>
+                    {printers.length > 0 && (
+                      <span className="theme-text-secondary text-xs font-normal">({printers.length} registered)</span>
+                    )}
+                  </span>
+                </summary>
+                <form onSubmit={handleRegisterPrinter} className="space-y-4 mt-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="theme-text-secondary mb-1 block text-xs font-medium">
@@ -2602,7 +2620,7 @@ export function SettingsPage() {
                     {registeringPrinter ? 'Registering...' : 'Register Printer'}
                   </button>
                 </form>
-              </div>
+              </details>
             )}
 
             {/* Registered Printers List */}
@@ -2632,19 +2650,29 @@ export function SettingsPage() {
               </div>
             )}
 
-            {/* Setup Instructions */}
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-              <h3 className="theme-text-primary mb-2 text-sm font-semibold text-amber-400">
-                📋 Setup Instructions
-              </h3>
-              <ol className="theme-text-secondary space-y-1 text-xs list-decimal list-inside">
-                <li>Install Node.js on the computer connected to the printer</li>
-                <li>Navigate to <code className="px-1 py-0.5 rounded bg-black/20">apps/print-proxy</code> directory</li>
-                <li>Run <code className="px-1 py-0.5 rounded bg-black/20">npm install</code> to install dependencies</li>
-                <li>Start the server: <code className="px-1 py-0.5 rounded bg-black/20">node server.js</code></li>
-                <li>Configure the printer above using the printer's port or network address</li>
-              </ol>
-            </div>
+            {/* Setup Help - Collapsible */}
+            {!printerAvailable && (
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="theme-text-primary cursor-pointer text-sm font-semibold list-none">
+                  <span className="flex items-center gap-2">
+                    <span>ℹ️</span>
+                    <span>Need help setting up?</span>
+                  </span>
+                </summary>
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="theme-text-secondary mb-3 text-xs">
+                    To enable automatic printing, you need to run a print proxy server on the computer connected to your printer:
+                  </p>
+                  <ol className="theme-text-secondary space-y-2 text-xs list-decimal list-inside ml-2">
+                    <li>Install Node.js on the computer with the printer</li>
+                    <li>Open terminal in <code className="px-1 py-0.5 rounded bg-black/20">apps/print-proxy</code> folder</li>
+                    <li>Run <code className="px-1 py-0.5 rounded bg-black/20">npm install</code></li>
+                    <li>Run <code className="px-1 py-0.5 rounded bg-black/20">node server.js</code></li>
+                    <li>Enter the server URL above (usually <code className="px-1 py-0.5 rounded bg-black/20">ws://localhost:8080</code>)</li>
+                  </ol>
+                </div>
+              </details>
+            )}
             </div>
           </SectionContainer>
         )}
