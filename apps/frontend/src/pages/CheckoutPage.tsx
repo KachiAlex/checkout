@@ -457,41 +457,55 @@ export function CheckoutPage() {
     try {
       // If customer name is entered but not selected, create the customer first
       let customerId = selectedCustomer?.id;
+      console.log('Credit order - Initial customerId:', customerId, 'selectedCustomer:', selectedCustomer, 'customerSearchQuery:', customerSearchQuery);
+      
       if (!customerId && customerSearchQuery.trim()) {
+        console.log('Creating customer for credit order:', customerSearchQuery);
         const newCustomer = await createCustomer(customerSearchQuery);
         if (newCustomer) {
           customerId = newCustomer.id;
+          console.log('✅ Customer created successfully:', { id: newCustomer.id, name: newCustomer.name });
           setSelectedCustomer({
             id: newCustomer.id,
             name: newCustomer.name,
             phone: newCustomer.phone,
           });
           toast.success(`Customer "${newCustomer.name}" created`);
+        } else {
+          console.error('❌ Failed to create customer');
         }
       }
+
+      console.log('Credit order - Final customerId before order creation:', customerId);
 
       const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
       const orderUuid = generateUUID();
       const deviceId = localStorage.getItem('deviceId') || undefined;
 
+      const orderPayload = {
+        uuid: orderUuid,
+        locationId: user.locationId || undefined,
+        customerId: customerId || undefined, // Explicitly include even if undefined
+        items: mapCartToOrderItems(cart),
+        subtotalCents: subtotal,
+        taxCents: tax,
+        discountCents: totalDiscountCents,
+        discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
+        discountReason: discountReason || undefined,
+        totalCents: totalAmount,
+        deviceId,
+        isCreditOrder: true,
+      };
+
+      console.log('📤 Sending credit order with payload:', { ...orderPayload, items: `${orderPayload.items.length} items`, customerId: orderPayload.customerId });
+
       const orderResponse = await axios.post(
         `${API_URL}/api/v1/orders`,
-        {
-          uuid: orderUuid,
-          locationId: user.locationId || undefined,
-          customerId: customerId,
-          items: mapCartToOrderItems(cart),
-          subtotalCents: subtotal,
-          taxCents: tax,
-          discountCents: totalDiscountCents,
-          discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
-          discountReason: discountReason || undefined,
-          totalCents: totalAmount,
-          deviceId,
-          isCreditOrder: true,
-        },
+        orderPayload,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
+
+      console.log('📥 Credit order response:', { orderId: orderResponse.data?.id, customerId: orderResponse.data?.customerId });
 
       const order = orderResponse.data;
 

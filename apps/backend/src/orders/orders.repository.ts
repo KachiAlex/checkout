@@ -259,7 +259,7 @@ export class OrdersRepository {
     const doc: OrderDocument = {
       ...data,
       tenantId: data.tenantId,
-      customerId: data.customerId,
+      customerId: data.customerId || undefined, // Explicitly set to undefined if not provided (Firestore will omit undefined fields)
       items: serializedItems,
       isHeld: data.isHeld ?? false,
       isCreditOrder: data.isCreditOrder ?? false,
@@ -271,6 +271,13 @@ export class OrdersRepository {
       createdAt: now,
       updatedAt: now,
     };
+
+    // Log customerId for debugging
+    if (data.customerId) {
+      console.log(`📝 Saving order with customerId: ${data.customerId}`);
+    } else {
+      console.log(`📝 Saving order without customerId`);
+    }
 
     try {
       await this.collection.doc(id).set(doc);

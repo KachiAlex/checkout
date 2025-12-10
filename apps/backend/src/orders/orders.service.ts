@@ -76,9 +76,10 @@ export class OrdersService {
       heldAt: createOrderDto.isHeld ? new Date() : undefined,
       isCreditOrder,
       paymentStatus: isCreditOrder ? PaymentStatus.PENDING : undefined,
+      customerId: createOrderDto.customerId || undefined, // Explicitly include customerId even if undefined
     });
 
-    console.log(`✅ Order created and saved: ${order.id} (${order.orderNumber}) for tenant ${tenantId}, status: ${order.status}, locationId: ${locationId}, createdAt: ${order.createdAt.toISOString()}`);
+    console.log(`✅ Order created and saved: ${order.id} (${order.orderNumber}) for tenant ${tenantId}, status: ${order.status}, locationId: ${locationId}, customerId: ${order.customerId || 'none'}, isCreditOrder: ${isCreditOrder}, createdAt: ${order.createdAt.toISOString()}`);
 
     // Award loyalty points if order is completed and has a customer
     if (!createOrderDto.isHeld && order.status === OrderStatus.COMPLETED && createOrderDto.customerId) {
