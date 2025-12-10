@@ -363,20 +363,34 @@ export class OrdersService {
    * Get all credit orders (orders taken on credit)
    */
   async findCreditOrders(locationId?: string, tenantId?: string): Promise<OrderRecord[]> {
-    const orders = await this.ordersRepository.list({
-      locationId,
-      tenantId,
-      isCreditOrder: true,
-    });
-    
-    // Filter by tenant if tenantId provided and no locationId specified
-    if (tenantId && !locationId) {
-      const locations = await this.locationsRepository.findByTenant(tenantId);
-      const locationIds = new Set(locations.map(loc => loc.id));
-      return orders.filter(order => locationIds.has(order.locationId));
+    try {
+      const orders = await this.ordersRepository.list({
+        locationId,
+        tenantId,
+        isCreditOrder: true,
+      });
+      
+      // Filter by tenant if tenantId provided and no locationId specified
+      // Note: This filtering is usually done by the query, but we keep it as a safety check
+      if (tenantId && !locationId) {
+        const locations = await this.locationsRepository.findByTenant(tenantId);
+        const locationIds = new Set(locations.map(loc => loc.id));
+        return orders.filter(order => locationIds.has(order.locationId));
+      }
+      
+      return orders;
+    } catch (error: any) {
+      // If it's an index error, provide helpful message
+      if (error?.code === 9 || error?.message?.includes('index') || error?.message?.includes('FAILED_PRECONDITION')) {
+        console.error('Firestore index error in findCreditOrders:', error.message);
+        throw new BadRequestException(
+          'Firestore index is being built. Please wait a few minutes and try again. ' +
+          'If the error persists, check Firebase Console for index build status.'
+        );
+      }
+      // Re-throw other errors
+      throw error;
     }
-    
-    return orders;
   }
 
   /**
