@@ -79,17 +79,16 @@ export class OrdersRepository {
     customerId?: string;
   }): Promise<OrderRecord[]> {
     // Firestore query structure:
-    // 1. Start with orderBy (required when using range queries)
-    // 2. Add equality filters
-    // 3. Add range filters last
-    // Note: Composite indexes may be required for complex queries
+    // When using range queries (>=, <=) with orderBy:
+    // 1. Equality filters come first
+    // 2. orderBy comes after equality filters  
+    // 3. Range filters come last (must match orderBy field)
+    // Note: Composite indexes are required when combining multiple where clauses with orderBy
     
     let query: any = this.collection;
     
-    // Start with orderBy - required when using range queries on createdAt
-    query = query.orderBy('createdAt', 'desc');
-    
-    // Add equality filters (most selective first)
+    // Add equality filters first (most selective first for better performance)
+    // These filters reduce the dataset before ordering
     if (params.tenantId) {
       query = query.where('tenantId', '==', params.tenantId);
     }
@@ -109,7 +108,10 @@ export class OrdersRepository {
       query = query.where('customerId', '==', params.customerId);
     }
     
-    // Range filters come last (must match orderBy field)
+    // orderBy comes after equality filters
+    query = query.orderBy('createdAt', 'desc');
+    
+    // Range filters come last (must match orderBy field: createdAt)
     if (params.from) {
       query = query.where('createdAt', '>=', Timestamp.fromDate(params.from));
     }
