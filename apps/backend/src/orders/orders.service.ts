@@ -371,12 +371,20 @@ export class OrdersService {
         isCreditOrder: true,
       });
       
+      console.log(`📋 Found ${orders.length} credit orders for tenant ${tenantId}, location ${locationId || 'all'}`);
+      // Log customerIds from orders
+      orders.forEach(order => {
+        console.log(`  Order ${order.orderNumber} (${order.id}): customerId=${order.customerId || 'none'}`);
+      });
+      
       // Filter by tenant if tenantId provided and no locationId specified
       // Note: This filtering is usually done by the query, but we keep it as a safety check
       if (tenantId && !locationId) {
         const locations = await this.locationsRepository.findByTenant(tenantId);
         const locationIds = new Set(locations.map(loc => loc.id));
-        return orders.filter(order => locationIds.has(order.locationId));
+        const filtered = orders.filter(order => locationIds.has(order.locationId));
+        console.log(`  Filtered to ${filtered.length} orders after location check`);
+        return filtered;
       }
       
       return orders;

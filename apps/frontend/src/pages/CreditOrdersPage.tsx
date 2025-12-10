@@ -75,6 +75,11 @@ export function CreditOrdersPage() {
 
       const orders = response.data || [];
       
+      console.log(`📦 Fetched ${orders.length} credit orders`);
+      // Log customerIds from orders
+      const orderCustomerIds = orders.map((o: CreditOrder) => ({ orderId: o.id, orderNumber: o.orderNumber, customerId: o.customerId }));
+      console.log('📋 Orders with customerIds:', orderCustomerIds);
+      
       // Fetch all users once for lookup
       let usersMap = new Map();
       try {
@@ -91,42 +96,37 @@ export function CreditOrdersPage() {
         // Continue without user data
       }
       
-      // Collect all unique customer IDs and batch fetch them
+      // Collect all unique customer IDs and fetch them individually
       const customerIds = [...new Set(orders.map((order: CreditOrder) => order.customerId).filter(Boolean))];
       const customersMap = new Map();
       
-      // Batch fetch all customers at once
+      console.log(`🔍 Fetching ${customerIds.length} unique customers for credit orders`);
+      
+      // Fetch customers individually by ID (more reliable than fetching all and filtering)
       if (customerIds.length > 0) {
-        try {
-          // Fetch all customers and create a map
-          const allCustomersResponse = await axios.get(
-            `${API_URL}/api/v1/customers`,
-            { headers: { Authorization: `Bearer ${accessToken}` } }
-          );
-          const allCustomers = allCustomersResponse.data || [];
-          allCustomers.forEach((customer: any) => {
-            if (customerIds.includes(customer.id)) {
-              customersMap.set(customer.id, customer);
-            }
-          });
-        } catch (error) {
-          console.error('Failed to batch fetch customers:', error);
-          // Fallback: try individual fetches
-          await Promise.all(
-            customerIds.map(async (customerId) => {
-              try {
-                const customerResponse = await axios.get(
-                  `${API_URL}/api/v1/customers/${customerId}`,
-                  { headers: { Authorization: `Bearer ${accessToken}` } }
-                );
+        await Promise.all(
+          customerIds.map(async (customerId) => {
+            try {
+              console.log(`Fetching customer ${customerId}...`);
+              const customerResponse = await axios.get(
+                `${API_URL}/api/v1/customers/${customerId}`,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+              );
+              if (customerResponse.data) {
                 customersMap.set(customerId, customerResponse.data);
-              } catch (err) {
-                console.error(`Failed to fetch customer ${customerId}:`, err);
+                console.log(`✅ Found customer ${customerId}: ${customerResponse.data.name || 'No name'}`);
+              } else {
+                console.warn(`⚠️ Customer ${customerId} returned no data`);
               }
-            })
-          );
-        }
+            } catch (err: any) {
+              console.error(`❌ Failed to fetch customer ${customerId}:`, err.response?.status, err.response?.data || err.message);
+              // Don't throw - continue with other customers
+            }
+          })
+        );
       }
+      
+      console.log(`📊 Customer fetch complete. Found ${customersMap.size} out of ${customerIds.length} customers`);
       
       // Fetch customer and product details for each order
       const enrichedOrders = await Promise.all(
