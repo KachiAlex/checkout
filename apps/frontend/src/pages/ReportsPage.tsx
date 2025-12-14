@@ -342,24 +342,26 @@ export function ReportsPage() {
   return (
     <div className="min-h-screen theme-bg">
       <header className="sticky top-0 z-20 border-b theme-border backdrop-blur bg-black/30">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <BrandMark />
-            <div>
-              <h1 className="text-base sm:text-lg font-semibold theme-text-primary">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="flex-shrink-0">
+              <BrandMark />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base lg:text-lg font-semibold theme-text-primary truncate">
                 Reports &amp; Insights
               </h1>
-              <p className="text-xs sm:text-sm theme-text-secondary">
+              <p className="text-xs theme-text-secondary hidden sm:block">
                 Comprehensive business analytics and reports
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <ThemeToggle />
             <Link
               to="/checkout"
-              className="inline-flex items-center gap-2 rounded-full border theme-border px-3 py-1.5 text-xs sm:text-sm font-medium theme-text-primary hover:bg-white/10 transition"
+              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border theme-border px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium theme-text-primary hover:bg-white/10 transition active:scale-95"
             >
               <span className="hidden sm:inline">Back to Checkout</span>
               <span className="sm:hidden">Checkout</span>
@@ -368,123 +370,125 @@ export function ReportsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
         {/* Filters */}
-        <div className="theme-surface rounded-xl border theme-border p-4 mb-6 flex flex-wrap gap-4">
-          {locations.length > 0 && (
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium theme-text-secondary mb-1">Location</label>
-              <select
-                value={locationId || ''}
-                onChange={(e) => setLocationId(e.target.value || null)}
-                className="w-full theme-surface rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary bg-transparent"
-              >
-                <option value="">All Locations</option>
-                {locations.map(loc => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
-              </select>
+        <div className="theme-surface rounded-xl border theme-border p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {locations.length > 0 && (
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-medium theme-text-secondary mb-1.5">Location</label>
+                <select
+                  value={locationId || ''}
+                  onChange={(e) => setLocationId(e.target.value || null)}
+                  className="w-full theme-surface rounded-lg border theme-border px-3 py-2.5 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
+                >
+                  <option value="">All Locations</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="sm:col-span-1">
+              <label className="block text-xs font-medium theme-text-secondary mb-1.5">From Date</label>
+              <input
+                type="date"
+                value={dateRange.from}
+                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                className="w-full theme-surface rounded-lg border theme-border px-3 py-2.5 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
+              />
             </div>
-          )}
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-medium theme-text-secondary mb-1">From Date</label>
-            <input
-              type="date"
-              value={dateRange.from}
-              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-              className="w-full theme-surface rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary bg-transparent"
-            />
-          </div>
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-medium theme-text-secondary mb-1">To Date</label>
-            <input
-              type="date"
-              value={dateRange.to}
-              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-              className="w-full theme-surface rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary bg-transparent"
-            />
+            <div className="sm:col-span-1 lg:col-span-1">
+              <label className="block text-xs font-medium theme-text-secondary mb-1.5">To Date</label>
+              <input
+                type="date"
+                value={dateRange.to}
+                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                className="w-full theme-surface rounded-lg border theme-border px-3 py-2.5 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
+              />
+            </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 overflow-x-auto">
-          <div className="flex gap-2 border-b theme-border">
+        <div className="mb-4 sm:mb-6 overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+          <div className="flex gap-2 sm:gap-3 border-b theme-border min-w-max sm:min-w-0">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium transition border-b-2 ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition border-b-2 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-sky-400 text-sky-400'
-                    : 'border-transparent theme-text-secondary hover:theme-text-primary'
+                    ? 'border-sky-400 text-sky-400 bg-sky-400/10'
+                    : 'border-transparent theme-text-secondary hover:theme-text-primary hover:bg-white/5'
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
+                <span className="text-base sm:text-lg">{tab.icon}</span>
+                <span className="hidden min-[400px]:inline sm:hidden">{tab.label.split(' ')[0]}</span>
                 <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             ))}
           </div>
         </div>
 
         {/* Report Content */}
-        <div className="theme-surface rounded-2xl border theme-border p-6 sm:p-8">
+        <div className="theme-surface rounded-xl sm:rounded-2xl border theme-border p-4 sm:p-6 lg:p-8">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-sky-400 border-t-transparent mb-4" />
-              <p className="theme-text-secondary">Loading report...</p>
+            <div className="text-center py-8 sm:py-12">
+              <div className="inline-block h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-sky-400 border-t-transparent mb-3 sm:mb-4" />
+              <p className="theme-text-secondary text-sm sm:text-base">Loading report...</p>
             </div>
           ) : (
             <>
               {/* Show message if no data for current tab */}
               {activeTab === 'sales' && !salesReport && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No sales data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No sales data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'top-sellers' && !topSellers && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No top sellers data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No top sellers data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'analytics' && !salesAnalytics && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No analytics data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No analytics data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'alerts' && !alerts && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No alerts data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No alerts data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'fraud' && !fraudAlerts && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No fraud detection data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No fraud detection data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'expiry' && !expiryAnalytics && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No expiry analytics data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No expiry analytics data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'shrinkage' && !shrinkageAlerts && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No shrinkage data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No shrinkage data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'staff' && !staffPerformance && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No staff performance data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No staff performance data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'inventory' && !inventoryAnalytics && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No inventory analytics data available. Try adjusting your filters or date range.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No inventory analytics data available. Try adjusting your filters or date range.</p>
                 </div>
               )}
               {activeTab === 'purchase-orders' && purchaseOrders.length === 0 && !loading && (
-                <div className="text-center py-12">
-                  <p className="theme-text-secondary">No purchase orders found.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">No purchase orders found.</p>
                 </div>
               )}
               {/* Sales Report */}
@@ -494,19 +498,28 @@ export function ReportsPage() {
                 const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
 
                 return (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesReport.totalSales)}</p>
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-sky-500/10 to-blue-500/5">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">Total Sales</p>
+                        <span className="text-lg sm:text-xl">💰</span>
+                      </div>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">{formatCurrency(salesReport.totalSales)}</p>
                     </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Orders</p>
-                      <p className="text-2xl font-bold theme-text-primary">{salesReport.totalOrders}</p>
+                    <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-green-500/10 to-emerald-500/5">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">Total Orders</p>
+                        <span className="text-lg sm:text-xl">📦</span>
+                      </div>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">{salesReport.totalOrders}</p>
                     </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesReport.averageOrderValue)}</p>
+                    <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-purple-500/10 to-pink-500/5 sm:col-span-2 lg:col-span-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">Avg Order Value</p>
+                        <span className="text-lg sm:text-xl">📊</span>
+                      </div>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">{formatCurrency(salesReport.averageOrderValue)}</p>
                     </div>
                   </div>
                     
@@ -565,22 +578,22 @@ export function ReportsPage() {
                         
                         {/* Pagination */}
                         {totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t theme-border">
+                            <p className="text-xs sm:text-sm theme-text-secondary text-center sm:text-left">
                               Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
                             </p>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => setSalesPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setSalesPage(p => Math.min(totalPages, p + 1))}
                                 disabled={currentPage === totalPages || !pagination.hasMore}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -589,7 +602,7 @@ export function ReportsPage() {
                     )}
                 </div>
                     ) : (
-                      <p className="theme-text-secondary text-center py-8">No sales data available</p>
+                      <p className="theme-text-secondary text-center py-8 text-sm sm:text-base px-4">No sales data available</p>
               )}
                   </div>
                 );
@@ -597,13 +610,13 @@ export function ReportsPage() {
 
               {/* Top Sellers */}
               {activeTab === 'top-sellers' && topSellers && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold theme-text-primary">Top Sellers</h3>
-                    <div className="flex gap-2 border theme-border rounded-lg p-1">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                    <h3 className="text-base sm:text-lg font-semibold theme-text-primary">Top Sellers</h3>
+                    <div className="flex gap-2 border theme-border rounded-lg p-1 w-full sm:w-auto">
                       <button
                         onClick={() => setTopSellersType('product')}
-                        className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition ${
                           topSellersType === 'product'
                             ? 'bg-sky-400 text-white'
                             : 'theme-text-secondary hover:theme-text-primary'
@@ -613,7 +626,7 @@ export function ReportsPage() {
                       </button>
                       <button
                         onClick={() => setTopSellersType('staff')}
-                        className={`px-4 py-2 rounded text-sm font-medium transition ${
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition ${
                           topSellersType === 'staff'
                             ? 'bg-sky-400 text-white'
                             : 'theme-text-secondary hover:theme-text-primary'
@@ -629,34 +642,34 @@ export function ReportsPage() {
                       const paginated = paginate(topSellers.topSellers, topSellersPage, itemsPerPage);
                       return (
                         <>
-                          <div className="space-y-2">
+                          <div className="space-y-2 sm:space-y-3">
                             {paginated.items.map((item: any, idx: number) => (
                               <div
                                 key={item.productId}
-                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg border theme-border hover:bg-white/5 transition"
                               >
-                                <div className="flex items-center gap-4 flex-1 min-w-0">
-                                  <div className="flex-shrink-0 text-2xl font-bold theme-text-primary">
+                                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-lg sm:text-2xl font-bold theme-text-primary">
                                     #{(topSellersPage - 1) * itemsPerPage + idx + 1}
                                   </div>
-                                  <div className="flex-shrink-0 text-2xl">🏆</div>
+                                  <div className="flex-shrink-0 text-xl sm:text-2xl">🏆</div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-medium theme-text-primary truncate">{item.productName || item.productId}</p>
-                                    <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                      <span>Qty: {item.quantitySold}</span>
-                                      <span>Revenue: {formatCurrency(item.revenue)}</span>
+                                    <p className="font-medium theme-text-primary truncate text-sm sm:text-base">{item.productName || item.productId}</p>
+                                    <div className="flex flex-wrap gap-2 sm:gap-3 mt-1.5 text-xs sm:text-sm theme-text-secondary">
+                                      <span className="px-2 py-0.5 rounded bg-white/5">Qty: {item.quantitySold}</span>
+                                      <span className="px-2 py-0.5 rounded bg-white/5 font-semibold">Revenue: {formatCurrency(item.revenue)}</span>
                                       {item.productName && item.productId !== item.productName && (
-                                        <span className="text-xs opacity-60">ID: {item.productId}</span>
+                                        <span className="text-xs opacity-60 px-2 py-0.5 rounded bg-white/5">ID: {item.productId}</span>
                                       )}
                                     </div>
                                   </div>
                                 </div>
                                 <button
                                   onClick={() => handleViewDetails({ ...item, type: 'top-seller-product' })}
-                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 self-end sm:self-auto active:scale-95"
                                   title="View Details"
                                 >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                   </svg>
@@ -666,22 +679,22 @@ export function ReportsPage() {
                           </div>
                           
                           {paginated.totalPages > 1 && (
-                            <div className="flex items-center justify-between mt-4">
-                              <p className="text-sm theme-text-secondary">
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t theme-border">
+                              <p className="text-xs sm:text-sm theme-text-secondary text-center sm:text-left">
                                 Showing {((topSellersPage - 1) * itemsPerPage) + 1} to {Math.min(topSellersPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
                               </p>
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => setTopSellersPage(p => Math.max(1, p - 1))}
                                   disabled={topSellersPage === 1}
-                                  className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Previous
                                 </button>
                                 <button
                                   onClick={() => setTopSellersPage(p => Math.min(paginated.totalPages, p + 1))}
                                   disabled={topSellersPage === paginated.totalPages}
-                                  className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Next
                                 </button>
@@ -740,22 +753,22 @@ export function ReportsPage() {
                           </div>
                           
                           {paginated.totalPages > 1 && (
-                            <div className="flex items-center justify-between mt-4">
-                              <p className="text-sm theme-text-secondary">
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t theme-border">
+                              <p className="text-xs sm:text-sm theme-text-secondary text-center sm:text-left">
                                 Showing {((topSellersPage - 1) * itemsPerPage) + 1} to {Math.min(topSellersPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
                               </p>
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => setTopSellersPage(p => Math.max(1, p - 1))}
                                   disabled={topSellersPage === 1}
-                                  className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Previous
                                 </button>
                                 <button
                                   onClick={() => setTopSellersPage(p => Math.min(paginated.totalPages, p + 1))}
                                   disabled={topSellersPage === paginated.totalPages}
-                                  className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Next
                                 </button>
@@ -834,14 +847,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setAnalyticsPage(p => Math.max(1, p - 1))}
                                 disabled={analyticsPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setAnalyticsPage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={analyticsPage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -949,14 +962,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setAlertsPage(p => Math.max(1, p - 1))}
                                 disabled={alertsPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setAlertsPage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={alertsPage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -1030,14 +1043,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setFraudPage(p => Math.max(1, p - 1))}
                                 disabled={fraudPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setFraudPage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={fraudPage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -1126,14 +1139,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setExpiryPage(p => Math.max(1, p - 1))}
                                 disabled={expiryPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setExpiryPage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={expiryPage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -1205,14 +1218,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setShrinkagePage(p => Math.max(1, p - 1))}
                                 disabled={shrinkagePage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setShrinkagePage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={shrinkagePage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -1282,14 +1295,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setStaffPage(p => Math.max(1, p - 1))}
                                 disabled={staffPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setStaffPage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={staffPage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -1413,14 +1426,14 @@ export function ReportsPage() {
                                   <button
                                     onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
                                     disabled={inventoryPage === 1}
-                                    className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                   >
                                     Previous
                                   </button>
                                   <button
                                     onClick={() => setInventoryPage(p => Math.min(productPaginated.totalPages, p + 1))}
                                     disabled={inventoryPage === productPaginated.totalPages}
-                                    className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                   >
                                     Next
                                   </button>
@@ -1484,14 +1497,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
                                 disabled={inventoryPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setInventoryPage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={inventoryPage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
@@ -1570,14 +1583,14 @@ export function ReportsPage() {
                               <button
                                 onClick={() => setPurchaseOrdersPage(p => Math.max(1, p - 1))}
                                 disabled={purchaseOrdersPage === 1}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
                                 onClick={() => setPurchaseOrdersPage(p => Math.min(paginated.totalPages, p + 1))}
                                 disabled={purchaseOrdersPage === paginated.totalPages}
-                                className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Next
                               </button>
