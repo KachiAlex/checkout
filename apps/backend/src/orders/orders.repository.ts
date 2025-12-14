@@ -394,8 +394,14 @@ export class OrdersRepository {
       isCreditOrder: data.isCreditOrder ?? false,
       paymentStatus: data.paymentStatus,
       heldAt: this.timestampToDate(data.heldAt),
-      paidAt: this.timestampToDate(data.paidAt) || undefined,
-      returnedAt: this.timestampToDate(data.returnedAt) || undefined,
+      // Only return paidAt if paymentStatus is COMPLETED (data validation to fix incorrect data)
+      paidAt: (data.paymentStatus === PaymentStatus.COMPLETED) 
+        ? (this.timestampToDate(data.paidAt) || undefined)
+        : undefined,
+      // Only return returnedAt if paymentStatus is REFUNDED (data validation to fix incorrect data)
+      returnedAt: (data.paymentStatus === PaymentStatus.REFUNDED)
+        ? (this.timestampToDate(data.returnedAt) || undefined)
+        : undefined,
       createdAt: this.timestampToDate(data.createdAt) || new Date(),
       updatedAt: this.timestampToDate(data.updatedAt) || new Date(),
     };

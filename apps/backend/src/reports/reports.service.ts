@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OrderStatus, InventoryTransactionType } from '@pos-checkout/shared';
+import { OrderStatus, InventoryTransactionType, PaymentStatus } from '@pos-checkout/shared';
 import { OrdersRepository } from '../orders/orders.repository';
 import { InventoryRepository } from '../inventory/inventory.repository';
 import { BatchInventoryRepository } from '../inventory/batch-inventory.repository';
@@ -36,13 +36,40 @@ export class ReportsService {
       const effectiveLimit = limit && limit > 0 ? Math.min(limit, 1000) : 100; // Max 1000, default 100
       const effectiveOffset = offset && offset >= 0 ? offset : 0;
 
-      // First, get total count and summary stats (without fetching all orders)
-      const allOrders = await this.ordersRepository.list({
+      // Get all completed orders (non-credit orders)
+      const completedOrders = await this.ordersRepository.list({
         status: OrderStatus.COMPLETED,
         tenantId, // Filter by tenant to ensure data isolation
         locationId,
         from: fromDate,
         to: toDateEndOfDay, // Include full day
+      });
+
+      // Get all paid credit orders (credit orders that have been paid)
+      const paidCreditOrders = await this.ordersRepository.list({
+        isCreditOrder: true,
+        paymentStatus: PaymentStatus.COMPLETED,
+        tenantId,
+        locationId,
+        from: fromDate,
+        to: toDateEndOfDay,
+      });
+
+      // Filter paid credit orders by paidAt date (not createdAt) for accurate sales reporting
+      const paidCreditOrdersFiltered = paidCreditOrders.filter((order) => {
+        if (!order.paidAt) return false;
+        const paidDate = new Date(order.paidAt);
+        return paidDate >= fromDate && paidDate <= toDateEndOfDay;
+      });
+
+      // Combine regular completed orders and paid credit orders
+      const allOrders = [...completedOrders, ...paidCreditOrdersFiltered];
+      
+      // Sort by date (use paidAt for credit orders, createdAt for regular orders)
+      allOrders.sort((a, b) => {
+        const dateA = a.isCreditOrder && a.paidAt ? new Date(a.paidAt).getTime() : new Date(a.createdAt).getTime();
+        const dateB = b.isCreditOrder && b.paidAt ? new Date(b.paidAt).getTime() : new Date(b.createdAt).getTime();
+        return dateB - dateA; // Descending order
       });
 
       const totalSales = allOrders.reduce((sum, order) => sum + order.totalCents, 0);

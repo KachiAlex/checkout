@@ -481,16 +481,22 @@ export function CreditOrdersPage() {
                   </div>
                 )}
                 <div>
-                  <span className="text-slate-400">Date:</span>
+                  <span className="text-slate-400">Collected on:</span>
                   <p className="text-white font-medium">{format(new Date(selectedOrder.createdAt), 'MMM dd, yyyy HH:mm')}</p>
                 </div>
-                {selectedOrder.paymentStatus === 'completed' && selectedOrder.paidAt && (
+                {/* Only show paid date if status is completed AND paidAt exists AND is different from createdAt */}
+                {selectedOrder.paymentStatus === 'completed' && 
+                 selectedOrder.paidAt && 
+                 new Date(selectedOrder.paidAt).getTime() !== new Date(selectedOrder.createdAt).getTime() && (
                   <div>
                     <span className="text-slate-400">Paid on:</span>
                     <p className="text-green-400 font-medium">{format(new Date(selectedOrder.paidAt), 'MMM dd, yyyy HH:mm')}</p>
                   </div>
                 )}
-                {selectedOrder.paymentStatus === 'refunded' && selectedOrder.returnedAt && (
+                {/* Only show returned date if status is refunded AND returnedAt exists AND is different from createdAt */}
+                {selectedOrder.paymentStatus === 'refunded' && 
+                 selectedOrder.returnedAt && 
+                 new Date(selectedOrder.returnedAt).getTime() !== new Date(selectedOrder.createdAt).getTime() && (
                   <div>
                     <span className="text-slate-400">Returned on:</span>
                     <p className="text-red-400 font-medium">{format(new Date(selectedOrder.returnedAt), 'MMM dd, yyyy HH:mm')}</p>
