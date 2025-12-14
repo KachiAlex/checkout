@@ -430,7 +430,7 @@ export class OrdersService {
     return this.ordersRepository.update(orderId, {
       paymentStatus: PaymentStatus.COMPLETED,
       paidAt: new Date(),
-      returnedAt: undefined, // Clear returned date if it was set
+      returnedAt: null, // Clear returned date if it was set (use null to trigger FieldValue.delete())
     });
   }
 
@@ -469,7 +469,7 @@ export class OrdersService {
     return this.ordersRepository.update(orderId, {
       paymentStatus: PaymentStatus.REFUNDED,
       returnedAt: new Date(),
-      paidAt: undefined, // Clear paid date if it was set
+      paidAt: null, // Clear paid date if it was set (use null to trigger FieldValue.delete())
     });
   }
 }

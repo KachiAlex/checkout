@@ -212,6 +212,28 @@ export function CheckoutPage() {
           barcode.includes(q)
         );
       })
+      // Prioritize exact barcode matches first, then exact SKU matches, then partial matches
+      .sort((a, b) => {
+        const aBarcode = a.barcode?.toLowerCase() || '';
+        const bBarcode = b.barcode?.toLowerCase() || '';
+        const aSku = a.sku?.toLowerCase() || '';
+        const bSku = b.sku?.toLowerCase() || '';
+        
+        // Exact barcode match gets highest priority
+        if (aBarcode === q && bBarcode !== q) return -1;
+        if (bBarcode === q && aBarcode !== q) return 1;
+        
+        // Exact SKU match gets second priority
+        if (aSku === q && bSku !== q) return -1;
+        if (bSku === q && aSku !== q) return 1;
+        
+        // Barcode starts with query gets third priority
+        if (aBarcode.startsWith(q) && !bBarcode.startsWith(q)) return -1;
+        if (bBarcode.startsWith(q) && !aBarcode.startsWith(q)) return 1;
+        
+        // Otherwise maintain original order
+        return 0;
+      })
       .slice(0, 50);
 
     setSearchResults(filtered);
@@ -240,23 +262,30 @@ export function CheckoutPage() {
 
   // Handle barcode scan
   const handleBarcodeScan = async (barcode: string) => {
-    if (!barcode.trim() || !accessToken) return;
+    // Trim and normalize barcode (same as inventory)
+    const trimmedBarcode = barcode.trim();
+    
+    if (!trimmedBarcode || !accessToken) return;
 
     try {
-      // Search for product by barcode
+      // Search for product by barcode (backend prioritizes exact matches)
       const response = await axios.get(
-        `${API_URL}/api/v1/products?query=${encodeURIComponent(barcode)}`,
+        `${API_URL}/api/v1/products?query=${encodeURIComponent(trimmedBarcode)}`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       
       const products = response.data || [];
-      // Try to find exact barcode match first
-      const product = products.find((p: Product) => p.barcode === barcode) || products[0];
+      
+      // Backend already prioritizes exact barcode matches, so first result should be the match
+      // But we'll also explicitly check for exact match as fallback
+      const exactMatch = products.find((p: Product) => p.barcode?.trim() === trimmedBarcode);
+      const product = exactMatch || products[0];
       
       if (product) {
         await handleProductSelect(product);
+        toast.success(`Found: ${product.name}`, { icon: '✅', duration: 2000 });
       } else {
-        toast.error(`Product not found for barcode: ${barcode}`);
+        toast.error(`Product not found for barcode: ${trimmedBarcode}`);
       }
     } catch (error: any) {
       console.error('Barcode scan failed:', error);

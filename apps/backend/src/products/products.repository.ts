@@ -74,13 +74,37 @@ export class ProductsRepository {
       return products;
     }
 
-    return products.filter((product) => {
+    // Filter products that match the query
+    const matched = products.filter((product) => {
       const { name, sku, barcode } = product;
       return (
         name.toLowerCase().includes(normalized) ||
         sku.toLowerCase().includes(normalized) ||
         (barcode ? barcode.toLowerCase().includes(normalized) : false)
       );
+    });
+
+    // Prioritize exact barcode matches first, then exact SKU matches, then partial matches
+    return matched.sort((a, b) => {
+      const aBarcode = a.barcode?.toLowerCase() || '';
+      const bBarcode = b.barcode?.toLowerCase() || '';
+      const aSku = a.sku?.toLowerCase() || '';
+      const bSku = b.sku?.toLowerCase() || '';
+      
+      // Exact barcode match gets highest priority
+      if (aBarcode === normalized && bBarcode !== normalized) return -1;
+      if (bBarcode === normalized && aBarcode !== normalized) return 1;
+      
+      // Exact SKU match gets second priority
+      if (aSku === normalized && bSku !== normalized) return -1;
+      if (bSku === normalized && aSku !== normalized) return 1;
+      
+      // Barcode starts with query gets third priority
+      if (aBarcode.startsWith(normalized) && !bBarcode.startsWith(normalized)) return -1;
+      if (bBarcode.startsWith(normalized) && !aBarcode.startsWith(normalized)) return 1;
+      
+      // Otherwise maintain original order
+      return 0;
     });
   }
 

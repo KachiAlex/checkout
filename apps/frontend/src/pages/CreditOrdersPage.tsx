@@ -54,6 +54,8 @@ export function CreditOrdersPage() {
   const [creditOrders, setCreditOrders] = useState<CreditOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'paid' | 'returned'>('all');
+  const [selectedOrder, setSelectedOrder] = useState<CreditOrder | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   const loadCreditOrders = async () => {
     if (!accessToken) {
@@ -350,128 +352,233 @@ export function CreditOrdersPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredOrders.map((order) => {
-              const isPending = order.paymentStatus === 'pending' || !order.paymentStatus;
-              const isPaid = order.paymentStatus === 'completed';
-              const isReturned = order.paymentStatus === 'refunded';
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
+            <div className="space-y-2">
+              {filteredOrders.map((order) => {
+                const isPending = order.paymentStatus === 'pending' || !order.paymentStatus;
+                const isPaid = order.paymentStatus === 'completed';
+                const isReturned = order.paymentStatus === 'refunded';
 
-              return (
-                <div
-                  key={order.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    {/* Order Info */}
-                    <div className="flex-1">
-                      <div className="mb-3 flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg font-semibold">{order.orderNumber}</h3>
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-medium ${
-                            isPending
-                              ? 'bg-yellow-500/20 text-yellow-400'
-                              : isPaid
-                                ? 'bg-green-500/20 text-green-400'
-                                : 'bg-red-500/20 text-red-400'
-                          }`}
-                        >
-                          {isPending ? 'Pending Payment' : isPaid ? 'Paid' : 'Returned'}
-                        </span>
-                      </div>
-
-                      {order.customerId && (
-                        <div className="mb-2 text-sm text-slate-400">
-                          <span className="font-medium">Customer:</span>{' '}
-                          {order.customer ? (
-                            <>
-                              {order.customer.name}
-                              {order.customer.phone && ` • ${order.customer.phone}`}
-                            </>
-                          ) : (
-                            <span className="text-slate-500 italic">Customer ID: {order.customerId.substring(0, 8)}...</span>
+                return (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-white/10 hover:bg-white/5 transition"
+                  >
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex-shrink-0 text-2xl">💳</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-white truncate">{order.orderNumber}</p>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              isPending
+                                ? 'bg-yellow-500/20 text-yellow-400'
+                                : isPaid
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            {isPending ? 'Pending' : isPaid ? 'Paid' : 'Returned'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-3 mt-1 text-sm text-slate-400">
+                          {order.customer && (
+                            <span>Customer: {order.customer.name}</span>
                           )}
-                        </div>
-                      )}
-
-                      {order.creator && (
-                        <div className="mb-2 text-sm text-slate-400">
-                          <span className="font-medium">Created by:</span> {order.creator.name}
-                        </div>
-                      )}
-
-                      <div className="mb-3 text-sm text-slate-400">
-                        <span className="font-medium">Date:</span>{' '}
-                        {format(new Date(order.createdAt), 'MMM dd, yyyy HH:mm')}
-                      </div>
-
-                      {isPaid && order.paidAt && (
-                        <div className="mb-2 text-sm text-green-400">
-                          <span className="font-medium">Paid on:</span>{' '}
-                          {format(new Date(order.paidAt), 'MMM dd, yyyy HH:mm')}
-                        </div>
-                      )}
-
-                      {isReturned && order.returnedAt && (
-                        <div className="mb-2 text-sm text-red-400">
-                          <span className="font-medium">Returned on:</span>{' '}
-                          {format(new Date(order.returnedAt), 'MMM dd, yyyy HH:mm')}
-                        </div>
-                      )}
-
-                      {/* Items */}
-                      <div className="mt-4 rounded-lg bg-white/5 p-4">
-                        <h4 className="mb-2 text-sm font-semibold">Items:</h4>
-                        <div className="space-y-2">
-                          {order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between text-sm">
-                              <span className="text-slate-300">
-                                {item.product?.name || `Product ${item.productId}`} × {item.quantity}
-                              </span>
-                              <span className="font-medium">
-                                ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-3 border-t border-white/10 pt-3">
-                          <div className="flex justify-between text-base font-semibold">
-                            <span>Total:</span>
-                            <span className="text-lg">₦{(order.totalCents / 100).toFixed(2)}</span>
-                          </div>
+                          <span>Total: ₦{(order.totalCents / 100).toFixed(2)}</span>
+                          <span>Items: {order.items.length}</span>
+                          <span>{format(new Date(order.createdAt), 'MMM dd, yyyy')}</span>
                         </div>
                       </div>
-
-                      {order.notes && (
-                        <div className="mt-3 text-sm text-slate-400">
-                          <span className="font-medium">Notes:</span> {order.notes}
-                        </div>
-                      )}
                     </div>
-
-                    {/* Actions */}
-                    {isPending && (
-                      <div className="flex flex-col gap-2 sm:min-w-[200px]">
-                        <button
-                          onClick={() => handleMarkAsPaid(order.id)}
-                          className="rounded-lg bg-green-500/20 px-4 py-2 text-sm font-medium text-green-400 transition hover:bg-green-500/30"
-                        >
-                          Mark as Paid
-                        </button>
-                        <button
-                          onClick={() => handleMarkAsReturned(order.id)}
-                          className="rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/30"
-                        >
-                          Mark as Returned
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setDetailModalOpen(true);
+                      }}
+                      className="p-2 rounded-lg border border-white/10 hover:bg-white/10 text-white transition flex-shrink-0"
+                      title="View Details"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </main>
+
+      {/* Detail Modal */}
+      {detailModalOpen && selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Order Details</h2>
+              <button
+                onClick={() => {
+                  setDetailModalOpen(false);
+                  setSelectedOrder(null);
+                }}
+                className="p-2 rounded-lg border border-white/10 hover:bg-white/10 text-white transition"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Order Header */}
+              <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-white/10">
+                <h3 className="text-xl font-semibold text-white">{selectedOrder.orderNumber}</h3>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    selectedOrder.paymentStatus === 'pending' || !selectedOrder.paymentStatus
+                      ? 'bg-yellow-500/20 text-yellow-400'
+                      : selectedOrder.paymentStatus === 'completed'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-red-500/20 text-red-400'
+                  }`}
+                >
+                  {selectedOrder.paymentStatus === 'pending' || !selectedOrder.paymentStatus
+                    ? 'Pending Payment'
+                    : selectedOrder.paymentStatus === 'completed'
+                      ? 'Paid'
+                      : 'Returned'}
+                </span>
+              </div>
+
+              {/* Customer Info */}
+              {selectedOrder.customerId && (
+                <div className="p-4 rounded-lg bg-white/5">
+                  <h4 className="text-sm font-semibold text-slate-300 mb-2">Customer Information</h4>
+                  {selectedOrder.customer ? (
+                    <div className="space-y-1 text-sm text-slate-400">
+                      <p><span className="font-medium">Name:</span> {selectedOrder.customer.name}</p>
+                      {selectedOrder.customer.phone && (
+                        <p><span className="font-medium">Phone:</span> {selectedOrder.customer.phone}</p>
+                      )}
+                      {selectedOrder.customer.email && (
+                        <p><span className="font-medium">Email:</span> {selectedOrder.customer.email}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">Customer ID: {selectedOrder.customerId}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Order Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {selectedOrder.creator && (
+                  <div>
+                    <span className="text-slate-400">Created by:</span>
+                    <p className="text-white font-medium">{selectedOrder.creator.name}</p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-400">Date:</span>
+                  <p className="text-white font-medium">{format(new Date(selectedOrder.createdAt), 'MMM dd, yyyy HH:mm')}</p>
+                </div>
+                {selectedOrder.paymentStatus === 'completed' && selectedOrder.paidAt && (
+                  <div>
+                    <span className="text-slate-400">Paid on:</span>
+                    <p className="text-green-400 font-medium">{format(new Date(selectedOrder.paidAt), 'MMM dd, yyyy HH:mm')}</p>
+                  </div>
+                )}
+                {selectedOrder.paymentStatus === 'refunded' && selectedOrder.returnedAt && (
+                  <div>
+                    <span className="text-slate-400">Returned on:</span>
+                    <p className="text-red-400 font-medium">{format(new Date(selectedOrder.returnedAt), 'MMM dd, yyyy HH:mm')}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Items */}
+              <div className="rounded-lg bg-white/5 p-4">
+                <h4 className="text-sm font-semibold text-slate-300 mb-3">Items</h4>
+                <div className="space-y-2">
+                  {selectedOrder.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                      <div className="flex-1">
+                        <p className="text-white font-medium">
+                          {item.product?.name || `Product ${item.productId}`}
+                        </p>
+                        <p className="text-sm text-slate-400">
+                          Qty: {item.quantity} × ₦{(item.priceCents / 100).toFixed(2)}
+                        </p>
+                      </div>
+                      <p className="text-white font-semibold">
+                        ₦{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Subtotal:</span>
+                    <span className="text-white font-medium">₦{(selectedOrder.subtotalCents / 100).toFixed(2)}</span>
+                  </div>
+                  {selectedOrder.taxCents > 0 && (
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-slate-400">Tax:</span>
+                      <span className="text-white font-medium">₦{(selectedOrder.taxCents / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {selectedOrder.discountCents > 0 && (
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-slate-400">Discount:</span>
+                      <span className="text-white font-medium">-₦{(selectedOrder.discountCents / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/10">
+                    <span className="text-lg font-semibold text-white">Total:</span>
+                    <span className="text-xl font-bold text-white">₦{(selectedOrder.totalCents / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedOrder.notes && (
+                <div className="p-4 rounded-lg bg-white/5">
+                  <h4 className="text-sm font-semibold text-slate-300 mb-2">Notes</h4>
+                  <p className="text-sm text-slate-400">{selectedOrder.notes}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              {(selectedOrder.paymentStatus === 'pending' || !selectedOrder.paymentStatus) && (
+                <div className="flex gap-3 pt-4 border-t border-white/10">
+                  <button
+                    onClick={() => {
+                      handleMarkAsPaid(selectedOrder.id);
+                      setDetailModalOpen(false);
+                      setSelectedOrder(null);
+                    }}
+                    className="flex-1 rounded-lg bg-green-500/20 px-4 py-2 text-sm font-medium text-green-400 transition hover:bg-green-500/30"
+                  >
+                    Mark as Paid
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleMarkAsReturned(selectedOrder.id);
+                      setDetailModalOpen(false);
+                      setSelectedOrder(null);
+                    }}
+                    className="flex-1 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/30"
+                  >
+                    Mark as Returned
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

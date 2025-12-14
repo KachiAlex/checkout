@@ -20,7 +20,9 @@
     "cap:add:android": "npx cap add android",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
-    "icons:generate": "node scripts/generate-icons.mjs"
+    "icons:generate": "node scripts/generate-icons.mjs",
+    "icons:update-android": "node android/scripts/update-icons.mjs",
+    "icons:all": "npm run icons:generate && npm run icons:update-android"
   },
   "dependencies": {
     "@capacitor-community/barcode-scanner": "^4.0.1",

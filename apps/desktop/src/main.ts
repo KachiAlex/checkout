@@ -1,6 +1,7 @@
-import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog, protocol, session } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
+import * as fs from 'fs';
 import deviceManager, { NativeDeviceSummary } from './native/deviceManager';
 
 // Single instance
@@ -13,6 +14,106 @@ app.commandLine.appendSwitch('enable-web-bluetooth');
 app.commandLine.appendSwitch('unsafely-treat-insecure-origin-as-secure', 'file://');
 
 const BLUETOOTH_PERMISSIONS = new Set(['bluetooth', 'bluetooth-scan', 'bluetooth-connect']);
+
+// Intercept file protocol to serve files from asar archive
+function setupFileProtocol() {
+  // Register custom app:// protocol
+  protocol.registerFileProtocol('app', (request, callback) => {
+    let url = request.url.substr(6); // Remove 'app://' prefix
+    
+    // CRITICAL FIX: Handle malformed URLs like app://index.html/assets/...
+    // These happen when browser resolves /assets/ relative to app://index.html
+    // Rewrite them to app://assets/...
+    if (url.includes('index.html/assets/') || url.includes('index.html/')) {
+      url = url.replace(/index\.html\//g, '');
+      console.log(`[app://] Rewriting malformed URL: ${request.url} -> app://${url}`);
+    }
+    
+    // Handle paths like app://index.html or app://assets/...
+    // Remove leading slashes
+    while (url.startsWith('/')) {
+      url = url.substring(1);
+    }
+    
+    // Remove query strings and fragments
+    url = url.split('?')[0].split('#')[0];
+    
+    let filePath: string;
+    
+    if (app.isPackaged) {
+      // In production, files are in app.asar/frontend-dist
+      filePath = path.join(process.resourcesPath, 'app.asar', 'frontend-dist', url);
+    } else {
+      // In development, files are in frontend-dist
+      filePath = path.join(__dirname, '..', 'frontend-dist', url);
+    }
+    
+    // Normalize path separators
+    filePath = path.normalize(filePath);
+    
+    // Check if file exists
+    try {
+      if (fs.existsSync(filePath)) {
+        callback({ path: filePath });
+      } else {
+        console.error(`[app://] File not found: ${filePath} (requested: ${request.url}, cleaned: ${url})`);
+        // Try without the leading path segment if it's an asset
+        if (url.startsWith('assets/')) {
+          const altPath = path.join(process.resourcesPath, 'app.asar', 'frontend-dist', url);
+          if (fs.existsSync(altPath)) {
+            console.log(`[app://] Found file at alternative path: ${altPath}`);
+            callback({ path: altPath });
+            return;
+          }
+        }
+        callback({ error: -6 }); // FILE_NOT_FOUND
+      }
+    } catch (error) {
+      console.error(`[app://] Error accessing file: ${filePath}`, error);
+      callback({ error: -6 });
+    }
+  });
+  
+  // Also intercept standard file:// protocol for asar files
+  protocol.interceptFileProtocol('file', (request, callback) => {
+    const fileUrl = request.url;
+    
+    // Check if this is a request for a file in our app.asar
+    if (app.isPackaged && fileUrl.includes('app.asar')) {
+      // Extract the path after app.asar
+      const asarMatch = fileUrl.match(/app\.asar[\\\/](.+)$/i);
+      if (asarMatch) {
+        const relativePath = asarMatch[1].replace(/\\/g, '/');
+        const filePath = path.join(process.resourcesPath, 'app.asar', relativePath);
+        
+        try {
+          if (fs.existsSync(filePath)) {
+            callback({ path: filePath });
+            return;
+          }
+        } catch (error) {
+          console.error(`[file://] Error accessing asar file: ${filePath}`, error);
+        }
+      }
+    }
+    
+    // For non-asar files, use default file protocol behavior
+    callback({ path: fileUrl.replace(/^file:\/\//, '') });
+  });
+}
+
+// Register protocol schemes before app is ready
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -58,11 +159,36 @@ function createWindow() {
     mainWindow.loadURL(devServerUrl).catch(() => undefined);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    // In production, load the packaged frontend - routing will handle login redirect
-    const packagedIndexPath = path.join(process.resourcesPath, 'app.asar', 'frontend-dist', 'index.html');
-    mainWindow.loadFile(packagedIndexPath).catch((error) => {
-      console.error('Failed to load index.html', error);
+    // In production, use app:// protocol with proper base tag
+    // The base tag in HTML will ensure assets resolve correctly
+    mainWindow.loadURL('app://index.html').catch((error) => {
+      console.error('Failed to load index.html via app protocol', error);
+      // Fallback: try loadFile
+      if (mainWindow) {
+        const packagedIndexPath = path.join(process.resourcesPath, 'app.asar', 'frontend-dist', 'index.html');
+        mainWindow.loadFile(packagedIndexPath).catch((fallbackError) => {
+          console.error('Failed to load from file protocol', fallbackError);
+        });
+      }
     });
+  }
+  
+  // Additional webRequest interceptor as backup (protocol handler should handle it, but this is a safety net)
+  if (!isDev && mainWindow) {
+    const webSession = mainWindow.webContents.session;
+    webSession.webRequest.onBeforeRequest(
+      { urls: ['app://*'] },
+      (details, callback) => {
+        // If request is for assets and includes index.html in path, rewrite it
+        if (details.url.includes('index.html/assets/') || details.url.includes('index.html/')) {
+          const correctedUrl = details.url.replace(/index\.html\//g, '');
+          console.log(`[webRequest] Rewriting URL: ${details.url} -> ${correctedUrl}`);
+          callback({ redirectURL: correctedUrl });
+        } else {
+          callback({});
+        }
+      }
+    );
   }
 
   const webSession = mainWindow.webContents.session;
@@ -135,6 +261,8 @@ function registerIpcHandlers() {
 }
 
 app.whenReady().then(() => {
+  // Setup protocol handlers after app is ready
+  setupFileProtocol();
   registerIpcHandlers();
   createWindow();
 });

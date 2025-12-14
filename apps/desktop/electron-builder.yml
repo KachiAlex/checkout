@@ -3,7 +3,7 @@ productName: Checkout POS
 artifactName: Checkout POS Setup ${version}.${ext}
 files:
   - dist/**
-  - from: ../frontend/dist
+  - from: frontend-dist
     to: frontend-dist
     filter:
       - '**/*'

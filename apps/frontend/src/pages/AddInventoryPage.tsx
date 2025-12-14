@@ -7,8 +7,10 @@ import { API_URL } from '../config';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { ScannerInput } from '../components/ScannerInput';
+import { AlertBanner } from '../components/AlertBanner';
 import { format } from 'date-fns';
 import { formatNumber, formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
+import { lookupBarcode } from '../services/barcodeLookupService';
 
 interface InventoryItem {
   id: string;
@@ -153,14 +155,17 @@ export function AddInventoryPage() {
 
   // Handle barcode scan - search for existing product and auto-fill form
   const handleBarcodeScan = async (barcode: string) => {
-    if (!barcode.trim() || !accessToken) {
-      // If no barcode, just set it in the form
-      setInventoryForm({ ...inventoryForm, barcode });
+    // Trim and normalize barcode
+    const trimmedBarcode = barcode.trim();
+    
+    if (!trimmedBarcode || !accessToken) {
+      // If no barcode, just set it in the form (empty string)
+      setInventoryForm({ ...inventoryForm, barcode: trimmedBarcode });
       return;
     }
 
-    // First, set the barcode in the form
-    setInventoryForm({ ...inventoryForm, barcode });
+    // First, set the trimmed barcode in the form (this ensures it's saved)
+    setInventoryForm({ ...inventoryForm, barcode: trimmedBarcode });
 
     try {
       // Search for existing product by barcode
@@ -294,13 +299,103 @@ export function AddInventoryPage() {
           }
         }
       } else {
-        // Product not found - just keep the barcode
-        toast('Product not found. You can create a new product with this barcode.', { icon: 'ℹ️' });
+        // Product not found locally - try external barcode lookup
+        toast('Product not found locally. Searching external databases...', { icon: '🔍' });
+        
+        try {
+          const externalProduct = await lookupBarcode(barcode);
+          
+          if (externalProduct) {
+            // Found product in external database - auto-fill form
+            toast.success(`Found product: ${externalProduct.name} (from ${externalProduct.source})`);
+            
+            // Try to find or create category
+            let categoryId = '';
+            let categoryName = '';
+            if (externalProduct.category) {
+              // Try to find existing category
+              const categoryMatch = categories.find(
+                (cat) => cat.name.toLowerCase() === externalProduct.category!.toLowerCase()
+              );
+              if (categoryMatch) {
+                categoryId = categoryMatch.id;
+                setCategoryMode('existing');
+                savedCategoryId.current = categoryMatch.id;
+              } else {
+                categoryName = externalProduct.category;
+                setCategoryMode('new');
+              }
+            }
+            
+            // Try to find or create brand
+            let brandId = '';
+            let brandName = '';
+            if (externalProduct.brand) {
+              // Try to find existing brand
+              const brandMatch = brands.find(
+                (brand) => brand.name.toLowerCase() === externalProduct.brand!.toLowerCase()
+              );
+              if (brandMatch) {
+                brandId = brandMatch.id;
+                setBrandMode('existing');
+                savedBrandId.current = brandMatch.id;
+              } else {
+                brandName = externalProduct.brand;
+                setBrandMode('new');
+              }
+            }
+            
+            // Auto-fill form with external product data
+            setInventoryForm({
+              name: externalProduct.name,
+              description: externalProduct.description || '',
+              quantity: '',
+              costCents: '',
+              priceCents: externalProduct.price ? formatNumber(externalProduct.price) : '',
+              barcode: barcode,
+              categoryId: categoryId,
+              categoryName: categoryName,
+              brandId: brandId,
+              brandName: brandName,
+            });
+            
+            toast('Product information loaded from external database. Please review and add quantity/cost.', { 
+              icon: '✅',
+              duration: 5000 
+            });
+          } else {
+            // Not found in external databases either
+            toast('Product not found in external databases. You can create a new product manually.', { 
+              icon: 'ℹ️',
+              duration: 5000 
+            });
+          }
+        } catch (lookupError) {
+          console.error('External barcode lookup failed:', lookupError);
+          toast('Could not fetch product info from external databases. You can still create a new product manually.', { 
+            icon: '⚠️' 
+          });
+        }
       }
     } catch (error: any) {
       console.error('Barcode scan failed:', error);
-      // If search fails, just keep the barcode in the form
-      toast.error('Failed to search product by barcode. You can still create a new product.');
+      // If search fails, try external lookup as fallback
+      try {
+        const externalProduct = await lookupBarcode(barcode);
+        if (externalProduct) {
+          toast.success(`Found product externally: ${externalProduct.name}`);
+          setInventoryForm({
+            ...inventoryForm,
+            name: externalProduct.name,
+            description: externalProduct.description || '',
+            barcode: barcode,
+          });
+        } else {
+          toast.error('Failed to search product by barcode. You can still create a new product.');
+        }
+      } catch (lookupError) {
+        toast.error('Failed to search product by barcode. You can still create a new product.');
+      }
     }
   };
 
@@ -526,7 +621,7 @@ export function AddInventoryPage() {
           quantity,
           costCents,
           priceCents,
-          barcode: inventoryForm.barcode || undefined,
+          barcode: inventoryForm.barcode?.trim() || undefined,
           categoryId: inventoryForm.categoryId || undefined,
           categoryName: categoryNamePayload,
           brandId: inventoryForm.brandId || undefined,
@@ -611,6 +706,7 @@ export function AddInventoryPage() {
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">
       <div className="relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10">
+        <AlertBanner />
         {/* Header */}
         <div className="theme-card flex flex-col gap-4 sm:gap-6 rounded-xl sm:rounded-2xl lg:rounded-3xl border p-4 sm:p-5 lg:p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-3 sm:gap-4 min-w-0">
@@ -720,12 +816,22 @@ export function AddInventoryPage() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="theme-text-secondary mb-2 block text-sm font-medium">Barcode</label>
-                <ScannerInput
-                  onScan={handleBarcodeScan}
-                  placeholder="Scan barcode/QR or type barcode..."
-                  autoFocus={false}
-                />
+                <label className="theme-text-secondary mb-2 block text-sm font-medium">
+                  Barcode <span className="text-xs text-slate-400">(Required for checkout scanning)</span>
+                </label>
+                <div className="space-y-2">
+                  <ScannerInput
+                    onScan={handleBarcodeScan}
+                    placeholder="Scan barcode/QR or type barcode..."
+                    autoFocus={false}
+                  />
+                  {inventoryForm.barcode && (
+                    <div className="theme-surface rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2">
+                      <p className="text-xs text-emerald-300/80 mb-1">Scanned Barcode:</p>
+                      <p className="text-sm font-mono font-semibold text-emerald-200">{inventoryForm.barcode}</p>
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <div className="flex items-center justify-between">

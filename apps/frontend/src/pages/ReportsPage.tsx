@@ -246,7 +246,19 @@ export function ReportsPage() {
     };
   }, []);
 
-  const getSeverityColor = useCallback((severity: string) => {
+  const getSeverityColor = useCallback((severity: string, alertType?: string) => {
+    // Special styling for low stock alerts
+    if (alertType === 'low_stock' || alertType === 'stockout') {
+      switch (severity) {
+        case 'critical':
+          return 'bg-red-600/30 text-red-200 border-red-500/70 shadow-lg shadow-red-500/20 animate-pulse';
+        case 'warning':
+          return 'bg-orange-500/30 text-orange-200 border-orange-500/70 shadow-lg shadow-orange-500/20';
+        default:
+          return 'bg-yellow-500/30 text-yellow-200 border-yellow-500/70 shadow-lg shadow-yellow-500/20';
+      }
+    }
+    
     switch (severity) {
       case 'critical':
         return 'bg-red-500/20 text-red-400 border-red-500/50';
@@ -847,14 +859,22 @@ export function ReportsPage() {
               {/* Smart Alerts */}
               {activeTab === 'alerts' && alerts && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="theme-surface rounded-xl border theme-border p-4">
                       <p className="text-sm theme-text-secondary mb-1">Total Alerts</p>
                       <p className="text-2xl font-bold theme-text-primary">{alerts.totalAlerts || 0}</p>
                     </div>
-                    <div className="theme-surface rounded-xl border border-red-500/50 p-4">
+                    <div className="theme-surface rounded-xl border border-red-500/50 p-4 bg-red-500/10">
                       <p className="text-sm text-red-400 mb-1">Critical</p>
-                      <p className="text-2xl font-bold text-red-400">{alerts.criticalCount || 0}</p>
+                      <p className={`text-3xl font-bold text-red-400 ${alerts.criticalCount > 0 ? 'animate-pulse' : ''}`}>
+                        {alerts.criticalCount || 0}
+                      </p>
+                    </div>
+                    <div className="theme-surface rounded-xl border border-orange-500/50 p-4 bg-orange-500/10">
+                      <p className="text-sm text-orange-400 mb-1">Low Stock</p>
+                      <p className="text-3xl font-bold text-orange-400">
+                        {alerts.alerts?.filter((a: any) => a.type === 'low_stock' || a.type === 'stockout').length || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-yellow-500/50 p-4">
                       <p className="text-sm text-yellow-400 mb-1">Warnings</p>
@@ -865,31 +885,60 @@ export function ReportsPage() {
                     const paginated = paginate(alerts.alerts, alertsPage, itemsPerPage);
                     return (
                       <>
-                        <div className="space-y-2">
-                          {paginated.items.map((alert: any, idx: number) => (
-                            <div
-                              key={idx}
-                              className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl">🔔</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold mb-1">{alert.title}</p>
-                                  <p className="text-sm opacity-90 truncate">{alert.message}</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => handleViewDetails({ ...alert, type: 'alert' })}
-                                className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
-                                title="View Details"
+                        <div className="space-y-3">
+                          {paginated.items.map((alert: any, idx: number) => {
+                            const isLowStock = alert.type === 'low_stock' || alert.type === 'stockout';
+                            const isCritical = alert.severity === 'critical';
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex items-center justify-between p-5 rounded-xl border-2 ${getSeverityColor(alert.severity, alert.type)} hover:scale-[1.02] transition-all ${
+                                  isCritical && isLowStock ? 'ring-2 ring-red-500/50' : ''
+                                }`}
                               >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className={`flex-shrink-0 text-3xl ${isLowStock ? 'animate-bounce' : ''}`}>
+                                    {isLowStock ? (isCritical ? '🚨' : '⚠️') : '🔔'}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <p className={`font-bold ${isLowStock ? 'text-lg' : 'font-semibold'}`}>
+                                        {alert.title}
+                                      </p>
+                                      {isLowStock && (
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                          isCritical 
+                                            ? 'bg-red-500 text-white' 
+                                            : 'bg-orange-500 text-white'
+                                        }`}>
+                                          {isCritical ? 'CRITICAL' : 'LOW STOCK'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className={`${isLowStock ? 'text-base' : 'text-sm'} opacity-90`}>
+                                      {alert.message}
+                                    </p>
+                                    {isLowStock && alert.currentStock !== undefined && (
+                                      <p className="text-xs opacity-75 mt-1 font-mono">
+                                        Current Stock: <span className="font-bold">{alert.currentStock}</span>
+                                        {alert.reorderPoint && ` | Reorder Point: ${alert.reorderPoint}`}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleViewDetails({ ...alert, type: 'alert' })}
+                                  className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
+                                  title="View Details"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
@@ -1307,54 +1356,80 @@ export function ReportsPage() {
                       </div>
 
                       {/* Inventorized Products List */}
-                      {inventoryAnalytics.inventorizedProducts.products && inventoryAnalytics.inventorizedProducts.products.length > 0 && (
-                        <div className="mt-6">
-                          <h4 className="text-md font-semibold theme-text-primary mb-3">Product Details</h4>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b theme-border">
-                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">Product</th>
-                                  <th className="text-left p-3 theme-text-secondary font-medium text-sm">SKU</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Quantity</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Reorder Point</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Cost Value</th>
-                                  <th className="text-right p-3 theme-text-secondary font-medium text-sm">Sales Value</th>
-                                  <th className="text-center p-3 theme-text-secondary font-medium text-sm">Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {inventoryAnalytics.inventorizedProducts.products.slice(0, 20).map((product: any, idx: number) => (
-                                  <tr key={`${product.productId}-${idx}`} className="border-b theme-border hover:bg-white/5">
-                                    <td className="p-3 theme-text-primary">{product.productName}</td>
-                                    <td className="p-3 theme-text-secondary text-sm">{product.sku}</td>
-                                    <td className="p-3 theme-text-primary text-right font-semibold">{product.quantity}</td>
-                                    <td className="p-3 theme-text-secondary text-right">{product.reorderPoint || '—'}</td>
-                                    <td className="p-3 theme-text-primary text-right">{formatCurrency(product.inventoryValue / 100)}</td>
-                                    <td className="p-3 theme-text-primary text-right">{formatCurrency(product.salesValue / 100)}</td>
-                                    <td className="p-3 text-center">
-                                      {product.isLowStock ? (
-                                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/50">
-                                          Low Stock
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
-                                          In Stock
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                            {inventoryAnalytics.inventorizedProducts.products.length > 20 && (
-                              <p className="text-sm theme-text-secondary mt-4 text-center">
-                                Showing first 20 of {inventoryAnalytics.inventorizedProducts.products.length} products
-                              </p>
+                      {inventoryAnalytics.inventorizedProducts.products && inventoryAnalytics.inventorizedProducts.products.length > 0 && (() => {
+                        const productPaginated = paginate(inventoryAnalytics.inventorizedProducts.products, inventoryPage, itemsPerPage);
+                        return (
+                          <div className="mt-6">
+                            <h4 className="text-md font-semibold theme-text-primary mb-3">Product Details</h4>
+                            <div className="space-y-2">
+                              {productPaginated.items.map((product: any, idx: number) => (
+                                <div
+                                  key={`${product.productId}-${idx}`}
+                                  className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                                >
+                                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                                    <div className="flex-shrink-0 text-2xl">📦</div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p className="font-medium theme-text-primary truncate">{product.productName}</p>
+                                        {product.isLowStock ? (
+                                          <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/50">
+                                            Low Stock
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+                                            In Stock
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                        <span>SKU: {product.sku}</span>
+                                        <span>Qty: {product.quantity}</span>
+                                        {product.reorderPoint && <span>Reorder: {product.reorderPoint}</span>}
+                                        <span>Cost: {formatCurrency(product.inventoryValue / 100)}</span>
+                                        <span>Sales: {formatCurrency(product.salesValue / 100)}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleViewDetails({ ...product, type: 'inventory-product' })}
+                                    className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                    title="View Details"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            {productPaginated.totalPages > 1 && (
+                              <div className="flex items-center justify-between mt-4">
+                                <p className="text-sm theme-text-secondary">
+                                  Showing {((inventoryPage - 1) * itemsPerPage) + 1} to {Math.min(inventoryPage * itemsPerPage, productPaginated.totalItems)} of {productPaginated.totalItems}
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
+                                    disabled={inventoryPage === 1}
+                                    className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    Previous
+                                  </button>
+                                  <button
+                                    onClick={() => setInventoryPage(p => Math.min(productPaginated.totalPages, p + 1))}
+                                    disabled={inventoryPage === productPaginated.totalPages}
+                                    className="px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    Next
+                                  </button>
+                                </div>
+                              </div>
                             )}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   )}
 

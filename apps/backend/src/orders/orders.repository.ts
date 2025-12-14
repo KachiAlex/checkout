@@ -25,8 +25,8 @@ export interface OrderRecord {
   status: OrderStatus;
   paymentStatus?: PaymentStatus; // Track payment status for credit orders
   isCreditOrder?: boolean; // Flag to identify credit orders
-  paidAt?: Date; // When credit order was paid
-  returnedAt?: Date; // When credit order was returned
+  paidAt?: Date | null; // When credit order was paid
+  returnedAt?: Date | null; // When credit order was returned
   createdBy: string;
   deviceId?: string;
   completedAt?: Date;
@@ -265,12 +265,21 @@ export class OrdersRepository {
       isCreditOrder: data.isCreditOrder ?? false,
       paymentStatus: data.paymentStatus,
       heldAt: data.heldAt ? Timestamp.fromDate(data.heldAt) : undefined,
+      // Only set paidAt/returnedAt if explicitly provided (should be undefined for new credit orders)
       paidAt: data.paidAt ? Timestamp.fromDate(data.paidAt) : undefined,
       returnedAt: data.returnedAt ? Timestamp.fromDate(data.returnedAt) : undefined,
       completedAt: data.completedAt ? Timestamp.fromDate(data.completedAt) : undefined,
       createdAt: now,
       updatedAt: now,
     };
+    
+    // Explicitly omit paidAt and returnedAt for new credit orders (they should only be set when marked as paid/returned)
+    if (!data.paidAt) {
+      delete doc.paidAt;
+    }
+    if (!data.returnedAt) {
+      delete doc.returnedAt;
+    }
 
     // Log customerId for debugging
     if (data.customerId) {
@@ -323,16 +332,20 @@ export class OrdersRepository {
     }
 
     if (update.paidAt !== undefined) {
-      updateDoc.paidAt = update.paidAt ? Timestamp.fromDate(update.paidAt) : FieldValue.delete();
-    } else {
-      updateDoc.paidAt = data.paidAt;
+      // If paidAt is null or undefined, delete the field; otherwise set it
+      updateDoc.paidAt = (update.paidAt !== null && update.paidAt !== undefined) 
+        ? Timestamp.fromDate(update.paidAt) 
+        : FieldValue.delete();
     }
+    // Note: If paidAt is undefined in the update, we don't update it (keeps existing value)
 
     if (update.returnedAt !== undefined) {
-      updateDoc.returnedAt = update.returnedAt ? Timestamp.fromDate(update.returnedAt) : FieldValue.delete();
-    } else {
-      updateDoc.returnedAt = data.returnedAt;
+      // If returnedAt is null or undefined, delete the field; otherwise set it
+      updateDoc.returnedAt = (update.returnedAt !== null && update.returnedAt !== undefined) 
+        ? Timestamp.fromDate(update.returnedAt) 
+        : FieldValue.delete();
     }
+    // Note: If returnedAt is undefined in the update, we don't update it (keeps existing value)
 
     // Copy other fields that can be updated
     if (update.status !== undefined) updateDoc.status = update.status;
@@ -381,21 +394,22 @@ export class OrdersRepository {
       isCreditOrder: data.isCreditOrder ?? false,
       paymentStatus: data.paymentStatus,
       heldAt: this.timestampToDate(data.heldAt),
-      paidAt: this.timestampToDate(data.paidAt),
-      returnedAt: this.timestampToDate(data.returnedAt),
-      createdAt: this.timestampToDate(data.createdAt),
-      updatedAt: this.timestampToDate(data.updatedAt),
+      paidAt: this.timestampToDate(data.paidAt) || undefined,
+      returnedAt: this.timestampToDate(data.returnedAt) || undefined,
+      createdAt: this.timestampToDate(data.createdAt) || new Date(),
+      updatedAt: this.timestampToDate(data.updatedAt) || new Date(),
     };
   }
 
-  private timestampToDate(timestamp?: TimestampField): Date {
+  private timestampToDate(timestamp?: TimestampField): Date | undefined {
     if (!timestamp) {
-      return new Date();
+      return undefined;
     }
     if (timestamp instanceof Timestamp) {
       return timestamp.toDate();
     }
-    return new Date();
+    // If it's FieldValue.delete() or other FieldValue, return undefined
+    return undefined;
   }
 }
 

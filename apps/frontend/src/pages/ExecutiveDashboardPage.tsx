@@ -7,6 +7,7 @@ import { useThemeStore } from '../stores/themeStore';
 import { API_URL } from '../config';
 import { BrandMark } from '../components/BrandMark';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { AlertBanner } from '../components/AlertBanner';
 import { formatCurrency as formatCurrencyCents } from '../utils/numberFormat';
 
 interface SalesSummary {
@@ -197,6 +198,7 @@ export function ExecutiveDashboardPage() {
 
         {/* Main Content */}
         <div className="mx-auto mt-4 w-full max-w-7xl flex-1 px-2 sm:px-4 lg:px-8 pb-4 sm:pb-12 overflow-y-auto">
+          <AlertBanner />
           {error && (
             <div className="mb-4 rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-3 text-sm theme-text-primary">
               {error}
