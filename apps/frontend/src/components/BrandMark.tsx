@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import logoUrl from '../assets/checkout-logo.png';
 
 interface BrandMarkProps {
@@ -6,6 +7,8 @@ interface BrandMarkProps {
   withPadding?: boolean;
   shadow?: boolean;
   backgroundClassName?: string;
+  clickable?: boolean; // New prop to make it clickable
+  to?: string; // Custom link destination
 }
 
 export function BrandMark({
@@ -14,6 +17,8 @@ export function BrandMark({
   withPadding = true,
   shadow = true,
   backgroundClassName = 'bg-white/90',
+  clickable = true, // Default to clickable
+  to = '/', // Default to homepage
 }: BrandMarkProps) {
   const baseClasses = [
     'inline-flex items-center justify-center overflow-hidden',
@@ -21,19 +26,32 @@ export function BrandMark({
     shadow ? 'shadow-[0_12px_35px_-18px_rgba(15,23,42,0.45)]' : '',
     'rounded-2xl backdrop-blur',
     backgroundClassName,
+    clickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : '',
     className,
   ]
     .filter(Boolean)
     .join(' ');
 
+  const content = (
+    <img
+      src={logoUrl}
+      alt="Checkout logo"
+      className="h-full w-full select-none object-contain"
+      draggable={false}
+    />
+  );
+
+  if (clickable) {
+    return (
+      <Link to={to} className={baseClasses} style={{ width: size, height: size }} title="Go to Homepage">
+        {content}
+      </Link>
+    );
+  }
+
   return (
     <span className={baseClasses} style={{ width: size, height: size }}>
-      <img
-        src={logoUrl}
-        alt="Checkout logo"
-        className="h-full w-full select-none object-contain"
-        draggable={false}
-      />
+      {content}
     </span>
   );
 }
