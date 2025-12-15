@@ -118,9 +118,20 @@ function ReceiptCustomizationSection() {
       );
 
       const uploadedUrl = response.data.url;
-      setCustomization({ ...customization, logoUrl: uploadedUrl });
+      
+      // Update the customization with the new logo URL
+      const updatedCustomization = { ...customization, logoUrl: uploadedUrl };
+      setCustomization(updatedCustomization);
       setLogoPreview(uploadedUrl);
-      toast.success('Logo uploaded successfully');
+      
+      // Auto-save the customization to persist the logo
+      await axios.put(
+        `${API_URL}/api/v1/customization`,
+        updatedCustomization,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      
+      toast.success('Logo uploaded and saved successfully');
     } catch (error: any) {
       console.error('Failed to upload logo:', error);
       toast.error(error.response?.data?.message || 'Failed to upload logo');
@@ -246,9 +257,25 @@ function ReceiptCustomizationSection() {
                 {customization.logoUrl && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setCustomization({ ...customization, logoUrl: '' });
-                      setLogoPreview(null);
+                    onClick={async () => {
+                      try {
+                        const updatedCustomization = { ...customization, logoUrl: '' };
+                        setCustomization(updatedCustomization);
+                        setLogoPreview(null);
+                        
+                        // Auto-save after removing logo
+                        if (accessToken) {
+                          await axios.put(
+                            `${API_URL}/api/v1/customization`,
+                            updatedCustomization,
+                            { headers: { Authorization: `Bearer ${accessToken}` } }
+                          );
+                          toast.success('Logo removed successfully');
+                        }
+                      } catch (error: any) {
+                        console.error('Failed to remove logo:', error);
+                        toast.error('Failed to remove logo');
+                      }
                     }}
                     className="theme-text-secondary mt-2 text-xs underline hover:text-sky-400"
                   >
