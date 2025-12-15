@@ -29,6 +29,7 @@ import { TaxSettingsModule } from './tax-settings/tax-settings.module';
 import { CustomizationModule } from './customization/customization.module';
 import { UploadModule } from './upload/upload.module';
 import { PlatformModule } from './platform/platform.module';
+import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { PlatformModule } from './platform/platform.module';
     TaxSettingsModule,
     CustomizationModule,
     UploadModule,
+    SubscriptionPricingModule,
   ],
   providers: [
     {

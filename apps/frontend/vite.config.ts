@@ -3,7 +3,14 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   base: '/',
-  plugins: [react()],
+  plugins: [
+    react({
+      jsxRuntime: 'automatic',
+      babel: {
+        plugins: [],
+      },
+    }),
+  ],
   build: {
     minify: 'terser',
     terserOptions: {
@@ -21,6 +28,7 @@ export default defineConfig({
     logOverride: { 'this-is-undefined-in-esm': 'silent' },
     // Drop console and debugger in production
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+    loader: 'tsx',
   },
   server: {
     port: 5173,

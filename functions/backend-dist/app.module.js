@@ -37,6 +37,7 @@ const payment_settings_module_1 = require("./payment-settings/payment-settings.m
 const tax_settings_module_1 = require("./tax-settings/tax-settings.module");
 const customization_module_1 = require("./customization/customization.module");
 const upload_module_1 = require("./upload/upload.module");
+const platform_module_1 = require("./platform/platform.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -67,6 +68,7 @@ exports.AppModule = AppModule = __decorate([
             receipts_module_1.ReceiptsModule,
             devices_module_1.DevicesModule,
             tenants_module_1.TenantsModule,
+            platform_module_1.PlatformModule,
             categories_module_1.CategoriesModule,
             brands_module_1.BrandsModule,
             suppliers_module_1.SuppliersModule,
