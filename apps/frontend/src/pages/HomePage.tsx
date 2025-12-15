@@ -90,14 +90,14 @@ export function HomePage() {
   }, []);
 
   // Helper to format price in dollars
-  const formatPrice = (cents: number) => {
-    if (cents === 0) return '$0.00';
+  const formatPrice = (cents?: number) => {
+    if (!cents || cents === 0) return '$0.00';
     return `$${(cents / 100).toFixed(2)}`;
   };
 
   // Helper to format locations/users (0 = unlimited)
-  const formatLimit = (value: number) => {
-    if (value === 0) return 'Unlimited';
+  const formatLimit = (value?: number) => {
+    if (!value || value === 0) return 'Unlimited';
     return value.toString();
   };
 
