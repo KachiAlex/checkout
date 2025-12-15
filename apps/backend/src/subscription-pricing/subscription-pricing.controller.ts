@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SuperAdminGuard } from '../auth/guards/super-admin.guard';
 
 @ApiTags('subscription-pricing')
-@Controller('api/v1/subscription-pricing')
+@Controller('subscription-pricing')
 export class SubscriptionPricingController {
   constructor(private readonly pricingService: SubscriptionPricingService) {}
 
