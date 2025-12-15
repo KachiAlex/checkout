@@ -530,18 +530,19 @@ export function SuperAdminPage() {
     setSavingPricing(true);
     try {
       // Convert dollars to cents for the API
-      const pricingPayload: Partial<SubscriptionPricing> = {
-        ...pricingConfig,
+      // Only send the pricing tier fields (exclude id and updatedAt)
+      const pricingPayload: any = {
+        free: pricingForm.free,
         starter: {
-          ...pricingConfig.starter,
+          ...pricingForm.starter,
           priceCents: Math.round((pricingFormDollars.starter ?? 0) * 100),
         },
         professional: {
-          ...pricingConfig.professional,
+          ...pricingForm.professional,
           priceCents: Math.round((pricingFormDollars.professional ?? 0) * 100),
         },
         enterprise: {
-          ...pricingConfig.enterprise,
+          ...pricingForm.enterprise,
           priceCents: Math.round((pricingFormDollars.enterprise ?? 0) * 100),
         },
       };
