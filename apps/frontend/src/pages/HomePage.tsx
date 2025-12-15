@@ -8,62 +8,170 @@ import { getSubscriptionPricing, SubscriptionPricing } from '../services/subscri
 
 const features = [
   {
-    title: 'Multi-tenant control plane',
+    title: 'Lightning-Fast Checkout',
     description:
-      'Provision new brands or locations in seconds and keep every tenant separated, secure, and compliant—no extra infrastructure.',
-    icon: '🛰️',
+      'Process transactions in under 3 seconds with smart product search, barcode scanning, and one-tap payments.',
+    icon: '⚡',
+    gradient: 'from-yellow-400 to-orange-500',
   },
   {
-    title: 'Omnichannel inventory sync',
+    title: 'Real-Time Inventory',
     description:
-      'USB, Bluetooth, or camera scanners auto-register and stream data back to a unified catalog with real-time variance alerts.',
+      'Never oversell again. Get instant low-stock alerts, auto-reorder suggestions, and multi-location stock transfers.',
     icon: '📦',
+    gradient: 'from-blue-400 to-cyan-500',
   },
   {
-    title: 'Granular roles & approvals',
+    title: 'Smart Analytics',
     description:
-      'Platform admins, store managers, and cashiers each get a tailored workspace with PIN-based, auditable access.',
-    icon: '🛡️',
+      'Track sales, margins, and trends in real-time. Export reports instantly or sync with your accounting software.',
+    icon: '📊',
+    gradient: 'from-purple-400 to-pink-500',
+  },
+  {
+    title: 'Customer Management',
+    description:
+      'Build loyalty with customer profiles, purchase history, credit accounts, and targeted promotions.',
+    icon: '👥',
+    gradient: 'from-green-400 to-emerald-500',
+  },
+  {
+    title: 'Multi-Location Support',
+    description:
+      'Manage unlimited locations from one dashboard. Each store gets its own staff, inventory, and reports.',
+    icon: '🏪',
+    gradient: 'from-indigo-400 to-blue-500',
+  },
+  {
+    title: 'Works Offline',
+    description:
+      'Keep selling even without internet. All transactions sync automatically when you back online.',
+    icon: '🔄',
+    gradient: 'from-red-400 to-rose-500',
+  },
+];
+
+const industries = [
+  {
+    name: 'Retail Stores',
+    icon: '🛍️',
+    description: 'Perfect for fashion, electronics, home goods, and general merchandise',
+    features: [
+      'Variant management (sizes, colors)',
+      'Seasonal discount campaigns',
+      'Gift cards & store credit',
+      'Multi-location inventory transfers',
+    ],
+    stats: { label: 'Faster checkouts', value: '3x' },
+    gradient: 'from-pink-500 to-rose-500',
+  },
+  {
+    name: 'Pharmacies',
+    icon: '💊',
+    description: 'Built for healthcare retail with compliance and precision in mind',
+    features: [
+      'Batch & expiry tracking',
+      'Prescription management',
+      'Regulatory compliance reports',
+      'Controlled substance monitoring',
+    ],
+    stats: { label: 'Reduced errors', value: '95%' },
+    gradient: 'from-green-500 to-emerald-500',
+  },
+  {
+    name: 'Restaurants & Cafes',
+    icon: '🍽️',
+    description: 'Streamline orders, kitchen workflows, and delivery management',
+    features: [
+      'Table management & splitting bills',
+      'Kitchen display system (KDS)',
+      'Menu modifiers & combos',
+      'Delivery integration ready',
+    ],
+    stats: { label: 'Order accuracy', value: '99%' },
+    gradient: 'from-orange-500 to-amber-500',
+  },
+  {
+    name: 'Supermarkets',
+    icon: '🛒',
+    description: 'Handle high-volume transactions with ease and accuracy',
+    features: [
+      'Weighted items & bulk pricing',
+      'Loyalty card integration',
+      'Self-checkout capable',
+      'Age-restricted item controls',
+    ],
+    stats: { label: 'Transactions/hr', value: '200+' },
+    gradient: 'from-blue-500 to-cyan-500',
   },
 ];
 
 const outcomes = [
-  { label: 'Locations managed', value: '120+' },
-  { label: 'Transactions/day', value: '75K' },
-  { label: 'Average uptime', value: '99.98%' },
+  { label: 'Active Businesses', value: '500+', icon: '🏢' },
+  { label: 'Daily Transactions', value: '100K+', icon: '💳' },
+  { label: 'System Uptime', value: '99.9%', icon: '⚡' },
+  { label: 'Customer Satisfaction', value: '4.9/5', icon: '⭐' },
 ];
 
-const sellingPoints = [
+const benefits = [
   {
-    title: 'Launch-ready in hours',
-    body: 'Onboard new tenants with pre-baked inventory templates, device provisioning, and automated training flows.',
+    title: 'Save Time, Serve More',
+    description: 'Process checkout 3x faster with smart search, barcode scanning, and quick payment options.',
+    icon: '⏱️',
+    stat: '3x Faster',
   },
   {
-    title: 'Deep analytics without spreadsheets',
-    body: 'Live sales, tax summaries, and refund monitoring—all exportable to your finance stack or piped to Google BigQuery.',
+    title: 'Eliminate Stockouts',
+    description: 'Real-time inventory tracking prevents overselling and automates reorder alerts.',
+    icon: '📈',
+    stat: '95% Less Stockouts',
   },
   {
-    title: 'Hardware flexibility',
-    body: 'Checkout speaks fluent WebUSB, Web Bluetooth, and QR. Roll out iPads, dedicated kiosks, or rugged devices with one console.',
+    title: 'Reduce Shrinkage',
+    description: 'Track every item movement with audit trails, role-based access, and variance reports.',
+    icon: '🔒',
+    stat: 'Save $10K+/year',
   },
   {
-    title: 'Global-ready security',
-    body: 'Field-level encryption, audit trails, and regional data silos keep regulators (and your legal team) happy.',
+    title: 'Grow Revenue',
+    description: 'Identify bestsellers, optimize pricing, and create promotions based on real data.',
+    icon: '💰',
+    stat: '20% Revenue Boost',
   },
 ];
 
 const testimonials = [
   {
     quote:
-      '“Checkout let us standardise ten franchise brands on a single POS stack. Scanner sync and tenant licensing saved us thousands.”',
-    name: 'Ola Bamidele',
-    role: 'COO, Velocity Retail Group',
+      'We switched from our old POS to Checkout and cut checkout time by 60%. Our staff love how intuitive it is, and customers appreciate the speed.',
+    name: 'Sarah Johnson',
+    role: 'Owner, Urban Fashion Boutique',
+    industry: 'Retail',
+    avatar: '👩‍💼',
   },
   {
     quote:
-      '“We spun up a seasonal pop-up chain in two afternoons. Device registration and user PIN management just worked out of the box.”',
-    name: 'Kemi Aluko',
-    role: 'VP Operations, OneCart Africa',
+      'As a pharmacy, accuracy is everything. Checkout batch tracking and expiry alerts have eliminated errors and saved us from compliance headaches.',
+    name: 'Dr. Michael Chen',
+    role: 'Managing Director, HealthPlus Pharmacy',
+    industry: 'Pharmacy',
+    avatar: '👨‍⚕️',
+  },
+  {
+    quote:
+      'Managing 5 restaurant locations was a nightmare. Now I can see live sales, inventory, and staff performance from my phone. Game changer!',
+    name: 'Amina Ibrahim',
+    role: 'CEO, Tasty Bites Restaurant Group',
+    industry: 'Restaurant',
+    avatar: '👩‍🍳',
+  },
+  {
+    quote:
+      'The offline mode saved us during a power outage. We kept selling while our competitors had to close. That alone paid for the entire year!',
+    name: 'David Okonkwo',
+    role: 'Store Manager, QuickShop Supermarket',
+    industry: 'Supermarket',
+    avatar: '👨‍💼',
   },
 ];
 
@@ -159,165 +267,353 @@ export function HomePage() {
       </header>
 
       <main className="relative z-10">
-        <section className="mx-auto flex w-full max-w-6xl flex-col gap-8 sm:gap-12 px-3 sm:px-4 lg:px-6 pb-12 sm:pb-16 lg:pb-24 pt-6 sm:pt-8 lg:pt-10 md:flex-row md:items-center">
-          <div className="md:w-7/12">
-            <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-sky-400/40 bg-sky-400/10 px-3 sm:px-4 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] text-sky-200">
-              POS for scale
-              <span className="text-xs sm:text-sm">•</span>
-              Multi-tenant ready
-            </span>
-            <h1 className="mt-4 sm:mt-6 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight text-white">
-              Checkout is the modern POS for growing retail platforms.
+        <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 sm:gap-12 lg:gap-16 px-3 sm:px-4 lg:px-6 pb-12 sm:pb-16 lg:pb-24 pt-6 sm:pt-8 lg:pt-10 md:flex-row md:items-center">
+          <div className="md:w-1/2 lg:w-7/12">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold text-emerald-200 shadow-lg shadow-emerald-500/20 animate-pulse mb-6">
+              <span className="text-base sm:text-lg">✨</span>
+              <span>Trusted by 500+ businesses</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-white leading-tight">
+              The <span className="bg-gradient-to-r from-emerald-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">Smart POS</span> for Modern Businesses
             </h1>
-            <p className="mt-4 sm:mt-5 text-sm sm:text-base lg:text-lg text-slate-300">
-              Launch branded checkout experiences in hours, not months. Checkout brings scanners, inventory,
-              analytics, and tenant licensing into one glassmorphism-inspired interface your teams love using.
+            <p className="mt-5 sm:mt-6 text-base sm:text-lg lg:text-xl text-slate-300 leading-relaxed">
+              Whether you run a pharmacy, restaurant, retail store, or supermarket—<strong className="text-white">Checkout POS</strong> helps you sell faster, manage inventory smarter, and grow your revenue with real-time insights.
             </p>
-            <div className="mt-6 sm:mt-8 flex flex-col gap-3 sm:gap-4">
-              <button
-                onClick={() => setShowRegistration(true)}
-                className="inline-flex items-center justify-center gap-2 sm:gap-3 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 px-6 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-emerald-950 shadow-[0_28px_60px_-30px_rgba(56,189,248,0.75)] transition hover:shadow-[0_30px_65px_-28px_rgba(56,189,248,0.9)] touch-manipulation"
-              >
-                <span className="text-base sm:text-lg">🚀</span>
-                <span>Start Free Trial</span>
-              </button>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 sm:px-7 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 touch-manipulation"
-                >
-                  <span className="text-base sm:text-lg">🔐</span>
-                  <span>Sign in</span>
-                </Link>
-                <a
-                  href="#features"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 sm:px-7 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:border-white/40 touch-manipulation"
-                >
-                  Explore features
-                </a>
-                <Link
-                  to="/get-app"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-400/20 px-5 sm:px-7 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-emerald-100 shadow-[0_20px_50px_-28px_rgba(16,185,129,0.55)] transition hover:border-emerald-400/80 hover:bg-emerald-400/30 touch-manipulation"
-                >
-                  Download the app
-                </Link>
+            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 text-base sm:text-lg">✓</span>
+                <span>No credit card required</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 text-base sm:text-lg">✓</span>
+                <span>14-day free trial</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 text-base sm:text-lg">✓</span>
+                <span>Setup in 5 minutes</span>
               </div>
             </div>
-            <div className="mt-8 sm:mt-10 grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <button
+                onClick={() => setShowRegistration(true)}
+                className="group inline-flex items-center justify-center gap-2 sm:gap-3 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 px-7 sm:px-9 py-4 sm:py-4.5 text-base sm:text-lg font-bold text-white shadow-[0_28px_60px_-30px_rgba(56,189,248,0.75)] transition-all hover:shadow-[0_30px_65px_-28px_rgba(56,189,248,0.9)] hover:scale-105 touch-manipulation"
+              >
+                <span className="text-xl sm:text-2xl">🚀</span>
+                <span>Start Free Trial</span>
+                <span className="text-xl sm:text-2xl group-hover:translate-x-1 transition-transform">→</span>
+              </button>
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/20 bg-white/5 px-6 sm:px-8 py-3.5 sm:py-4 text-base sm:text-lg font-semibold text-white backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/10 touch-manipulation"
+              >
+                <span className="text-lg sm:text-xl">🔐</span>
+                <span>Sign In</span>
+              </Link>
+            </div>
+            <div className="mt-10 sm:mt-12 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               {outcomes.map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 px-3 sm:px-5 py-3 sm:py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+                  className="group rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 px-3 sm:px-4 py-4 sm:py-5 text-center shadow-lg hover:shadow-xl hover:border-white/20 transition-all backdrop-blur-sm"
                 >
-                  <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-white">{item.value}</p>
-                  <p className="text-[10px] sm:text-xs uppercase tracking-[0.35em] text-slate-400 mt-1">{item.label}</p>
+                  <div className="text-2xl sm:text-3xl mb-2">{item.icon}</div>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white group-hover:scale-110 transition-transform">{item.value}</p>
+                  <p className="text-[10px] sm:text-xs uppercase tracking-wide text-slate-400 mt-2">{item.label}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="md:w-5/12 mt-6 md:mt-0">
-            <div className="rounded-2xl sm:rounded-[32px] border border-white/10 bg-white/5 p-4 sm:p-6 shadow-[0_40px_90px_-45px_rgba(56,189,248,0.65)] backdrop-blur-xl">
-              <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-900/60 p-4 sm:p-5">
-                <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-slate-400">Live dashboard preview</p>
-                <h2 className="mt-3 sm:mt-4 text-lg sm:text-xl font-semibold text-white">Everything operators need in one pane</h2>
-                <ul className="mt-4 sm:mt-6 space-y-3 sm:space-y-4 text-xs sm:text-sm text-slate-300">
-                  <li className="flex items-start gap-2 sm:gap-3">
-                    <span className="text-base sm:text-lg flex-shrink-0">⚡</span>
-                    <span>Adaptive workflows let every cashier or franchise operate at full speed with smart product recall.</span>
-                  </li>
-                  <li className="flex items-start gap-2 sm:gap-3">
-                    <span className="text-base sm:text-lg flex-shrink-0">🧾</span>
-                    <span>Built-in audit logs, VAT/GST summaries, and digital receipt delivery keep compliance headaches away.</span>
-                  </li>
-                  <li className="flex items-start gap-2 sm:gap-3">
-                    <span className="text-base sm:text-lg flex-shrink-0">🔐</span>
-                    <span>Role-based PIN access with auto-rotations and SSO-ready APIs means zero shared passwords on shift.</span>
-                  </li>
-                </ul>
+          <div className="md:w-1/2 lg:w-5/12 mt-8 md:mt-0">
+            <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-950/90 p-6 sm:p-8 shadow-[0_40px_90px_-45px_rgba(56,189,248,0.65)] backdrop-blur-xl overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-sky-500/20 blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-emerald-500/20 blur-3xl" />
+              
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex gap-1.5">
+                    <div className="h-3 w-3 rounded-full bg-red-400/80" />
+                    <div className="h-3 w-3 rounded-full bg-yellow-400/80" />
+                    <div className="h-3 w-3 rounded-full bg-green-400/80" />
+                  </div>
+                  <span className="text-xs text-slate-400 uppercase tracking-wider">Live Dashboard</span>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Mock dashboard elements */}
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-emerald-300">Today's Sales</span>
+                      <span className="text-2xl font-bold text-white">$24,580</span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div className="h-full w-3/4 bg-gradient-to-r from-emerald-400 to-sky-400 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-xs text-slate-400">Transactions</div>
+                      <div className="text-xl font-bold text-white mt-1">1,247</div>
+                      <div className="text-xs text-emerald-400 mt-1">↑ 12%</div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-xs text-slate-400">Avg. Order</div>
+                      <div className="text-xl font-bold text-white mt-1">$19.72</div>
+                      <div className="text-xs text-sky-400 mt-1">↑ 8%</div>
+                    </div>
+                  </div>
+                  
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-xs text-slate-400 mb-3">Low Stock Alerts</div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-orange-400 animate-pulse" />
+                        <span className="text-slate-300">Paracetamol 500mg</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
+                        <span className="text-slate-300">Amoxicillin Caps</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="features" className="bg-white/5 py-12 sm:py-16 lg:py-20 backdrop-blur-xl">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 sm:gap-12 px-3 sm:px-4 lg:px-6 md:flex-row">
-            <div className="md:w-5/12">
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-sky-200">Why Checkout</p>
-              <h2 className="mt-3 sm:mt-4 text-2xl sm:text-3xl font-semibold text-white">Built for operators, embraced by crews</h2>
-              <p className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-300">
-                Checkout takes the friction out of multi-location retail. Turn on QR-based pop-ups, manage gift cards,
-                and sync devices without calling IT.
+        {/* Benefits Section */}
+        <section className="bg-gradient-to-br from-slate-900/50 to-slate-950/50 py-12 sm:py-16 lg:py-24 backdrop-blur-xl border-y border-white/5">
+          <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6">
+            <div className="text-center mb-10 sm:mb-14">
+              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-400/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-sky-200 shadow-lg">
+                <span className="text-lg">💡</span>
+                <span>Why Businesses Choose Checkout</span>
+              </span>
+              <h2 className="mt-5 sm:mt-6 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+                Stop Losing Money. Start Growing.
+              </h2>
+              <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-3xl mx-auto">
+                Every minute counts in retail. Checkout POS helps you sell faster, waste less, and make better decisions.
               </p>
-              <div className="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
-                <span className="theme-chip rounded-full border border-white/10 px-3 sm:px-4 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
-                  WebUSB / Web Bluetooth
-                </span>
-                <span className="theme-chip rounded-full border border-white/10 px-3 sm:px-4 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
-                  Offline-first
-                </span>
-                <span className="theme-chip rounded-full border border-white/10 px-3 sm:px-4 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
-                  Tenant RBAC
-                </span>
-              </div>
             </div>
-            <div className="grid flex-1 gap-4 sm:gap-6 sm:grid-cols-2">
-              {features.map((feature) => (
+
+            <div className="grid gap-5 sm:gap-6 lg:gap-8 md:grid-cols-2 lg:grid-cols-4">
+              {benefits.map((benefit) => (
+                <div
+                  key={benefit.title}
+                  className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-6 sm:p-7 shadow-xl hover:shadow-2xl hover:border-white/20 transition-all duration-300 backdrop-blur-sm overflow-hidden"
+                >
+                  <div className="absolute -top-6 -right-6 h-32 w-32 rounded-full bg-gradient-to-br from-sky-500/20 to-emerald-500/20 blur-2xl group-hover:scale-150 transition-transform duration-500" />
+                  
+                  <div className="relative">
+                    <div className="text-4xl sm:text-5xl mb-4">{benefit.icon}</div>
+                    <h3 className="text-lg sm:text-xl font-bold text-white mb-3">{benefit.title}</h3>
+                    <p className="text-sm sm:text-base text-slate-300 mb-4 leading-relaxed">{benefit.description}</p>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-300">
+                      <span>✓</span>
+                      <span>{benefit.stat}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Industry-Specific Section */}
+        <section id="industries" className="py-12 sm:py-16 lg:py-24">
+          <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6">
+            <div className="text-center mb-10 sm:mb-16">
+              <span className="inline-flex items-center gap-2 rounded-full border border-purple-400/40 bg-purple-400/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-purple-200 shadow-lg">
+                <span className="text-lg">🎯</span>
+                <span>Built for Your Industry</span>
+              </span>
+              <h2 className="mt-5 sm:mt-6 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+                Tailored for Every Business Type
+              </h2>
+              <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-3xl mx-auto">
+                Whether you sell clothes, medicine, food, or groceries—Checkout has the features you need.
+              </p>
+            </div>
+
+            <div className="grid gap-6 lg:gap-8 md:grid-cols-2">
+              {industries.map((industry, index) => (
+                <div
+                  key={industry.name}
+                  className={`group relative rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-950/90 p-6 sm:p-8 shadow-2xl hover:shadow-3xl hover:border-white/20 transition-all duration-300 backdrop-blur-xl overflow-hidden ${
+                    index === industries.length - 1 && industries.length % 2 !== 0 ? 'md:col-span-2 lg:col-span-1' : ''
+                  }`}
+                >
+                  {/* Background gradient */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${industry.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+                  
+                  <div className="relative">
+                    <div className="flex items-start justify-between mb-5">
+                      <div>
+                        <div className="text-5xl sm:text-6xl mb-3">{industry.icon}</div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">{industry.name}</h3>
+                        <p className="text-sm sm:text-base text-slate-400">{industry.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-2xl sm:text-3xl font-bold bg-gradient-to-r ${industry.gradient} bg-clip-text text-transparent`}>
+                          {industry.stats.value}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">{industry.stats.label}</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mt-6">
+                      {industry.features.map((feature) => (
+                        <div key={feature} className="flex items-start gap-3 text-sm sm:text-base">
+                          <span className="text-emerald-400 text-lg flex-shrink-0">✓</span>
+                          <span className="text-slate-300">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setShowRegistration(true)}
+                      className="mt-6 w-full rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm sm:text-base font-semibold text-white transition-all hover:border-white/40 hover:bg-white/10 hover:scale-105 touch-manipulation"
+                    >
+                      Start Free Trial →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 py-12 sm:py-16 lg:py-24 backdrop-blur-xl border-y border-white/5">
+          <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6">
+            <div className="text-center mb-10 sm:mb-14">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-200 shadow-lg">
+                <span className="text-lg">⚡</span>
+                <span>Powerful Features</span>
+              </span>
+              <h2 className="mt-5 sm:mt-6 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+                Everything You Need to Run Your Business
+              </h2>
+              <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-3xl mx-auto">
+                From checkout to inventory, reports to customer management—all in one beautiful, easy-to-use platform.
+              </p>
+            </div>
+
+            <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {features.map((feature, index) => (
                 <div
                   key={feature.title}
-                  className="group rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/60 p-4 sm:p-6 transition hover:border-white/30 hover:bg-slate-900/60"
+                  className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-6 sm:p-8 shadow-xl hover:shadow-2xl hover:border-white/20 transition-all duration-300 backdrop-blur-sm overflow-hidden"
+                  style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <span className="text-xl sm:text-2xl">{feature.icon}</span>
-                  <h3 className="mt-3 sm:mt-4 text-base sm:text-lg font-semibold text-white">{feature.title}</h3>
-                  <p className="mt-2 text-xs sm:text-sm text-slate-300">{feature.description}</p>
+                  {/* Animated gradient background */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+                  
+                  {/* Glow effect */}
+                  <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-sky-500/20 blur-3xl group-hover:scale-150 transition-transform duration-500" />
+                  
+                  <div className="relative">
+                    <div className={`inline-flex items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br ${feature.gradient} text-3xl sm:text-4xl mb-5 shadow-lg`}>
+                      {feature.icon}
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-white mb-3 group-hover:text-white transition-colors">{feature.title}</h3>
+                    <p className="text-sm sm:text-base text-slate-300 leading-relaxed">{feature.description}</p>
+                  </div>
                 </div>
               ))}
+            </div>
+
+            {/* Additional feature highlights */}
+            <div className="mt-12 sm:mt-16 grid gap-4 sm:gap-6 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-sky-500/10 to-transparent p-5 sm:p-6">
+                <div className="text-2xl mb-3">🔌</div>
+                <h4 className="text-base sm:text-lg font-bold text-white mb-2">Hardware Compatible</h4>
+                <p className="text-sm text-slate-400">Works with barcode scanners, receipt printers, cash drawers, and card readers</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-transparent p-5 sm:p-6">
+                <div className="text-2xl mb-3">🌐</div>
+                <h4 className="text-base sm:text-lg font-bold text-white mb-2">Cloud + Offline</h4>
+                <p className="text-sm text-slate-400">Access from anywhere, work without internet, auto-sync when back online</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/10 to-transparent p-5 sm:p-6">
+                <div className="text-2xl mb-3">🔒</div>
+                <h4 className="text-base sm:text-lg font-bold text-white mb-2">Secure & Compliant</h4>
+                <p className="text-sm text-slate-400">Bank-level encryption, audit trails, and GDPR-compliant data handling</p>
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="platform" className="py-12 sm:py-16 lg:py-20">
-          <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 lg:px-6">
-            <div className="rounded-2xl sm:rounded-[32px] border border-white/10 bg-gradient-to-br from-white/0 via-white/5 to-white/10 p-6 sm:p-8 lg:p-10 shadow-[0_40px_120px_-50px_rgba(14,165,233,0.6)] backdrop-blur-2xl">
-              <div className="grid gap-4 sm:gap-6 lg:gap-8 md:grid-cols-2">
-                {sellingPoints.map((point) => (
-                  <div key={point.title} className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/60 p-4 sm:p-6">
-                    <h3 className="text-base sm:text-lg font-semibold text-white">{point.title}</h3>
-                    <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-slate-300">{point.body}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 sm:mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/70 px-4 sm:px-6 py-4 sm:py-5 text-xs sm:text-sm text-slate-300">
-                <p className="flex-1">
-                  Checkout integrates with Clover, Stripe Terminal, Square, and on-prem fiscal printers. Prefer your own?
-                  Use our device SDK.
-                </p>
-                <Link
-                  to="/login"
-                  className="rounded-full border border-white/30 px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold text-white transition hover:border-white/60 touch-manipulation whitespace-nowrap"
-                >
-                  View operator console →
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <section id="stories" className="bg-white/5 py-12 sm:py-16 lg:py-20 backdrop-blur-xl">
-          <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 lg:px-6">
-            <div className="mb-8 sm:mb-10 text-center">
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-sky-200">Customer spotlight</p>
-              <h2 className="mt-3 sm:mt-4 text-2xl sm:text-3xl font-semibold text-white">Growing brands trust Checkout to run retail</h2>
+        <section id="stories" className="py-12 sm:py-16 lg:py-24">
+          <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6">
+            <div className="mb-10 sm:mb-14 text-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-4 py-1.5 text-xs sm:text-sm font-semibold text-amber-200 shadow-lg">
+                <span className="text-lg">⭐</span>
+                <span>Customer Success Stories</span>
+              </span>
+              <h2 className="mt-5 sm:mt-6 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+                Loved by Business Owners Everywhere
+              </h2>
+              <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-3xl mx-auto">
+                See how Checkout POS is transforming businesses across Nigeria and beyond.
+              </p>
             </div>
-            <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-              {testimonials.map((item) => (
-                <div key={item.name} className="rounded-2xl sm:rounded-3xl border border-white/10 bg-slate-950/60 p-4 sm:p-6">
-                  <p className="text-sm sm:text-base lg:text-lg text-white">{item.quote}</p>
-                  <div className="mt-3 sm:mt-4">
-                    <p className="font-semibold text-sm sm:text-base text-slate-200">{item.name}</p>
-                    <p className="text-xs sm:text-sm text-slate-400">{item.role}</p>
+
+            <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2">
+              {testimonials.map((item, index) => (
+                <div
+                  key={item.name}
+                  className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-950/90 p-6 sm:p-8 shadow-xl hover:shadow-2xl hover:border-white/20 transition-all duration-300 backdrop-blur-sm overflow-hidden"
+                  style={{ animationDelay: `${index * 150}ms` }}
+                >
+                  {/* Decorative gradient */}
+                  <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-emerald-500/20 to-sky-500/20 blur-3xl group-hover:scale-150 transition-transform duration-500" />
+                  
+                  <div className="relative">
+                    {/* Quote icon */}
+                    <div className="text-5xl sm:text-6xl text-sky-400/20 mb-4">"</div>
+                    
+                    {/* Quote text */}
+                    <p className="text-base sm:text-lg text-white leading-relaxed mb-6">
+                      {item.quote}
+                    </p>
+                    
+                    {/* Author info */}
+                    <div className="flex items-center gap-4 pt-4 border-t border-white/10">
+                      <div className="flex-shrink-0 h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400 flex items-center justify-center text-2xl sm:text-3xl shadow-lg">
+                        {item.avatar}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-sm sm:text-base text-white">{item.name}</p>
+                        <p className="text-xs sm:text-sm text-slate-400">{item.role}</p>
+                        <span className="inline-block mt-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-slate-300">
+                          {item.industry}
+                        </span>
+                      </div>
+                      <div className="flex gap-0.5 text-amber-400">
+                        {[...Array(5)].map((_, i) => (
+                          <span key={i} className="text-base sm:text-lg">★</span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Trust badges */}
+            <div className="mt-12 sm:mt-16 text-center">
+              <p className="text-sm text-slate-400 mb-6">Trusted by leading businesses across industries</p>
+              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 opacity-60">
+                <div className="text-2xl sm:text-3xl">🏪</div>
+                <div className="text-2xl sm:text-3xl">💊</div>
+                <div className="text-2xl sm:text-3xl">🍽️</div>
+                <div className="text-2xl sm:text-3xl">🛒</div>
+                <div className="text-2xl sm:text-3xl">👔</div>
+              </div>
             </div>
           </div>
         </section>
@@ -530,29 +826,73 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="pb-24">
-          <div className="mx-auto w-full max-w-4xl rounded-[32px] border border-white/10 bg-gradient-to-br from-emerald-400/20 via-sky-500/10 to-white/10 p-10 text-center shadow-[0_45px_120px_-60px_rgba(56,189,248,0.6)] backdrop-blur-2xl">
-            <p className="text-xs uppercase tracking-[0.4em] text-emerald-200">Ready to modernise your POS?</p>
-            <h2 className="mt-4 text-3xl font-semibold text-white">Launch your next retail experience on Checkout</h2>
-            <p className="mt-4 text-slate-200">
-              Start with a single location or roll out a full franchise network. Checkout gives you the foundation—device
-              sync, inventory, reporting, and tenant billing—to scale without friction.
-            </p>
-            <div className="mt-7 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                to="/login"
-                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-white/30 transition hover:shadow-white/45"
-              >
-                Launch console
-              </Link>
-              <a
-                href="https://cal.com/checkouthq/demo"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/60"
-              >
-                Schedule a guided tour →
-              </a>
+        {/* Final CTA Section */}
+        <section className="py-16 sm:py-20 lg:py-28 px-3 sm:px-4">
+          <div className="mx-auto w-full max-w-6xl">
+            <div className="relative rounded-[32px] sm:rounded-[48px] border border-white/10 bg-gradient-to-br from-emerald-400/20 via-sky-500/15 to-indigo-500/20 p-8 sm:p-12 lg:p-16 text-center shadow-[0_45px_120px_-60px_rgba(56,189,248,0.7)] backdrop-blur-2xl overflow-hidden">
+              {/* Animated background elements */}
+              <div className="absolute -top-20 -left-20 h-60 w-60 rounded-full bg-emerald-500/30 blur-3xl animate-pulse" />
+              <div className="absolute -bottom-20 -right-20 h-60 w-60 rounded-full bg-sky-500/30 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+              
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/20 px-4 py-2 text-xs sm:text-sm font-semibold text-emerald-200 shadow-lg mb-6">
+                  <span className="text-lg">🎉</span>
+                  <span>Join 500+ Happy Business Owners</span>
+                </div>
+                
+                <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-white mb-6 leading-tight">
+                  Ready to Transform Your Business?
+                </h2>
+                
+                <p className="text-base sm:text-lg lg:text-xl text-slate-200 max-w-3xl mx-auto mb-4 leading-relaxed">
+                  Start selling smarter today with a <strong className="text-white">14-day free trial</strong>. No credit card required. Setup in 5 minutes.
+                </p>
+                
+                <div className="flex flex-wrap items-center justify-center gap-4 text-sm sm:text-base text-emerald-300 mb-10">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✓</span>
+                    <span>Free 14-day trial</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✓</span>
+                    <span>No credit card</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✓</span>
+                    <span>Cancel anytime</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✓</span>
+                    <span>24/7 support</span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 mb-8">
+                  <button
+                    onClick={() => setShowRegistration(true)}
+                    className="group inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-white shadow-[0_28px_60px_-30px_rgba(56,189,248,0.8)] transition-all hover:shadow-[0_30px_70px_-28px_rgba(56,189,248,1)] hover:scale-105 touch-manipulation"
+                  >
+                    <span className="text-2xl">🚀</span>
+                    <span>Start Free Trial Now</span>
+                    <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
+                  </button>
+                  
+                  <a
+                    href="mailto:hello@checkouthq.com?subject=Book%20a%20Checkout%20Demo"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/40 bg-white/10 px-7 sm:px-9 py-4 sm:py-5 text-base sm:text-lg font-bold text-white backdrop-blur-sm transition-all hover:border-white/60 hover:bg-white/20 touch-manipulation"
+                  >
+                    <span className="text-xl">📞</span>
+                    <span>Book a Demo</span>
+                  </a>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 text-amber-400 text-xl sm:text-2xl">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i}>★</span>
+                  ))}
+                  <span className="ml-2 text-sm sm:text-base text-slate-300">4.9/5 from 500+ reviews</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
