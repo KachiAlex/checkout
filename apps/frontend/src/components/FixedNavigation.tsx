@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useAlertsCount } from '../hooks/useAlertsCount';
+import { BrandMark } from './BrandMark';
 
 export const FixedNavigation = memo(function FixedNavigation() {
   const location = useLocation();
@@ -27,6 +28,23 @@ export const FixedNavigation = memo(function FixedNavigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-white/10 bg-slate-950/95 backdrop-blur-xl sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-lg pb-safe sm:pb-0 pt-safe sm:pt-0">
       <div className="mx-auto flex max-w-7xl items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 sm:justify-start sm:gap-4 overflow-x-auto">
+        {/* Logo - Desktop only, links to homepage */}
+        <Link
+          to="/"
+          className="hidden sm:flex items-center gap-2 mr-2 lg:mr-4 group"
+          title="Go to Homepage"
+        >
+          <BrandMark
+            size={36}
+            withPadding={false}
+            shadow={false}
+            backgroundClassName="bg-white/10 group-hover:bg-white/15 transition-colors"
+            className="ring-1 ring-white/20 group-hover:ring-white/30"
+          />
+          <span className="hidden lg:inline text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">
+            Checkout
+          </span>
+        </Link>
         {/* Dashboard - Admin and Manager only (Cashiers restricted) */}
         {(isAdmin || isManager) && (
           <Link
