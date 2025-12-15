@@ -55,6 +55,9 @@ const ExecutiveDashboardPage = lazy(() =>
 const BillingPage = lazy(() =>
   import('./pages/BillingPage').then((module) => ({ default: module.BillingPage })),
 );
+const SubscriptionPaymentCallbackPage = lazy(() =>
+  import('./pages/SubscriptionPaymentCallbackPage').then((module) => ({ default: module.SubscriptionPaymentCallbackPage })),
+);
 
 function LoadingScreen() {
   return (
@@ -130,6 +133,10 @@ function App() {
             <Route
               path="/get-app"
               element={<GetAppPage />}
+            />
+            <Route
+              path="/subscription/payment-callback"
+              element={<SubscriptionPaymentCallbackPage />}
             />
             <Route
               path="/checkout"

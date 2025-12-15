@@ -28,6 +28,7 @@ import { PaymentSettingsModule } from './payment-settings/payment-settings.modul
 import { TaxSettingsModule } from './tax-settings/tax-settings.module';
 import { CustomizationModule } from './customization/customization.module';
 import { UploadModule } from './upload/upload.module';
+import { PlatformModule } from './platform/platform.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { UploadModule } from './upload/upload.module';
     ReceiptsModule,
     DevicesModule,
     TenantsModule,
+    PlatformModule,
     CategoriesModule,
     BrandsModule,
     SuppliersModule,

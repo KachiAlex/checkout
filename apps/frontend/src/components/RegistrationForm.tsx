@@ -9,9 +9,12 @@ interface RegistrationFormProps {
   onCancel?: () => void;
 }
 
+type PlanType = 'free' | 'starter' | 'professional' | 'enterprise' | 'lifetime';
+
 export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>('free');
   const [formData, setFormData] = useState({
     companyName: '',
     companySlug: '',
@@ -20,6 +23,15 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
     adminPassword: '',
     confirmPassword: '',
   });
+
+  // Hardcoded pricing for now (in cents - NGN)
+  const pricing = {
+    free: { priceCents: 0, label: '14 days' },
+    starter: { priceCents: 2000000, label: '$200/mo' }, // ~200,000 NGN
+    professional: { priceCents: 5000000, label: '$500/mo' }, // ~500,000 NGN
+    enterprise: { priceCents: 10000000, label: '$1000/mo' },
+    lifetime: { priceCents: 50000000, label: '$5000' },
+  };
 
   const generateSlug = (name: string) => {
     return name
@@ -87,9 +99,18 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
         adminName: formData.adminName.trim(),
         adminEmail: formData.adminEmail.trim().toLowerCase(),
         adminPassword: formData.adminPassword,
+        plan: selectedPlan === 'free' ? undefined : selectedPlan,
       });
 
       if (response.data.success) {
+        // If payment is required, redirect to payment page
+        if (response.data.requiresPayment && response.data.checkoutUrl) {
+          toast.success('Registration successful! Redirecting to payment...');
+          window.location.href = response.data.checkoutUrl;
+          return;
+        }
+
+        // For free trial, show success and redirect
         toast.success('Registration successful! Your 14-day free trial has started.');
         if (onSuccess) {
           onSuccess();
@@ -117,6 +138,63 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Plan Selection */}
+        <div>
+          <label className="theme-text-secondary text-sm font-medium mb-2 block">
+            Choose Your Plan *
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedPlan('free')}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                selectedPlan === 'free'
+                  ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
+                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+              }`}
+            >
+              <div>Free Trial</div>
+              <div className="text-[10px] opacity-70">14 days</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPlan('starter')}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                selectedPlan === 'starter'
+                  ? 'border-sky-400 bg-sky-400/20 text-sky-300'
+                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+              }`}
+            >
+              <div>Starter</div>
+              <div className="text-[10px] opacity-70">{pricing.starter.label}</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPlan('professional')}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                selectedPlan === 'professional'
+                  ? 'border-sky-400 bg-sky-400/20 text-sky-300'
+                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+              }`}
+            >
+              <div>Professional</div>
+              <div className="text-[10px] opacity-70">{pricing.professional.label}</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPlan('lifetime')}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                selectedPlan === 'lifetime'
+                  ? 'border-purple-400 bg-purple-400/20 text-purple-300'
+                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+              }`}
+            >
+              <div>Lifetime</div>
+              <div className="text-[10px] opacity-70">{pricing.lifetime.label}</div>
+            </button>
+          </div>
+        </div>
+
         <div>
           <label htmlFor="companyName" className="theme-text-secondary text-sm font-medium mb-1 block">
             Company Name *
@@ -219,7 +297,7 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
             disabled={loading}
             className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 px-6 py-3 text-sm font-semibold text-emerald-950 shadow-[0_28px_60px_-30px_rgba(56,189,248,0.75)] transition hover:shadow-[0_30px_65px_-28px_rgba(56,189,248,0.9)] disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating Account...' : 'Start Free Trial'}
+            {loading ? 'Creating Account...' : selectedPlan === 'free' ? 'Start Free Trial' : 'Continue to Payment'}
           </button>
           {onCancel && (
             <button

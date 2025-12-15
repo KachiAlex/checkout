@@ -79,7 +79,6 @@ export function SuperAdminPage() {
     seatLimit: '',
     adminName: '',
     adminEmail: '',
-    adminPassword: '',
     billingStartMode: 'immediate' as 'immediate' | 'scheduled',
     billingCycleStart: todayInputValue(),
     billingCycleEnd: '',
@@ -269,14 +268,6 @@ export function SuperAdminPage() {
       toast.error('Tenant admin email is required');
       return;
     }
-    if (!form.adminPassword.trim()) {
-      toast.error('Tenant admin password is required');
-      return;
-    }
-    if (form.adminPassword.trim().length < 8) {
-      toast.error('Tenant admin password must be at least 8 characters');
-      return;
-    }
 
     if (form.billingStartMode === 'scheduled' && !form.billingCycleStart) {
       toast.error('Select a billing start date or activate immediately');
@@ -300,7 +291,6 @@ export function SuperAdminPage() {
         seatLimit: form.seatLimit ? Number(form.seatLimit) : undefined,
         adminEmail: form.adminEmail.trim().toLowerCase(),
         adminName: form.adminName.trim() || undefined,
-        adminPassword: form.adminPassword.trim(),
         billingCycleStart: startDate ? startDate.toISOString() : undefined,
         billingCycleEnd:
           form.plan === 'lifetime'
@@ -331,9 +321,12 @@ export function SuperAdminPage() {
         tenant: tenantRecord,
         admin: result.admin,
       });
-      toast.success(`Tenant ${tenantRecord.name} created. Admin account ready for ${result.admin.email}`, {
-        duration: 6000,
-      });
+      toast.success(
+        `Tenant ${tenantRecord.name} created. Admin account: ${result.admin.email} | Temporary PIN: ${result.admin.temporaryPin}`,
+        {
+          duration: 10000,
+        }
+      );
       setForm({
         name: '',
         slug: '',
@@ -342,7 +335,6 @@ export function SuperAdminPage() {
         seatLimit: '',
         adminName: '',
         adminEmail: '',
-        adminPassword: '',
         billingStartMode: 'immediate',
         billingCycleStart: todayInputValue(),
         billingCycleEnd: '',
@@ -579,10 +571,19 @@ export function SuperAdminPage() {
             <h2 className="theme-text-primary text-base sm:text-lg font-semibold">Tenant provisioned</h2>
             <p className="theme-text-secondary mt-1 text-xs sm:text-sm">
               Share the admin credentials with{' '}
-              <span className="theme-text-primary font-semibold">{lastProvisioned.admin.email}</span>. The tenant is{' '}
-              <span className="theme-text-primary font-semibold">{lastProvisioned.tenant.status}</span> and can update
-              their password after the first login.
+              <span className="theme-text-primary font-semibold">{lastProvisioned.admin.email}</span>.
             </p>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+              <p className="text-sm">
+                <strong className="text-emerald-200">Temporary PIN:</strong>{' '}
+                <span className="font-mono text-lg text-emerald-100">{lastProvisioned.admin.temporaryPin}</span>
+              </p>
+              <p className="mt-1 text-xs text-emerald-200/80">
+                The tenant admin can use this PIN to log in and should change it after the first login. 
+                The tenant is currently{' '}
+                <span className="font-semibold">{lastProvisioned.tenant.status}</span>.
+              </p>
+            </div>
           </section>
         )}
 
@@ -954,21 +955,12 @@ export function SuperAdminPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="theme-text-secondary text-sm font-medium" htmlFor="tenant-admin-password">
-                Tenant admin password
-              </label>
-              <input
-                id="tenant-admin-password"
-                type="password"
-                value={form.adminPassword}
-                onChange={(event) => setForm((prev) => ({ ...prev, adminPassword: event.target.value }))}
-                className="theme-surface rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
-                required
-                minLength={8}
-              />
-              <p className="theme-text-secondary text-[11px]">
-                Minimum 8 characters. Share these credentials with the tenant&apos;s primary contact.
-              </p>
+              <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3">
+                <p className="text-sm text-sky-200">
+                  <strong>Auto-generated PIN:</strong> A temporary 6-digit PIN will be automatically generated for the tenant admin. 
+                  This PIN will be displayed after tenant creation.
+                </p>
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <label className="theme-text-secondary text-sm font-medium" htmlFor="tenant-start">

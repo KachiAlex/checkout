@@ -28,7 +28,6 @@ export interface CreateTenantPayload {
   adminName?: string;
   billingCycleStart?: string;
   billingCycleEnd?: string;
-  adminPassword: string;
 }
 
 export interface TenantProvisioningResult {
