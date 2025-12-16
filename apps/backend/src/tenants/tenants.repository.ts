@@ -137,6 +137,15 @@ export class TenantsRepository {
     return this.toRecord(updated.id, updated.data() as TenantDocument);
   }
 
+  async delete(id: string): Promise<void> {
+    const docRef = this.collection.doc(id);
+    const existing = await docRef.get();
+    if (!existing.exists) {
+      throw new NotFoundException(`Tenant ${id} not found`);
+    }
+    await docRef.delete();
+  }
+
   private toRecord(id: string, data: TenantDocument | undefined): TenantRecord {
     if (!data) {
       throw new NotFoundException(`Tenant document ${id} has no data`);

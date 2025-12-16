@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -89,6 +90,13 @@ export class TenantsController {
   async activate(@Request() req: any, @Param('id') id: string) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.activate(id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a tenant' })
+  async delete(@Request() req: any, @Param('id') id: string) {
+    this.ensurePlatformAdmin(req);
+    return this.tenantsService.deleteTenant(id);
   }
 }
 

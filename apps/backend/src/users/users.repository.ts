@@ -200,6 +200,27 @@ export class UsersRepository {
     await docRef.delete();
   }
 
+  async deleteByTenantId(tenantId: string): Promise<number> {
+    const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
+    if (snapshot.empty) {
+      return 0;
+    }
+
+    const docs = snapshot.docs;
+    const chunkSize = 450;
+    let deleted = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const chunk = docs.slice(i, i + chunkSize);
+      const batch = this.firestore.batch();
+      chunk.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      deleted += chunk.length;
+    }
+
+    return deleted;
+  }
+
   private toRecord(id: string, data: UserDocument | undefined): UserRecord {
     if (!data) {
       throw new NotFoundException(`User document ${id} has no data.`);

@@ -232,5 +232,17 @@ export class TenantsService {
       metadata,
     });
   }
+
+  async deleteTenant(id: string): Promise<{ tenantId: string; removedUsers: number }> {
+    await this.findById(id);
+
+    const removedUsers = await this.usersRepository.deleteByTenantId(id);
+    await this.tenantsRepository.delete(id);
+
+    return {
+      tenantId: id,
+      removedUsers,
+    };
+  }
 }
 
