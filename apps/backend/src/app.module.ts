@@ -26,6 +26,7 @@ import { PaymentSettingsModule } from './payment-settings/payment-settings.modul
 import { TaxSettingsModule } from './tax-settings/tax-settings.module';
 // import { CustomizationModule } from './customization/customization.module'; // Temporarily disabled due to decorator compatibility issues
 import { UploadModule } from './upload/upload.module';
+import { DatabaseModule } from './database/database.module';
 import { PlatformModule } from './platform/platform.module';
 import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module';
 import { ContactModule } from './contact/contact.module';
@@ -43,6 +44,7 @@ import { ContactModule } from './contact/contact.module';
       },
     ]),
     FirestoreModule,
+    DatabaseModule,
     AuthModule,
     // UsersModule, // Temporarily disabled due to decorator compatibility issues
     LocationsModule,

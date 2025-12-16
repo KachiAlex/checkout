@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+  MONTHLY
+  ANNUAL
+  LIFETIME
+  TRIAL
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+  PENDING
+}
+
+enum UserRole {
+  CASHIER
+  MANAGER
+  ADMIN
+}
+
+model Tenant {
+  id               String      @id @default(uuid())
+  name             String
+  slug             String      @unique
+  plan             TenantPlan
+  status           TenantStatus
+  industry         String?
+  featureFlags     Json?
+  seatLimit        Int?
+  contactEmail     String?
+  billingCycleStart DateTime?
+  billingCycleEnd  DateTime?
+  metadata         Json?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  users            User[]
+
+  @@index([createdAt])
+}
+
+model User {
+  id              String   @id @default(uuid())
+  name            String
+  email           String?
+  role            UserRole
+  pinHash         String
+  tenantId        String
+  isPlatformAdmin Boolean  @default(false)
+  deviceId        String?
+  locationId      String?
+  publicKey       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([deviceId])
+}
+
+model SubscriptionPricing {
+  id         String   @id
+  free       Json
+  starter    Json
+  professional Json
+  enterprise Json
+  lifetime   Json
+  updatedAt  DateTime?
+  updatedBy  String?
+}
