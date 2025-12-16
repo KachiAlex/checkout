@@ -10,11 +10,21 @@ interface RegistrationFormProps {
 }
 
 type PlanType = 'free' | 'starter' | 'professional' | 'enterprise' | 'lifetime';
+type IndustryType = 'retail' | 'pharmacy' | 'restaurant' | 'supermarket' | 'other';
+
+const industries = [
+  { value: 'retail' as const, label: 'Retail Store', icon: '🛍️', description: 'Fashion, electronics, general merchandise' },
+  { value: 'pharmacy' as const, label: 'Pharmacy', icon: '💊', description: 'Healthcare retail & prescriptions' },
+  { value: 'restaurant' as const, label: 'Restaurant/Cafe', icon: '🍽️', description: 'Food service & hospitality' },
+  { value: 'supermarket' as const, label: 'Supermarket', icon: '🛒', description: 'Grocery & convenience stores' },
+  { value: 'other' as const, label: 'Other', icon: '🏢', description: 'Other business types' },
+];
 
 export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('free');
+  const [selectedIndustry, setSelectedIndustry] = useState<IndustryType>('retail');
   const [formData, setFormData] = useState({
     companyName: '',
     companySlug: '',
@@ -56,6 +66,12 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
     setLoading(true);
 
     // Validation
+    if (!selectedIndustry) {
+      toast.error('Please select your industry');
+      setLoading(false);
+      return;
+    }
+
     if (!formData.companyName.trim()) {
       toast.error('Company name is required');
       setLoading(false);
@@ -100,6 +116,7 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
         adminEmail: formData.adminEmail.trim().toLowerCase(),
         adminPassword: formData.adminPassword,
         plan: selectedPlan === 'free' ? undefined : selectedPlan,
+        industry: selectedIndustry,
       });
 
       if (response.data.success) {
@@ -192,6 +209,44 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
               <div>Lifetime</div>
               <div className="text-[10px] opacity-70">{pricing.lifetime.label}</div>
             </button>
+          </div>
+        </div>
+
+        {/* Industry Selection */}
+        <div>
+          <label className="theme-text-secondary text-sm font-medium mb-2 block">
+            What type of business do you run? *
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {industries.map((industry) => (
+              <button
+                key={industry.value}
+                type="button"
+                onClick={() => setSelectedIndustry(industry.value)}
+                className={`rounded-xl border p-3 text-left transition ${
+                  selectedIndustry === industry.value
+                    ? 'border-emerald-400 bg-emerald-400/20 ring-2 ring-emerald-400/50'
+                    : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl flex-shrink-0">{industry.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm font-semibold mb-0.5 ${
+                      selectedIndustry === industry.value ? 'text-emerald-300' : 'theme-text-primary'
+                    }`}>
+                      {industry.label}
+                    </div>
+                    <div className="theme-text-secondary text-xs leading-snug">
+                      {industry.description}
+                    </div>
+                  </div>
+                  {selectedIndustry === industry.value && (
+                    <span className="text-emerald-400 text-lg flex-shrink-0">✓</span>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
 

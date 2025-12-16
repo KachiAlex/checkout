@@ -91,6 +91,7 @@ export class PlatformService {
       plan,
       adminEmail: dto.adminEmail,
       adminName: dto.adminName,
+      industry: dto.industry as any, // Industry type from registration
       billingCycleStart: billingCycleStart.toISOString(),
       billingCycleEnd: billingCycleEnd?.toISOString(),
     });

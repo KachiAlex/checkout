@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MinLength, IsEmail, IsOptional, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength, IsEmail, IsOptional, IsEnum, IsIn } from 'class-validator';
 import { TenantPlan } from '@pos-checkout/shared';
 
 export class RegisterDto {
@@ -38,5 +38,16 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(TenantPlan)
   plan?: TenantPlan;
+
+  @ApiProperty({ 
+    description: 'Business industry type', 
+    enum: ['retail', 'pharmacy', 'restaurant', 'supermarket', 'other'],
+    required: false,
+    example: 'retail' 
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['retail', 'pharmacy', 'restaurant', 'supermarket', 'other'])
+  industry?: string;
 }
 
