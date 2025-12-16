@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD, Reflector } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 // import { UsersModule } from './users/users.module'; // Temporarily disabled due to decorator compatibility issues
 import { LocationsModule } from './locations/locations.module';
@@ -72,12 +71,6 @@ import { ContactModule } from './contact/contact.module';
     // SubscriptionPricingModule, // Temporarily disabled due to decorator compatibility issues
     ContactModule,
   ],
-  providers: [
-    Reflector,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-  ],
+  providers: [],
 })
 export class AppModule {}
