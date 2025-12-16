@@ -18,7 +18,25 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+    console.log('[Auth Controller] Login request received:', {
+      tenantSlug: loginDto.tenantSlug,
+      hasPin: !!loginDto.pin,
+      deviceId: loginDto.deviceId,
+      timestamp: new Date().toISOString(),
+    });
+    
+    try {
+      const result = await this.authService.login(loginDto);
+      console.log('[Auth Controller] Login successful for tenant:', loginDto.tenantSlug);
+      return result;
+    } catch (error) {
+      console.error('[Auth Controller] Login failed:', {
+        tenantSlug: loginDto.tenantSlug,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
   }
 
   @Post('superadmin/login')

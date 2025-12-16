@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login CORS Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Login CORS Test</h1>
+        <p>This page tests the login functionality and CORS configuration.</p>
+        
+        <div class="form-group">
+            <label for="apiUrl">API URL:</label>
+            <input type="text" id="apiUrl" value="https://checkout-45tb.onrender.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="tenantSlug">Tenant Slug:</label>
+            <input type="text" id="tenantSlug" placeholder="e.g., test-company-1765877026909">
+        </div>
+        
+        <div class="form-group">
+            <label for="pin">PIN:</label>
+            <input type="password" id="pin" placeholder="Enter PIN">
+        </div>
+        
+        <button onclick="testCors()">Test CORS</button>
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="clearLog()">Clear Log</button>
+        
+        <div id="message"></div>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toISOString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            document.getElementById('message').innerHTML = '';
+        }
+        
+        async function testCors() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const messageDiv = document.getElementById('message');
+            
+            log('=== CORS Test Started ===');
+            log(`Testing CORS for: ${apiUrl}`);
+            
+            try {
+                // Test preflight OPTIONS request
+                log('1. Testing OPTIONS preflight request...');
+                const optionsResponse = await fetch(`${apiUrl}/api/v1/auth/login`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type',
+                    }
+                });
+                
+                log(`OPTIONS response status: ${optionsResponse.status}`);
+                log(`OPTIONS response headers:`);
+                for (const [key, value] of optionsResponse.headers.entries()) {
+                    if (key.toLowerCase().includes('access-control')) {
+                        log(`  ${key}: ${value}`);
+                    }
+                }
+                
+                // Test health check
+                log('2. Testing health check...');
+                const healthResponse = await fetch(`${apiUrl}/api/v1/health`);
+                const healthData = await healthResponse.json();
+                log(`Health check: ${JSON.stringify(healthData)}`);
+                
+                messageDiv.innerHTML = '<div class="message success">CORS test completed! Check log for details.</div>';
+                
+            } catch (error) {
+                log(`CORS test error: ${error.message}`);
+                messageDiv.innerHTML = `<div class="message error">CORS test failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function testLogin() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const tenantSlug = document.getElementById('tenantSlug').value;
+            const pin = document.getElementById('pin').value;
+            const messageDiv = document.getElementById('message');
+            
+            if (!tenantSlug || !pin) {
+                messageDiv.innerHTML = '<div class="message error">Please enter tenant slug and PIN</div>';
+                return;
+            }
+            
+            log('=== Login Test Started ===');
+            log(`API URL: ${apiUrl}`);
+            log(`Tenant Slug: ${tenantSlug}`);
+            log(`Origin: ${window.location.origin}`);
+            
+            try {
+                const loginData = {
+                    tenantSlug: tenantSlug,
+                    pin: pin
+                };
+                
+                log(`Login request data: ${JSON.stringify(loginData)}`);
+                
+                const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin,
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(loginData)
+                });
+                
+                log(`Login response status: ${response.status}`);
+                log(`Login response headers:`);
+                for (const [key, value] of response.headers.entries()) {
+                    log(`  ${key}: ${value}`);
+                }
+                
+                const result = await response.json();
+                log(`Login response body: ${JSON.stringify(result, null, 2)}`);
+                
+                if (response.ok && result.accessToken) {
+                    messageDiv.innerHTML = '<div class="message success">Login successful! Check log for token details.</div>';
+                } else {
+                    messageDiv.innerHTML = `<div class="message error">Login failed: ${result.message || 'Unknown error'}</div>`;
+                }
+                
+            } catch (error) {
+                log(`Login error: ${error.message}`);
+                messageDiv.innerHTML = `<div class="message error">Login request failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Log page load
+        log('Page loaded successfully');
+        log(`Current origin: ${window.location.origin}`);
+    </script>
+</body>
+</html>

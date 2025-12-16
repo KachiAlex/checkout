@@ -33,10 +33,15 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     'http://localhost',
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://localhost:3000',
     'capacitor://localhost',
     'https://checkout-77d99.web.app',
     'https://checkout-77d99.firebaseapp.com',
     'https://checkoutpos.online',
+    // Add common development origins
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    'https://localhost:5173',
   ];
 
   const corsOriginConfig = configService.get<string>(
@@ -100,10 +105,16 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
       'Origin',
       'Access-Control-Request-Method',
       'Access-Control-Request-Headers',
+      'Cache-Control',
+      'Pragma',
+      'Expires',
+      'X-Forwarded-For',
+      'X-Real-IP',
     ],
-    exposedHeaders: ['Authorization'],
+    exposedHeaders: ['Authorization', 'Content-Length', 'X-Requested-With'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
+    maxAge: 86400, // 24 hours preflight cache
   };
 
   console.log(
@@ -122,12 +133,19 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
   app.use((req: any, res: any, next: any) => {
     const origin = req.headers.origin;
     
+    // Log auth-related requests for debugging
+    if (req.method === 'OPTIONS' || req.url.includes('/auth/')) {
+      console.log(`[CORS] ${req.method} ${req.url} from origin: ${origin || 'none'}`);
+    }
+    
     // Check if origin is allowed
     const isAllowedOrigin = corsOrigins === true || 
       !origin || 
       (Array.isArray(corsOrigins) && (
         corsOrigins.some(allowed => origin.toLowerCase() === allowed.toLowerCase()) ||
         origin.startsWith('http://localhost') ||
+        origin.startsWith('http://127.0.0.1') ||
+        origin.startsWith('https://localhost') ||
         origin.startsWith('capacitor://')
       ));
 
@@ -139,9 +157,9 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,Origin,Access-Control-Request-Method,Access-Control-Request-Headers');
-    res.setHeader('Access-Control-Expose-Headers', 'Authorization');
-    res.setHeader('Access-Control-Max-Age', '3600');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,Cache-Control,Pragma,Expires');
+    res.setHeader('Access-Control-Expose-Headers', 'Authorization,Content-Length,X-Requested-With');
+    res.setHeader('Access-Control-Max-Age', '86400');
 
     // Handle preflight OPTIONS requests immediately
     if (req.method === 'OPTIONS') {
