@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "tsc --project tsconfig.build.json && ls -la dist/src/ && echo 'Build completed, checking for main.js:' && test -f dist/src/main.js && echo '✅ main.js exists' || echo '❌ main.js not found'",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
