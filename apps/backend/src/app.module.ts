@@ -4,7 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard';
 import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
+// import { UsersModule } from './users/users.module'; // Temporarily disabled due to decorator compatibility issues
 import { LocationsModule } from './locations/locations.module';
 import { ProductsModule } from './products/products.module';
 import { InventoryModule } from './inventory/inventory.module';
@@ -46,7 +46,7 @@ import { ContactModule } from './contact/contact.module';
     ]),
     FirestoreModule,
     AuthModule,
-    UsersModule,
+    // UsersModule, // Temporarily disabled due to decorator compatibility issues
     LocationsModule,
     ProductsModule,
     InventoryModule,
