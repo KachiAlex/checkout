@@ -256,30 +256,35 @@ export class OrdersRepository {
       discountCents: item.discountCents,
     }));
 
+    // Build document with only defined fields
     const doc: OrderDocument = {
-      ...data,
-      tenantId: data.tenantId,
-      customerId: data.customerId || undefined, // Explicitly set to undefined if not provided (Firestore will omit undefined fields)
+      uuid: data.uuid,
+      orderNumber: data.orderNumber,
+      locationId: data.locationId,
+      createdBy: data.createdBy,
       items: serializedItems,
+      subtotalCents: data.subtotalCents,
+      taxCents: data.taxCents,
+      discountCents: data.discountCents,
+      totalCents: data.totalCents,
+      status: data.status,
+      synced: data.synced,
       isHeld: data.isHeld ?? false,
       isCreditOrder: data.isCreditOrder ?? false,
-      paymentStatus: data.paymentStatus,
-      heldAt: data.heldAt ? Timestamp.fromDate(data.heldAt) : undefined,
-      // Only set paidAt/returnedAt if explicitly provided (should be undefined for new credit orders)
-      paidAt: data.paidAt ? Timestamp.fromDate(data.paidAt) : undefined,
-      returnedAt: data.returnedAt ? Timestamp.fromDate(data.returnedAt) : undefined,
-      completedAt: data.completedAt ? Timestamp.fromDate(data.completedAt) : undefined,
       createdAt: now,
       updatedAt: now,
     };
-    
-    // Explicitly omit paidAt and returnedAt for new credit orders (they should only be set when marked as paid/returned)
-    if (!data.paidAt) {
-      delete doc.paidAt;
-    }
-    if (!data.returnedAt) {
-      delete doc.returnedAt;
-    }
+
+    // Add optional fields only if they have values
+    if (data.tenantId) doc.tenantId = data.tenantId;
+    if (data.customerId) doc.customerId = data.customerId;
+    if (data.deviceId) doc.deviceId = data.deviceId;
+    if (data.notes) doc.notes = data.notes;
+    if (data.paymentStatus) doc.paymentStatus = data.paymentStatus;
+    if (data.heldAt) doc.heldAt = Timestamp.fromDate(data.heldAt);
+    if (data.paidAt) doc.paidAt = Timestamp.fromDate(data.paidAt);
+    if (data.returnedAt) doc.returnedAt = Timestamp.fromDate(data.returnedAt);
+    if (data.completedAt) doc.completedAt = Timestamp.fromDate(data.completedAt);
 
     // Log customerId for debugging
     if (data.customerId) {
