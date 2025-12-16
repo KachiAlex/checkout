@@ -26,6 +26,7 @@
     "src/**/*.ts"
   ],
   "exclude": [
+    "src/migrations/**/*",
     "test/**/*",
     "**/*.spec.ts",
     "**/*.e2e-spec.ts",
