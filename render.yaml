@@ -3,7 +3,7 @@ services:
     name: pos-checkout-api
     env: node
     buildCommand: npm install --no-optional --include=dev && npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run prisma:generate --workspace=apps/backend && npm run build --workspace=apps/backend
-    startCommand: cd apps/backend && node dist/src/main.js
+    startCommand: cd apps/backend && npm run prisma:migrate:deploy && node dist/src/main.js
     envVars:
       - key: NODE_ENV
         value: production
