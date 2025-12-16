@@ -37,14 +37,14 @@ export class DemoRequestDto {
   @IsEmail()
   recipientEmail!: string;
 
-  @ApiProperty({ description: 'Email subject' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Email subject', required: false })
+  @IsOptional()
   @IsString()
-  subject!: string;
+  subject?: string;
 
-  @ApiProperty({ description: 'Email content' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Email content', required: false })
+  @IsOptional()
   @IsString()
-  content!: string;
+  content?: string;
 }
 

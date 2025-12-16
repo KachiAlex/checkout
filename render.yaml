@@ -27,4 +27,9 @@ services:
         value: 24h
       - key: REFRESH_TOKEN_EXPIRES_IN
         value: 7d
+      # SendGrid Email configuration - set these in Render dashboard
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        value: noreply@checkout.com
 
