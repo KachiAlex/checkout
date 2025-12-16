@@ -4,6 +4,24 @@ import toast from 'react-hot-toast';
 import { API_URL } from '../config';
 import axios from 'axios';
 
+// Health check function to test API connectivity
+const checkApiHealth = async (apiUrl: string): Promise<boolean> => {
+  try {
+    const healthUrl = `${apiUrl}/api/v1/health`;
+    console.log('[Health Check] Testing API connectivity:', healthUrl);
+    
+    const response = await axios.get(healthUrl, {
+      timeout: 10000, // 10 second timeout for health check
+    });
+    
+    console.log('[Health Check] API is healthy:', response.data);
+    return response.status === 200;
+  } catch (error: any) {
+    console.error('[Health Check] API health check failed:', error);
+    return false;
+  }
+};
+
 interface RegistrationFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -108,8 +126,32 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
       return;
     }
 
+    // Determine the correct API URL
+    const apiUrl = API_URL || 'https://checkout-45tb.onrender.com';
+    const registrationUrl = `${apiUrl}/api/v1/platform/register`;
+    
+    console.log('[Registration] Starting registration process...');
+    console.log('[Registration] API URL:', apiUrl);
+    console.log('[Registration] Full URL:', registrationUrl);
+    console.log('[Registration] Form data:', {
+      companyName: formData.companyName.trim(),
+      companySlug: formData.companySlug.trim().toLowerCase(),
+      adminName: formData.adminName.trim(),
+      adminEmail: formData.adminEmail.trim().toLowerCase(),
+      plan: selectedPlan === 'free' ? undefined : selectedPlan,
+      industry: selectedIndustry,
+    });
+
+    // Check API health before attempting registration
+    const isApiHealthy = await checkApiHealth(apiUrl);
+    if (!isApiHealthy) {
+      toast.error('Unable to connect to the server. Please check your internet connection and try again.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.post(`${API_URL}/api/v1/platform/register`, {
+      const response = await axios.post(registrationUrl, {
         companyName: formData.companyName.trim(),
         companySlug: formData.companySlug.trim().toLowerCase(),
         adminName: formData.adminName.trim(),
@@ -117,29 +159,73 @@ export function RegistrationForm({ onSuccess, onCancel }: RegistrationFormProps)
         adminPassword: formData.adminPassword,
         plan: selectedPlan === 'free' ? undefined : selectedPlan,
         industry: selectedIndustry,
+      }, {
+        timeout: 30000, // 30 second timeout
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+
+      console.log('[Registration] API Response:', response.data);
 
       if (response.data.success) {
         // If payment is required, redirect to payment page
         if (response.data.requiresPayment && response.data.checkoutUrl) {
           toast.success('Registration successful! Redirecting to payment...');
+          console.log('[Registration] Redirecting to payment:', response.data.checkoutUrl);
           window.location.href = response.data.checkoutUrl;
           return;
         }
 
         // For free trial, show success and redirect
         toast.success('Registration successful! Your 14-day free trial has started.');
+        console.log('[Registration] Free trial registration successful:', response.data.tenant);
+        
         if (onSuccess) {
           onSuccess();
         } else {
           // Auto-login and redirect
-          navigate(`/${response.data.tenant.slug}/login`);
+          console.log('[Registration] Redirecting to login page for tenant:', response.data.tenant.slug);
+          navigate('/login', { 
+            state: { 
+              tenantSlug: response.data.tenant.slug,
+              message: 'Registration successful! Please log in with your credentials.'
+            }
+          });
         }
+      } else {
+        console.error('[Registration] API returned success=false:', response.data);
+        toast.error(response.data.message || 'Registration failed');
       }
     } catch (error: any) {
-      const message = error.response?.data?.error || error.message || 'Registration failed';
-      toast.error(message);
-      console.error('Registration error:', error);
+      console.error('[Registration] Registration error:', error);
+      
+      let errorMessage = 'Registration failed';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please check your internet connection and try again.';
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.response) {
+        // Server responded with error status
+        console.error('[Registration] Server error response:', error.response.data);
+        if (error.response.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        } else {
+          errorMessage = `Server error (${error.response.status}): ${error.response.statusText}`;
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        console.error('[Registration] No response received:', error.request);
+        errorMessage = 'No response from server. Please check your internet connection and try again.';
+      } else {
+        // Something else happened
+        errorMessage = error.message || 'An unexpected error occurred';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

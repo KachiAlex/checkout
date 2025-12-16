@@ -36,6 +36,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     'capacitor://localhost',
     'https://checkout-77d99.web.app',
     'https://checkout-77d99.firebaseapp.com',
+    'https://checkoutpos.online',
   ];
 
   const corsOriginConfig = configService.get<string>(
@@ -144,8 +145,13 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
 
     // Handle preflight OPTIONS requests immediately
     if (req.method === 'OPTIONS') {
-      console.log(`✅ Handling OPTIONS preflight from origin: ${origin || 'none'}`);
+      console.log(`✅ Handling OPTIONS preflight from origin: ${origin || 'none'} - Allowed: ${isAllowedOrigin}`);
       return res.status(204).end();
+    }
+
+    // Log all requests for debugging
+    if (origin) {
+      console.log(`🌐 Request from origin: ${origin} - Method: ${req.method} - Path: ${req.path} - Allowed: ${isAllowedOrigin}`);
     }
 
     next();

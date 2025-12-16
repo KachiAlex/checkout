@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test</title>
+</head>
+<body>
+    <h1>CORS Test for Registration API</h1>
+    <div id="results"></div>
+    <button onclick="testCors()">Test CORS</button>
+    <button onclick="testRegistration()">Test Registration</button>
+
+    <script>
+        const API_BASE = 'https://checkout-45tb.onrender.com';
+        const resultsDiv = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const p = document.createElement('p');
+            p.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(p);
+            console.log(message);
+        }
+
+        async function testCors() {
+            log('Testing CORS with OPTIONS request...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/platform/register`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'https://checkoutpos.online',
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                log(`OPTIONS response status: ${response.status}`, 'success');
+                log(`Access-Control-Allow-Origin: ${response.headers.get('Access-Control-Allow-Origin')}`, 'success');
+                log(`Access-Control-Allow-Methods: ${response.headers.get('Access-Control-Allow-Methods')}`, 'success');
+                log(`Access-Control-Allow-Headers: ${response.headers.get('Access-Control-Allow-Headers')}`, 'success');
+                
+            } catch (error) {
+                log(`CORS test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRegistration() {
+            log('Testing registration endpoint...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/platform/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'https://checkoutpos.online'
+                    },
+                    body: JSON.stringify({
+                        companyName: 'Test Company',
+                        companySlug: 'test-company-' + Date.now(),
+                        adminName: 'Test Admin',
+                        adminEmail: 'test@example.com',
+                        adminPassword: 'testpassword123',
+                        plan: 'free'
+                    })
+                });
+                
+                log(`Registration response status: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                log(`Registration response: ${JSON.stringify(data, null, 2)}`, response.ok ? 'success' : 'error');
+                
+            } catch (error) {
+                log(`Registration test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test CORS automatically on page load
+        window.onload = () => {
+            log('Page loaded. Testing CORS configuration...');
+            testCors();
+        };
+    </script>
+</body>
+</html>

@@ -14,7 +14,39 @@ export class PlatformController {
   @ApiResponse({ status: 201, description: 'Tenant and admin registered successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request' })
   async register(@Body() dto: RegisterDto) {
-    return this.platformService.registerTenant(dto);
+    console.log('[Platform Registration] Received registration request:', {
+      companyName: dto.companyName,
+      companySlug: dto.companySlug,
+      adminName: dto.adminName,
+      adminEmail: dto.adminEmail,
+      plan: dto.plan,
+      industry: dto.industry,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const result = await this.platformService.registerTenant(dto);
+      console.log('[Platform Registration] Registration successful:', {
+        success: result.success,
+        tenantId: result.tenant?.id,
+        tenantSlug: result.tenant?.slug,
+        requiresPayment: result.requiresPayment,
+        timestamp: new Date().toISOString(),
+      });
+      return result;
+    } catch (error) {
+      console.error('[Platform Registration] Registration failed:', {
+        error: error.message,
+        stack: error.stack,
+        dto: {
+          companyName: dto.companyName,
+          companySlug: dto.companySlug,
+          adminEmail: dto.adminEmail,
+        },
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
   }
 
   @Get('subscriptions/:tenantId/payment/status/:paymentId')
@@ -26,6 +58,21 @@ export class PlatformController {
     @Param('paymentId') paymentId: string,
   ) {
     return this.platformService.getPaymentStatus(tenantId, paymentId);
+  }
+
+  @Get('health')
+  @ApiOperation({ summary: 'Platform service health check' })
+  @ApiResponse({ status: 200, description: 'Platform service is healthy' })
+  async healthCheck() {
+    return {
+      status: 'ok',
+      service: 'platform',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        register: '/api/v1/platform/register',
+        paymentStatus: '/api/v1/platform/subscriptions/:tenantId/payment/status/:paymentId',
+      },
+    };
   }
 
   @Post('subscriptions/webhook/flutterwave')

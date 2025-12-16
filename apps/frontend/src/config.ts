@@ -18,10 +18,19 @@ const getApiUrl = () => {
     return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
   }
   
-  // In development, use empty string to leverage Vite proxy (forwards /api to localhost:3000)
-  // This allows relative paths like /api/v1/... which Vite will proxy
+  // In development, check if we should use local backend or production fallback
   if (import.meta.env.DEV) {
-    return '';
+    // Check if VITE_USE_LOCAL_BACKEND is explicitly set to 'true'
+    // If not set or set to 'false', use production backend as fallback
+    const useLocalBackend = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true';
+    
+    if (useLocalBackend) {
+      // Use empty string to leverage Vite proxy (forwards /api to localhost:3000)
+      return '';
+    } else {
+      // Fallback to production backend when local backend is not available
+      return DEFAULT_API_BASE;
+    }
   }
   
   // In production, use Render backend
@@ -39,7 +48,13 @@ export const DOWNLOAD_LINKS = {
 
 // Debug logging
 if (import.meta.env.DEV) {
-  console.log('[config] API_URL (dev mode):', API_URL || '(empty - using Vite proxy to localhost:3000)');
+  const useLocalBackend = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true';
+  if (useLocalBackend) {
+    console.log('[config] API_URL (dev mode - local backend):', API_URL || '(empty - using Vite proxy to localhost:3000)');
+  } else {
+    console.log('[config] API_URL (dev mode - production fallback):', API_URL);
+  }
+  console.log('[config] VITE_USE_LOCAL_BACKEND:', import.meta.env.VITE_USE_LOCAL_BACKEND);
   console.log('[config] Example request:', `${API_URL || ''}/api/v1/auth/login`);
   console.log('[config] Downloads', DOWNLOAD_LINKS);
 } else {

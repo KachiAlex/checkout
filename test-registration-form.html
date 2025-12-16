@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Form Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Registration Form Test</h1>
+        <p>This page tests the registration functionality directly with the production API.</p>
+        
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="companyName">Company Name:</label>
+                <input type="text" id="companyName" name="companyName" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="companySlug">Company Slug:</label>
+                <input type="text" id="companySlug" name="companySlug" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="adminName">Admin Name:</label>
+                <input type="text" id="adminName" name="adminName" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="adminEmail">Admin Email:</label>
+                <input type="email" id="adminEmail" name="adminEmail" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="adminPassword">Password:</label>
+                <input type="password" id="adminPassword" name="adminPassword" required minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label for="plan">Plan:</label>
+                <select id="plan" name="plan">
+                    <option value="free">Free Trial</option>
+                    <option value="starter">Starter</option>
+                    <option value="professional">Professional</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="industry">Industry:</label>
+                <select id="industry" name="industry">
+                    <option value="retail">Retail</option>
+                    <option value="pharmacy">Pharmacy</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="supermarket">Supermarket</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="submitBtn">Register</button>
+        </form>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://checkout-45tb.onrender.com';
+        
+        // Auto-generate company slug from company name
+        document.getElementById('companyName').addEventListener('input', function(e) {
+            const slug = e.target.value
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9-]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            document.getElementById('companySlug').value = slug;
+        });
+        
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const messageDiv = document.getElementById('message');
+            
+            // Disable form and show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Registering...';
+            messageDiv.innerHTML = '<div class="message loading">Processing registration...</div>';
+            
+            // Get form data
+            const formData = new FormData(e.target);
+            const data = {
+                companyName: formData.get('companyName'),
+                companySlug: formData.get('companySlug'),
+                adminName: formData.get('adminName'),
+                adminEmail: formData.get('adminEmail'),
+                adminPassword: formData.get('adminPassword'),
+                plan: formData.get('plan') === 'free' ? undefined : formData.get('plan'),
+                industry: formData.get('industry')
+            };
+            
+            console.log('Registration data:', data);
+            console.log('API URL:', API_URL + '/api/v1/platform/register');
+            
+            try {
+                // Test API health first
+                console.log('Testing API health...');
+                const healthResponse = await fetch(API_URL + '/api/v1/health');
+                const healthData = await healthResponse.json();
+                console.log('Health check:', healthData);
+                
+                // Make registration request
+                console.log('Making registration request...');
+                const response = await fetch(API_URL + '/api/v1/platform/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                console.log('Registration response:', result);
+                
+                if (result.success) {
+                    messageDiv.innerHTML = `
+                        <div class="message success">
+                            <strong>Registration Successful!</strong><br>
+                            Company: ${result.tenant.slug}<br>
+                            Tenant ID: ${result.tenant.id}<br>
+                            Plan: ${result.tenant.plan}<br>
+                            Status: ${result.tenant.status}
+                        </div>
+                    `;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="message error">
+                            <strong>Registration Failed:</strong><br>
+                            ${result.message || 'Unknown error'}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                messageDiv.innerHTML = `
+                    <div class="message error">
+                        <strong>Registration Error:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            } finally {
+                // Re-enable form
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Register';
+            }
+        });
+    </script>
+</body>
+</html>
