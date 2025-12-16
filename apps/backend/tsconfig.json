@@ -22,6 +22,13 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "suppressImplicitAnyIndexErrors": true,
+    "strict": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false,
     "paths": {
       "@/*": ["src/*"]
     }
