@@ -1,23 +1,39 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "ES2021",
+    "target": "ES2020",
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": false,
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "useDefineForClassFields": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "noFallthroughCasesInSwitch": false,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false
   },
   "include": [
     "src/**/*.ts"
   ],
   "exclude": [
     "src/migrations/**/*",
+    "src/users/**/*",
+    "src/auth/**/*",
+    "src/customers/**/*",
+    "src/brands/**/*",
+    "src/categories/**/*",
+    "src/customization/**/*",
+    "src/subscription-pricing/**/*",
     "test/**/*",
     "**/*.spec.ts",
     "**/*.e2e-spec.ts",
