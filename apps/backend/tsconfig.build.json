@@ -1,20 +1,28 @@
 {
-  "extends": "./tsconfig.json",
-  "include": ["src/**/*"],
-  "exclude": ["test/**/*", "**/*.spec.ts", "**/*.e2e-spec.ts", "src/migrations/**/*", "**/*.migration.ts"],
   "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2021",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": false,
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "target": "ES2021",
-    "module": "commonjs",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "declaration": false,
     "sourceMap": false,
-    "outDir": "./dist",
-    "rootDir": "./src"
-  }
+    "noImplicitAny": false,
+    "strictNullChecks": false
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/migrations/**/*",
+    "test/**/*",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts"
+  ]
 }
