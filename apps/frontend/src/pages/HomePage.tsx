@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BrandMark } from '../components/BrandMark';
 import { RegistrationForm } from '../components/RegistrationForm';
+import { DemoRequestForm } from '../components/DemoRequestForm';
 import { useThemeStore } from '../stores/themeStore';
 import { getSubscriptionPricing, SubscriptionPricing } from '../services/subscriptionPricingService';
 
@@ -178,6 +179,7 @@ const testimonials = [
 export function HomePage() {
   const theme = useThemeStore((state) => state.theme);
   const [showRegistration, setShowRegistration] = useState(false);
+  const [showDemoForm, setShowDemoForm] = useState(false);
   const [pricing, setPricing] = useState<SubscriptionPricing | null>(null);
   const [loadingPricing, setLoadingPricing] = useState(true);
 
@@ -256,12 +258,12 @@ export function HomePage() {
               <span className="sm:hidden">Login</span>
               <span className="text-base sm:text-lg">→</span>
             </Link>
-            <a
-              href="mailto:hello@checkouthq.com?subject=Book%20a%20Checkout%20demo"
+            <button
+              onClick={() => setShowDemoForm(true)}
               className="hidden rounded-full bg-white px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-slate-900 shadow-lg shadow-sky-500/30 transition hover:shadow-sky-500/40 lg:inline-block"
             >
               Book a demo
-            </a>
+            </button>
           </div>
         </div>
       </header>
@@ -877,13 +879,13 @@ export function HomePage() {
                     <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
                   </button>
                   
-                  <a
-                    href="mailto:hello@checkouthq.com?subject=Book%20a%20Checkout%20Demo"
+                  <button
+                    onClick={() => setShowDemoForm(true)}
                     className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/40 bg-white/10 px-7 sm:px-9 py-4 sm:py-5 text-base sm:text-lg font-bold text-white backdrop-blur-sm transition-all hover:border-white/60 hover:bg-white/20 touch-manipulation"
                   >
                     <span className="text-xl">📞</span>
                     <span>Book a Demo</span>
-                  </a>
+                  </button>
                 </div>
 
                 <div className="flex items-center justify-center gap-2 text-amber-400 text-xl sm:text-2xl">
@@ -917,30 +919,67 @@ export function HomePage() {
         </div>
       )}
 
+      {/* Demo Request Modal */}
+      {showDemoForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowDemoForm(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition z-10"
+              aria-label="Close"
+            >
+              <span className="text-2xl">×</span>
+            </button>
+            <DemoRequestForm
+              onSuccess={() => setShowDemoForm(false)}
+              onCancel={() => setShowDemoForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
       <footer className="relative z-10 border-t border-white/10 bg-slate-950/80 py-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 text-sm text-slate-400 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-base font-semibold text-slate-200">Checkout</p>
+            <p className="text-base font-semibold text-slate-200">Checkout POS</p>
             <p className="mt-2 text-xs uppercase tracking-[0.25em]">Point-of-sale platform for ambitious retail teams</p>
+            <p className="mt-3 text-sm">
+              <a href="mailto:akoma@kreatixtech.com" className="text-sky-400 hover:text-sky-300 transition">
+                akoma@kreatixtech.com
+              </a>
+            </p>
           </div>
           <div className="flex flex-wrap gap-6">
-            <a href="mailto:hello@checkouthq.com" className="hover:text-white">
+            <a href="mailto:akoma@kreatixtech.com" className="hover:text-white">
               Contact
             </a>
-            <a href="https://checkout-77d99.web.app/login" className="hover:text-white">
+            <Link to="/login" className="hover:text-white">
               Console login
-            </a>
-            <a href="https://cal.com/checkouthq/demo" target="_blank" rel="noreferrer" className="hover:text-white">
+            </Link>
+            <button onClick={() => setShowDemoForm(true)} className="hover:text-white">
               Book demo
-            </a>
-              <Link to="/get-app" className="hover:text-white">
-                Get app
-              </Link>
+            </button>
+            <Link to="/get-app" className="hover:text-white">
+              Get app
+            </Link>
             <Link to="/privacy" className="hover:text-white">
               Privacy
             </Link>
           </div>
-          <p className="text-xs text-slate-500">&copy; {new Date().getFullYear()} Checkout. All rights reserved.</p>
+          <div className="text-xs text-slate-500">
+            <p>&copy; {new Date().getFullYear()} Checkout. All rights reserved.</p>
+            <p className="mt-2">
+              Powered by{' '}
+              <a 
+                href="https://kreatixtech.com" 
+                target="_blank" 
+                rel="noreferrer" 
+                className="text-sky-400 hover:text-sky-300 font-semibold transition"
+              >
+                Kreatix Technologies
+              </a>
+            </p>
+          </div>
         </div>
       </footer>
     </div>

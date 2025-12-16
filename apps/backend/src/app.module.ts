@@ -30,6 +30,7 @@ import { CustomizationModule } from './customization/customization.module';
 import { UploadModule } from './upload/upload.module';
 import { PlatformModule } from './platform/platform.module';
 import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module';
+import { ContactModule } from './contact/contact.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { SubscriptionPricingModule } from './subscription-pricing/subscription-p
     CustomizationModule,
     UploadModule,
     SubscriptionPricingModule,
+    ContactModule,
   ],
   providers: [
     {
