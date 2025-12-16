@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { FirestoreService } from '../firestore/firestore.service';
+import { PrismaService } from '../database/prisma.service';
 import { SubscriptionPricingEntity } from './subscription-pricing.entity';
 
 const COLLECTION = 'subscription_pricing';
@@ -7,13 +8,41 @@ const DEFAULT_DOC_ID = 'default';
 
 @Injectable()
 export class SubscriptionPricingRepository {
-  constructor(private readonly firestore: FirestoreService) {}
+  constructor(
+    private readonly firestore: FirestoreService,
+    private readonly prismaService: PrismaService,
+  ) {}
+
+  private isPostgresEnabled(): boolean {
+    return (process.env.DB_PROVIDER || '').toLowerCase() === 'postgres';
+  }
 
   /**
    * Get the default subscription pricing configuration
    * If it doesn't exist, returns default values
    */
   async get(): Promise<SubscriptionPricingEntity> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.subscriptionPricing.findUnique({
+        where: { id: DEFAULT_DOC_ID },
+      });
+
+      if (!row) {
+        return this.getDefaultPricing();
+      }
+
+      return {
+        id: row.id,
+        free: row.free as any,
+        starter: row.starter as any,
+        professional: row.professional as any,
+        enterprise: row.enterprise as any,
+        lifetime: row.lifetime as any,
+        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
+        updatedBy: row.updatedBy ?? undefined,
+      };
+    }
+
     const docRef = this.firestore.collection(COLLECTION).doc(DEFAULT_DOC_ID);
     const snapshot = await docRef.get();
 
@@ -33,13 +62,11 @@ export class SubscriptionPricingRepository {
    * Update the subscription pricing configuration
    */
   async update(updates: Partial<SubscriptionPricingEntity>): Promise<SubscriptionPricingEntity> {
-    const docRef = this.firestore.collection(COLLECTION).doc(DEFAULT_DOC_ID);
-
     // Get current config
     const current = await this.get();
 
     // Merge updates with current config
-    const updated = {
+    const updated: SubscriptionPricingEntity = {
       ...current,
       ...updates,
       free: { ...current.free, ...(updates.free || {}) },
@@ -50,6 +77,33 @@ export class SubscriptionPricingRepository {
       updatedAt: new Date().toISOString(),
     };
 
+    if (this.isPostgresEnabled()) {
+      await this.prismaService.prisma.subscriptionPricing.upsert({
+        where: { id: DEFAULT_DOC_ID },
+        update: {
+          free: updated.free as any,
+          starter: updated.starter as any,
+          professional: updated.professional as any,
+          enterprise: updated.enterprise as any,
+          lifetime: updated.lifetime as any,
+          updatedAt: updated.updatedAt ? new Date(updated.updatedAt) : undefined,
+          updatedBy: updated.updatedBy,
+        },
+        create: {
+          id: DEFAULT_DOC_ID,
+          free: updated.free as any,
+          starter: updated.starter as any,
+          professional: updated.professional as any,
+          enterprise: updated.enterprise as any,
+          lifetime: updated.lifetime as any,
+          updatedAt: updated.updatedAt ? new Date(updated.updatedAt) : undefined,
+          updatedBy: updated.updatedBy,
+        },
+      });
+      return updated;
+    }
+
+    const docRef = this.firestore.collection(COLLECTION).doc(DEFAULT_DOC_ID);
     await docRef.set(updated);
 
     return updated;

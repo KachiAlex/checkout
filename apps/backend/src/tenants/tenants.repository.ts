@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { TenantPlan, TenantStatus, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
+import { PrismaService } from '../database/prisma.service';
 
 export interface TenantRecord {
   id: string;
@@ -33,14 +34,81 @@ type TenantDocument = Omit<TenantRecord, 'id' | 'createdAt' | 'updatedAt' | 'bil
 export class TenantsRepository {
   private readonly collection = this.firestore.collection<TenantDocument>('tenants');
 
-  constructor(private readonly firestore: FirestoreService) {}
+  constructor(
+    private readonly firestore: FirestoreService,
+    private readonly prismaService: PrismaService,
+  ) {}
+
+  private isPostgresEnabled(): boolean {
+    return (process.env.DB_PROVIDER || '').toLowerCase() === 'postgres';
+  }
+
+  private toPlan(value: unknown): TenantPlan {
+    const normalized = String(value || '').toLowerCase();
+    return normalized as TenantPlan;
+  }
+
+  private toStatus(value: unknown): TenantStatus {
+    const normalized = String(value || '').toLowerCase();
+    return normalized as TenantStatus;
+  }
+
+  private toPrismaEnum(value: string): string {
+    return value.trim().toUpperCase();
+  }
 
   async findAll(): Promise<TenantRecord[]> {
+    if (this.isPostgresEnabled()) {
+      const rows = await this.prismaService.prisma.tenant.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        plan: this.toPlan(row.plan),
+        status: this.toStatus(row.status),
+        industry: row.industry as Industry | undefined,
+        featureFlags: row.featureFlags as IndustryFeatureFlags | undefined,
+        seatLimit: row.seatLimit ?? undefined,
+        contactEmail: row.contactEmail ?? undefined,
+        billingCycleStart: row.billingCycleStart ?? undefined,
+        billingCycleEnd: row.billingCycleEnd ?? undefined,
+        metadata: row.metadata as Record<string, unknown> | undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      }));
+    }
+
     const snapshot = await this.collection.orderBy('createdAt', 'desc').get();
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
   }
 
   async findById(id: string): Promise<TenantRecord | null> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.tenant.findUnique({ where: { id } });
+      if (!row) {
+        return null;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        plan: this.toPlan(row.plan),
+        status: this.toStatus(row.status),
+        industry: row.industry as Industry | undefined,
+        featureFlags: row.featureFlags as IndustryFeatureFlags | undefined,
+        seatLimit: row.seatLimit ?? undefined,
+        contactEmail: row.contactEmail ?? undefined,
+        billingCycleStart: row.billingCycleStart ?? undefined,
+        billingCycleEnd: row.billingCycleEnd ?? undefined,
+        metadata: row.metadata as Record<string, unknown> | undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const doc = await this.collection.doc(id).get();
     if (!doc.exists) {
       return null;
@@ -49,6 +117,29 @@ export class TenantsRepository {
   }
 
   async findBySlug(slug: string): Promise<TenantRecord | null> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.tenant.findUnique({ where: { slug } });
+      if (!row) {
+        return null;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        plan: this.toPlan(row.plan),
+        status: this.toStatus(row.status),
+        industry: row.industry as Industry | undefined,
+        featureFlags: row.featureFlags as IndustryFeatureFlags | undefined,
+        seatLimit: row.seatLimit ?? undefined,
+        contactEmail: row.contactEmail ?? undefined,
+        billingCycleStart: row.billingCycleStart ?? undefined,
+        billingCycleEnd: row.billingCycleEnd ?? undefined,
+        metadata: row.metadata as Record<string, unknown> | undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const snapshot = await this.collection.where('slug', '==', slug).limit(1).get();
     if (snapshot.empty) {
       return null;
@@ -60,6 +151,41 @@ export class TenantsRepository {
   async create(data: Omit<TenantRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<TenantRecord> {
     if (!data.name || !data.slug) {
       throw new BadRequestException('Tenant name and slug are required');
+    }
+
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.tenant.create({
+        data: {
+          name: data.name,
+          slug: data.slug,
+          plan: this.toPrismaEnum(data.plan) as any,
+          status: this.toPrismaEnum(data.status) as any,
+          industry: data.industry,
+          featureFlags: data.featureFlags as any,
+          seatLimit: data.seatLimit,
+          contactEmail: data.contactEmail,
+          billingCycleStart: data.billingCycleStart,
+          billingCycleEnd: data.billingCycleEnd,
+          metadata: data.metadata as any,
+        },
+      });
+
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        plan: this.toPlan(row.plan),
+        status: this.toStatus(row.status),
+        industry: row.industry as Industry | undefined,
+        featureFlags: row.featureFlags as IndustryFeatureFlags | undefined,
+        seatLimit: row.seatLimit ?? undefined,
+        contactEmail: row.contactEmail ?? undefined,
+        billingCycleStart: row.billingCycleStart ?? undefined,
+        billingCycleEnd: row.billingCycleEnd ?? undefined,
+        metadata: row.metadata as Record<string, unknown> | undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
     }
 
     const now = FieldValue.serverTimestamp();
@@ -85,6 +211,47 @@ export class TenantsRepository {
   }
 
   async update(id: string, update: Partial<Omit<TenantRecord, 'id' | 'createdAt' | 'updatedAt'>>): Promise<TenantRecord> {
+    if (this.isPostgresEnabled()) {
+      const existing = await this.prismaService.prisma.tenant.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundException(`Tenant ${id} not found`);
+      }
+
+      const row = await this.prismaService.prisma.tenant.update({
+        where: { id },
+        data: {
+          name: update.name,
+          slug: update.slug,
+          plan: update.plan ? (this.toPrismaEnum(update.plan) as any) : undefined,
+          status: update.status ? (this.toPrismaEnum(update.status) as any) : undefined,
+          seatLimit: update.seatLimit,
+          contactEmail: update.contactEmail,
+          industry: update.industry,
+          featureFlags: update.featureFlags as any,
+          metadata: update.metadata as any,
+          billingCycleStart: update.billingCycleStart,
+          billingCycleEnd: update.billingCycleEnd,
+        },
+      });
+
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        plan: this.toPlan(row.plan),
+        status: this.toStatus(row.status),
+        industry: row.industry as Industry | undefined,
+        featureFlags: row.featureFlags as IndustryFeatureFlags | undefined,
+        seatLimit: row.seatLimit ?? undefined,
+        contactEmail: row.contactEmail ?? undefined,
+        billingCycleStart: row.billingCycleStart ?? undefined,
+        billingCycleEnd: row.billingCycleEnd ?? undefined,
+        metadata: row.metadata as Record<string, unknown> | undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
     if (!existing.exists) {
@@ -138,6 +305,15 @@ export class TenantsRepository {
   }
 
   async delete(id: string): Promise<void> {
+    if (this.isPostgresEnabled()) {
+      const existing = await this.prismaService.prisma.tenant.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundException(`Tenant ${id} not found`);
+      }
+      await this.prismaService.prisma.tenant.delete({ where: { id } });
+      return;
+    }
+
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
     if (!existing.exists) {
