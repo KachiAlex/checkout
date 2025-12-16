@@ -27,7 +27,7 @@ import { TaxSettingsModule } from './tax-settings/tax-settings.module';
 // import { CustomizationModule } from './customization/customization.module'; // Temporarily disabled due to decorator compatibility issues
 import { UploadModule } from './upload/upload.module';
 import { PlatformModule } from './platform/platform.module';
-// import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module'; // Temporarily disabled due to decorator compatibility issues
+import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module';
 import { ContactModule } from './contact/contact.module';
 
 @Module({
@@ -68,7 +68,7 @@ import { ContactModule } from './contact/contact.module';
     TaxSettingsModule,
     // CustomizationModule, // Temporarily disabled due to decorator compatibility issues
     UploadModule,
-    // SubscriptionPricingModule, // Temporarily disabled due to decorator compatibility issues
+    SubscriptionPricingModule,
     ContactModule,
   ],
   providers: [],
