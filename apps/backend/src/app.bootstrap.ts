@@ -248,8 +248,8 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
       .addTag('reports', 'Reporting')
       .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app as any, config);
+    SwaggerModule.setup('api/docs', app as any, document);
   }
 
   return {

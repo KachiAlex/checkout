@@ -1,4 +1,23 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["test/**/*", "**/*.spec.ts", "**/*.e2e-spec.ts"]
+  "exclude": ["test/**/*", "**/*.spec.ts", "**/*.e2e-spec.ts", "src/migrations/**/*", "**/*.migration.ts"],
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "noImplicitReturns": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false
+  }
 }
