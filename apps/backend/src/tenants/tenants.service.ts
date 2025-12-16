@@ -43,11 +43,13 @@ export class TenantsService {
       dto.featureFlags,
     );
 
+    const initialStatus = dto.plan === TenantPlan.FREE ? TenantStatus.ACTIVE : TenantStatus.PENDING;
+
     const tenant = await this.tenantsRepository.create({
       name: dto.name.trim(),
       slug,
       plan: dto.plan,
-      status: TenantStatus.PENDING,
+      status: initialStatus,
       industry,
       featureFlags,
       seatLimit: dto.seatLimit,
