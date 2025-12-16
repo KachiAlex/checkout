@@ -3,7 +3,7 @@
     "module": "commonjs",
     "target": "ES2020",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "strict": false,
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
@@ -26,14 +26,6 @@
     "src/**/*.ts"
   ],
   "exclude": [
-    "src/migrations/**/*",
-    "src/users/**/*",
-    "src/auth/**/*",
-    "src/customers/**/*",
-    "src/brands/**/*",
-    "src/categories/**/*",
-    "src/customization/**/*",
-    "src/subscription-pricing/**/*",
     "test/**/*",
     "**/*.spec.ts",
     "**/*.e2e-spec.ts",

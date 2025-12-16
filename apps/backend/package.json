@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "echo 'TypeScript version:' && tsc --version && echo 'Files in src/:' && ls -la src/ | head -10 && echo 'Testing direct compilation of main.ts...' && tsc src/main.ts --outDir dist --target ES2021 --module commonjs --skipLibCheck && echo 'Direct compilation result:' && ls -la dist/ && echo 'Now trying full project compilation...' && tsc --project tsconfig.build.json && echo 'Contents of dist/ after compilation:' && ls -la dist/ 2>/dev/null || echo 'dist/ does not exist' && echo 'Contents of dist/src/ after compilation:' && ls -la dist/src/ 2>/dev/null || echo 'dist/src/ does not exist' && echo 'Build completed, checking for main.js:' && test -f dist/src/main.js && echo '✅ main.js exists' || echo '❌ main.js not found'",
+    "build": "tsc --project tsconfig.build.json && node -e \"const fs=require('fs'); if(!fs.existsSync('dist/src/main.js')){ console.error('❌ Build succeeded but dist/src/main.js not found'); process.exit(1);} console.log('✅ Build OK: dist/src/main.js');\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
