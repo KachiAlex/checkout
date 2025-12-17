@@ -1,6 +1,6 @@
 import { AppDataSource } from './src/database/data-source';
 import { User } from './src/users/entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 async function testPIN() {
   await AppDataSource.initialize();

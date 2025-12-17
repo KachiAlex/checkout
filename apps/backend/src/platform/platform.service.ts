@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { TenantsService } from '../tenants/tenants.service';
 import { TenantsRepository } from '../tenants/tenants.repository';
 import { UsersRepository } from '../users/users.repository';
