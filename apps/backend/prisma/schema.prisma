@@ -31,6 +31,21 @@ enum UserRole {
   ADMIN
 }
 
+enum OrderStatus {
+  DRAFT
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
 model Tenant {
   id               String      @id @default(uuid())
   name             String
@@ -48,6 +63,11 @@ model Tenant {
   updatedAt        DateTime    @updatedAt
 
   users            User[]
+  brands           Brand[]
+  categories       Category[]
+  locations        Location[]
+  products         Product[]
+  orders           Order[]
 
   @@index([createdAt])
 }
@@ -71,6 +91,162 @@ model User {
   @@index([tenantId])
   @@index([email])
   @@index([deviceId])
+}
+
+model Brand {
+  id          String   @id
+  tenantId    String
+  name        String
+  description String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model Category {
+  id          String   @id
+  tenantId    String
+  name        String
+  description String?
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model Location {
+  id             String   @id
+  tenantId       String?
+  name           String
+  address        String?
+  timezone       String
+  defaultPrinter String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  inventory      Inventory[]
+  orders         Order[]
+
+  @@index([tenantId])
+}
+
+model Product {
+  id          String   @id
+  tenantId    String
+  sku         String
+  barcode     String?
+  name        String
+  description String?
+  categoryId  String?
+  categoryName String?
+  brandId     String?
+  brandName   String?
+  priceCents  Int
+  costCents   Int?
+  taxRate     Float   @default(0)
+  variants    Json?
+  images      String[] @default([])
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand       Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  inventory   Inventory[]
+  orderItems  OrderItem[]
+
+  @@index([tenantId])
+  @@unique([tenantId, sku])
+  @@index([barcode])
+  @@index([categoryId])
+  @@index([brandId])
+}
+
+model Inventory {
+  id             String   @id
+  productId      String
+  locationId     String
+  quantity       Int
+  reorderPoint   Int?
+  maxStock       Int?
+  costCents      Int?
+  salesPriceCents Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, locationId])
+  @@index([locationId])
+  @@index([productId])
+}
+
+model Order {
+  id            String       @id
+  uuid          String
+  orderNumber   String
+  tenantId      String
+  locationId    String
+  customerId    String?
+  subtotalCents Int
+  taxCents      Int
+  discountCents Int
+  totalCents    Int
+  status        OrderStatus
+  paymentStatus PaymentStatus?
+  isCreditOrder Boolean      @default(false)
+  paidAt        DateTime?
+  returnedAt    DateTime?
+  createdBy     String
+  deviceId      String?
+  completedAt   DateTime?
+  notes         String?
+  synced        Boolean      @default(false)
+  isHeld        Boolean      @default(false)
+  heldAt        DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location      Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  items         OrderItem[]
+
+  @@index([tenantId])
+  @@index([locationId])
+  @@index([createdAt])
+  @@unique([tenantId, orderNumber])
+  @@unique([uuid])
+}
+
+model OrderItem {
+  id            String  @id
+  orderId       String
+  lineNumber    Int
+  productId     String
+  quantity      Int
+  priceCents    Int
+  taxCents      Int
+  discountCents Int
+
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, lineNumber])
+  @@index([productId])
 }
 
 model SubscriptionPricing {
