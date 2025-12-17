@@ -83,6 +83,7 @@ async function main() {
 
   try {
     let tenantsUpserted = 0;
+    let tenantsEnsuredFromReferences = 0;
     let usersUpserted = 0;
     let usersSkippedMissingTenant = 0;
     let usersSkippedUnknownTenant = 0;
@@ -102,15 +103,9 @@ async function main() {
     let inventorySkipped = 0;
     let ordersSkipped = 0;
 
-    const tenantsSnap = await firestore.collection('tenants').get();
-    const tenantIds = new Set<string>();
-    for (const doc of tenantsSnap.docs) {
-      const data = doc.data() as any;
-
-      tenantIds.add(doc.id);
-
+    const upsertTenant = async (tenantId: string, data: any) => {
       await prisma.tenant.upsert({
-        where: { id: doc.id },
+        where: { id: tenantId },
         update: {
           name: data.name,
           slug: data.slug,
@@ -127,7 +122,7 @@ async function main() {
           updatedAt: data.updatedAt?.toDate?.() ?? undefined,
         },
         create: {
-          id: doc.id,
+          id: tenantId,
           name: data.name,
           slug: data.slug,
           plan: String(data.plan || '').toUpperCase() as any,
@@ -143,6 +138,61 @@ async function main() {
           updatedAt: data.updatedAt?.toDate?.() ?? undefined,
         },
       });
+    };
+
+    const ensureTenant = async (
+      tenantId: string | null | undefined,
+      reason: string,
+    ): Promise<boolean> => {
+      if (!tenantId) return false;
+      if (tenantIds.has(tenantId)) return true;
+
+      const tenantDoc = await firestore.collection('tenants').doc(tenantId).get();
+      if (tenantDoc.exists) {
+        const data = tenantDoc.data() as any;
+        await upsertTenant(tenantId, data);
+        tenantIds.add(tenantId);
+        tenantsUpserted += 1;
+        tenantsEnsuredFromReferences += 1;
+        console.log(`Ensured tenant ${tenantId} from ${reason}`);
+        return true;
+      }
+
+      const placeholder = {
+        name: `Unknown Tenant ${tenantId}`,
+        slug: `unknown-${tenantId}`,
+        plan: 'FREE',
+        status: 'ACTIVE',
+        industry: null,
+        featureFlags: null,
+        seatLimit: null,
+        contactEmail: null,
+        billingCycleStart: null,
+        billingCycleEnd: null,
+        metadata: {
+          placeholder: true,
+          reason,
+        },
+      };
+
+      await upsertTenant(tenantId, placeholder);
+      tenantIds.add(tenantId);
+      tenantsUpserted += 1;
+      tenantsEnsuredFromReferences += 1;
+      console.warn(
+        `Created placeholder tenant ${tenantId} (not found in Firestore tenants) from ${reason}`,
+      );
+      return true;
+    };
+
+    const tenantsSnap = await firestore.collection('tenants').get();
+    const tenantIds = new Set<string>();
+    for (const doc of tenantsSnap.docs) {
+      const data = doc.data() as any;
+
+      tenantIds.add(doc.id);
+
+      await upsertTenant(doc.id, data);
 
       tenantsUpserted += 1;
     }
@@ -152,6 +202,7 @@ async function main() {
     for (const doc of brandsSnap.docs) {
       const data = doc.data() as any;
 
+      await ensureTenant(data.tenantId, `brand ${doc.id}`);
       if (!data.tenantId || !tenantIds.has(data.tenantId)) {
         brandsSkipped += 1;
         console.warn(`Skipping brand ${doc.id}: missing/unknown tenantId`);
@@ -189,6 +240,7 @@ async function main() {
     for (const doc of categoriesSnap.docs) {
       const data = doc.data() as any;
 
+      await ensureTenant(data.tenantId, `category ${doc.id}`);
       if (!data.tenantId || !tenantIds.has(data.tenantId)) {
         categoriesSkipped += 1;
         console.warn(`Skipping category ${doc.id}: missing/unknown tenantId`);
@@ -223,9 +275,11 @@ async function main() {
 
     const locationsSnap = await firestore.collection('locations').get();
     const locationIds = new Set<string>();
+    const locationTenantById = new Map<string, string | null>();
     for (const doc of locationsSnap.docs) {
       const data = doc.data() as any;
 
+      await ensureTenant(data.tenantId, `location ${doc.id}`);
       const tenantId = data.tenantId && tenantIds.has(data.tenantId) ? data.tenantId : null;
       if (data.tenantId && !tenantId) {
         locationsSkipped += 1;
@@ -234,6 +288,7 @@ async function main() {
       }
 
       locationIds.add(doc.id);
+      locationTenantById.set(doc.id, tenantId);
 
       await prisma.location.upsert({
         where: { id: doc.id },
@@ -266,6 +321,7 @@ async function main() {
     for (const doc of productsSnap.docs) {
       const data = doc.data() as any;
 
+      await ensureTenant(data.tenantId, `product ${doc.id}`);
       if (!data.tenantId || !tenantIds.has(data.tenantId)) {
         productsSkipped += 1;
         console.warn(`Skipping product ${doc.id}: missing/unknown tenantId`);
@@ -385,9 +441,16 @@ async function main() {
     for (const doc of ordersSnap.docs) {
       const data = doc.data() as any;
 
-      if (!data.tenantId || !tenantIds.has(data.tenantId)) {
+      const inferredTenantId =
+        data.tenantId ??
+        (data.locationId ? locationTenantById.get(String(data.locationId)) : null);
+
+      await ensureTenant(inferredTenantId, `order ${doc.id}`);
+      if (!inferredTenantId || !tenantIds.has(inferredTenantId)) {
         ordersSkipped += 1;
-        console.warn(`Skipping order ${doc.id}: missing/unknown tenantId`);
+        console.warn(
+          `Skipping order ${doc.id}: missing/unknown tenantId (order tenantId: ${data.tenantId ?? 'null'}, inferred from location: ${inferredTenantId ?? 'null'})`,
+        );
         continue;
       }
       if (!data.locationId || !locationIds.has(data.locationId)) {
@@ -409,7 +472,7 @@ async function main() {
         update: {
           uuid: data.uuid,
           orderNumber: data.orderNumber,
-          tenantId: data.tenantId,
+          tenantId: inferredTenantId,
           locationId: data.locationId,
           customerId: data.customerId ?? null,
           subtotalCents: Number(data.subtotalCents ?? 0),
@@ -435,7 +498,7 @@ async function main() {
           id: doc.id,
           uuid: data.uuid,
           orderNumber: data.orderNumber,
-          tenantId: data.tenantId,
+          tenantId: inferredTenantId,
           locationId: data.locationId,
           customerId: data.customerId ?? null,
           subtotalCents: Number(data.subtotalCents ?? 0),
@@ -579,7 +642,7 @@ async function main() {
     }
 
     console.log(
-      `✅ Migration complete. Tenants: ${tenantsUpserted}. Users: ${usersUpserted} (skipped missing tenantId: ${usersSkippedMissingTenant}, skipped unknown tenantId: ${usersSkippedUnknownTenant}). Brands: ${brandsUpserted} (skipped: ${brandsSkipped}). Categories: ${categoriesUpserted} (skipped: ${categoriesSkipped}). Locations: ${locationsUpserted} (skipped: ${locationsSkipped}). Products: ${productsUpserted} (skipped: ${productsSkipped}). Inventory: ${inventoryUpserted} (skipped: ${inventorySkipped}). Orders: ${ordersUpserted} (skipped: ${ordersSkipped}). OrderItems: ${orderItemsUpserted}.`,
+      `✅ Migration complete. Tenants: ${tenantsUpserted} (ensured from references: ${tenantsEnsuredFromReferences}). Users: ${usersUpserted} (skipped missing tenantId: ${usersSkippedMissingTenant}, skipped unknown tenantId: ${usersSkippedUnknownTenant}). Brands: ${brandsUpserted} (skipped: ${brandsSkipped}). Categories: ${categoriesUpserted} (skipped: ${categoriesSkipped}). Locations: ${locationsUpserted} (skipped: ${locationsSkipped}). Products: ${productsUpserted} (skipped: ${productsSkipped}). Inventory: ${inventoryUpserted} (skipped: ${inventorySkipped}). Orders: ${ordersUpserted} (skipped: ${ordersSkipped}). OrderItems: ${orderItemsUpserted}.`,
     );
   } finally {
     await prisma.$disconnect();
