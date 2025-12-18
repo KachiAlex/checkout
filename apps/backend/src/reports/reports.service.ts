@@ -645,6 +645,7 @@ export class ReportsService {
         this.ordersRepository.list({
           status: OrderStatus.COMPLETED,
           locationId,
+          tenantId,
           from: last30Days,
           to: now,
         }),
@@ -708,12 +709,14 @@ export class ReportsService {
         this.ordersRepository.list({
           status: OrderStatus.COMPLETED,
           locationId,
+          tenantId,
           from: last7Days,
           to: now,
         }),
         this.ordersRepository.list({
           status: OrderStatus.COMPLETED,
           locationId,
+          tenantId,
           from: previous7Days,
           to: last7Days,
         }),
@@ -739,54 +742,49 @@ export class ReportsService {
     }
 
     // 3. Customer inactivity (customers who haven't purchased in 60+ days but used to purchase regularly)
-    // OPTIMIZED: Batch customer order queries instead of individual queries per customer
+    // OPTIMIZED: Avoid per-customer Firestore queries (can exhaust quota). Fetch orders once and group in-memory.
     try {
       if (tenantId && locationId) {
         const allCustomers = await this.customersRepository.findAll(tenantId);
-        const limitedCustomers = allCustomers.slice(0, 50); // Limit to first 50 to avoid performance issues
+        const limitedCustomers = allCustomers.slice(0, 200);
 
-        // Fetch all orders for these customers in parallel batches
-        const customerOrderQueries = limitedCustomers.map((customer) =>
-          Promise.all([
-            this.ordersRepository.list({
-              status: OrderStatus.COMPLETED,
-              locationId,
+        const ordersLast120Days = await this.ordersRepository.list({
+          status: OrderStatus.COMPLETED,
+          locationId,
+          tenantId,
+          from: last120Days,
+          to: now,
+        });
+
+        const lastPurchaseByCustomerId = new Map<string, Date>();
+        for (const order of ordersLast120Days) {
+          if (!order.customerId) continue;
+          const existing = lastPurchaseByCustomerId.get(order.customerId);
+          if (!existing || order.createdAt > existing) {
+            lastPurchaseByCustomerId.set(order.customerId, order.createdAt);
+          }
+        }
+
+        for (const customer of limitedCustomers) {
+          const lastPurchase = lastPurchaseByCustomerId.get(customer.id);
+          if (!lastPurchase) {
+            continue;
+          }
+
+          const daysSinceLastPurchase = Math.floor(
+            (now.getTime() - lastPurchase.getTime()) / (24 * 60 * 60 * 1000),
+          );
+
+          if (daysSinceLastPurchase >= 60) {
+            alerts.push({
+              type: 'customer_inactive',
+              severity: daysSinceLastPurchase >= 90 ? 'warning' : 'info',
+              title: `Customer Inactivity: ${customer.name}`,
+              message: `Customer hasn't purchased in ${daysSinceLastPurchase} days. Consider sending a promotional offer.`,
               customerId: customer.id,
-              from: last60Days,
-              to: now,
-            }),
-            this.ordersRepository.list({
-              status: OrderStatus.COMPLETED,
-              locationId,
-              customerId: customer.id,
-              from: last120Days,
-              to: last60Days,
-            }),
-          ]).then(([recentOrders, previousOrders]) => ({
-            customer,
-            recentOrders,
-            previousOrders,
-          }))
-        );
-
-        const customerOrderResults = await Promise.all(customerOrderQueries);
-
-        for (const { customer, recentOrders, previousOrders } of customerOrderResults) {
-          if (recentOrders.length === 0 && previousOrders.length > 0) {
-            const daysSinceLastPurchase = Math.floor(
-              (now.getTime() - previousOrders[0].createdAt.getTime()) / (24 * 60 * 60 * 1000)
-            );
-            if (daysSinceLastPurchase >= 60) {
-              alerts.push({
-                type: 'customer_inactive',
-                severity: daysSinceLastPurchase >= 90 ? 'warning' : 'info',
-                title: `Customer Inactivity: ${customer.name}`,
-                message: `Customer hasn't purchased in ${daysSinceLastPurchase} days. Consider sending a promotional offer.`,
-                customerId: customer.id,
-                customerName: customer.name,
-                daysSinceLastPurchase,
-              });
-            }
+              customerName: customer.name,
+              daysSinceLastPurchase,
+            });
           }
         }
       }
