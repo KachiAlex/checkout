@@ -283,6 +283,10 @@ export function ReportsPage() {
     { id: 'purchase-orders', label: 'Purchase Orders', icon: '📋' },
   ], []);
 
+  const activeTabMeta = useMemo(() => {
+    return tabs.find((t) => t.id === activeTab) ?? tabs[0];
+  }, [activeTab, tabs]);
+
   // Memoize sales rows computation (now from server-paginated data)
   const salesRows = useMemo(() => {
     if (!salesReport?.orders) return [];
@@ -411,23 +415,52 @@ export function ReportsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="mb-4 sm:mb-6 overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
-          <div className="flex gap-2 sm:gap-3 border-b theme-border min-w-max sm:min-w-0">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-medium transition border-b-2 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-sky-400 text-sky-400 bg-sky-400/10'
-                    : 'border-transparent theme-text-secondary hover:theme-text-primary hover:bg-white/5'
-                }`}
-              >
-                <span className="text-base sm:text-lg">{tab.icon}</span>
-                <span className="hidden min-[400px]:inline sm:hidden">{tab.label.split(' ')[0]}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
+        <div className="mb-4 sm:mb-6 space-y-3">
+          <div className="sm:hidden">
+            <label className="block text-xs font-medium theme-text-secondary mb-1.5">Report</label>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as ReportTab)}
+              className="w-full theme-surface rounded-lg border theme-border px-3 py-2.5 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
+            >
+              {tabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.icon} {tab.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hidden sm:block theme-surface rounded-xl border theme-border p-2">
+            <div className="flex flex-wrap gap-2">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium transition whitespace-nowrap border ${
+                    activeTab === tab.id
+                      ? 'bg-sky-400/15 text-sky-300 border-sky-400/40'
+                      : 'theme-text-secondary border-transparent hover:theme-text-primary hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-base">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-semibold theme-text-primary truncate">
+                {activeTabMeta.icon} {activeTabMeta.label}
+              </h2>
+              <p className="text-xs sm:text-sm theme-text-secondary truncate">
+                {locationId ? `Location: ${locations.find((l) => l.id === locationId)?.name ?? locationId}` : 'All locations'}
+                {' • '}
+                {dateRange.from} to {dateRange.to}
+              </p>
+            </div>
           </div>
         </div>
 

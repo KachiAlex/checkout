@@ -67,6 +67,9 @@ Thumbs.db
 !**/examples/*.key
 !**/examples/*.crt
 
+ # Local secrets
+secrets/
+
 # Desktop releases
 apps/desktop/release/
 

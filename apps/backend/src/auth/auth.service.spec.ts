@@ -5,9 +5,9 @@ import { AuthService } from './auth.service';
 import { UsersRepository, UserRecord } from '../users/users.repository';
 import { TenantsRepository, TenantRecord } from '../tenants/tenants.repository';
 import { TenantPlan, TenantStatus } from '@pos-checkout/shared';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
-jest.mock('bcrypt', () => ({
+jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
 }));
 

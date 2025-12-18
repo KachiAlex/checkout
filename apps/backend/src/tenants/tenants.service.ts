@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantsRepository, TenantRecord } from './tenants.repository';
@@ -43,11 +43,13 @@ export class TenantsService {
       dto.featureFlags,
     );
 
+    const initialStatus = dto.plan === TenantPlan.FREE ? TenantStatus.ACTIVE : TenantStatus.PENDING;
+
     const tenant = await this.tenantsRepository.create({
       name: dto.name.trim(),
       slug,
       plan: dto.plan,
-      status: TenantStatus.PENDING,
+      status: initialStatus,
       industry,
       featureFlags,
       seatLimit: dto.seatLimit,
@@ -231,6 +233,18 @@ export class TenantsService {
       status: TenantStatus.ACTIVE,
       metadata,
     });
+  }
+
+  async deleteTenant(id: string): Promise<{ tenantId: string; removedUsers: number }> {
+    await this.findById(id);
+
+    const removedUsers = await this.usersRepository.deleteByTenantId(id);
+    await this.tenantsRepository.delete(id);
+
+    return {
+      tenantId: id,
+      removedUsers,
+    };
   }
 }
 

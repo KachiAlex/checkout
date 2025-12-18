@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { FieldValue, Query, Timestamp } from 'firebase-admin/firestore';
 import { UserRole } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
+import { PrismaService } from '../database/prisma.service';
 
 export interface UserRecord {
   id: string;
@@ -29,9 +30,46 @@ type UserDocument = Omit<UserRecord, 'id' | 'createdAt' | 'updatedAt'> & {
 export class UsersRepository {
   private readonly collection = this.firestore.collection<UserDocument>('users');
 
-  constructor(private readonly firestore: FirestoreService) {}
+  constructor(
+    private readonly firestore: FirestoreService,
+    private readonly prismaService: PrismaService,
+  ) {}
+
+  private isPostgresEnabled(): boolean {
+    return (process.env.DB_PROVIDER || '').toLowerCase() === 'postgres';
+  }
+
+  private toRole(value: unknown): UserRole {
+    const normalized = String(value || '').toLowerCase();
+    return normalized as UserRole;
+  }
+
+  private toPrismaEnum(value: string): string {
+    return value.trim().toUpperCase();
+  }
 
   async findAll(tenantId?: string): Promise<UserRecord[]> {
+    if (this.isPostgresEnabled()) {
+      const rows = await this.prismaService.prisma.user.findMany({
+        where: tenantId ? { tenantId } : undefined,
+      });
+
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      }));
+    }
+
     let query = this.collection as Query<UserDocument>;
     if (tenantId) {
       query = query.where('tenantId', '==', tenantId);
@@ -41,6 +79,27 @@ export class UsersRepository {
   }
 
   async findById(id: string): Promise<UserRecord | null> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.user.findUnique({ where: { id } });
+      if (!row) {
+        return null;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const doc = await this.collection.doc(id).get();
     if (!doc.exists) {
       return null;
@@ -55,6 +114,35 @@ export class UsersRepository {
   async findByIds(ids: string[]): Promise<Map<string, UserRecord>> {
     if (ids.length === 0) {
       return new Map();
+    }
+
+    if (this.isPostgresEnabled()) {
+      const result = new Map<string, UserRecord>();
+      const uniqueIds = [...new Set(ids)];
+      const chunkSize = 500;
+      for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+        const chunk = uniqueIds.slice(i, i + chunkSize);
+        const rows = await this.prismaService.prisma.user.findMany({
+          where: { id: { in: chunk } },
+        });
+        rows.forEach((row) => {
+          result.set(row.id, {
+            id: row.id,
+            name: row.name,
+            email: row.email ?? undefined,
+            role: this.toRole(row.role),
+            pinHash: row.pinHash,
+            tenantId: row.tenantId,
+            isPlatformAdmin: row.isPlatformAdmin,
+            deviceId: row.deviceId ?? undefined,
+            locationId: row.locationId ?? undefined,
+            publicKey: row.publicKey ?? undefined,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          });
+        });
+      }
+      return result;
     }
 
     const result = new Map<string, UserRecord>();
@@ -88,6 +176,29 @@ export class UsersRepository {
   }
 
   async findByDeviceId(deviceId: string, tenantId: string): Promise<UserRecord | null> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.user.findFirst({
+        where: { tenantId, deviceId },
+      });
+      if (!row) {
+        return null;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const snapshot = await this.collection
       .where('tenantId', '==', tenantId)
       .where('deviceId', '==', deviceId)
@@ -101,6 +212,29 @@ export class UsersRepository {
   }
 
   async findByRole(role: UserRole, tenantId: string): Promise<UserRecord | null> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.user.findFirst({
+        where: { tenantId, role: this.toPrismaEnum(role) as any },
+      });
+      if (!row) {
+        return null;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const snapshot = await this.collection
       .where('tenantId', '==', tenantId)
       .where('role', '==', role)
@@ -114,6 +248,29 @@ export class UsersRepository {
   }
 
   async findByEmail(email: string): Promise<UserRecord | null> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.user.findFirst({
+        where: { email: email.toLowerCase() },
+      });
+      if (!row) {
+        return null;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const snapshot = await this.collection.where('email', '==', email.toLowerCase()).limit(1).get();
     if (snapshot.empty) {
       return null;
@@ -125,6 +282,65 @@ export class UsersRepository {
   async save(record: Partial<UserRecord> & { id?: string }): Promise<UserRecord> {
     if (!record.name || !record.pinHash || !record.tenantId) {
       throw new BadRequestException('User name, tenant, and pinHash are required');
+    }
+
+    if (this.isPostgresEnabled()) {
+      const id = record.id;
+      const row = id
+        ? await this.prismaService.prisma.user.upsert({
+            where: { id },
+            update: {
+              name: record.name,
+              email: record.email?.toLowerCase(),
+              role: this.toPrismaEnum(record.role ?? UserRole.CASHIER) as any,
+              pinHash: record.pinHash,
+              tenantId: record.tenantId,
+              isPlatformAdmin: record.isPlatformAdmin ?? false,
+              deviceId: record.deviceId,
+              locationId: record.locationId,
+              publicKey: record.publicKey,
+            },
+            create: {
+              id,
+              name: record.name,
+              email: record.email?.toLowerCase(),
+              role: this.toPrismaEnum(record.role ?? UserRole.CASHIER) as any,
+              pinHash: record.pinHash,
+              tenantId: record.tenantId,
+              isPlatformAdmin: record.isPlatformAdmin ?? false,
+              deviceId: record.deviceId,
+              locationId: record.locationId,
+              publicKey: record.publicKey,
+            },
+          })
+        : await this.prismaService.prisma.user.create({
+            data: {
+              name: record.name,
+              email: record.email?.toLowerCase(),
+              role: this.toPrismaEnum(record.role ?? UserRole.CASHIER) as any,
+              pinHash: record.pinHash,
+              tenantId: record.tenantId,
+              isPlatformAdmin: record.isPlatformAdmin ?? false,
+              deviceId: record.deviceId,
+              locationId: record.locationId,
+              publicKey: record.publicKey,
+            },
+          });
+
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
     }
 
     const now = FieldValue.serverTimestamp();
@@ -166,6 +382,43 @@ export class UsersRepository {
   }
 
   async update(id: string, update: Partial<UserRecord>): Promise<UserRecord> {
+    if (this.isPostgresEnabled()) {
+      const existing = await this.prismaService.prisma.user.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundException(`User with id ${id} not found`);
+      }
+
+      const row = await this.prismaService.prisma.user.update({
+        where: { id },
+        data: {
+          name: update.name,
+          email: update.email?.toLowerCase(),
+          role: update.role ? (this.toPrismaEnum(update.role) as any) : undefined,
+          pinHash: update.pinHash,
+          tenantId: update.tenantId,
+          isPlatformAdmin: update.isPlatformAdmin,
+          deviceId: update.deviceId,
+          locationId: update.locationId,
+          publicKey: update.publicKey,
+        },
+      });
+
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
     const docRef = this.collection.doc(id);
     const payload: Partial<UserDocument> = {
       updatedAt: FieldValue.serverTimestamp(),
@@ -192,12 +445,49 @@ export class UsersRepository {
   }
 
   async delete(id: string): Promise<void> {
+    if (this.isPostgresEnabled()) {
+      const existing = await this.prismaService.prisma.user.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundException(`User with id ${id} not found`);
+      }
+      await this.prismaService.prisma.user.delete({ where: { id } });
+      return;
+    }
+
     const docRef = this.collection.doc(id);
     const doc = await docRef.get();
     if (!doc.exists) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
     await docRef.delete();
+  }
+
+  async deleteByTenantId(tenantId: string): Promise<number> {
+    if (this.isPostgresEnabled()) {
+      const res = await this.prismaService.prisma.user.deleteMany({
+        where: { tenantId },
+      });
+      return res.count;
+    }
+
+    const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
+    if (snapshot.empty) {
+      return 0;
+    }
+
+    const docs = snapshot.docs;
+    const chunkSize = 450;
+    let deleted = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const chunk = docs.slice(i, i + chunkSize);
+      const batch = this.firestore.batch();
+      chunk.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      deleted += chunk.length;
+    }
+
+    return deleted;
   }
 
   private toRecord(id: string, data: UserDocument | undefined): UserRecord {

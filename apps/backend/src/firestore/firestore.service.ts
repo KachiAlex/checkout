@@ -39,9 +39,16 @@ export class FirestoreService {
     return this.firestore.getAll(...documentRefs);
   }
 
-  async healthCheck(): Promise<boolean> {
+  async healthCheck(timeoutMs = 3000): Promise<boolean> {
     try {
-      await this.firestore.listCollections();
+      const completed = await Promise.race<boolean>([
+        this.firestore.listCollections().then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), timeoutMs)),
+      ]);
+
+      if (!completed) {
+        throw new Error(`Firestore health check timed out after ${timeoutMs}ms`);
+      }
       return true;
     } catch (error) {
       this.logger.error('Firestore health check failed', error instanceof Error ? error.stack : undefined);

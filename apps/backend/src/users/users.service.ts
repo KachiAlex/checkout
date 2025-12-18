@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { UsersRepository, UserRecord } from './users.repository';
 import { ChangePinDto } from './dto/change-pin.dto';
 import { CreateUserDto } from './dto/create-user.dto';

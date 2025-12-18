@@ -1,9 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { FirestoreService } from '../firestore/firestore.service';
 
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
+  constructor(private readonly firestoreService: FirestoreService) {}
+
   @Get()
   @ApiOperation({ summary: 'Health check endpoint' })
   check() {
@@ -18,5 +21,15 @@ export class HealthController {
   @Get('ping')
   ping() {
     return { pong: true, timestamp: new Date().toISOString() };
+  }
+
+  @Get('firestore')
+  @ApiOperation({ summary: 'Firestore health check endpoint' })
+  async firestore() {
+    const isHealthy = await this.firestoreService.healthCheck();
+    if (!isHealthy) {
+      throw new ServiceUnavailableException('Firestore health check failed');
+    }
+    return { status: 'ok', firestore: true, timestamp: new Date().toISOString() };
   }
 }

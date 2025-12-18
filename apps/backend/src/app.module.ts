@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 // import { UsersModule } from './users/users.module'; // Temporarily disabled due to decorator compatibility issues
 import { LocationsModule } from './locations/locations.module';
@@ -27,8 +26,9 @@ import { PaymentSettingsModule } from './payment-settings/payment-settings.modul
 import { TaxSettingsModule } from './tax-settings/tax-settings.module';
 // import { CustomizationModule } from './customization/customization.module'; // Temporarily disabled due to decorator compatibility issues
 import { UploadModule } from './upload/upload.module';
+import { DatabaseModule } from './database/database.module';
 import { PlatformModule } from './platform/platform.module';
-// import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module'; // Temporarily disabled due to decorator compatibility issues
+import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module';
 import { ContactModule } from './contact/contact.module';
 
 @Module({
@@ -44,6 +44,7 @@ import { ContactModule } from './contact/contact.module';
       },
     ]),
     FirestoreModule,
+    DatabaseModule,
     AuthModule,
     // UsersModule, // Temporarily disabled due to decorator compatibility issues
     LocationsModule,
@@ -69,14 +70,9 @@ import { ContactModule } from './contact/contact.module';
     TaxSettingsModule,
     // CustomizationModule, // Temporarily disabled due to decorator compatibility issues
     UploadModule,
-    // SubscriptionPricingModule, // Temporarily disabled due to decorator compatibility issues
+    SubscriptionPricingModule,
     ContactModule,
   ],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-  ],
+  providers: [],
 })
 export class AppModule {}
