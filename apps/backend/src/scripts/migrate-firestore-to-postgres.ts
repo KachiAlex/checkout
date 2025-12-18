@@ -96,12 +96,20 @@ async function main() {
     let ordersUpserted = 0;
     let orderItemsUpserted = 0;
 
+    let suppliersUpserted = 0;
+    let purchaseOrdersUpserted = 0;
+    let grnsUpserted = 0;
+
     let brandsSkipped = 0;
     let categoriesSkipped = 0;
     let locationsSkipped = 0;
     let productsSkipped = 0;
     let inventorySkipped = 0;
     let ordersSkipped = 0;
+
+    let suppliersSkipped = 0;
+    let purchaseOrdersSkipped = 0;
+    let grnsSkipped = 0;
 
     const upsertTenant = async (tenantId: string, data: any) => {
       await prisma.tenant.upsert({
@@ -562,6 +570,286 @@ async function main() {
       }
     }
 
+    const suppliersSnap = await firestore.collection('suppliers').get();
+    const supplierIds = new Set<string>();
+    for (const doc of suppliersSnap.docs) {
+      const data = doc.data() as any;
+
+      await ensureTenant(data.tenantId, `supplier ${doc.id}`);
+      if (!data.tenantId || !tenantIds.has(data.tenantId)) {
+        suppliersSkipped += 1;
+        console.warn(`Skipping supplier ${doc.id}: missing/unknown tenantId`);
+        continue;
+      }
+      if (!data.name) {
+        suppliersSkipped += 1;
+        console.warn(`Skipping supplier ${doc.id}: missing name`);
+        continue;
+      }
+
+      supplierIds.add(doc.id);
+
+      await prisma.supplier.upsert({
+        where: { id: doc.id },
+        update: {
+          tenantId: data.tenantId,
+          name: String(data.name).trim(),
+          contactName: data.contactName ?? null,
+          email: data.email ?? null,
+          phone: data.phone ?? null,
+          address: data.address ?? null,
+          taxId: data.taxId ?? null,
+          paymentTerms: data.paymentTerms ?? null,
+          notes: data.notes ?? null,
+          active: data.active !== undefined ? Boolean(data.active) : true,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+        create: {
+          id: doc.id,
+          tenantId: data.tenantId,
+          name: String(data.name).trim(),
+          contactName: data.contactName ?? null,
+          email: data.email ?? null,
+          phone: data.phone ?? null,
+          address: data.address ?? null,
+          taxId: data.taxId ?? null,
+          paymentTerms: data.paymentTerms ?? null,
+          notes: data.notes ?? null,
+          active: data.active !== undefined ? Boolean(data.active) : true,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+      });
+
+      suppliersUpserted += 1;
+    }
+
+    const ensureSupplier = async (
+      supplierId: string | null | undefined,
+      tenantId: string,
+      reason: string,
+    ): Promise<boolean> => {
+      if (!supplierId) return false;
+      if (supplierIds.has(supplierId)) return true;
+
+      const supplierDoc = await firestore.collection('suppliers').doc(supplierId).get();
+      if (supplierDoc.exists) {
+        const data = supplierDoc.data() as any;
+        await prisma.supplier.upsert({
+          where: { id: supplierId },
+          update: {
+            tenantId,
+            name: String(data?.name || `Unknown Supplier ${supplierId}`).trim(),
+            contactName: data?.contactName ?? null,
+            email: data?.email ?? null,
+            phone: data?.phone ?? null,
+            address: data?.address ?? null,
+            taxId: data?.taxId ?? null,
+            paymentTerms: data?.paymentTerms ?? null,
+            notes: data?.notes ?? null,
+            active: data?.active !== undefined ? Boolean(data.active) : true,
+            createdAt: data?.createdAt?.toDate?.() ?? undefined,
+            updatedAt: data?.updatedAt?.toDate?.() ?? undefined,
+          },
+          create: {
+            id: supplierId,
+            tenantId,
+            name: String(data?.name || `Unknown Supplier ${supplierId}`).trim(),
+            contactName: data?.contactName ?? null,
+            email: data?.email ?? null,
+            phone: data?.phone ?? null,
+            address: data?.address ?? null,
+            taxId: data?.taxId ?? null,
+            paymentTerms: data?.paymentTerms ?? null,
+            notes: data?.notes ?? null,
+            active: data?.active !== undefined ? Boolean(data.active) : true,
+            createdAt: data?.createdAt?.toDate?.() ?? undefined,
+            updatedAt: data?.updatedAt?.toDate?.() ?? undefined,
+          },
+        });
+
+        supplierIds.add(supplierId);
+        suppliersUpserted += 1;
+        console.log(`Ensured supplier ${supplierId} from ${reason}`);
+        return true;
+      }
+
+      await prisma.supplier.upsert({
+        where: { id: supplierId },
+        update: {
+          tenantId,
+          name: `Unknown Supplier ${supplierId}`,
+          active: true,
+          notes: `Placeholder created from ${reason}`,
+        },
+        create: {
+          id: supplierId,
+          tenantId,
+          name: `Unknown Supplier ${supplierId}`,
+          active: true,
+          notes: `Placeholder created from ${reason}`,
+        },
+      });
+      supplierIds.add(supplierId);
+      suppliersUpserted += 1;
+      console.warn(`Created placeholder supplier ${supplierId} from ${reason}`);
+      return true;
+    };
+
+    const purchaseOrdersSnap = await firestore.collection('purchase_orders').get();
+    const purchaseOrderIds = new Set<string>();
+    for (const doc of purchaseOrdersSnap.docs) {
+      const data = doc.data() as any;
+
+      await ensureTenant(data.tenantId, `purchase_order ${doc.id}`);
+      if (!data.tenantId || !tenantIds.has(data.tenantId)) {
+        purchaseOrdersSkipped += 1;
+        console.warn(`Skipping purchase_order ${doc.id}: missing/unknown tenantId`);
+        continue;
+      }
+      if (!data.locationId || !locationIds.has(data.locationId)) {
+        purchaseOrdersSkipped += 1;
+        console.warn(`Skipping purchase_order ${doc.id}: missing/unknown locationId ${data.locationId}`);
+        continue;
+      }
+      if (!data.supplierId) {
+        purchaseOrdersSkipped += 1;
+        console.warn(`Skipping purchase_order ${doc.id}: missing supplierId`);
+        continue;
+      }
+
+      await ensureSupplier(String(data.supplierId), data.tenantId, `purchase_order ${doc.id}`);
+
+      const status = String(data.status || 'draft').toUpperCase();
+      const items = Array.isArray(data.items) ? data.items : [];
+
+      purchaseOrderIds.add(doc.id);
+
+      await prisma.purchaseOrder.upsert({
+        where: { id: doc.id },
+        update: {
+          tenantId: data.tenantId,
+          locationId: data.locationId,
+          supplierId: String(data.supplierId),
+          supplierName: data.supplierName ?? '',
+          orderNumber: data.orderNumber ?? `PO-${doc.id}`,
+          status: status as any,
+          items: items as any,
+          subtotalCents: Number(data.subtotalCents ?? 0),
+          taxCents: Number(data.taxCents ?? 0),
+          totalCents: Number(data.totalCents ?? 0),
+          expectedDeliveryDate: data.expectedDeliveryDate?.toDate?.() ?? null,
+          notes: data.notes ?? null,
+          createdBy: data.createdBy ?? 'system',
+          approvedBy: data.approvedBy ?? null,
+          approvedAt: data.approvedAt?.toDate?.() ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+        create: {
+          id: doc.id,
+          tenantId: data.tenantId,
+          locationId: data.locationId,
+          supplierId: String(data.supplierId),
+          supplierName: data.supplierName ?? '',
+          orderNumber: data.orderNumber ?? `PO-${doc.id}`,
+          status: status as any,
+          items: items as any,
+          subtotalCents: Number(data.subtotalCents ?? 0),
+          taxCents: Number(data.taxCents ?? 0),
+          totalCents: Number(data.totalCents ?? 0),
+          expectedDeliveryDate: data.expectedDeliveryDate?.toDate?.() ?? null,
+          notes: data.notes ?? null,
+          createdBy: data.createdBy ?? 'system',
+          approvedBy: data.approvedBy ?? null,
+          approvedAt: data.approvedAt?.toDate?.() ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+      });
+
+      purchaseOrdersUpserted += 1;
+    }
+
+    const grnSnap = await firestore.collection('grn').get();
+    for (const doc of grnSnap.docs) {
+      const data = doc.data() as any;
+
+      await ensureTenant(data.tenantId, `grn ${doc.id}`);
+      if (!data.tenantId || !tenantIds.has(data.tenantId)) {
+        grnsSkipped += 1;
+        console.warn(`Skipping grn ${doc.id}: missing/unknown tenantId`);
+        continue;
+      }
+      if (!data.locationId || !locationIds.has(data.locationId)) {
+        grnsSkipped += 1;
+        console.warn(`Skipping grn ${doc.id}: missing/unknown locationId ${data.locationId}`);
+        continue;
+      }
+      if (!data.purchaseOrderId || !purchaseOrderIds.has(String(data.purchaseOrderId))) {
+        grnsSkipped += 1;
+        console.warn(`Skipping grn ${doc.id}: missing/unknown purchaseOrderId ${data.purchaseOrderId}`);
+        continue;
+      }
+      if (!data.supplierId) {
+        grnsSkipped += 1;
+        console.warn(`Skipping grn ${doc.id}: missing supplierId`);
+        continue;
+      }
+
+      await ensureSupplier(String(data.supplierId), data.tenantId, `grn ${doc.id}`);
+
+      const status = String(data.status || 'completed').toUpperCase();
+      const items = Array.isArray(data.items) ? data.items : [];
+      const receivedAt = data.receivedAt?.toDate?.() ?? new Date();
+
+      await prisma.gRN.upsert({
+        where: { id: doc.id },
+        update: {
+          tenantId: data.tenantId,
+          locationId: data.locationId,
+          purchaseOrderId: String(data.purchaseOrderId),
+          purchaseOrderNumber: data.purchaseOrderNumber ?? '',
+          supplierId: String(data.supplierId),
+          supplierName: data.supplierName ?? '',
+          grnNumber: data.grnNumber ?? `GRN-${doc.id}`,
+          status: status as any,
+          items: items as any,
+          subtotalCents: Number(data.subtotalCents ?? 0),
+          taxCents: Number(data.taxCents ?? 0),
+          totalCents: Number(data.totalCents ?? 0),
+          receivedBy: data.receivedBy ?? 'system',
+          receivedAt,
+          notes: data.notes ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+        create: {
+          id: doc.id,
+          tenantId: data.tenantId,
+          locationId: data.locationId,
+          purchaseOrderId: String(data.purchaseOrderId),
+          purchaseOrderNumber: data.purchaseOrderNumber ?? '',
+          supplierId: String(data.supplierId),
+          supplierName: data.supplierName ?? '',
+          grnNumber: data.grnNumber ?? `GRN-${doc.id}`,
+          status: status as any,
+          items: items as any,
+          subtotalCents: Number(data.subtotalCents ?? 0),
+          taxCents: Number(data.taxCents ?? 0),
+          totalCents: Number(data.totalCents ?? 0),
+          receivedBy: data.receivedBy ?? 'system',
+          receivedAt,
+          notes: data.notes ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+      });
+
+      grnsUpserted += 1;
+    }
+
     const usersSnap = await firestore.collection('users').get();
     for (const doc of usersSnap.docs) {
       const data = doc.data() as any;
@@ -642,7 +930,7 @@ async function main() {
     }
 
     console.log(
-      `✅ Migration complete. Tenants: ${tenantsUpserted} (ensured from references: ${tenantsEnsuredFromReferences}). Users: ${usersUpserted} (skipped missing tenantId: ${usersSkippedMissingTenant}, skipped unknown tenantId: ${usersSkippedUnknownTenant}). Brands: ${brandsUpserted} (skipped: ${brandsSkipped}). Categories: ${categoriesUpserted} (skipped: ${categoriesSkipped}). Locations: ${locationsUpserted} (skipped: ${locationsSkipped}). Products: ${productsUpserted} (skipped: ${productsSkipped}). Inventory: ${inventoryUpserted} (skipped: ${inventorySkipped}). Orders: ${ordersUpserted} (skipped: ${ordersSkipped}). OrderItems: ${orderItemsUpserted}.`,
+      `✅ Migration complete. Tenants: ${tenantsUpserted} (ensured from references: ${tenantsEnsuredFromReferences}). Users: ${usersUpserted} (skipped missing tenantId: ${usersSkippedMissingTenant}, skipped unknown tenantId: ${usersSkippedUnknownTenant}). Brands: ${brandsUpserted} (skipped: ${brandsSkipped}). Categories: ${categoriesUpserted} (skipped: ${categoriesSkipped}). Locations: ${locationsUpserted} (skipped: ${locationsSkipped}). Products: ${productsUpserted} (skipped: ${productsSkipped}). Inventory: ${inventoryUpserted} (skipped: ${inventorySkipped}). Orders: ${ordersUpserted} (skipped: ${ordersSkipped}). OrderItems: ${orderItemsUpserted}. Suppliers: ${suppliersUpserted} (skipped: ${suppliersSkipped}). PurchaseOrders: ${purchaseOrdersUpserted} (skipped: ${purchaseOrdersSkipped}). GRNs: ${grnsUpserted} (skipped: ${grnsSkipped}).`,
     );
   } finally {
     await prisma.$disconnect();

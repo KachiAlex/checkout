@@ -46,30 +46,135 @@ enum PaymentStatus {
   REFUNDED
 }
 
-model Tenant {
-  id               String      @id @default(uuid())
-  name             String
-  slug             String      @unique
-  plan             TenantPlan
-  status           TenantStatus
-  industry         String?
-  featureFlags     Json?
-  seatLimit        Int?
-  contactEmail     String?
-  billingCycleStart DateTime?
-  billingCycleEnd  DateTime?
-  metadata         Json?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
 
-  users            User[]
-  brands           Brand[]
-  categories       Category[]
-  locations        Location[]
-  products         Product[]
-  orders           Order[]
+enum GRNStatus {
+  DRAFT
+  COMPLETED
+  CANCELLED
+}
+
+model Tenant {
+  id                String       @id @default(uuid())
+  name              String
+  slug              String       @unique
+  plan              TenantPlan
+  status            TenantStatus
+  industry          String?
+  featureFlags      Json?
+  seatLimit         Int?
+  contactEmail      String?
+  billingCycleStart DateTime?
+  billingCycleEnd   DateTime?
+  metadata          Json?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  users          User[]
+  brands         Brand[]
+  categories     Category[]
+  locations      Location[]
+  products       Product[]
+  orders         Order[]
+  suppliers      Supplier[]
+  purchaseOrders PurchaseOrder[]
+  grns           GRN[]
 
   @@index([createdAt])
+}
+
+model Supplier {
+  id           String   @id
+  tenantId     String
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  address      String?
+  taxId        String?
+  paymentTerms String?
+  notes        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+  grns           GRN[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model PurchaseOrder {
+  id                   String              @id
+  tenantId             String
+  locationId           String
+  supplierId           String
+  supplierName         String
+  orderNumber          String
+  status               PurchaseOrderStatus
+  items                Json
+  subtotalCents        Int
+  taxCents             Int
+  totalCents           Int
+  expectedDeliveryDate DateTime?
+  notes                String?
+  createdBy            String
+  approvedBy           String?
+  approvedAt           DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  grns     GRN[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+  @@index([locationId])
+  @@index([supplierId])
+  @@index([createdAt])
+}
+
+model GRN {
+  id                  String    @id
+  tenantId            String
+  locationId          String
+  purchaseOrderId     String
+  purchaseOrderNumber String
+  supplierId          String
+  supplierName        String
+  grnNumber           String
+  status              GRNStatus
+  items               Json
+  subtotalCents       Int
+  taxCents            Int
+  totalCents          Int
+  receivedBy          String
+  receivedAt          DateTime
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location      Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supplier      Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([locationId])
+  @@index([purchaseOrderId])
+  @@index([supplierId])
+  @@index([receivedAt])
 }
 
 model User {
@@ -86,7 +191,7 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([email])
@@ -102,8 +207,8 @@ model Brand {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  products    Product[]
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
 
   @@index([tenantId])
   @@index([name])
@@ -118,8 +223,8 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  products    Product[]
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
 
   @@index([tenantId])
   @@index([name])
@@ -135,60 +240,62 @@ model Location {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant         Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  tenant         Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   inventory      Inventory[]
   orders         Order[]
+  purchaseOrders PurchaseOrder[]
+  grns           GRN[]
 
   @@index([tenantId])
 }
 
 model Product {
-  id          String   @id
-  tenantId    String
-  sku         String
-  barcode     String?
-  name        String
-  description String?
-  categoryId  String?
+  id           String   @id
+  tenantId     String
+  sku          String
+  barcode      String?
+  name         String
+  description  String?
+  categoryId   String?
   categoryName String?
-  brandId     String?
-  brandName   String?
-  priceCents  Int
-  costCents   Int?
-  taxRate     Float   @default(0)
-  variants    Json?
-  images      String[] @default([])
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  brandId      String?
+  brandName    String?
+  priceCents   Int
+  costCents    Int?
+  taxRate      Float    @default(0)
+  variants     Json?
+  images       String[] @default([])
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brand       Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  inventory   Inventory[]
-  orderItems  OrderItem[]
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand      Brand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  inventory  Inventory[]
+  orderItems OrderItem[]
 
-  @@index([tenantId])
   @@unique([tenantId, sku])
+  @@index([tenantId])
   @@index([barcode])
   @@index([categoryId])
   @@index([brandId])
 }
 
 model Inventory {
-  id             String   @id
-  productId      String
-  locationId     String
-  quantity       Int
-  reorderPoint   Int?
-  maxStock       Int?
-  costCents      Int?
+  id              String   @id
+  productId       String
+  locationId      String
+  quantity        Int
+  reorderPoint    Int?
+  maxStock        Int?
+  costCents       Int?
   salesPriceCents Int?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  location       Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@unique([productId, locationId])
   @@index([locationId])
@@ -196,7 +303,7 @@ model Inventory {
 }
 
 model Order {
-  id            String       @id
+  id            String         @id
   uuid          String
   orderNumber   String
   tenantId      String
@@ -208,32 +315,32 @@ model Order {
   totalCents    Int
   status        OrderStatus
   paymentStatus PaymentStatus?
-  isCreditOrder Boolean      @default(false)
+  isCreditOrder Boolean        @default(false)
   paidAt        DateTime?
   returnedAt    DateTime?
   createdBy     String
   deviceId      String?
   completedAt   DateTime?
   notes         String?
-  synced        Boolean      @default(false)
-  isHeld        Boolean      @default(false)
+  synced        Boolean        @default(false)
+  isHeld        Boolean        @default(false)
   heldAt        DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  location      Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  items         OrderItem[]
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  items    OrderItem[]
 
+  @@unique([tenantId, orderNumber])
+  @@unique([uuid])
   @@index([tenantId])
   @@index([locationId])
   @@index([createdAt])
-  @@unique([tenantId, orderNumber])
-  @@unique([uuid])
 }
 
 model OrderItem {
-  id            String  @id
+  id            String @id
   orderId       String
   lineNumber    Int
   productId     String
@@ -242,20 +349,20 @@ model OrderItem {
   taxCents      Int
   discountCents Int
 
-  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([orderId, lineNumber])
   @@index([productId])
 }
 
 model SubscriptionPricing {
-  id         String   @id
-  free       Json
-  starter    Json
+  id           String    @id
+  free         Json
+  starter      Json
   professional Json
-  enterprise Json
-  lifetime   Json
-  updatedAt  DateTime?
-  updatedBy  String?
+  enterprise   Json
+  lifetime     Json
+  updatedAt    DateTime?
+  updatedBy    String?
 }
