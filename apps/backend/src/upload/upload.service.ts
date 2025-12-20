@@ -1,28 +1,11 @@
-import { Injectable, BadRequestException, Inject, OnModuleInit } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { getStorage, Storage } from 'firebase-admin/storage';
-import { App } from 'firebase-admin/app';
+import { put } from '@vercel/blob';
 import { v4 as uuid } from 'uuid';
-import { FIREBASE_APP } from '../firestore/firestore.constants';
 
 @Injectable()
-export class UploadService implements OnModuleInit {
-  private storage: Storage | null = null;
-
-  constructor(
-    private readonly configService: ConfigService,
-    @Inject(FIREBASE_APP) private readonly firebaseApp: App,
-  ) {}
-
-  onModuleInit() {
-    try {
-      this.storage = getStorage(this.firebaseApp);
-      console.log('✅ Firebase Storage initialized successfully');
-    } catch (error) {
-      console.error('❌ Failed to initialize Firebase Storage:', error);
-      this.storage = null;
-    }
-  }
+export class UploadService {
+  constructor(private readonly configService: ConfigService) {}
 
   async uploadFile(
     file: Express.Multer.File,
@@ -33,53 +16,41 @@ export class UploadService implements OnModuleInit {
       throw new BadRequestException('No file provided');
     }
 
-    if (!this.storage) {
-      throw new BadRequestException('Storage service not initialized');
-    }
-
-    // Validate file type (only images)
     if (!file.mimetype.startsWith('image/')) {
       throw new BadRequestException('Only image files are allowed');
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       throw new BadRequestException('File size must be less than 5MB');
     }
 
-    try {
-      const bucket = this.storage.bucket();
-      const fileExtension = file.originalname.split('.').pop() || 'jpg';
-      const fileName = `${folder}/${tenantId}/${uuid()}.${fileExtension}`;
-      const fileRef = bucket.file(fileName);
+    const vercelBlobToken = this.configService.get<string>('VERCEL_BLOB_RW_TOKEN');
+    if (!vercelBlobToken) {
+      throw new BadRequestException('Blob storage is not configured');
+    }
 
-      // Upload file
-      await fileRef.save(file.buffer, {
-        metadata: {
-          contentType: file.mimetype,
-          metadata: {
-            tenantId,
-            uploadedAt: new Date().toISOString(),
-          },
-        },
-        public: true, // Make file publicly accessible
+    const fileExtension = file.originalname.split('.').pop() || 'jpg';
+    const fileName = `${folder}/${tenantId}/${uuid()}.${fileExtension}`;
+    const blobPath = fileName.replace(/\\/g, '/');
+
+    try {
+      const response = await put(blobPath, file.buffer, {
+        access: 'public',
+        contentType: file.mimetype,
+        token: vercelBlobToken,
+        addRandomSuffix: false,
+        cacheControlMaxAge: 31_536_000,
       });
 
-      // Get public URL
-      const url = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-
       return {
-        url,
-        path: fileName,
+        url: response.url,
+        path: blobPath,
       };
     } catch (error) {
       console.error('Failed to upload file:', {
-        error: error.message,
-        stack: error.stack,
-        code: error.code,
-        details: error.details,
-        bucket: this.storage?.bucket()?.name,
+        error: error?.message,
+        stack: error?.stack,
         folder,
         tenantId,
         fileName: file?.originalname,

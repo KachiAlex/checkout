@@ -27,8 +27,8 @@
   "dependencies": {
     "@capacitor-community/barcode-scanner": "^4.0.1",
     "@capacitor-community/camera-preview": "^5.0.0",
-    "@capacitor/camera": "^6.1.2",
-    "@capacitor/core": "^6.2.1",
+    "@capacitor/camera": "^5.0.7",
+    "@capacitor/core": "^5.7.8",
     "@zxing/library": "^0.20.0",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
@@ -41,15 +41,17 @@
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.21.0",
     "tailwindcss": "^3.4.1",
-    "zustand": "^4.4.7"
+    "zustand": "^4.5.2",
+    "react-helmet-async": "^2.0.4"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.53.3",
     "@rollup/rollup-win32-x64-msvc": "^4.53.3"
   },
   "devDependencies": {
-    "@capacitor/android": "^6.2.1",
-    "@capacitor/cli": "^6.2.1",
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/app": "^5.0.6",
+    "@capacitor/cli": "^5.7.8",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",

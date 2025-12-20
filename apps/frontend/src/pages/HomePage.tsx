@@ -6,6 +6,7 @@ import { RegistrationForm } from '../components/RegistrationForm';
 import { DemoRequestForm } from '../components/DemoRequestForm';
 import { useThemeStore } from '../stores/themeStore';
 import { getSubscriptionPricing, SubscriptionPricing } from '../services/subscriptionPricingService';
+import { SEO } from '../components/SEO';
 
 const features = [
   {
@@ -183,6 +184,63 @@ export function HomePage() {
   const [pricing, setPricing] = useState<SubscriptionPricing | null>(null);
   const [loadingPricing, setLoadingPricing] = useState(true);
 
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: 'Checkout POS',
+      description:
+        'Checkout POS helps pharmacies, supermarkets, restaurants, and retailers manage sales, inventory, and analytics in real time.',
+      brand: {
+        '@type': 'Brand',
+        name: 'Checkout POS',
+      },
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        url: 'https://checkout-77d99.web.app',
+        price: '49',
+      },
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '4.9',
+        reviewCount: '185',
+      },
+      featureList: features.map((feature) => feature.title),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'What industries does Checkout POS support?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Checkout POS is built for pharmacies, supermarkets, restaurants, cafes, and modern retail businesses.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Does Checkout POS work offline?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes. You can continue selling, and all transactions sync automatically once connectivity is restored.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'How long is the free trial?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Every new account gets a 14-day free trial without requiring a credit card.',
+          },
+        },
+      ],
+    },
+  ];
+
   // Fetch pricing from API
   useEffect(() => {
     const loadPricing = async () => {
@@ -212,7 +270,14 @@ export function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
+    <>
+      <SEO
+        title="Checkout POS | Lightning-Fast POS Software for Retail, Pharmacy & Restaurants"
+        description="Checkout POS helps pharmacies, supermarkets, restaurants, and retailers run faster transactions, automate inventory, and unlock sales analytics—all in one modern platform."
+        pathname="/"
+        jsonLd={jsonLd}
+      />
+      <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-sky-500/30 blur-[180px]" />
         <div className="absolute bottom-[-180px] right-[-160px] h-[520px] w-[520px] rounded-full bg-violet-500/25 blur-[220px]" />
@@ -982,7 +1047,8 @@ export function HomePage() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }
 
