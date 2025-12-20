@@ -74,8 +74,17 @@ export class UploadService implements OnModuleInit {
         path: fileName,
       };
     } catch (error) {
-      console.error('Failed to upload file:', error);
-      throw new BadRequestException('Failed to upload file');
+      console.error('Failed to upload file:', {
+        error: error.message,
+        stack: error.stack,
+        code: error.code,
+        details: error.details,
+        bucket: this.storage?.bucket()?.name,
+        folder,
+        tenantId,
+        fileName: file?.originalname,
+      });
+      throw new BadRequestException(`Failed to upload file: ${error.message}`);
     }
   }
 }

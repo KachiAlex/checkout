@@ -211,7 +211,13 @@ export class ReportsService {
   }
 
   // Sales Analytics by Period
-  async getSalesAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string, from?: string, to?: string, tenantId?: string) {
+  async getSalesAnalytics(
+    period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+    locationId?: string,
+    from?: string,
+    to?: string,
+    tenantId?: string,
+  ) {
     const toDate = to ? new Date(to) : new Date();
     let fromDate: Date;
     let groupBy: (date: Date) => string;
@@ -229,6 +235,12 @@ export class ReportsService {
           break;
         case 'monthly':
           fromDate = new Date(toDate.getFullYear() - 1, toDate.getMonth(), 1); // Last 12 months
+          break;
+        case 'quarterly':
+          fromDate = new Date(toDate.getFullYear() - 2, toDate.getMonth(), 1); // Last 8 quarters (approx)
+          break;
+        case 'yearly':
+          fromDate = new Date(toDate.getFullYear() - 5, 0, 1); // Last 5 years
           break;
       }
     }
@@ -251,11 +263,28 @@ export class ReportsService {
       case 'monthly':
         groupBy = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         break;
+      case 'quarterly':
+        groupBy = (date: Date) => {
+          const quarter = Math.floor(date.getMonth() / 3) + 1;
+          return `${date.getFullYear()}-Q${quarter}`;
+        };
+        break;
+      case 'yearly':
+        groupBy = (date: Date) => `${date.getFullYear()}`;
+        break;
     }
 
     // Ensure we include orders up to the end of the day
     const toDateEndOfDay = new Date(toDate);
     toDateEndOfDay.setHours(23, 59, 59, 999);
+
+    const fromDateStartOfDay = new Date(fromDate);
+    fromDateStartOfDay.setHours(0, 0, 0, 0);
+
+    const rangeMs = Math.max(1, toDateEndOfDay.getTime() - fromDateStartOfDay.getTime() + 1);
+    const prevToDateEndOfDay = new Date(fromDateStartOfDay.getTime() - 1);
+    const prevFromDateStartOfDay = new Date(prevToDateEndOfDay.getTime() - rangeMs + 1);
+    prevFromDateStartOfDay.setHours(0, 0, 0, 0);
 
     const orders = await this.ordersRepository.list({
       status: OrderStatus.COMPLETED,
@@ -265,39 +294,248 @@ export class ReportsService {
       to: toDateEndOfDay, // Include full day
     });
 
-    const grouped: Record<string, { sales: number; orders: number; items: number }> = {};
-
-    orders.forEach((order) => {
-      const key = groupBy(order.createdAt);
-      if (!grouped[key]) {
-        grouped[key] = { sales: 0, orders: 0, items: 0 };
-      }
-      grouped[key].sales += order.totalCents / 100;
-      grouped[key].orders += 1;
-      grouped[key].items += order.items.reduce((sum, item) => sum + item.quantity, 0);
+    const prevOrders = await this.ordersRepository.list({
+      status: OrderStatus.COMPLETED,
+      tenantId,
+      locationId,
+      from: prevFromDateStartOfDay,
+      to: prevToDateEndOfDay,
     });
 
+    const inventoryCostByProductId = new Map<string, number>();
+    if (locationId) {
+      const inventoryStock = await this.inventoryRepository.listStock(locationId);
+      for (const inv of inventoryStock) {
+        if (inv.costCents !== undefined && inv.costCents !== null) {
+          inventoryCostByProductId.set(inv.productId, inv.costCents);
+        }
+      }
+    }
+
+    const productIds = new Set<string>();
+    for (const order of orders) {
+      for (const item of order.items) {
+        productIds.add(item.productId);
+      }
+    }
+
+    const productsMap = tenantId && productIds.size > 0
+      ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+      : new Map<string, any>();
+
+    const grouped: Record<
+      string,
+      { revenueCents: number; cogsCents: number; orders: number; items: number }
+    > = {};
+
+    const salesDays = new Set<string>();
+    const hourSeries: Record<string, { orders: number; revenueCents: number; cogsCents: number }> = {};
+    const dailySeries: Record<string, { orders: number; revenueCents: number; cogsCents: number; items: number }> = {};
+
+    for (const order of orders) {
+      const key = groupBy(order.createdAt);
+      if (!grouped[key]) {
+        grouped[key] = { revenueCents: 0, cogsCents: 0, orders: 0, items: 0 };
+      }
+
+      const dayKey = order.createdAt.toISOString().split('T')[0];
+      salesDays.add(dayKey);
+
+      if (!dailySeries[dayKey]) {
+        dailySeries[dayKey] = { orders: 0, revenueCents: 0, cogsCents: 0, items: 0 };
+      }
+      dailySeries[dayKey].orders += 1;
+      dailySeries[dayKey].revenueCents += order.totalCents;
+      dailySeries[dayKey].items += order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+      const hour = String(order.createdAt.getHours()).padStart(2, '0');
+      if (!hourSeries[hour]) {
+        hourSeries[hour] = { orders: 0, revenueCents: 0, cogsCents: 0 };
+      }
+      hourSeries[hour].orders += 1;
+      hourSeries[hour].revenueCents += order.totalCents;
+
+      grouped[key].revenueCents += order.totalCents;
+      grouped[key].orders += 1;
+      grouped[key].items += order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+      for (const item of order.items) {
+        const inventoryCost = inventoryCostByProductId.get(item.productId);
+        const product = productsMap.get(item.productId);
+        const productCost = product?.costCents;
+        const unitCostCents =
+          inventoryCost !== undefined && inventoryCost !== null
+            ? inventoryCost
+            : (typeof productCost === 'number' ? productCost : 0);
+
+        grouped[key].cogsCents += unitCostCents * item.quantity;
+        dailySeries[dayKey].cogsCents += unitCostCents * item.quantity;
+        hourSeries[hour].cogsCents += unitCostCents * item.quantity;
+      }
+    }
+
+    const totalsFromOrders = (ordersList: any[]) => {
+      let revenueCents = 0;
+      let cogsCents = 0;
+      let ordersCount = 0;
+      let itemsCount = 0;
+
+      for (const order of ordersList) {
+        ordersCount += 1;
+        revenueCents += order.totalCents;
+        itemsCount += order.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+        for (const item of order.items) {
+          const inventoryCost = inventoryCostByProductId.get(item.productId);
+          const product = productsMap.get(item.productId);
+          const productCost = product?.costCents;
+          const unitCostCents =
+            inventoryCost !== undefined && inventoryCost !== null
+              ? inventoryCost
+              : (typeof productCost === 'number' ? productCost : 0);
+          cogsCents += unitCostCents * item.quantity;
+        }
+      }
+
+      const revenue = revenueCents / 100;
+      const cogs = cogsCents / 100;
+      const grossProfit = revenue - cogs;
+      const grossMarginPercent = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+      const averageOrderValue = ordersCount > 0 ? revenue / ordersCount : 0;
+
+      return {
+        revenue,
+        cogs,
+        grossProfit,
+        grossMarginPercent,
+        orders: ordersCount,
+        items: itemsCount,
+        averageOrderValue,
+      };
+    };
+
+    const previousTotals = totalsFromOrders(prevOrders);
+
     const data = Object.entries(grouped)
-      .map(([period, stats]) => ({
-        period,
-        sales: stats.sales,
-        orders: stats.orders,
-        items: stats.items,
-        averageOrderValue: stats.orders > 0 ? stats.sales / stats.orders : 0,
-      }))
+      .map(([periodKey, stats]) => {
+        const revenue = stats.revenueCents / 100;
+        const cogs = stats.cogsCents / 100;
+        const grossProfit = revenue - cogs;
+        return {
+          period: periodKey,
+          revenue,
+          cogs,
+          grossProfit,
+          grossMarginPercent: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
+          orders: stats.orders,
+          items: stats.items,
+          averageOrderValue: stats.orders > 0 ? revenue / stats.orders : 0,
+        };
+      })
       .sort((a, b) => a.period.localeCompare(b.period));
 
-    const totalSales = data.reduce((sum, d) => sum + d.sales, 0);
+    const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+    const totalCogs = data.reduce((sum, d) => sum + d.cogs, 0);
+    const totalGrossProfit = totalRevenue - totalCogs;
     const totalOrders = data.reduce((sum, d) => sum + d.orders, 0);
+    const totalItems = data.reduce((sum, d) => sum + d.items, 0);
+
+    const fromDay = new Date(fromDate);
+    fromDay.setHours(0, 0, 0, 0);
+    const toDay = new Date(toDateEndOfDay);
+    toDay.setHours(0, 0, 0, 0);
+    const totalDays = Math.max(1, Math.floor((toDay.getTime() - fromDay.getTime()) / (24 * 60 * 60 * 1000)) + 1);
+
+    const ordersPerHour = Array.from({ length: 24 }).map((_, idx) => {
+      const hourKey = String(idx).padStart(2, '0');
+      const v = hourSeries[hourKey] || { orders: 0, revenueCents: 0, cogsCents: 0 };
+      const revenue = v.revenueCents / 100;
+      const cogs = v.cogsCents / 100;
+      const grossProfit = revenue - cogs;
+      return {
+        hour: hourKey,
+        orders: v.orders,
+        revenue,
+        grossProfit,
+        grossMarginPercent: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
+      };
+    });
+
+    const peakHoursTop = ordersPerHour
+      .slice()
+      .sort((a, b) => b.orders - a.orders)
+      .slice(0, 3);
+
+    const dailyRows = Object.entries(dailySeries)
+      .map(([day, v]) => {
+        const revenue = v.revenueCents / 100;
+        const cogs = v.cogsCents / 100;
+        const grossProfit = revenue - cogs;
+        return {
+          day,
+          orders: v.orders,
+          items: v.items,
+          revenue,
+          grossProfit,
+          grossMarginPercent: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
+        };
+      })
+      .sort((a, b) => a.day.localeCompare(b.day));
+
+    const bestRevenueDay = dailyRows.length > 0 ? dailyRows.reduce((best, cur) => (cur.revenue > best.revenue ? cur : best), dailyRows[0]) : null;
+    const worstRevenueDay = dailyRows.length > 0 ? dailyRows.reduce((worst, cur) => (cur.revenue < worst.revenue ? cur : worst), dailyRows[0]) : null;
+    const bestProfitDay = dailyRows.length > 0 ? dailyRows.reduce((best, cur) => (cur.grossProfit > best.grossProfit ? cur : best), dailyRows[0]) : null;
+    const worstProfitDay = dailyRows.length > 0 ? dailyRows.reduce((worst, cur) => (cur.grossProfit < worst.grossProfit ? cur : worst), dailyRows[0]) : null;
+
+    const compareMetric = (currentValue: number, previousValue: number) => {
+      const delta = currentValue - previousValue;
+      const deltaPercent = previousValue !== 0 ? (delta / previousValue) * 100 : 0;
+      return { current: currentValue, previous: previousValue, delta, deltaPercent };
+    };
 
     return {
       period,
       from: fromDate.toISOString(),
       to: toDate.toISOString(),
       locationId,
-      totalSales,
-      totalOrders,
-      averageOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0,
+      totals: {
+        revenue: totalRevenue,
+        cogs: totalCogs,
+        grossProfit: totalGrossProfit,
+        grossMarginPercent: totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0,
+        orders: totalOrders,
+        items: totalItems,
+        averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+      },
+      comparison: {
+        from: prevFromDateStartOfDay.toISOString(),
+        to: prevToDateEndOfDay.toISOString(),
+        revenue: compareMetric(totalRevenue, previousTotals.revenue),
+        grossProfit: compareMetric(totalGrossProfit, previousTotals.grossProfit),
+        orders: compareMetric(totalOrders, previousTotals.orders),
+        averageOrderValue: compareMetric(totalOrders > 0 ? totalRevenue / totalOrders : 0, previousTotals.averageOrderValue),
+        grossMarginPercent: compareMetric(
+          totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0,
+          previousTotals.grossMarginPercent,
+        ),
+      },
+      bestWorst: {
+        revenue: {
+          best: bestRevenueDay,
+          worst: worstRevenueDay,
+        },
+        grossProfit: {
+          best: bestProfitDay,
+          worst: worstProfitDay,
+        },
+      },
+      frequency: {
+        totalDays,
+        salesDays: salesDays.size,
+        salesFrequencyPercent: (salesDays.size / totalDays) * 100,
+        ordersPerDay: totalOrders / totalDays,
+      },
+      peakHours: peakHoursTop,
+      ordersPerHour,
       data,
     };
   }

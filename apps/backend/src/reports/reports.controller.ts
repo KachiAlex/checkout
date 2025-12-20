@@ -48,10 +48,10 @@ export class ReportsController {
   }
 
   @Get('sales-analytics')
-  @ApiOperation({ summary: 'Get sales analytics by period (daily/weekly/monthly)' })
+  @ApiOperation({ summary: 'Get sales analytics by period (daily/weekly/monthly/quarterly/yearly)' })
   @ApiResponse({ status: 200, description: 'Sales analytics data' })
   async getSalesAnalytics(
-    @Query('period') period: 'daily' | 'weekly' | 'monthly' = 'daily',
+    @Query('period') period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'daily',
     @Query('location_id') locationId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,

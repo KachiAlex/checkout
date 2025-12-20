@@ -55,6 +55,7 @@ export function ReportsPage() {
   const [locationId, setLocationId] = useState<string | null>(user?.locationId || null);
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [dateRange, setDateRange] = useState({ from: getTodayDate(), to: getTodayDate() });
+  const [salesAnalyticsPeriod, setSalesAnalyticsPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('daily');
 
   // Report data states
   const [salesReport, setSalesReport] = useState<any>(null);
@@ -137,7 +138,7 @@ export function ReportsPage() {
           break;
 
         case 'analytics':
-          params.append('period', 'daily');
+          params.append('period', salesAnalyticsPeriod);
           // Date range is already in params from above
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const analyticsRes = await axios.get(`${API_URL}/api/v1/reports/sales-analytics?${params}`);
@@ -195,7 +196,7 @@ export function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, salesPage, itemsPerPage, topSellersPage]);
+  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, salesPage, itemsPerPage, topSellersPage, salesAnalyticsPeriod]);
 
   // Memoize format functions
   const formatCurrency = useCallback((amount: number) => {
@@ -820,22 +821,207 @@ export function ReportsPage() {
               {/* Sales Analytics */}
               {activeTab === 'analytics' && salesAnalytics && (() => {
                 const paginated = paginate(salesAnalytics.data || [], analyticsPage, itemsPerPage);
+                const formatDelta = (v: any) => {
+                  if (!v || typeof v.delta !== 'number') return null;
+                  const isUp = v.delta > 0;
+                  const isDown = v.delta < 0;
+                  const colorClass = isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : 'theme-text-secondary';
+                  const sign = isUp ? '+' : '';
+                  const percent = typeof v.deltaPercent === 'number' ? v.deltaPercent : null;
+                  return (
+                    <span className={`text-xs font-medium ${colorClass}`}>
+                      {sign}{Number(v.delta).toFixed(2)}{percent !== null ? ` (${sign}${percent.toFixed(1)}%)` : ''}
+                    </span>
+                  );
+                };
+
+                const bestWorstRevenue = salesAnalytics.bestWorst?.revenue;
+                const bestWorstProfit = salesAnalytics.bestWorst?.grossProfit;
                 return (
                 <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold theme-text-primary">Sales Analytics</h3>
+                      <p className="text-xs sm:text-sm theme-text-secondary">Period breakdown and profitability insights</p>
+                    </div>
+                    <div className="w-full sm:w-auto">
+                      <label className="block text-xs font-medium theme-text-secondary mb-1.5">Period</label>
+                      <select
+                        value={salesAnalyticsPeriod}
+                        onChange={(e) => setSalesAnalyticsPeriod(e.target.value as any)}
+                        className="w-full sm:w-48 theme-surface rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totalSales)}</p>
+                      <p className="text-sm theme-text-secondary mb-1">Revenue</p>
+                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totals?.revenue ?? salesAnalytics.totalSales ?? 0)}</p>
                     </div>
                     <div className="theme-surface rounded-xl border theme-border p-4">
                       <p className="text-sm theme-text-secondary mb-1">Total Orders</p>
-                      <p className="text-2xl font-bold theme-text-primary">{salesAnalytics.totalOrders}</p>
+                      <p className="text-2xl font-bold theme-text-primary">{salesAnalytics.totals?.orders ?? salesAnalytics.totalOrders ?? 0}</p>
                     </div>
                     <div className="theme-surface rounded-xl border theme-border p-4">
                       <p className="text-sm theme-text-secondary mb-1">Avg Order Value</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.averageOrderValue)}</p>
+                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totals?.averageOrderValue ?? salesAnalytics.averageOrderValue ?? 0)}</p>
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Gross Profit</p>
+                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totals?.grossProfit ?? 0)}</p>
+                    </div>
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Gross Margin</p>
+                      <p className="text-2xl font-bold theme-text-primary">{(salesAnalytics.totals?.grossMarginPercent ?? 0).toFixed(1)}%</p>
+                    </div>
+                    <div className="theme-surface rounded-xl border theme-border p-4">
+                      <p className="text-sm theme-text-secondary mb-1">Sales Frequency</p>
+                      <p className="text-2xl font-bold theme-text-primary">{(salesAnalytics.frequency?.salesFrequencyPercent ?? 0).toFixed(0)}%</p>
+                      <p className="text-xs theme-text-secondary mt-1">
+                        {salesAnalytics.frequency?.salesDays ?? 0} / {salesAnalytics.frequency?.totalDays ?? 0} days with sales
+                      </p>
+                    </div>
+                  </div>
+
+                  {salesAnalytics.comparison && (
+                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                        <p className="text-sm theme-text-secondary">Compared to previous period</p>
+                        {(salesAnalytics.comparison.from && salesAnalytics.comparison.to) && (
+                          <p className="text-xs theme-text-secondary">
+                            {String(salesAnalytics.comparison.from).slice(0, 10)} → {String(salesAnalytics.comparison.to).slice(0, 10)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div className="p-3 rounded-lg border theme-border">
+                          <p className="text-xs theme-text-secondary">Revenue</p>
+                          <p className="text-sm font-semibold theme-text-primary">{formatCurrency(salesAnalytics.totals?.revenue ?? 0)}</p>
+                          {formatDelta(salesAnalytics.comparison.revenue)}
+                        </div>
+                        <div className="p-3 rounded-lg border theme-border">
+                          <p className="text-xs theme-text-secondary">Gross Profit</p>
+                          <p className="text-sm font-semibold theme-text-primary">{formatCurrency(salesAnalytics.totals?.grossProfit ?? 0)}</p>
+                          {formatDelta(salesAnalytics.comparison.grossProfit)}
+                        </div>
+                        <div className="p-3 rounded-lg border theme-border">
+                          <p className="text-xs theme-text-secondary">Orders</p>
+                          <p className="text-sm font-semibold theme-text-primary">{salesAnalytics.totals?.orders ?? 0}</p>
+                          {formatDelta(salesAnalytics.comparison.orders)}
+                        </div>
+                        <div className="p-3 rounded-lg border theme-border">
+                          <p className="text-xs theme-text-secondary">Avg Order</p>
+                          <p className="text-sm font-semibold theme-text-primary">{formatCurrency(salesAnalytics.totals?.averageOrderValue ?? 0)}</p>
+                          {formatDelta(salesAnalytics.comparison.averageOrderValue)}
+                        </div>
+                        <div className="p-3 rounded-lg border theme-border">
+                          <p className="text-xs theme-text-secondary">Margin</p>
+                          <p className="text-sm font-semibold theme-text-primary">{(salesAnalytics.totals?.grossMarginPercent ?? 0).toFixed(1)}%</p>
+                          {formatDelta(salesAnalytics.comparison.grossMarginPercent)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(bestWorstRevenue || bestWorstProfit) && (
+                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                      <p className="text-sm theme-text-secondary mb-3">Best / Worst Day</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3 rounded-lg border theme-border">
+                          <p className="text-xs theme-text-secondary mb-2">Revenue</p>
+                          <div className="flex flex-col gap-1 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="theme-text-secondary">Best</span>
+                              <span className="theme-text-primary font-medium">
+                                {bestWorstRevenue?.best?.day ? String(bestWorstRevenue.best.day) : '—'}
+                                {bestWorstRevenue?.best?.revenue !== undefined ? ` • ${formatCurrency(bestWorstRevenue.best.revenue)}` : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="theme-text-secondary">Worst</span>
+                              <span className="theme-text-primary font-medium">
+                                {bestWorstRevenue?.worst?.day ? String(bestWorstRevenue.worst.day) : '—'}
+                                {bestWorstRevenue?.worst?.revenue !== undefined ? ` • ${formatCurrency(bestWorstRevenue.worst.revenue)}` : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-lg border theme-border">
+                          <p className="text-xs theme-text-secondary mb-2">Gross Profit</p>
+                          <div className="flex flex-col gap-1 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="theme-text-secondary">Best</span>
+                              <span className="theme-text-primary font-medium">
+                                {bestWorstProfit?.best?.day ? String(bestWorstProfit.best.day) : '—'}
+                                {bestWorstProfit?.best?.grossProfit !== undefined ? ` • ${formatCurrency(bestWorstProfit.best.grossProfit)}` : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="theme-text-secondary">Worst</span>
+                              <span className="theme-text-primary font-medium">
+                                {bestWorstProfit?.worst?.day ? String(bestWorstProfit.worst.day) : '—'}
+                                {bestWorstProfit?.worst?.grossProfit !== undefined ? ` • ${formatCurrency(bestWorstProfit.worst.grossProfit)}` : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {Array.isArray(salesAnalytics.peakHours) && salesAnalytics.peakHours.length > 0 && (
+                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                      <p className="text-sm theme-text-secondary mb-2">Peak Hours (Top)</p>
+                      <div className="flex flex-wrap gap-3 text-sm theme-text-primary">
+                        {salesAnalytics.peakHours.map((h: any) => (
+                          <span key={h.hour} className="px-3 py-1 rounded-full border theme-border bg-white/5">
+                            {h.hour}:00 • {h.orders} orders • {formatCurrency(h.revenue)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {Array.isArray((salesAnalytics as any).ordersPerHour) && (salesAnalytics as any).ordersPerHour.length > 0 && (
+                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                      <p className="text-sm theme-text-secondary mb-3">Orders per Hour</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left theme-text-secondary">
+                              <th className="py-2 pr-4 font-medium">Hour</th>
+                              <th className="py-2 pr-4 font-medium">Orders</th>
+                              <th className="py-2 pr-4 font-medium">Revenue</th>
+                              <th className="py-2 pr-4 font-medium">Gross Profit</th>
+                              <th className="py-2 pr-0 font-medium">Margin</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(salesAnalytics as any).ordersPerHour.map((h: any) => (
+                              <tr key={h.hour} className="border-t theme-border">
+                                <td className="py-2 pr-4 theme-text-primary font-medium">{h.hour}:00</td>
+                                <td className="py-2 pr-4 theme-text-primary">{h.orders ?? 0}</td>
+                                <td className="py-2 pr-4 theme-text-primary">{formatCurrency(h.revenue ?? 0)}</td>
+                                <td className="py-2 pr-4 theme-text-primary">{formatCurrency(h.grossProfit ?? 0)}</td>
+                                <td className="py-2 pr-0 theme-text-primary">{(h.grossMarginPercent ?? 0).toFixed(1)}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                     
                     {paginated.items.length > 0 ? (
                       <>
@@ -850,10 +1036,16 @@ export function ReportsPage() {
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium theme-text-primary">{period.period}</p>
                                   <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                    <span>Sales: {formatCurrency(period.sales)}</span>
+                                    <span>Revenue: {formatCurrency(period.revenue ?? period.sales)}</span>
                                     <span>Orders: {period.orders}</span>
                                     <span>Items: {period.items}</span>
                                     <span>Avg: {formatCurrency(period.averageOrderValue)}</span>
+                                    {period.grossProfit !== undefined && (
+                                      <span>Profit: {formatCurrency(period.grossProfit)}</span>
+                                    )}
+                                    {period.grossMarginPercent !== undefined && (
+                                      <span>Margin: {Number(period.grossMarginPercent).toFixed(1)}%</span>
+                                    )}
                                   </div>
                                 </div>
                               </div>

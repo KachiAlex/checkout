@@ -58,6 +58,7 @@ const BillingPage = lazy(() =>
 const SubscriptionPaymentCallbackPage = lazy(() =>
   import('./pages/SubscriptionPaymentCallbackPage').then((module) => ({ default: module.SubscriptionPaymentCallbackPage })),
 );
+const SplashPage = lazy(() => import('./pages/SplashPage').then((module) => ({ default: module.SplashPage })));
 
 function LoadingScreen() {
   return (
@@ -116,7 +117,7 @@ function App() {
                 isAuthenticated ? (
                   <Navigate to={authenticatedLandingPath} replace />
                 ) : isNativePlatform ? (
-                  <Navigate to="/login" replace />
+                  <SplashPage />
                 ) : (
                   <HomePage />
                 )
