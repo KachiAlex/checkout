@@ -28,4 +28,3 @@ const createServer = async () => {
     return cachedServer;
 };
 exports.createServer = createServer;
-//# sourceMappingURL=serverless.js.map

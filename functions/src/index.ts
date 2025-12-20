@@ -1,3 +1,4 @@
+/// <reference path="./types/backend-dist-serverless.d.ts" />
 import * as functions from 'firebase-functions/v1';
 import type { Express, Request, Response } from 'express';
 
@@ -26,6 +27,7 @@ async function getApp(): Promise<Express> {
       console.log('[Functions] Loading backend serverless adapter...');
       // Use dynamic import - Firebase CLI should not execute this during analysis
       // Only actual function invocations will trigger this
+      // @ts-ignore - serverless adapter is generated at build time without type declarations
       const { createServer } = await import('../backend-dist/serverless');
       console.log('[Functions] Creating NestJS server...');
       const app = await createServer();

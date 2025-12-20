@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.api = void 0;
+/// <reference path="./types/backend-dist-serverless.d.ts" />
 const functions = __importStar(require("firebase-functions/v1"));
 const DEFAULT_REGION = process.env.FUNCTION_REGION ?? 'us-central1';
 // Increased to 10 instances to handle concurrent requests and prevent 429 errors
@@ -56,6 +57,7 @@ async function getApp() {
             console.log('[Functions] Loading backend serverless adapter...');
             // Use dynamic import - Firebase CLI should not execute this during analysis
             // Only actual function invocations will trigger this
+            // @ts-ignore - serverless adapter is generated at build time without type declarations
             const { createServer } = await Promise.resolve().then(() => __importStar(require('../backend-dist/serverless')));
             console.log('[Functions] Creating NestJS server...');
             const app = await createServer();
