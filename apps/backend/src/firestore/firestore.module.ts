@@ -25,6 +25,7 @@ const firestoreSettings: Settings = {
         const projectId = configService.get<string>('FIREBASE_PROJECT_ID');
         const clientEmail = configService.get<string>('FIREBASE_CLIENT_EMAIL');
         const privateKey = configService.get<string>('FIREBASE_PRIVATE_KEY');
+        const storageBucket = configService.get<string>('FIREBASE_STORAGE_BUCKET');
 
         if (projectId && clientEmail && privateKey) {
           const serviceAccount = {
@@ -35,11 +36,13 @@ const firestoreSettings: Settings = {
           return initializeApp({
             credential: cert(serviceAccount),
             projectId,
+            storageBucket,
           });
         }
 
         return initializeApp({
           credential: applicationDefault(),
+          storageBucket: configService.get<string>('FIREBASE_STORAGE_BUCKET'),
         });
       },
     },
