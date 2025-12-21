@@ -1,11 +1,28 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { put } from '@vercel/blob';
+import { getStorage, Storage } from 'firebase-admin/storage';
+import { App } from 'firebase-admin/app';
 import { v4 as uuid } from 'uuid';
+import { FIREBASE_APP } from '../firestore/firestore.constants';
 
 @Injectable()
-export class UploadService {
-  constructor(private readonly configService: ConfigService) {}
+export class UploadService implements OnModuleInit {
+  private storage: Storage | null = null;
+
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(FIREBASE_APP) private readonly firebaseApp: App,
+  ) {}
+
+  onModuleInit() {
+    try {
+      this.storage = getStorage(this.firebaseApp);
+      console.log('✅ Firebase Storage initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Firebase Storage:', error);
+      this.storage = null;
+    }
+  }
 
   async uploadFile(
     file: Express.Multer.File,
@@ -14,6 +31,10 @@ export class UploadService {
   ): Promise<{ url: string; path: string }> {
     if (!file) {
       throw new BadRequestException('No file provided');
+    }
+
+    if (!this.storage) {
+      throw new BadRequestException('Storage service not initialized');
     }
 
     if (!file.mimetype.startsWith('image/')) {
@@ -25,32 +46,36 @@ export class UploadService {
       throw new BadRequestException('File size must be less than 5MB');
     }
 
-    const vercelBlobToken = this.configService.get<string>('VERCEL_BLOB_RW_TOKEN');
-    if (!vercelBlobToken) {
-      throw new BadRequestException('Blob storage is not configured');
-    }
-
-    const fileExtension = file.originalname.split('.').pop() || 'jpg';
-    const fileName = `${folder}/${tenantId}/${uuid()}.${fileExtension}`;
-    const blobPath = fileName.replace(/\\/g, '/');
-
     try {
-      const response = await put(blobPath, file.buffer, {
-        access: 'public',
-        contentType: file.mimetype,
-        token: vercelBlobToken,
-        addRandomSuffix: false,
-        cacheControlMaxAge: 31_536_000,
+      const bucket = this.storage.bucket();
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const fileName = `${folder}/${tenantId}/${uuid()}.${fileExtension}`;
+      const fileRef = bucket.file(fileName);
+
+      await fileRef.save(file.buffer, {
+        metadata: {
+          contentType: file.mimetype,
+          metadata: {
+            tenantId,
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+        public: true,
       });
 
+      const url = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
       return {
-        url: response.url,
-        path: blobPath,
+        url,
+        path: fileName,
       };
     } catch (error) {
       console.error('Failed to upload file:', {
         error: error?.message,
         stack: error?.stack,
+        code: (error as any)?.code,
+        details: (error as any)?.details,
+        bucket: this.storage?.bucket()?.name,
         folder,
         tenantId,
         fileName: file?.originalname,
