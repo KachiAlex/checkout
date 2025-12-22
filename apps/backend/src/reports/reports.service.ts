@@ -23,7 +23,14 @@ export class ReportsService {
     private readonly locationsRepository: LocationsRepository,
   ) {}
 
-  async getSales(from?: string, to?: string, locationId?: string, tenantId?: string, limit?: number, offset?: number) {
+  async getSales(
+    from?: string,
+    to?: string,
+    locationId?: string,
+    tenantId?: string,
+    limit?: number,
+    offset?: number,
+  ) {
     try {
       const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
       const toDate = to ? new Date(to) : new Date();
@@ -64,11 +71,17 @@ export class ReportsService {
 
       // Combine regular completed orders and paid credit orders
       const allOrders = [...completedOrders, ...paidCreditOrdersFiltered];
-      
+
       // Sort by date (use paidAt for credit orders, createdAt for regular orders)
       allOrders.sort((a, b) => {
-        const dateA = a.isCreditOrder && a.paidAt ? new Date(a.paidAt).getTime() : new Date(a.createdAt).getTime();
-        const dateB = b.isCreditOrder && b.paidAt ? new Date(b.paidAt).getTime() : new Date(b.createdAt).getTime();
+        const dateA =
+          a.isCreditOrder && a.paidAt
+            ? new Date(a.paidAt).getTime()
+            : new Date(a.createdAt).getTime();
+        const dateB =
+          b.isCreditOrder && b.paidAt
+            ? new Date(b.paidAt).getTime()
+            : new Date(b.createdAt).getTime();
         return dateB - dateA; // Descending order
       });
 
@@ -78,7 +91,9 @@ export class ReportsService {
       // Apply pagination
       const paginatedOrders = allOrders.slice(effectiveOffset, effectiveOffset + effectiveLimit);
 
-      console.log(`📊 Sales Report Query: Found ${totalOrders} completed orders (showing ${paginatedOrders.length} from offset ${effectiveOffset}) for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
+      console.log(
+        `📊 Sales Report Query: Found ${totalOrders} completed orders (showing ${paginatedOrders.length} from offset ${effectiveOffset}) for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`,
+      );
 
       // Collect unique product IDs only from paginated orders (reduces batch fetch size)
       const productIds = new Set<string>();
@@ -89,9 +104,10 @@ export class ReportsService {
       });
 
       // Batch fetch product names only for paginated orders
-      const productsMap = tenantId && productIds.size > 0
-        ? await this.productsService.findByIds(Array.from(productIds), tenantId)
-        : new Map<string, any>();
+      const productsMap =
+        tenantId && productIds.size > 0
+          ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+          : new Map<string, any>();
 
       return {
         from: fromDate.toISOString(),
@@ -99,7 +115,7 @@ export class ReportsService {
         locationId,
         totalSales: totalSales / 100, // Convert cents to currency units
         totalOrders,
-        averageOrderValue: totalOrders > 0 ? (totalSales / 100) / totalOrders : 0,
+        averageOrderValue: totalOrders > 0 ? totalSales / 100 / totalOrders : 0,
         pagination: {
           limit: effectiveLimit,
           offset: effectiveOffset,
@@ -130,7 +146,13 @@ export class ReportsService {
     }
   }
 
-  async getTopSellers(from?: string, to?: string, locationId?: string, limit: number = 10, tenantId?: string) {
+  async getTopSellers(
+    from?: string,
+    to?: string,
+    locationId?: string,
+    limit: number = 10,
+    tenantId?: string,
+  ) {
     const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const toDate = to ? new Date(to) : new Date();
 
@@ -147,17 +169,22 @@ export class ReportsService {
       to: toDateEndOfDay, // Include full day
     });
 
-    console.log(`📊 Top Sellers Query: Aggregating ${orders.length} orders for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`);
+    console.log(
+      `📊 Top Sellers Query: Aggregating ${orders.length} orders for tenant ${tenantId || 'N/A'}, location ${locationId || 'all'}`,
+    );
 
     // Optimized aggregation using Map for better performance
-    const productSales = new Map<string, { productId: string; quantity: number; revenue: number }>();
+    const productSales = new Map<
+      string,
+      { productId: string; quantity: number; revenue: number }
+    >();
 
     // Single pass aggregation - more efficient than nested loops
     for (const order of orders) {
       for (const item of order.items) {
         const productId = item.productId;
         const existing = productSales.get(productId);
-        
+
         if (existing) {
           existing.quantity += item.quantity;
           existing.revenue += item.priceCents * item.quantity;
@@ -186,9 +213,10 @@ export class ReportsService {
 
     // Batch fetch product names only for top sellers (reduces fetch size)
     const productIds = topSellersData.map((item) => item.productId);
-    const productsMap = tenantId && productIds.length > 0
-      ? await this.productsService.findByIds(productIds, tenantId)
-      : new Map<string, any>();
+    const productsMap =
+      tenantId && productIds.length > 0
+        ? await this.productsService.findByIds(productIds, tenantId)
+        : new Map<string, any>();
 
     const topSellers = topSellersData.map((item) => {
       const product = productsMap.get(item.productId);
@@ -197,7 +225,7 @@ export class ReportsService {
         productName: product?.name || item.productId,
         quantitySold: item.quantity,
         revenue: item.revenue / 100, // Convert cents to currency units
-        averagePrice: item.quantity > 0 ? (item.revenue / item.quantity) / 100 : 0, // Average price per unit
+        averagePrice: item.quantity > 0 ? item.revenue / item.quantity / 100 : 0, // Average price per unit
       };
     });
 
@@ -255,13 +283,16 @@ export class ReportsService {
           weekStart.setDate(date.getDate() - date.getDay());
           const year = weekStart.getFullYear();
           const startOfYear = new Date(year, 0, 1);
-          const days = Math.floor((weekStart.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+          const days = Math.floor(
+            (weekStart.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000),
+          );
           const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
           return `${year}-W${String(weekNumber).padStart(2, '0')}`;
         };
         break;
       case 'monthly':
-        groupBy = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        groupBy = (date: Date) =>
+          `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         break;
       case 'quarterly':
         groupBy = (date: Date) => {
@@ -319,9 +350,10 @@ export class ReportsService {
       }
     }
 
-    const productsMap = tenantId && productIds.size > 0
-      ? await this.productsService.findByIds(Array.from(productIds), tenantId)
-      : new Map<string, any>();
+    const productsMap =
+      tenantId && productIds.size > 0
+        ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+        : new Map<string, any>();
 
     const grouped: Record<
       string,
@@ -329,8 +361,12 @@ export class ReportsService {
     > = {};
 
     const salesDays = new Set<string>();
-    const hourSeries: Record<string, { orders: number; revenueCents: number; cogsCents: number }> = {};
-    const dailySeries: Record<string, { orders: number; revenueCents: number; cogsCents: number; items: number }> = {};
+    const hourSeries: Record<string, { orders: number; revenueCents: number; cogsCents: number }> =
+      {};
+    const dailySeries: Record<
+      string,
+      { orders: number; revenueCents: number; cogsCents: number; items: number }
+    > = {};
 
     for (const order of orders) {
       const key = groupBy(order.createdAt);
@@ -366,7 +402,9 @@ export class ReportsService {
         const unitCostCents =
           inventoryCost !== undefined && inventoryCost !== null
             ? inventoryCost
-            : (typeof productCost === 'number' ? productCost : 0);
+            : typeof productCost === 'number'
+              ? productCost
+              : 0;
 
         grouped[key].cogsCents += unitCostCents * item.quantity;
         dailySeries[dayKey].cogsCents += unitCostCents * item.quantity;
@@ -391,7 +429,9 @@ export class ReportsService {
           const unitCostCents =
             inventoryCost !== undefined && inventoryCost !== null
               ? inventoryCost
-              : (typeof productCost === 'number' ? productCost : 0);
+              : typeof productCost === 'number'
+                ? productCost
+                : 0;
           cogsCents += unitCostCents * item.quantity;
         }
       }
@@ -443,7 +483,10 @@ export class ReportsService {
     fromDay.setHours(0, 0, 0, 0);
     const toDay = new Date(toDateEndOfDay);
     toDay.setHours(0, 0, 0, 0);
-    const totalDays = Math.max(1, Math.floor((toDay.getTime() - fromDay.getTime()) / (24 * 60 * 60 * 1000)) + 1);
+    const totalDays = Math.max(
+      1,
+      Math.floor((toDay.getTime() - fromDay.getTime()) / (24 * 60 * 60 * 1000)) + 1,
+    );
 
     const ordersPerHour = Array.from({ length: 24 }).map((_, idx) => {
       const hourKey = String(idx).padStart(2, '0');
@@ -481,10 +524,31 @@ export class ReportsService {
       })
       .sort((a, b) => a.day.localeCompare(b.day));
 
-    const bestRevenueDay = dailyRows.length > 0 ? dailyRows.reduce((best, cur) => (cur.revenue > best.revenue ? cur : best), dailyRows[0]) : null;
-    const worstRevenueDay = dailyRows.length > 0 ? dailyRows.reduce((worst, cur) => (cur.revenue < worst.revenue ? cur : worst), dailyRows[0]) : null;
-    const bestProfitDay = dailyRows.length > 0 ? dailyRows.reduce((best, cur) => (cur.grossProfit > best.grossProfit ? cur : best), dailyRows[0]) : null;
-    const worstProfitDay = dailyRows.length > 0 ? dailyRows.reduce((worst, cur) => (cur.grossProfit < worst.grossProfit ? cur : worst), dailyRows[0]) : null;
+    const bestRevenueDay =
+      dailyRows.length > 0
+        ? dailyRows.reduce((best, cur) => (cur.revenue > best.revenue ? cur : best), dailyRows[0])
+        : null;
+    const worstRevenueDay =
+      dailyRows.length > 0
+        ? dailyRows.reduce(
+            (worst, cur) => (cur.revenue < worst.revenue ? cur : worst),
+            dailyRows[0],
+          )
+        : null;
+    const bestProfitDay =
+      dailyRows.length > 0
+        ? dailyRows.reduce(
+            (best, cur) => (cur.grossProfit > best.grossProfit ? cur : best),
+            dailyRows[0],
+          )
+        : null;
+    const worstProfitDay =
+      dailyRows.length > 0
+        ? dailyRows.reduce(
+            (worst, cur) => (cur.grossProfit < worst.grossProfit ? cur : worst),
+            dailyRows[0],
+          )
+        : null;
 
     const compareMetric = (currentValue: number, previousValue: number) => {
       const delta = currentValue - previousValue;
@@ -512,7 +576,10 @@ export class ReportsService {
         revenue: compareMetric(totalRevenue, previousTotals.revenue),
         grossProfit: compareMetric(totalGrossProfit, previousTotals.grossProfit),
         orders: compareMetric(totalOrders, previousTotals.orders),
-        averageOrderValue: compareMetric(totalOrders > 0 ? totalRevenue / totalOrders : 0, previousTotals.averageOrderValue),
+        averageOrderValue: compareMetric(
+          totalOrders > 0 ? totalRevenue / totalOrders : 0,
+          previousTotals.averageOrderValue,
+        ),
         grossMarginPercent: compareMetric(
           totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0,
           previousTotals.grossMarginPercent,
@@ -541,7 +608,11 @@ export class ReportsService {
   }
 
   // Inventory Analytics by Period - ENHANCED with inventorized products
-  async getInventoryAnalytics(period: 'daily' | 'weekly' | 'monthly', locationId?: string, tenantId?: string) {
+  async getInventoryAnalytics(
+    period: 'daily' | 'weekly' | 'monthly',
+    locationId?: string,
+    tenantId?: string,
+  ) {
     // Validate location belongs to tenant if both are provided
     if (locationId && tenantId) {
       const location = await this.locationsRepository.findById(locationId);
@@ -569,14 +640,17 @@ export class ReportsService {
           weekStart.setDate(date.getDate() - date.getDay());
           const year = weekStart.getFullYear();
           const startOfYear = new Date(year, 0, 1);
-          const days = Math.floor((weekStart.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+          const days = Math.floor(
+            (weekStart.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000),
+          );
           const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
           return `${year}-W${String(weekNumber).padStart(2, '0')}`;
         };
         break;
       case 'monthly':
         fromDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-        groupBy = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        groupBy = (date: Date) =>
+          `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         break;
     }
 
@@ -587,13 +661,16 @@ export class ReportsService {
       locationId ? this.inventoryRepository.listStock(locationId) : Promise.resolve([]),
     ]);
 
-    const grouped: Record<string, {
-      received: number;
-      sold: number;
-      returned: number;
-      adjusted: number;
-      transactions: number;
-    }> = {};
+    const grouped: Record<
+      string,
+      {
+        received: number;
+        sold: number;
+        returned: number;
+        adjusted: number;
+        transactions: number;
+      }
+    > = {};
 
     transactions.forEach((tx) => {
       const key = groupBy(tx.ts);
@@ -633,23 +710,24 @@ export class ReportsService {
     const totalCurrentStock = inventoryStock.reduce((sum, inv) => sum + inv.quantity, 0);
     const totalInventoryValue = inventoryStock.reduce((sum, inv) => {
       const cost = inv.costCents || 0;
-      return sum + (cost * inv.quantity);
+      return sum + cost * inv.quantity;
     }, 0);
     const totalInventorySalesValue = inventoryStock.reduce((sum, inv) => {
       const salesPrice = inv.salesPriceCents || 0;
-      return sum + (salesPrice * inv.quantity);
+      return sum + salesPrice * inv.quantity;
     }, 0);
 
     // Get low stock products (below reorder point)
     const lowStockProducts = inventoryStock.filter(
-      (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint
+      (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint,
     );
 
     // Batch fetch product names for inventorized products
     const productIds = inventoryStock.map((inv) => inv.productId);
-    const productsMap = tenantId && productIds.length > 0
-      ? await this.productsService.findByIds(productIds, tenantId)
-      : new Map<string, any>();
+    const productsMap =
+      tenantId && productIds.length > 0
+        ? await this.productsService.findByIds(productIds, tenantId)
+        : new Map<string, any>();
 
     // Build inventorized products list with product names
     const inventorizedProducts = inventoryStock.map((inv) => {
@@ -719,14 +797,17 @@ export class ReportsService {
     const locationUsers = allUsers;
 
     // Aggregate sales by staff
-    const staffSales: Record<string, {
-      userId: string;
-      userName: string;
-      totalSales: number;
-      orderCount: number;
-      itemCount: number;
-      averageOrderValue: number;
-    }> = {};
+    const staffSales: Record<
+      string,
+      {
+        userId: string;
+        userName: string;
+        totalSales: number;
+        orderCount: number;
+        itemCount: number;
+        averageOrderValue: number;
+      }
+    > = {};
 
     orders.forEach((order) => {
       if (!order.createdBy) return;
@@ -743,7 +824,10 @@ export class ReportsService {
       }
       staffSales[order.createdBy].totalSales += order.totalCents / 100;
       staffSales[order.createdBy].orderCount += 1;
-      staffSales[order.createdBy].itemCount += order.items.reduce((sum, item) => sum + item.quantity, 0);
+      staffSales[order.createdBy].itemCount += order.items.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
     });
 
     // Calculate averages
@@ -752,15 +836,18 @@ export class ReportsService {
     });
 
     // Aggregate inventory activity by staff
-    const staffInventory: Record<string, {
-      userId: string;
-      userName: string;
-      transactions: number;
-      itemsReceived: number;
-      itemsSold: number;
-      itemsReturned: number;
-      itemsAdjusted: number;
-    }> = {};
+    const staffInventory: Record<
+      string,
+      {
+        userId: string;
+        userName: string;
+        transactions: number;
+        itemsReceived: number;
+        itemsSold: number;
+        itemsReturned: number;
+        itemsAdjusted: number;
+      }
+    > = {};
 
     transactions.forEach((tx) => {
       if (!tx.userId) return;
@@ -789,10 +876,7 @@ export class ReportsService {
     });
 
     // Combine sales and inventory data
-    const allStaffIds = new Set([
-      ...Object.keys(staffSales),
-      ...Object.keys(staffInventory),
-    ]);
+    const allStaffIds = new Set([...Object.keys(staffSales), ...Object.keys(staffInventory)]);
 
     const staffPerformance = Array.from(allStaffIds).map((userId) => {
       const sales = staffSales[userId] || {
@@ -910,9 +994,10 @@ export class ReportsService {
         })
         .map((inv) => inv.productId);
 
-      const productsMap = tenantId && productIdsToFetch.length > 0
-        ? await this.productsService.findByIds(productIdsToFetch, tenantId)
-        : new Map<string, any>();
+      const productsMap =
+        tenantId && productIdsToFetch.length > 0
+          ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+          : new Map<string, any>();
 
       for (const inventory of inventoryRecords) {
         const salesRate = productSalesRate[inventory.productId];
@@ -931,7 +1016,9 @@ export class ReportsService {
                 productName: product?.name,
                 daysUntilStockout,
                 currentStock: inventory.quantity,
-                predictedStockoutDate: new Date(now.getTime() + daysUntilStockout * 24 * 60 * 60 * 1000).toISOString(),
+                predictedStockoutDate: new Date(
+                  now.getTime() + daysUntilStockout * 24 * 60 * 60 * 1000,
+                ).toISOString(),
               });
             }
           }
@@ -1033,8 +1120,12 @@ export class ReportsService {
     // 4. Staff performance differences (identify significant gaps)
     try {
       const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const staffPerf = await this.getStaffPerformance(locationId, last30Days.toISOString(), now.toISOString());
-      
+      const staffPerf = await this.getStaffPerformance(
+        locationId,
+        last30Days.toISOString(),
+        now.toISOString(),
+      );
+
       if (staffPerf.staffPerformance.length > 1) {
         const salesValues = staffPerf.staffPerformance.map((s) => s.sales.totalSales);
         const maxSales = Math.max(...salesValues);
@@ -1065,14 +1156,15 @@ export class ReportsService {
     try {
       const inventoryRecords = await this.inventoryRepository.listStock(locationId);
       const lowStockItems = inventoryRecords.filter(
-        (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint
+        (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint,
       );
 
       // Batch fetch all products at once
       const productIdsToFetch = lowStockItems.map((inv) => inv.productId);
-      const productsMap = tenantId && productIdsToFetch.length > 0
-        ? await this.productsService.findByIds(productIdsToFetch, tenantId)
-        : new Map<string, any>();
+      const productsMap =
+        tenantId && productIdsToFetch.length > 0
+          ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+          : new Map<string, any>();
 
       for (const inventory of lowStockItems) {
         const product = productsMap.get(inventory.productId);
@@ -1141,7 +1233,10 @@ export class ReportsService {
       : allUsers;
 
     // 1. Discount abuse detection (per staff)
-    const staffDiscounts: Record<string, { count: number; totalDiscount: number; totalSales: number }> = {};
+    const staffDiscounts: Record<
+      string,
+      { count: number; totalDiscount: number; totalSales: number }
+    > = {};
     orders.forEach((order) => {
       if (order.createdBy && order.discountCents > 0) {
         if (!staffDiscounts[order.createdBy]) {
@@ -1154,11 +1249,15 @@ export class ReportsService {
     });
 
     Object.entries(staffDiscounts).forEach(([staffId, stats]) => {
-      const discountRate = stats.totalSales > 0 ? (stats.totalDiscount / stats.totalSales) * 100 : 0;
+      const discountRate =
+        stats.totalSales > 0 ? (stats.totalDiscount / stats.totalSales) * 100 : 0;
       const avgDiscountPerOrder = stats.count > 0 ? stats.totalDiscount / stats.count : 0;
-      
+
       // Alert if discount rate > 15% or if staff uses discounts in > 50% of orders
-      if (discountRate > 15 || (stats.count / orders.filter((o) => o.createdBy === staffId).length) > 0.5) {
+      if (
+        discountRate > 15 ||
+        stats.count / orders.filter((o) => o.createdBy === staffId).length > 0.5
+      ) {
         const user = locationUsers.find((u) => u.id === staffId);
         fraudAlerts.push({
           type: 'discount_abuse',
@@ -1283,7 +1382,9 @@ export class ReportsService {
     }
 
     // Filter batches with expiry dates
-    const batchesWithExpiry = batchInventory.filter((batch) => batch.expiryDate && batch.quantity > 0);
+    const batchesWithExpiry = batchInventory.filter(
+      (batch) => batch.expiryDate && batch.quantity > 0,
+    );
 
     const expiringSoon: Array<{
       productId: string;
@@ -1309,15 +1410,18 @@ export class ReportsService {
 
     // Batch fetch product names
     const productIds = new Set(batchesWithExpiry.map((batch) => batch.productId));
-    const productsMap = tenantId && productIds.size > 0
-      ? await this.productsService.findByIds(Array.from(productIds), tenantId)
-      : new Map<string, any>();
+    const productsMap =
+      tenantId && productIds.size > 0
+        ? await this.productsService.findByIds(Array.from(productIds), tenantId)
+        : new Map<string, any>();
 
     batchesWithExpiry.forEach((batch) => {
       if (!batch.expiryDate) return;
 
       const expiryDate = batch.expiryDate;
-      const daysUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+      const daysUntilExpiry = Math.floor(
+        (expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
+      );
       const potentialLoss = (batch.unitCostCents || 0) * batch.quantity;
       const product = productsMap.get(batch.productId);
 
@@ -1381,9 +1485,10 @@ export class ReportsService {
       expiredItems,
       lossForecast: totalLossForecast,
       totalBatchesTracked: batchesWithExpiry.length,
-      message: batchesWithExpiry.length === 0
-        ? 'No batch inventory with expiry dates found. Enable batch tracking in GRN to track expiry dates.'
-        : `Tracking ${batchesWithExpiry.length} batches with expiry dates.`,
+      message:
+        batchesWithExpiry.length === 0
+          ? 'No batch inventory with expiry dates found. Enable batch tracking in GRN to track expiry dates.'
+          : `Tracking ${batchesWithExpiry.length} batches with expiry dates.`,
     };
   }
 
@@ -1422,7 +1527,7 @@ export class ReportsService {
       if (!theoreticalStock[tx.productId]) {
         theoreticalStock[tx.productId] = 0;
       }
-      
+
       // Reverse the transaction to get theoretical starting point
       if (tx.type === InventoryTransactionType.SALE) {
         theoreticalStock[tx.productId] += Math.abs(tx.delta); // Add back what was sold
@@ -1469,9 +1574,10 @@ export class ReportsService {
     });
 
     // Batch fetch product names if tenantId is available
-    const productsMap = tenantId && productIdsToFetch.length > 0
-      ? await this.productsService.findByIds(productIdsToFetch, tenantId)
-      : new Map<string, any>();
+    const productsMap =
+      tenantId && productIdsToFetch.length > 0
+        ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+        : new Map<string, any>();
 
     // Add product names, title, and message to alerts
     const enrichedAlerts = shrinkageAlerts.map((alert) => {
@@ -1493,10 +1599,10 @@ export class ReportsService {
       totalDiscrepancies: enrichedAlerts.length,
       criticalCount: enrichedAlerts.filter((a) => a.severity === 'critical').length,
       warningCount: enrichedAlerts.filter((a) => a.severity === 'warning').length,
-      message: enrichedAlerts.length === 0 
-        ? 'No significant inventory discrepancies detected.'
-        : `${enrichedAlerts.length} products have inventory discrepancies.`,
+      message:
+        enrichedAlerts.length === 0
+          ? 'No significant inventory discrepancies detected.'
+          : `${enrichedAlerts.length} products have inventory discrepancies.`,
     };
   }
-
 }

@@ -68,7 +68,7 @@ export class BrandsRepository {
       .where('name', '==', name)
       .limit(1)
       .get();
-    
+
     if (snapshot.empty) {
       return null;
     }
@@ -79,7 +79,7 @@ export class BrandsRepository {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
     const docRef = this.collection.doc(id);
-    
+
     await docRef.set({
       tenantId: data.tenantId,
       name: data.name.trim(),
@@ -93,14 +93,18 @@ export class BrandsRepository {
     return this.toRecord(created.id, created.data() as BrandDocument);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateBrandInput>): Promise<BrandRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateBrandInput>,
+  ): Promise<BrandRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Brand ${id} not found`);
     }
-    
+
     const data = existing.data();
     if (data?.tenantId !== tenantId) {
       throw new Error(`Brand ${id} does not belong to tenant ${tenantId}`);
@@ -148,4 +152,3 @@ export class BrandsRepository {
     return new Date();
   }
 }
-

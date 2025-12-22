@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 export interface DebugLogEntry {
   id: string;
@@ -35,5 +35,3 @@ export const useDebugLogStore = create<DebugLogState>((set) => ({
     }),
   clearLogs: () => set({ logs: [] }),
 }));
-
-

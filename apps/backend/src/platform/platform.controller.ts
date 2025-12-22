@@ -79,11 +79,7 @@ export class PlatformController {
   @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'Flutterwave webhook handler' })
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
-  async handleFlutterwaveWebhook(
-    @Body() payload: any,
-    @Headers('verif-hash') verifHash: string,
-  ) {
+  async handleFlutterwaveWebhook(@Body() payload: any, @Headers('verif-hash') verifHash: string) {
     return this.platformService.handleFlutterwaveWebhook(payload, verifHash);
   }
 }
-

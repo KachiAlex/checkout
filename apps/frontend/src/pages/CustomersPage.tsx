@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import axios from 'axios';
-import { API_URL } from '../config';
-import { toast } from 'react-hot-toast';
-import { format } from 'date-fns';
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../stores/authStore";
+import axios from "axios";
+import { API_URL } from "../config";
+import { toast } from "react-hot-toast";
+import { format } from "date-fns";
 
 interface Customer {
   id: string;
@@ -13,7 +13,7 @@ interface Customer {
   loyaltyId?: string;
   loyaltyPoints: number;
   storeCreditCents: number;
-  preferredPaymentMethod?: 'cash' | 'card' | 'qr' | 'transfer';
+  preferredPaymentMethod?: "cash" | "card" | "qr" | "transfer";
   dateOfBirth?: string;
   address?: string;
   notes?: string;
@@ -27,15 +27,15 @@ export function CustomersPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    preferredPaymentMethod: '' as 'cash' | 'card' | 'qr' | 'transfer' | '',
-    dateOfBirth: '',
-    address: '',
-    notes: '',
+    name: "",
+    phone: "",
+    email: "",
+    preferredPaymentMethod: "" as "cash" | "card" | "qr" | "transfer" | "",
+    dateOfBirth: "",
+    address: "",
+    notes: "",
   });
 
   const loadCustomers = async () => {
@@ -49,9 +49,9 @@ export function CustomersPage() {
       });
       setCustomers(response.data || []);
     } catch (error: any) {
-      console.error('Failed to load customers:', error);
+      console.error("Failed to load customers:", error);
       if (error.response?.status !== 401) {
-        toast.error('Failed to load customers');
+        toast.error("Failed to load customers");
       }
     } finally {
       setLoading(false);
@@ -65,7 +65,7 @@ export function CustomersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken) {
-      toast.error('Not authenticated');
+      toast.error("Not authenticated");
       return;
     }
 
@@ -76,30 +76,28 @@ export function CustomersPage() {
           formData,
           { headers: { Authorization: `Bearer ${accessToken}` } },
         );
-        toast.success('Customer updated');
+        toast.success("Customer updated");
       } else {
-        await axios.post(
-          `${API_URL}/api/v1/customers`,
-          formData,
-          { headers: { Authorization: `Bearer ${accessToken}` } },
-        );
-        toast.success('Customer created');
+        await axios.post(`${API_URL}/api/v1/customers`, formData, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        toast.success("Customer created");
       }
       setShowForm(false);
       setEditingCustomer(null);
       setFormData({
-        name: '',
-        phone: '',
-        email: '',
-        preferredPaymentMethod: '',
-        dateOfBirth: '',
-        address: '',
-        notes: '',
+        name: "",
+        phone: "",
+        email: "",
+        preferredPaymentMethod: "",
+        dateOfBirth: "",
+        address: "",
+        notes: "",
       });
       loadCustomers();
     } catch (error: any) {
-      console.error('Failed to save customer:', error);
-      toast.error(error.response?.data?.message || 'Failed to save customer');
+      console.error("Failed to save customer:", error);
+      toast.error(error.response?.data?.message || "Failed to save customer");
     }
   };
 
@@ -107,18 +105,20 @@ export function CustomersPage() {
     setEditingCustomer(customer);
     setFormData({
       name: customer.name,
-      phone: customer.phone || '',
-      email: customer.email || '',
-      preferredPaymentMethod: customer.preferredPaymentMethod || '',
-      dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.split('T')[0] : '',
-      address: customer.address || '',
-      notes: customer.notes || '',
+      phone: customer.phone || "",
+      email: customer.email || "",
+      preferredPaymentMethod: customer.preferredPaymentMethod || "",
+      dateOfBirth: customer.dateOfBirth
+        ? customer.dateOfBirth.split("T")[0]
+        : "",
+      address: customer.address || "",
+      notes: customer.notes || "",
     });
     setShowForm(true);
   };
 
   const handleAddLoyaltyPoints = async (customerId: string) => {
-    const points = prompt('Enter points to add:');
+    const points = prompt("Enter points to add:");
     if (!points || isNaN(Number(points))) return;
 
     try {
@@ -127,15 +127,15 @@ export function CustomersPage() {
         { points: Number(points) },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      toast.success('Loyalty points added');
+      toast.success("Loyalty points added");
       loadCustomers();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to add points');
+      toast.error(error.response?.data?.message || "Failed to add points");
     }
   };
 
   const handleAddStoreCredit = async (customerId: string) => {
-    const amount = prompt('Enter amount in NGN:');
+    const amount = prompt("Enter amount in NGN:");
     if (!amount || isNaN(Number(amount))) return;
 
     try {
@@ -144,10 +144,12 @@ export function CustomersPage() {
         { amountCents: Math.round(Number(amount) * 100) },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      toast.success('Store credit added');
+      toast.success("Store credit added");
       loadCustomers();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to add store credit');
+      toast.error(
+        error.response?.data?.message || "Failed to add store credit",
+      );
     }
   };
 
@@ -157,20 +159,24 @@ export function CustomersPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
-            <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">Customers</h1>
-            <p className="theme-text-secondary mt-1 text-xs sm:text-sm">Manage customer profiles and loyalty</p>
+            <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">
+              Customers
+            </h1>
+            <p className="theme-text-secondary mt-1 text-xs sm:text-sm">
+              Manage customer profiles and loyalty
+            </p>
           </div>
           <button
             onClick={() => {
               setEditingCustomer(null);
               setFormData({
-                name: '',
-                phone: '',
-                email: '',
-                preferredPaymentMethod: '',
-                dateOfBirth: '',
-                address: '',
-                notes: '',
+                name: "",
+                phone: "",
+                email: "",
+                preferredPaymentMethod: "",
+                dateOfBirth: "",
+                address: "",
+                notes: "",
               });
               setShowForm(true);
             }}
@@ -194,9 +200,13 @@ export function CustomersPage() {
         {/* Customer List */}
         <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
           {loading ? (
-            <div className="theme-text-secondary text-center py-8">Loading customers...</div>
+            <div className="theme-text-secondary text-center py-8">
+              Loading customers...
+            </div>
           ) : customers.length === 0 ? (
-            <div className="theme-text-secondary text-center py-8">No customers found</div>
+            <div className="theme-text-secondary text-center py-8">
+              No customers found
+            </div>
           ) : (
             <div className="space-y-3">
               {customers.map((customer) => (
@@ -206,30 +216,45 @@ export function CustomersPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="theme-text-primary text-lg font-semibold">{customer.name}</h3>
+                      <h3 className="theme-text-primary text-lg font-semibold">
+                        {customer.name}
+                      </h3>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm theme-text-secondary">
                         {customer.phone && <span>📞 {customer.phone}</span>}
                         {customer.email && <span>✉️ {customer.email}</span>}
                         {customer.loyaltyId && (
-                          <span className="font-mono">🎫 {customer.loyaltyId}</span>
+                          <span className="font-mono">
+                            🎫 {customer.loyaltyId}
+                          </span>
                         )}
                       </div>
                       <div className="mt-2 flex items-center gap-4 text-sm">
                         <span className="theme-text-secondary">
-                          Points: <span className="font-semibold theme-text-primary">{customer.loyaltyPoints}</span>
+                          Points:{" "}
+                          <span className="font-semibold theme-text-primary">
+                            {customer.loyaltyPoints}
+                          </span>
                         </span>
                         <span className="theme-text-secondary">
-                          Credit: <span className="font-semibold theme-text-primary">₦{(customer.storeCreditCents / 100).toFixed(2)}</span>
+                          Credit:{" "}
+                          <span className="font-semibold theme-text-primary">
+                            ₦{(customer.storeCreditCents / 100).toFixed(2)}
+                          </span>
                         </span>
                       </div>
                       {customer.address && (
-                        <p className="theme-text-secondary mt-2 text-sm">📍 {customer.address}</p>
+                        <p className="theme-text-secondary mt-2 text-sm">
+                          📍 {customer.address}
+                        </p>
                       )}
                       {customer.notes && (
-                        <p className="theme-text-secondary mt-1 text-sm italic">{customer.notes}</p>
+                        <p className="theme-text-secondary mt-1 text-sm italic">
+                          {customer.notes}
+                        </p>
                       )}
                       <p className="theme-text-secondary mt-2 text-xs">
-                        Added: {format(new Date(customer.createdAt), 'MMM d, yyyy')}
+                        Added:{" "}
+                        {format(new Date(customer.createdAt), "MMM d, yyyy")}
                       </p>
                     </div>
                     <div className="flex flex-col gap-2">
@@ -264,7 +289,7 @@ export function CustomersPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="theme-card w-full max-w-2xl rounded-3xl border p-6 backdrop-blur-xl">
               <h2 className="theme-text-primary text-xl font-semibold mb-4">
-                {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+                {editingCustomer ? "Edit Customer" : "Add New Customer"}
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -275,7 +300,9 @@ export function CustomersPage() {
                     <input
                       type="text"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
                       className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                       required
                     />
@@ -287,7 +314,9 @@ export function CustomersPage() {
                     <input
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
                       className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -299,7 +328,9 @@ export function CustomersPage() {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
                 </div>
@@ -310,7 +341,12 @@ export function CustomersPage() {
                     </label>
                     <select
                       value={formData.preferredPaymentMethod}
-                      onChange={(e) => setFormData({ ...formData, preferredPaymentMethod: e.target.value as any })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          preferredPaymentMethod: e.target.value as any,
+                        })
+                      }
                       className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     >
                       <option value="">None</option>
@@ -327,7 +363,12 @@ export function CustomersPage() {
                     <input
                       type="date"
                       value={formData.dateOfBirth}
-                      onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          dateOfBirth: e.target.value,
+                        })
+                      }
                       className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -338,7 +379,9 @@ export function CustomersPage() {
                   </label>
                   <textarea
                     value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     rows={2}
                   />
@@ -349,7 +392,9 @@ export function CustomersPage() {
                   </label>
                   <textarea
                     value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     rows={3}
                   />
@@ -359,7 +404,7 @@ export function CustomersPage() {
                     type="submit"
                     className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70"
                   >
-                    {editingCustomer ? 'Update Customer' : 'Create Customer'}
+                    {editingCustomer ? "Update Customer" : "Create Customer"}
                   </button>
                   <button
                     type="button"
@@ -380,4 +425,3 @@ export function CustomersPage() {
     </div>
   );
 }
-

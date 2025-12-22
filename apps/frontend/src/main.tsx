@@ -1,19 +1,20 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.css';
-import { useAuthStore } from './stores/authStore';
-import axios from 'axios';
-import { Capacitor, CapacitorHttp, HttpOptions } from '@capacitor/core';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
+import { useAuthStore } from "./stores/authStore";
+import axios from "axios";
+import { Capacitor, CapacitorHttp, HttpOptions } from "@capacitor/core";
+import { HelmetProvider } from "react-helmet-async";
 
 const isNativePlatform =
-  typeof Capacitor.isNativePlatform === 'function'
+  typeof Capacitor.isNativePlatform === "function"
     ? Capacitor.isNativePlatform()
-    : Capacitor.getPlatform() !== 'web';
+    : Capacitor.getPlatform() !== "web";
 
 if (isNativePlatform) {
   axios.defaults.adapter = async (config) => {
-    const method = (config.method ?? 'get').toUpperCase();
+    const method = (config.method ?? "get").toUpperCase();
     const url = axios.getUri(config);
     const headers = (config.headers ?? {}) as Record<string, string>;
     const options: HttpOptions = {
@@ -25,14 +26,14 @@ if (isNativePlatform) {
       readTimeout: config.timeout,
       connectTimeout: config.timeout,
       responseType:
-        config.responseType === 'arraybuffer' || config.responseType === 'blob'
-          ? 'arraybuffer'
-          : 'json',
+        config.responseType === "arraybuffer" || config.responseType === "blob"
+          ? "arraybuffer"
+          : "json",
     };
 
     const response = await CapacitorHttp.request(options);
 
-    const statusText = (response as any).statusText ?? '';
+    const statusText = (response as any).statusText ?? "";
 
     return {
       data: response.data,
@@ -49,15 +50,17 @@ if (isNativePlatform) {
 const initializeAuth = () => {
   const { accessToken } = useAuthStore.getState();
   if (accessToken) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
   }
 };
 
 // Initialize auth before rendering
 initializeAuth();
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
   </React.StrictMode>,
 );

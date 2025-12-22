@@ -1,10 +1,10 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-import { useAuthStore } from '../stores/authStore';
+import axios from "axios";
+import { API_URL } from "../config";
+import { useAuthStore } from "../stores/authStore";
 
 export interface InitiatePaymentRequest {
   amount: number; // in cents
-  method: 'card' | 'qr' | 'cash' | 'transfer';
+  method: "card" | "qr" | "cash" | "transfer";
   metadata?: {
     customerName?: string;
     customerEmail?: string;
@@ -19,8 +19,8 @@ export interface PaymentResponse {
   orderId: string;
   amountCents: number;
   currency: string;
-  method: 'card' | 'qr' | 'cash' | 'transfer';
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
+  method: "card" | "qr" | "cash" | "transfer";
+  status: "pending" | "processing" | "completed" | "failed" | "refunded";
   transactionId?: string;
   processorData?: {
     checkoutUrl?: string;
@@ -49,10 +49,13 @@ export class PaymentService {
   /**
    * Initiate a payment for an order
    */
-  static async initiatePayment(orderId: string, request: InitiatePaymentRequest): Promise<PaymentResponse> {
+  static async initiatePayment(
+    orderId: string,
+    request: InitiatePaymentRequest,
+  ): Promise<PaymentResponse> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     const response = await axios.post<PaymentResponse>(
@@ -62,7 +65,7 @@ export class PaymentService {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     return response.data;
@@ -72,10 +75,13 @@ export class PaymentService {
    * Capture a pending payment (check status and complete if paid)
    * Note: This endpoint requires orderId, but we'll use a workaround for now
    */
-  static async capturePayment(orderId: string, paymentId: string): Promise<PaymentResponse> {
+  static async capturePayment(
+    orderId: string,
+    paymentId: string,
+  ): Promise<PaymentResponse> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     const response = await axios.post<PaymentResponse>(
@@ -85,7 +91,7 @@ export class PaymentService {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     return response.data;
@@ -94,10 +100,12 @@ export class PaymentService {
   /**
    * Get payment status for an order
    */
-  static async getOrderPaymentStatus(orderId: string): Promise<PaymentStatusResponse> {
+  static async getOrderPaymentStatus(
+    orderId: string,
+  ): Promise<PaymentStatusResponse> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     const response = await axios.get<PaymentStatusResponse>(
@@ -106,7 +114,7 @@ export class PaymentService {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     return response.data;
@@ -116,10 +124,14 @@ export class PaymentService {
    * Refund a payment
    * Note: This endpoint requires orderId, but we'll use a workaround for now
    */
-  static async refundPayment(orderId: string, paymentId: string, amountCents?: number): Promise<PaymentResponse> {
+  static async refundPayment(
+    orderId: string,
+    paymentId: string,
+    amountCents?: number,
+  ): Promise<PaymentResponse> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     const response = await axios.post<PaymentResponse>(
@@ -129,10 +141,9 @@ export class PaymentService {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     return response.data;
   }
 }
-

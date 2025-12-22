@@ -41,7 +41,8 @@ export type CreateLoyaltyTransactionInput = {
 
 @Injectable()
 export class LoyaltyTransactionsRepository {
-  private readonly collection = this.firestore.collection<LoyaltyTransactionDocument>('loyalty_transactions');
+  private readonly collection =
+    this.firestore.collection<LoyaltyTransactionDocument>('loyalty_transactions');
 
   constructor(private readonly firestore: FirestoreService) {}
 
@@ -66,7 +67,11 @@ export class LoyaltyTransactionsRepository {
     return this.toRecord(created.id, created.data() as LoyaltyTransactionDocument);
   }
 
-  async findByCustomer(customerId: string, tenantId: string, limit = 50): Promise<LoyaltyTransactionRecord[]> {
+  async findByCustomer(
+    customerId: string,
+    tenantId: string,
+    limit = 50,
+  ): Promise<LoyaltyTransactionRecord[]> {
     const snapshot = await this.collection
       .where('customerId', '==', customerId)
       .where('tenantId', '==', tenantId)
@@ -86,7 +91,10 @@ export class LoyaltyTransactionsRepository {
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
   }
 
-  private toRecord(id: string, data: LoyaltyTransactionDocument | undefined): LoyaltyTransactionRecord {
+  private toRecord(
+    id: string,
+    data: LoyaltyTransactionDocument | undefined,
+  ): LoyaltyTransactionRecord {
     if (!data) {
       throw new Error(`Loyalty transaction document ${id} has no data.`);
     }
@@ -115,4 +123,3 @@ export class LoyaltyTransactionsRepository {
     return new Date();
   }
 }
-

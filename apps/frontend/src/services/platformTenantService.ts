@@ -1,6 +1,6 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-import { Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
+import axios from "axios";
+import { API_URL } from "../config";
+import { Industry, IndustryFeatureFlags } from "@pos-checkout/shared";
 
 export interface TenantSummary {
   id: string;
@@ -63,12 +63,19 @@ export interface TenantDeleteResponse {
 }
 
 export async function listTenants(): Promise<TenantSummary[]> {
-  const { data } = await axios.get<TenantSummary[]>(`${API_URL}/api/v1/platform/tenants`);
+  const { data } = await axios.get<TenantSummary[]>(
+    `${API_URL}/api/v1/platform/tenants`,
+  );
   return data;
 }
 
-export async function createTenant(payload: CreateTenantPayload): Promise<TenantProvisioningResult> {
-  const { data } = await axios.post<TenantProvisioningResult>(`${API_URL}/api/v1/platform/tenants`, payload);
+export async function createTenant(
+  payload: CreateTenantPayload,
+): Promise<TenantProvisioningResult> {
+  const { data } = await axios.post<TenantProvisioningResult>(
+    `${API_URL}/api/v1/platform/tenants`,
+    payload,
+  );
   return data;
 }
 
@@ -94,7 +101,10 @@ export async function resetTenantAdminPin(
   return data;
 }
 
-export async function suspendTenant(tenantId: string, payload: SuspendTenantPayload): Promise<TenantSummary> {
+export async function suspendTenant(
+  tenantId: string,
+  payload: SuspendTenantPayload,
+): Promise<TenantSummary> {
   const { data } = await axios.post<TenantSummary>(
     `${API_URL}/api/v1/platform/tenants/${tenantId}/suspend`,
     payload,
@@ -103,12 +113,18 @@ export async function suspendTenant(tenantId: string, payload: SuspendTenantPayl
 }
 
 export async function activateTenant(tenantId: string): Promise<TenantSummary> {
-  const { data } = await axios.post<TenantSummary>(`${API_URL}/api/v1/platform/tenants/${tenantId}/activate`);
+  const { data } = await axios.post<TenantSummary>(
+    `${API_URL}/api/v1/platform/tenants/${tenantId}/activate`,
+  );
   return data;
 }
 
-export async function deleteTenant(tenantId: string): Promise<TenantDeleteResponse> {
-  const { data } = await axios.delete<TenantDeleteResponse>(`${API_URL}/api/v1/platform/tenants/${tenantId}`);
+export async function deleteTenant(
+  tenantId: string,
+): Promise<TenantDeleteResponse> {
+  const { data } = await axios.delete<TenantDeleteResponse>(
+    `${API_URL}/api/v1/platform/tenants/${tenantId}`,
+  );
   return data;
 }
 
@@ -127,4 +143,3 @@ export async function changeSuperAdminPassword(
   );
   return data;
 }
-

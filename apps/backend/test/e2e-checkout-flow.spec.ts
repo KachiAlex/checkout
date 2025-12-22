@@ -1,6 +1,6 @@
 /**
  * E2E: Complete Checkout Flow
- * 
+ *
  * Tests the full checkout flow:
  * 1. Create tenant and location
  * 2. Create products and inventory
@@ -9,7 +9,7 @@
  * 5. Process payment
  * 6. Verify inventory decremented
  * 7. Test idempotency
- * 
+ *
  * Requires Firestore emulator to be running (via docker-compose or manually)
  */
 import { Test, TestingModule } from '@nestjs/testing';
@@ -117,7 +117,10 @@ describe('E2E: Complete Checkout Flow', () => {
         await firestoreService.collection('locations').doc(testLocationId).delete();
         await firestoreService.collection('users').doc(testUserId).delete();
         await firestoreService.collection('products').doc(testProductId).delete();
-        await firestoreService.collection('inventory').doc(`${testLocationId}_${testProductId}`).delete();
+        await firestoreService
+          .collection('inventory')
+          .doc(`${testLocationId}_${testProductId}`)
+          .delete();
       } catch (error) {
         // Ignore cleanup errors
       }

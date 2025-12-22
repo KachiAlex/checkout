@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config';
-import { formatCurrency } from '../utils/numberFormat';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { API_URL } from "../config";
+import { formatCurrency } from "../utils/numberFormat";
 
 interface Product {
   id: string;
@@ -26,7 +26,7 @@ export function ProductList({ onAddToCart }: ProductListProps) {
         const response = await axios.get(`${API_URL}/api/v1/products`);
         setProducts(response.data);
       } catch (error) {
-        console.error('Failed to fetch products:', error);
+        console.error("Failed to fetch products:", error);
       } finally {
         setLoading(false);
       }
@@ -36,7 +36,9 @@ export function ProductList({ onAddToCart }: ProductListProps) {
   }, []);
 
   if (loading) {
-    return <div className="bg-white rounded-lg shadow p-6">Loading products...</div>;
+    return (
+      <div className="bg-white rounded-lg shadow p-6">Loading products...</div>
+    );
   }
 
   return (
@@ -54,13 +56,15 @@ export function ProductList({ onAddToCart }: ProductListProps) {
               {formatCurrency(product.priceCents)}
             </p>
             <button
-              onClick={() => onAddToCart({
-                productId: product.id,
-                name: product.name,
-                priceCents: product.priceCents,
-                taxRate: product.taxRate,
-                quantity: 1,
-              })}
+              onClick={() =>
+                onAddToCart({
+                  productId: product.id,
+                  name: product.name,
+                  priceCents: product.priceCents,
+                  taxRate: product.taxRate,
+                  quantity: 1,
+                })
+              }
               className="mt-2 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Add

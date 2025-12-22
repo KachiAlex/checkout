@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 export function KeyboardShortcutsHelp() {
   const [isOpen, setIsOpen] = useState(false);
 
   const shortcuts = [
-    { key: 'F1', description: 'Focus search input' },
-    { key: 'F2', description: 'Focus cart' },
-    { key: 'F3', description: 'Pay with cash' },
-    { key: 'F4', description: 'Pay with card' },
-    { key: 'F5', description: 'Pay with QR' },
-    { key: 'Delete', description: 'Remove last/selected cart item' },
-    { key: 'Enter', description: 'Complete payment (when cart focused)' },
+    { key: "F1", description: "Focus search input" },
+    { key: "F2", description: "Focus cart" },
+    { key: "F3", description: "Pay with cash" },
+    { key: "F4", description: "Pay with card" },
+    { key: "F5", description: "Pay with QR" },
+    { key: "Delete", description: "Remove last/selected cart item" },
+    { key: "Enter", description: "Complete payment (when cart focused)" },
   ];
 
   if (!isOpen) {
@@ -31,7 +31,9 @@ export function KeyboardShortcutsHelp() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="theme-card w-full max-w-md rounded-3xl border p-6 shadow-2xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="theme-text-primary text-xl font-bold">Keyboard Shortcuts</h2>
+          <h2 className="theme-text-primary text-xl font-bold">
+            Keyboard Shortcuts
+          </h2>
           <button
             onClick={() => setIsOpen(false)}
             className="theme-chip rounded-full border p-2 transition hover:bg-white/10"
@@ -46,7 +48,9 @@ export function KeyboardShortcutsHelp() {
               key={shortcut.key}
               className="theme-surface flex items-center justify-between rounded-xl border p-3"
             >
-              <span className="theme-text-secondary text-sm">{shortcut.description}</span>
+              <span className="theme-text-secondary text-sm">
+                {shortcut.description}
+              </span>
               <kbd className="theme-chip rounded-lg border px-3 py-1.5 font-mono text-xs font-semibold">
                 {shortcut.key}
               </kbd>
@@ -63,4 +67,3 @@ export function KeyboardShortcutsHelp() {
     </div>
   );
 }
-

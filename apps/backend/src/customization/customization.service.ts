@@ -36,10 +36,15 @@ export class CustomizationService {
       throw new NotFoundException('Tenant not found');
     }
 
-    return this.ensureCustomization(tenant.metadata?.receiptCustomization as ReceiptCustomization | undefined);
+    return this.ensureCustomization(
+      tenant.metadata?.receiptCustomization as ReceiptCustomization | undefined,
+    );
   }
 
-  async updateCustomization(tenantId: string, dto: UpdateCustomizationDto): Promise<ReceiptCustomization> {
+  async updateCustomization(
+    tenantId: string,
+    dto: UpdateCustomizationDto,
+  ): Promise<ReceiptCustomization> {
     const tenant = await this.tenantsRepository.findById(tenantId);
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
@@ -48,7 +53,7 @@ export class CustomizationService {
     const currentCustomization = this.ensureCustomization(
       tenant.metadata?.receiptCustomization as ReceiptCustomization | undefined,
     );
-    
+
     const updatedCustomization: ReceiptCustomization = {
       ...currentCustomization,
     };
@@ -87,7 +92,8 @@ export class CustomizationService {
       },
     });
 
-    return this.ensureCustomization(updatedTenant.metadata?.receiptCustomization as ReceiptCustomization | undefined);
+    return this.ensureCustomization(
+      updatedTenant.metadata?.receiptCustomization as ReceiptCustomization | undefined,
+    );
   }
 }
-

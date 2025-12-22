@@ -49,15 +49,13 @@ export class PaymentsService {
     // Process payment based on method
     try {
       let result;
-      
+
       if (dto.method === PaymentMethod.CASH || dto.method === PaymentMethod.TRANSFER) {
         // Cash or manual transfer payment - auto approve once cashier confirms funds
         result = await this.paymentsRepository.update(payment.id, {
           status: PaymentStatus.COMPLETED,
           processedAt: new Date(),
-          transactionId: `${
-            dto.method === PaymentMethod.CASH ? 'CASH' : 'TRANSFER'
-          }_${Date.now()}`,
+          transactionId: `${dto.method === PaymentMethod.CASH ? 'CASH' : 'TRANSFER'}_${Date.now()}`,
         });
       } else {
         // Process via payment adapter (Monnify or MockTerminal)
@@ -74,7 +72,9 @@ export class PaymentsService {
             customerEmail: dto.metadata?.customerEmail,
             customerPhone: dto.metadata?.customerPhone,
             // Add redirect URL for Monnify checkout
-            redirectUrl: dto.metadata?.redirectUrl || `${this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173')}/checkout/payment-callback`,
+            redirectUrl:
+              dto.metadata?.redirectUrl ||
+              `${this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173')}/checkout/payment-callback`,
           },
         });
 
@@ -165,11 +165,11 @@ export class PaymentsService {
   }> {
     const order = await this.ordersService.findOne(orderId);
     const payments = await this.paymentsRepository.findByOrderId(orderId);
-    
+
     const totalPaid = payments
-      .filter(p => p.status === PaymentStatus.COMPLETED)
+      .filter((p) => p.status === PaymentStatus.COMPLETED)
       .reduce((sum, p) => sum + p.amountCents, 0);
-    
+
     const totalDue = order.totalCents;
     const isFullyPaid = totalPaid >= totalDue;
 
@@ -184,7 +184,11 @@ export class PaymentsService {
   /**
    * Handle webhook notification from payment gateway
    */
-  async handleWebhookNotification(paymentReference: string, status: PaymentStatus, transactionData?: Record<string, unknown>): Promise<PaymentRecord | null> {
+  async handleWebhookNotification(
+    paymentReference: string,
+    status: PaymentStatus,
+    transactionData?: Record<string, unknown>,
+  ): Promise<PaymentRecord | null> {
     // Find payment by reference (could be paymentReference or transactionReference)
     const payment = await this.paymentsRepository.findByPaymentReference(paymentReference);
 
@@ -195,7 +199,7 @@ export class PaymentsService {
     // Update payment status
     return this.paymentsRepository.update(payment.id, {
       status,
-      transactionId: transactionData?.transactionReference as string || payment.transactionId,
+      transactionId: (transactionData?.transactionReference as string) || payment.transactionId,
       processorData: {
         ...(payment.processorData ?? {}),
         ...transactionData,

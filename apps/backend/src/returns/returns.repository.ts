@@ -169,7 +169,9 @@ export class ReturnsRepository {
     if (update.notes !== undefined) updateDoc.notes = update.notes;
     if (update.processedBy !== undefined) updateDoc.processedBy = update.processedBy;
     if (update.processedAt !== undefined) {
-      updateDoc.processedAt = update.processedAt ? Timestamp.fromDate(update.processedAt) : undefined;
+      updateDoc.processedAt = update.processedAt
+        ? Timestamp.fromDate(update.processedAt)
+        : undefined;
     }
 
     await docRef.set(updateDoc, { merge: true });
@@ -227,4 +229,3 @@ export class ReturnsRepository {
     return new Date();
   }
 }
-

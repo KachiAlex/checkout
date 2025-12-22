@@ -18,10 +18,16 @@ declare global {
   interface Window {
     posApp?: {
       getInfo: () => Promise<{ name: string; version: string }>;
-      listNativeDevices: () => Promise<import('./types/nativeDevices').NativeDeviceSummary[]>;
-      scanBluetoothDevices: (timeoutMs?: number) => Promise<import('./types/nativeDevices').NativeDeviceSummary[]>;
+      listNativeDevices: () => Promise<
+        import("./types/nativeDevices").NativeDeviceSummary[]
+      >;
+      scanBluetoothDevices: (
+        timeoutMs?: number,
+      ) => Promise<import("./types/nativeDevices").NativeDeviceSummary[]>;
       onNativeDevicesUpdated: (
-        callback: (devices: import('./types/nativeDevices').NativeDeviceSummary[]) => void,
+        callback: (
+          devices: import("./types/nativeDevices").NativeDeviceSummary[],
+        ) => void,
       ) => () => void;
     };
     __IS_ELECTRON__?: boolean;
@@ -29,4 +35,3 @@ declare global {
 }
 
 export {};
-

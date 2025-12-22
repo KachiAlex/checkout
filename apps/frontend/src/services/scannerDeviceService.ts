@@ -1,8 +1,8 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-import { ScannerDevice } from '../stores/scannerDeviceStore';
-import { useAuthStore } from '../stores/authStore';
-import { NativeDeviceSummary } from '../types/nativeDevices';
+import axios from "axios";
+import { API_URL } from "../config";
+import { ScannerDevice } from "../stores/scannerDeviceStore";
+import { useAuthStore } from "../stores/authStore";
+import { NativeDeviceSummary } from "../types/nativeDevices";
 
 type WebBluetoothDevice = {
   id: string;
@@ -18,7 +18,7 @@ interface DeviceResponse {
   id: string;
   identifier: string;
   name: string;
-  type: 'usb' | 'bluetooth' | 'camera';
+  type: "usb" | "bluetooth" | "camera";
   hardwareId?: string;
   vendorId?: string;
   productId?: string;
@@ -33,7 +33,10 @@ interface DeviceResponse {
   updatedAt?: string;
 }
 
-function mapDeviceResponse(device: DeviceResponse, fallbackDeviceId?: string): ScannerDevice {
+function mapDeviceResponse(
+  device: DeviceResponse,
+  fallbackDeviceId?: string,
+): ScannerDevice {
   return {
     id: device.id,
     name: device.name,
@@ -53,30 +56,39 @@ function mapDeviceResponse(device: DeviceResponse, fallbackDeviceId?: string): S
 const getTenantSlug = (): string => {
   const slug = useAuthStore.getState().tenantSlug;
   if (!slug) {
-    throw new Error('Tenant context missing. Please log in again.');
+    throw new Error("Tenant context missing. Please log in again.");
   }
   return slug;
 };
 
-async function persistDevice(payload: Record<string, unknown>, fallbackDeviceId?: string): Promise<ScannerDevice> {
+async function persistDevice(
+  payload: Record<string, unknown>,
+  fallbackDeviceId?: string,
+): Promise<ScannerDevice> {
   const response = await axios.post<{ data?: DeviceResponse } | DeviceResponse>(
     `${API_URL}/api/v1/devices/register`,
     payload,
     {
       headers: {
-        'X-Tenant-Slug': getTenantSlug(),
+        "X-Tenant-Slug": getTenantSlug(),
       },
     },
   );
 
-  const device = (response as any).data?.data ?? (response as any).data ?? response.data;
+  const device =
+    (response as any).data?.data ?? (response as any).data ?? response.data;
   return mapDeviceResponse(device, fallbackDeviceId);
 }
 
-export async function fetchRegisteredDevices(locationId?: string): Promise<ScannerDevice[]> {
-  const response = await axios.get<DeviceResponse[]>(`${API_URL}/api/v1/devices`, {
-    params: locationId ? { location_id: locationId } : undefined,
-  });
+export async function fetchRegisteredDevices(
+  locationId?: string,
+): Promise<ScannerDevice[]> {
+  const response = await axios.get<DeviceResponse[]>(
+    `${API_URL}/api/v1/devices`,
+    {
+      params: locationId ? { location_id: locationId } : undefined,
+    },
+  );
 
   return response.data.map((device) => mapDeviceResponse(device));
 }
@@ -92,7 +104,7 @@ export async function getUSBDeviceInfo(): Promise<{
   productId?: string;
   deviceName?: string;
 } | null> {
-  if (typeof navigator === 'undefined') {
+  if (typeof navigator === "undefined") {
     return null;
   }
   const nav = navigator as Navigator & { usb?: any };
@@ -113,12 +125,12 @@ export async function getUSBDeviceInfo(): Promise<{
     // Get the first connected USB device (scanner)
     const device = devices[0];
     return {
-      vendorId: device.vendorId?.toString(16).padStart(4, '0'),
-      productId: device.productId?.toString(16).padStart(4, '0'),
-      deviceName: device.productName || 'USB Scanner',
+      vendorId: device.vendorId?.toString(16).padStart(4, "0"),
+      productId: device.productId?.toString(16).padStart(4, "0"),
+      deviceName: device.productName || "USB Scanner",
     };
   } catch (error) {
-    console.warn('Failed to get USB device info:', error);
+    console.warn("Failed to get USB device info:", error);
     return null;
   }
 }
@@ -132,12 +144,14 @@ export async function requestUSBDeviceAccess(): Promise<{
   productId?: string;
   deviceName?: string;
 } | null> {
-  if (typeof navigator === 'undefined') {
+  if (typeof navigator === "undefined") {
     return null;
   }
   const nav = navigator as Navigator & { usb?: any };
   if (!nav.usb) {
-    throw new Error('Web USB API not supported. Most USB scanners work automatically as keyboards.');
+    throw new Error(
+      "Web USB API not supported. Most USB scanners work automatically as keyboards.",
+    );
   }
 
   try {
@@ -152,15 +166,17 @@ export async function requestUSBDeviceAccess(): Promise<{
     });
 
     return {
-      vendorId: device.vendorId?.toString(16).padStart(4, '0'),
-      productId: device.productId?.toString(16).padStart(4, '0'),
-      deviceName: device.productName || 'USB Scanner',
+      vendorId: device.vendorId?.toString(16).padStart(4, "0"),
+      productId: device.productId?.toString(16).padStart(4, "0"),
+      deviceName: device.productName || "USB Scanner",
     };
   } catch (error: any) {
-    if (error.name === 'NotFoundError') {
-      throw new Error('No USB device selected.');
-    } else if (error.name === 'SecurityError') {
-      throw new Error('USB access denied. Most USB scanners work automatically as keyboards.');
+    if (error.name === "NotFoundError") {
+      throw new Error("No USB device selected.");
+    } else if (error.name === "SecurityError") {
+      throw new Error(
+        "USB access denied. Most USB scanners work automatically as keyboards.",
+      );
     }
     throw error;
   }
@@ -179,9 +195,9 @@ export function getBluetoothDeviceInfo(device: WebBluetoothDevice): {
 } {
   return {
     deviceId: device.id,
-    name: device.name || 'Bluetooth Scanner',
+    name: device.name || "Bluetooth Scanner",
     metadata: {
-      manufacturer: device.name?.split(' ')[0],
+      manufacturer: device.name?.split(" ")[0],
       model: device.name,
     },
   };
@@ -191,7 +207,7 @@ export function getBluetoothDeviceInfo(device: WebBluetoothDevice): {
  * Generate a device name based on type and available info
  */
 export function generateDeviceName(
-  type: 'usb' | 'bluetooth' | 'camera',
+  type: "usb" | "bluetooth" | "camera",
   deviceInfo?: {
     name?: string;
     vendorId?: string;
@@ -200,21 +216,21 @@ export function generateDeviceName(
   },
 ): string {
   switch (type) {
-    case 'usb':
+    case "usb":
       if (deviceInfo?.name) return deviceInfo.name;
       if (deviceInfo?.vendorId && deviceInfo?.productId) {
         return `USB Scanner (${deviceInfo.vendorId}:${deviceInfo.productId})`;
       }
-      return 'USB Scanner';
-    
-    case 'bluetooth':
-      return deviceInfo?.name || 'Bluetooth Scanner';
-    
-    case 'camera':
-      return 'Camera Scanner';
-    
+      return "USB Scanner";
+
+    case "bluetooth":
+      return deviceInfo?.name || "Bluetooth Scanner";
+
+    case "camera":
+      return "Camera Scanner";
+
     default:
-      return 'Unknown Scanner';
+      return "Unknown Scanner";
   }
 }
 
@@ -224,10 +240,10 @@ export function generateDeviceName(
  * when they scan. This function is for registering them in the system for tracking.
  */
 function formatHex(value?: number): string | undefined {
-  if (typeof value !== 'number') {
+  if (typeof value !== "number") {
     return undefined;
   }
-  return value.toString(16).padStart(4, '0');
+  return value.toString(16).padStart(4, "0");
 }
 
 function buildNativePayload(
@@ -237,7 +253,7 @@ function buildNativePayload(
 ): {
   identifier: string;
   name: string;
-  type: 'usb' | 'bluetooth';
+  type: "usb" | "bluetooth";
   hardwareId?: string;
   vendorId?: string;
   productId?: string;
@@ -247,15 +263,19 @@ function buildNativePayload(
   isActive: boolean;
 } {
   const identifierSource = device.path || device.serialNumber || device.id;
-  const identifier = identifierSource ? identifierSource.toLowerCase() : `${device.type}_${Date.now()}`;
+  const identifier = identifierSource
+    ? identifierSource.toLowerCase()
+    : `${device.type}_${Date.now()}`;
 
   const vendorId = formatHex(device.vendorId);
   const productId = formatHex(device.productId);
 
   return {
     identifier,
-    name: device.name || (device.type === 'usb' ? 'USB Scanner' : 'Bluetooth Scanner'),
-    type: device.type === 'bluetooth' ? 'bluetooth' : 'usb',
+    name:
+      device.name ||
+      (device.type === "usb" ? "USB Scanner" : "Bluetooth Scanner"),
+    type: device.type === "bluetooth" ? "bluetooth" : "usb",
     hardwareId: device.serialNumber || identifier,
     vendorId,
     productId,
@@ -264,7 +284,7 @@ function buildNativePayload(
     metadata: {
       manufacturer: device.manufacturer,
       transport: device.transport,
-      source: 'native-bridge',
+      source: "native-bridge",
     },
     isActive: true,
   };
@@ -298,17 +318,17 @@ export async function registerUSBDevice(
 
   const payload = {
     identifier,
-    name: generateDeviceName('usb', usbInfo ?? undefined),
-    type: 'usb' as const,
+    name: generateDeviceName("usb", usbInfo ?? undefined),
+    type: "usb" as const,
     hardwareId: identifier,
     vendorId: usbInfo?.vendorId,
     productId: usbInfo?.productId,
     locationId,
     registeredById: userId,
     metadata: {
-      manufacturer: usbInfo?.deviceName?.split(' ')[0],
-      deviceName: usbInfo?.deviceName || 'USB HID Scanner (Keyboard Mode)',
-      note: 'Most USB scanners work automatically as keyboards. Just plug in and scan.',
+      manufacturer: usbInfo?.deviceName?.split(" ")[0],
+      deviceName: usbInfo?.deviceName || "USB HID Scanner (Keyboard Mode)",
+      note: "Most USB scanners work automatically as keyboards. Just plug in and scan.",
     },
     isActive: true,
   };
@@ -324,11 +344,11 @@ export async function registerBluetoothDevice(
   locationId?: string,
   userId?: string,
 ): Promise<ScannerDevice> {
-  if ('type' in bluetoothDevice) {
+  if ("type" in bluetoothDevice) {
     return registerNativeDevice(
       {
         ...bluetoothDevice,
-        type: 'bluetooth',
+        type: "bluetooth",
       },
       locationId,
       userId,
@@ -341,7 +361,7 @@ export async function registerBluetoothDevice(
   const payload = {
     identifier: identifier.toLowerCase(),
     name: deviceInfo.name,
-    type: 'bluetooth' as const,
+    type: "bluetooth" as const,
     hardwareId: deviceInfo.deviceId,
     locationId,
     registeredById: userId,
@@ -363,13 +383,15 @@ export async function registerCameraDevice(
 
   const payload = {
     identifier,
-    name: 'Camera Scanner',
-    type: 'camera' as const,
+    name: "Camera Scanner",
+    type: "camera" as const,
     hardwareId: identifier,
     locationId,
     registeredById: userId,
     metadata: {
-      manufacturer: navigator.userAgent.includes('Chrome') ? 'Google' : 'Browser',
+      manufacturer: navigator.userAgent.includes("Chrome")
+        ? "Google"
+        : "Browser",
       userAgent: navigator.userAgent,
     },
     isActive: false,
@@ -391,7 +413,6 @@ export async function sendDeviceHeartbeat(
       isActive: options?.isActive ?? true,
     });
   } catch (error) {
-    console.warn('Failed to send device heartbeat', error);
+    console.warn("Failed to send device heartbeat", error);
   }
 }
-

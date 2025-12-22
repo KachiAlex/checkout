@@ -51,7 +51,7 @@ export class CustomersRepository {
         .where('tenantId', '==', tenantId)
         .orderBy('name', 'asc')
         .get();
-      
+
       // Map documents to records with error handling for individual records
       const customers: CustomerRecord[] = [];
       for (const doc of snapshot.docs) {
@@ -67,13 +67,18 @@ export class CustomersRepository {
       return customers;
     } catch (error: any) {
       // If index error, fallback to query without orderBy and sort in memory
-      if (error?.code === 9 || error?.message?.includes('index') || error?.message?.includes('FAILED_PRECONDITION')) {
-        console.warn('Firestore index missing for customers query, falling back to in-memory sort:', error.message);
+      if (
+        error?.code === 9 ||
+        error?.message?.includes('index') ||
+        error?.message?.includes('FAILED_PRECONDITION')
+      ) {
+        console.warn(
+          'Firestore index missing for customers query, falling back to in-memory sort:',
+          error.message,
+        );
         try {
-          const snapshot = await this.collection
-            .where('tenantId', '==', tenantId)
-            .get();
-          
+          const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
+
           // Map documents to records with error handling
           const customers: CustomerRecord[] = [];
           for (const doc of snapshot.docs) {
@@ -85,7 +90,7 @@ export class CustomersRepository {
               continue;
             }
           }
-          
+
           // Sort in memory by name
           return customers.sort((a, b) => {
             const nameA = (a.name || '').toLowerCase();
@@ -121,7 +126,7 @@ export class CustomersRepository {
       .where('phone', '==', phone)
       .limit(1)
       .get();
-    
+
     if (snapshot.empty) {
       return null;
     }
@@ -134,7 +139,7 @@ export class CustomersRepository {
       .where('loyaltyId', '==', loyaltyId)
       .limit(1)
       .get();
-    
+
     if (snapshot.empty) {
       return null;
     }
@@ -144,10 +149,12 @@ export class CustomersRepository {
   async create(data: CreateCustomerInput): Promise<CustomerRecord> {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
-    
+
     // Generate loyalty ID if not provided
-    const loyaltyId = data.loyaltyId || `LOY-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    
+    const loyaltyId =
+      data.loyaltyId ||
+      `LOY-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
     const docRef = this.collection.doc(id);
     await docRef.set({
       tenantId: data.tenantId,
@@ -169,14 +176,18 @@ export class CustomersRepository {
     return this.toRecord(created.id, created.data() as CustomerDocument);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateCustomerInput>): Promise<CustomerRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateCustomerInput>,
+  ): Promise<CustomerRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Customer ${id} not found`);
     }
-    
+
     const data = existing.data();
     if (data?.tenantId !== tenantId) {
       throw new Error(`Customer ${id} does not belong to tenant ${tenantId}`);
@@ -189,7 +200,8 @@ export class CustomersRepository {
     if (update.name !== undefined) payload.name = update.name.trim();
     if (update.phone !== undefined) payload.phone = update.phone;
     if (update.email !== undefined) payload.email = update.email;
-    if (update.preferredPaymentMethod !== undefined) payload.preferredPaymentMethod = update.preferredPaymentMethod;
+    if (update.preferredPaymentMethod !== undefined)
+      payload.preferredPaymentMethod = update.preferredPaymentMethod;
     if (update.dateOfBirth !== undefined) {
       payload.dateOfBirth = update.dateOfBirth ? Timestamp.fromDate(update.dateOfBirth) : undefined;
     }
@@ -205,11 +217,11 @@ export class CustomersRepository {
   async updateLoyaltyPoints(id: string, tenantId: string, delta: number): Promise<CustomerRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Customer ${id} not found`);
     }
-    
+
     const data = existing.data();
     if (data?.tenantId !== tenantId) {
       throw new Error(`Customer ${id} does not belong to tenant ${tenantId}`);
@@ -230,14 +242,18 @@ export class CustomersRepository {
     return this.toRecord(updated.id, updated.data() as CustomerDocument);
   }
 
-  async updateStoreCredit(id: string, tenantId: string, deltaCents: number): Promise<CustomerRecord> {
+  async updateStoreCredit(
+    id: string,
+    tenantId: string,
+    deltaCents: number,
+  ): Promise<CustomerRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Customer ${id} not found`);
     }
-    
+
     const data = existing.data();
     if (data?.tenantId !== tenantId) {
       throw new Error(`Customer ${id} does not belong to tenant ${tenantId}`);
@@ -281,7 +297,13 @@ export class CustomersRepository {
       loyaltyPoints: data.loyaltyPoints || 0,
       storeCreditCents: data.storeCreditCents || 0,
       preferredPaymentMethod: data.preferredPaymentMethod,
-      dateOfBirth: data.dateOfBirth ? (data.dateOfBirth instanceof Timestamp ? data.dateOfBirth.toDate() : (typeof data.dateOfBirth === 'string' ? new Date(data.dateOfBirth) : undefined)) : undefined,
+      dateOfBirth: data.dateOfBirth
+        ? data.dateOfBirth instanceof Timestamp
+          ? data.dateOfBirth.toDate()
+          : typeof data.dateOfBirth === 'string'
+            ? new Date(data.dateOfBirth)
+            : undefined
+        : undefined,
       address: data.address,
       notes: data.notes,
       createdAt: this.timestampToDate(data.createdAt),
@@ -299,4 +321,3 @@ export class CustomersRepository {
     return new Date();
   }
 }
-

@@ -1,8 +1,8 @@
-import { memo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { useAlertsCount } from '../hooks/useAlertsCount';
-import { BrandMark } from './BrandMark';
+import { memo } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
+import { useAlertsCount } from "../hooks/useAlertsCount";
+import { BrandMark } from "./BrandMark";
 
 export const FixedNavigation = memo(function FixedNavigation() {
   const location = useLocation();
@@ -10,13 +10,13 @@ export const FixedNavigation = memo(function FixedNavigation() {
   const { alertCount, criticalCount } = useAlertsCount();
   const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
   const isCompanyUser = isAuthenticated && !isPlatformAdmin;
-  const isAdmin = user?.role === 'admin';
-  const isManager = user?.role === 'manager';
-  const isCashier = user?.role === 'cashier';
+  const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
+  const isCashier = user?.role === "cashier";
 
   // Only show navigation for authenticated company users
   // Also show on settings page if user is authenticated (settings requires admin)
-  const isSettingsPage = location.pathname === '/settings';
+  const isSettingsPage = location.pathname === "/settings";
   const shouldShow = isCompanyUser || (isAuthenticated && isSettingsPage);
 
   if (!shouldShow) {
@@ -50,9 +50,9 @@ export const FixedNavigation = memo(function FixedNavigation() {
           <Link
             to="/dashboard"
             className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
-              isActive('/dashboard')
-                ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
+              isActive("/dashboard")
+                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
             }`}
           >
             <span className="text-base sm:text-lg">📈</span>
@@ -63,9 +63,9 @@ export const FixedNavigation = memo(function FixedNavigation() {
         <Link
           to="/checkout"
           className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
-            isActive('/checkout')
-              ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
-              : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
+            isActive("/checkout")
+              ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+              : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
           }`}
         >
           <span className="text-base sm:text-lg">🛒</span>
@@ -76,20 +76,22 @@ export const FixedNavigation = memo(function FixedNavigation() {
           <Link
             to="/reports"
             className={`relative flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
-              isActive('/reports')
-                ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
-            } ${alertCount > 0 ? (criticalCount > 0 ? 'animate-pulse' : '') : ''}`}
+              isActive("/reports")
+                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+            } ${alertCount > 0 ? (criticalCount > 0 ? "animate-pulse" : "") : ""}`}
           >
             <span className="text-base sm:text-lg">📊</span>
             <span>Reports</span>
             {alertCount > 0 && (
-              <span className={`absolute -top-1 -right-1 sm:top-0 sm:right-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold ${
-                criticalCount > 0 
-                  ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50' 
-                  : 'bg-orange-500 text-white shadow-lg shadow-orange-500/50'
-              }`}>
-                {alertCount > 99 ? '99+' : alertCount}
+              <span
+                className={`absolute -top-1 -right-1 sm:top-0 sm:right-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold ${
+                  criticalCount > 0
+                    ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50"
+                    : "bg-orange-500 text-white shadow-lg shadow-orange-500/50"
+                }`}
+              >
+                {alertCount > 99 ? "99+" : alertCount}
               </span>
             )}
           </Link>
@@ -99,9 +101,9 @@ export const FixedNavigation = memo(function FixedNavigation() {
           <Link
             to="/credit-orders"
             className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
-              isActive('/credit-orders')
-                ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
+              isActive("/credit-orders")
+                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
             }`}
           >
             <span className="text-base sm:text-lg">💳</span>
@@ -113,9 +115,9 @@ export const FixedNavigation = memo(function FixedNavigation() {
           <Link
             to="/inventory"
             className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
-              isActive('/inventory')
-                ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
+              isActive("/inventory")
+                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
             }`}
           >
             <span className="text-base sm:text-lg">📦</span>
@@ -127,9 +129,9 @@ export const FixedNavigation = memo(function FixedNavigation() {
           <Link
             to="/settings"
             className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
-              isActive('/settings')
-                ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
+              isActive("/settings")
+                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
             }`}
           >
             <span className="text-base sm:text-lg">⚙️</span>
@@ -140,4 +142,3 @@ export const FixedNavigation = memo(function FixedNavigation() {
     </nav>
   );
 });
-

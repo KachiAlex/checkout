@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsEmail,
-  IsEnum,
-  IsDateString,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEmail, IsEnum, IsDateString } from 'class-validator';
 
 export class CreateCustomerDto {
   @ApiProperty({ description: 'Customer name', example: 'John Doe' })
@@ -29,7 +22,11 @@ export class CreateCustomerDto {
   @IsString()
   loyaltyId?: string;
 
-  @ApiProperty({ description: 'Preferred payment method', required: false, enum: ['cash', 'card', 'qr', 'transfer'] })
+  @ApiProperty({
+    description: 'Preferred payment method',
+    required: false,
+    enum: ['cash', 'card', 'qr', 'transfer'],
+  })
   @IsOptional()
   @IsEnum(['cash', 'card', 'qr', 'transfer'])
   preferredPaymentMethod?: 'cash' | 'card' | 'qr' | 'transfer';
@@ -49,4 +46,3 @@ export class CreateCustomerDto {
   @IsString()
   notes?: string;
 }
-

@@ -53,7 +53,7 @@ export class LocationsRepository {
       // If query fails (e.g., no index), fall through to fallback
       console.warn('Failed to query locations by tenantId:', error);
     }
-    
+
     // Fallback: return all locations (for backward compatibility if tenantId isn't stored)
     // In production, you'd want to ensure locations have tenantId and proper indexes
     const allSnapshot = await this.collection.get();
@@ -88,7 +88,10 @@ export class LocationsRepository {
     return this.toRecord(created.id, created.data() as LocationDocument);
   }
 
-  async update(id: string, update: Partial<CreateLocationInput & { tenantId?: string }>): Promise<LocationRecord> {
+  async update(
+    id: string,
+    update: Partial<CreateLocationInput & { tenantId?: string }>,
+  ): Promise<LocationRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
     if (!existing.exists) {
@@ -143,4 +146,3 @@ export class LocationsRepository {
     return new Date();
   }
 }
-

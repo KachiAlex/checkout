@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-  ParseUUIDPipe,
-  Request,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, ParseUUIDPipe, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,7 +24,14 @@ export class ReportsController {
     // Parse limit and offset as numbers (they come as strings from query params)
     const limitNum = limit ? parseInt(limit, 10) : undefined;
     const offsetNum = offset ? parseInt(offset, 10) : undefined;
-    return this.reportsService.getSales(from, to, locationId, req?.user?.tenantId, limitNum, offsetNum);
+    return this.reportsService.getSales(
+      from,
+      to,
+      locationId,
+      req?.user?.tenantId,
+      limitNum,
+      offsetNum,
+    );
   }
 
   @Get('top-sellers')
@@ -48,7 +48,9 @@ export class ReportsController {
   }
 
   @Get('sales-analytics')
-  @ApiOperation({ summary: 'Get sales analytics by period (daily/weekly/monthly/quarterly/yearly)' })
+  @ApiOperation({
+    summary: 'Get sales analytics by period (daily/weekly/monthly/quarterly/yearly)',
+  })
   @ApiResponse({ status: 200, description: 'Sales analytics data' })
   async getSalesAnalytics(
     @Query('period') period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'daily',
@@ -86,12 +88,11 @@ export class ReportsController {
   // ========== PHASE 1 ENDPOINTS ==========
 
   @Get('alerts')
-  @ApiOperation({ summary: 'Get smart alerts (stock-outs, low sales, customer inactivity, staff performance)' })
+  @ApiOperation({
+    summary: 'Get smart alerts (stock-outs, low sales, customer inactivity, staff performance)',
+  })
   @ApiResponse({ status: 200, description: 'Alerts data' })
-  async getAlerts(
-    @Query('location_id') locationId?: string,
-    @Request() req?: any,
-  ) {
+  async getAlerts(@Query('location_id') locationId?: string, @Request() req?: any) {
     return this.reportsService.getAlerts(locationId, req?.user?.tenantId);
   }
 
@@ -109,10 +110,7 @@ export class ReportsController {
   @Get('expiry-analytics')
   @ApiOperation({ summary: 'Get expiry and batch analytics' })
   @ApiResponse({ status: 200, description: 'Expiry analytics data' })
-  async getExpiryAnalytics(
-    @Query('location_id') locationId?: string,
-    @Request() req?: any,
-  ) {
+  async getExpiryAnalytics(@Query('location_id') locationId?: string, @Request() req?: any) {
     return this.reportsService.getExpiryAnalytics(locationId, req?.user?.tenantId);
   }
 

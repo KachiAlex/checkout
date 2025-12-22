@@ -7,4 +7,3 @@ export class VerifyManagerDto {
   @IsNotEmpty()
   pin: string;
 }
-

@@ -53,7 +53,10 @@ export class GRNController {
     }
 
     // Get purchase order to get supplier info
-    const po = await this.purchaseOrdersRepository.findById(createDto.purchaseOrderId, req.user.tenantId);
+    const po = await this.purchaseOrdersRepository.findById(
+      createDto.purchaseOrderId,
+      req.user.tenantId,
+    );
     if (!po) {
       throw new Error(`Purchase order with ID ${createDto.purchaseOrderId} not found`);
     }
@@ -65,7 +68,7 @@ export class GRNController {
       purchaseOrderNumber: po.orderNumber,
       supplierId: po.supplierId,
       supplierName: po.supplierName,
-      items: createDto.items.map(item => ({
+      items: createDto.items.map((item) => ({
         ...item,
         expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
       })),
@@ -75,7 +78,7 @@ export class GRNController {
       receivedBy: req.user.sub || req.user.id,
       notes: createDto.notes,
     });
-    
+
     // Return GRN with metadata for frontend notifications
     return {
       ...result.grn,
@@ -83,4 +86,3 @@ export class GRNController {
     };
   }
 }
-

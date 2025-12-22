@@ -68,7 +68,9 @@ export class PaymentsRepository {
       if (!created.exists) {
         throw new Error(`Failed to create payment: document ${id} does not exist after creation`);
       }
-      console.log(`✅ Payment saved to Firestore: ${id} (order: ${data.orderId}, amount: ${data.amountCents / 100} ${data.currency})`);
+      console.log(
+        `✅ Payment saved to Firestore: ${id} (order: ${data.orderId}, amount: ${data.amountCents / 100} ${data.currency})`,
+      );
       return this.toRecord(created.id, created.data() as PaymentDocument);
     } catch (error) {
       console.error(`❌ Failed to save payment to Firestore:`, error);
@@ -95,7 +97,7 @@ export class PaymentsRepository {
       .where('processorData.paymentReference', '==', paymentReference)
       .limit(1)
       .get();
-    
+
     if (!snapshot.empty) {
       const doc = snapshot.docs[0];
       return this.toRecord(doc.id, doc.data());
@@ -106,7 +108,7 @@ export class PaymentsRepository {
       .where('processorData.transactionReference', '==', paymentReference)
       .limit(1)
       .get();
-    
+
     if (!snapshot2.empty) {
       const doc = snapshot2.docs[0];
       return this.toRecord(doc.id, doc.data());
@@ -117,7 +119,7 @@ export class PaymentsRepository {
       .where('transactionId', '==', paymentReference)
       .limit(1)
       .get();
-    
+
     if (!snapshot3.empty) {
       const doc = snapshot3.docs[0];
       return this.toRecord(doc.id, doc.data());
@@ -181,4 +183,3 @@ export class PaymentsRepository {
     return new Date();
   }
 }
-

@@ -1,20 +1,20 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { useCartStore, CartItem } from '../stores/cartStore';
-import { PaymentModal } from '../components/PaymentModal';
-import { ReceiptOptionsModal } from '../components/ReceiptOptionsModal';
-import { QuantitySelectorModal } from '../components/QuantitySelectorModal';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { BrandMark } from '../components/BrandMark';
-import { ScannerInput } from '../components/ScannerInput';
-import { useThemeStore } from '../stores/themeStore';
-import axios from 'axios';
-import toast from 'react-hot-toast';
-import { Link, Navigate } from 'react-router-dom';
-import { API_URL } from '../config';
-import { generateUUID } from '../utils/uuid';
-import { receiptService } from '../services/receiptService';
-import { formatCurrency, formatNumber } from '../utils/numberFormat';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useAuthStore } from "../stores/authStore";
+import { useCartStore, CartItem } from "../stores/cartStore";
+import { PaymentModal } from "../components/PaymentModal";
+import { ReceiptOptionsModal } from "../components/ReceiptOptionsModal";
+import { QuantitySelectorModal } from "../components/QuantitySelectorModal";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { BrandMark } from "../components/BrandMark";
+import { ScannerInput } from "../components/ScannerInput";
+import { useThemeStore } from "../stores/themeStore";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { Link, Navigate } from "react-router-dom";
+import { API_URL } from "../config";
+import { generateUUID } from "../utils/uuid";
+import { receiptService } from "../services/receiptService";
+import { formatCurrency, formatNumber } from "../utils/numberFormat";
 
 interface Product {
   id: string;
@@ -62,78 +62,136 @@ export function CheckoutPage() {
   const total = getTotal();
   const [isProcessing, setIsProcessing] = useState(false);
   const theme = useThemeStore((state) => state.theme);
-  const isAdmin = user?.role === 'admin';
-  const isManager = user?.role === 'manager';
+  const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'cash' | 'qr' | 'transfer' | 'credit' | null>(null);
-  const [lastCompletedOrderId, setLastCompletedOrderId] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    "card" | "cash" | "qr" | "transfer" | "credit" | null
+  >(null);
+  const [lastCompletedOrderId, setLastCompletedOrderId] = useState<
+    string | null
+  >(null);
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
   const [cashChange, setCashChange] = useState<number>(0);
-  const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string; phone?: string } | null>(null);
-  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
-  const [customerSearchResults, setCustomerSearchResults] = useState<Array<{ id: string; name: string; phone?: string; email?: string }>>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    id: string;
+    name: string;
+    phone?: string;
+  } | null>(null);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [customerPhoneInput, setCustomerPhoneInput] = useState("");
+  const [customerSearchResults, setCustomerSearchResults] = useState<
+    Array<{ id: string; name: string; phone?: string; email?: string }>
+  >([]);
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
-  const [taxSettings, setTaxSettings] = useState<{ description?: string; percentage?: number; enabled: boolean } | null>(null);
-  const [discountInput, setDiscountInput] = useState('');
-  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('amount');
+  const [taxSettings, setTaxSettings] = useState<{
+    description?: string;
+    percentage?: number;
+    enabled: boolean;
+  } | null>(null);
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountType, setDiscountType] = useState<"percent" | "amount">(
+    "amount",
+  );
 
   // Product search state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{
+    id: string;
+    sku: string;
+    name: string;
+    priceCents: number;
+    taxRate: number;
+    stock?: number;
+    images?: string[];
+  } | null>(null);
   const [quantitySelectorOpen, setQuantitySelectorOpen] = useState(false);
 
   // Create a new customer
-  const createCustomer = useCallback(async (name: string, phone?: string) => {
-    if (!accessToken || !name.trim()) {
-      return null;
-    }
+  const createCustomer = useCallback(
+    async (name: string, phone?: string) => {
+      if (!accessToken || !name.trim()) {
+        return null;
+      }
 
-    try {
-      const response = await axios.post(
-        `${API_URL}/api/v1/customers`,
-        {
-          name: name.trim(),
-          phone: phone?.trim() || undefined,
-        },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to create customer:', error);
-      toast.error(error.response?.data?.message || 'Failed to create customer');
-      return null;
-    }
-  }, [accessToken]);
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/v1/customers`,
+          {
+            name: name.trim(),
+            phone: phone?.trim() || undefined,
+          },
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        return response.data;
+      } catch (error: any) {
+        console.error("Failed to create customer:", error);
+        toast.error(
+          error.response?.data?.message || "Failed to create customer",
+        );
+        return null;
+      }
+    },
+    [accessToken],
+  );
+
+  const updateCustomerPhone = useCallback(
+    async (customerId: string, phone: string) => {
+      if (!accessToken || !customerId || !phone.trim()) {
+        return null;
+      }
+
+      try {
+        const response = await axios.patch(
+          `${API_URL}/api/v1/customers/${customerId}`,
+          { phone: phone.trim() },
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        return response.data;
+      } catch (error: any) {
+        console.error("Failed to update customer phone:", error);
+        toast.error(
+          error.response?.data?.message ||
+            "Failed to update customer phone number",
+        );
+        return null;
+      }
+    },
+    [accessToken],
+  );
 
   // Search customers
-  const searchCustomers = useCallback(async (query: string) => {
-    if (!accessToken || !query.trim()) {
-      setCustomerSearchResults([]);
-      return;
-    }
+  const searchCustomers = useCallback(
+    async (query: string) => {
+      if (!accessToken || !query.trim()) {
+        setCustomerSearchResults([]);
+        return;
+      }
 
-    setIsSearchingCustomer(true);
-    try {
-      const response = await axios.get(`${API_URL}/api/v1/customers`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        params: { search: query },
-      });
-      const customers = response.data || [];
-      setCustomerSearchResults(customers.slice(0, 10)); // Limit to 10 results
-    } catch (error) {
-      console.error('Failed to search customers:', error);
-      setCustomerSearchResults([]);
-    } finally {
-      setIsSearchingCustomer(false);
-    }
-  }, [accessToken]);
+      setIsSearchingCustomer(true);
+      try {
+        const response = await axios.get(`${API_URL}/api/v1/customers`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params: { search: query },
+        });
+        const customers = response.data || [];
+        setCustomerSearchResults(customers.slice(0, 10)); // Limit to 10 results
+      } catch (error) {
+        console.error("Failed to search customers:", error);
+        setCustomerSearchResults([]);
+      } finally {
+        setIsSearchingCustomer(false);
+      }
+    },
+    [accessToken],
+  );
 
   // Debounce customer search
   useEffect(() => {
@@ -152,14 +210,15 @@ export function CheckoutPage() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.customer-search-container')) {
+      if (!target.closest(".customer-search-container")) {
         setShowCustomerSearch(false);
       }
     };
 
     if (showCustomerSearch) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showCustomerSearch]);
 
@@ -178,8 +237,8 @@ export function CheckoutPage() {
       setShowResults(true);
       setHasLoadedProducts(true);
     } catch (error) {
-      console.error('Failed to load products for search:', error);
-      toast.error('Failed to load products for search');
+      console.error("Failed to load products for search:", error);
+      toast.error("Failed to load products for search");
       setSearchResults([]);
       setShowResults(false);
     } finally {
@@ -203,34 +262,30 @@ export function CheckoutPage() {
     const q = searchQuery.trim().toLowerCase();
     const filtered = allProducts
       .filter((p) => {
-        const name = p.name?.toLowerCase() || '';
-        const sku = p.sku?.toLowerCase() || '';
-        const barcode = p.barcode?.toLowerCase() || '';
-        return (
-          name.includes(q) ||
-          sku.includes(q) ||
-          barcode.includes(q)
-        );
+        const name = p.name?.toLowerCase() || "";
+        const sku = p.sku?.toLowerCase() || "";
+        const barcode = p.barcode?.toLowerCase() || "";
+        return name.includes(q) || sku.includes(q) || barcode.includes(q);
       })
       // Prioritize exact barcode matches first, then exact SKU matches, then partial matches
       .sort((a, b) => {
-        const aBarcode = a.barcode?.toLowerCase() || '';
-        const bBarcode = b.barcode?.toLowerCase() || '';
-        const aSku = a.sku?.toLowerCase() || '';
-        const bSku = b.sku?.toLowerCase() || '';
-        
+        const aBarcode = a.barcode?.toLowerCase() || "";
+        const bBarcode = b.barcode?.toLowerCase() || "";
+        const aSku = a.sku?.toLowerCase() || "";
+        const bSku = b.sku?.toLowerCase() || "";
+
         // Exact barcode match gets highest priority
         if (aBarcode === q && bBarcode !== q) return -1;
         if (bBarcode === q && aBarcode !== q) return 1;
-        
+
         // Exact SKU match gets second priority
         if (aSku === q && bSku !== q) return -1;
         if (bSku === q && aSku !== q) return 1;
-        
+
         // Barcode starts with query gets third priority
         if (aBarcode.startsWith(q) && !bBarcode.startsWith(q)) return -1;
         if (bBarcode.startsWith(q) && !aBarcode.startsWith(q)) return 1;
-        
+
         // Otherwise maintain original order
         return 0;
       })
@@ -253,7 +308,7 @@ export function CheckoutPage() {
       } catch (error: any) {
         // Tax settings might not exist yet, or user might not have permission - that's okay
         if (error.response?.status !== 404 && error.response?.status !== 403) {
-          console.error('Failed to load tax settings:', error);
+          console.error("Failed to load tax settings:", error);
         }
       }
     };
@@ -264,39 +319,41 @@ export function CheckoutPage() {
   const handleBarcodeScan = async (barcode: string) => {
     // Trim and normalize barcode (same as inventory)
     const trimmedBarcode = barcode.trim();
-    
+
     if (!trimmedBarcode || !accessToken) return;
 
     try {
       // Search for product by barcode (backend prioritizes exact matches)
       const response = await axios.get(
         `${API_URL}/api/v1/products?query=${encodeURIComponent(trimmedBarcode)}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      
+
       const products = response.data || [];
-      
+
       // Backend already prioritizes exact barcode matches, so first result should be the match
       // But we'll also explicitly check for exact match as fallback
-      const exactMatch = products.find((p: Product) => p.barcode?.trim() === trimmedBarcode);
+      const exactMatch = products.find(
+        (p: Product) => p.barcode?.trim() === trimmedBarcode,
+      );
       const product = exactMatch || products[0];
-      
+
       if (product) {
         await handleProductSelect(product);
-        toast.success(`Found: ${product.name}`, { icon: '✅', duration: 2000 });
+        toast.success(`Found: ${product.name}`, { icon: "✅", duration: 2000 });
       } else {
         toast.error(`Product not found for barcode: ${trimmedBarcode}`);
       }
     } catch (error: any) {
-      console.error('Barcode scan failed:', error);
-      toast.error('Failed to search product by barcode');
+      console.error("Barcode scan failed:", error);
+      toast.error("Failed to search product by barcode");
     }
   };
 
   // Handle product selection
   const handleProductSelect = async (product: Product) => {
     if (!user?.locationId) {
-      toast.error('Location not set');
+      toast.error("Location not set");
       return;
     }
 
@@ -304,9 +361,11 @@ export function CheckoutPage() {
       // Get stock level and pricing from inventory
       const stockResponse = await axios.get(
         `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      const inventory = stockResponse.data.find((inv: any) => inv.productId === product.id);
+      const inventory = stockResponse.data.find(
+        (inv: any) => inv.productId === product.id,
+      );
       const stock = inventory?.quantity || 0;
 
       if (stock === 0) {
@@ -319,7 +378,7 @@ export function CheckoutPage() {
 
       setSelectedProduct({
         id: product.id,
-        sku: product.sku || '',
+        sku: product.sku || "",
         name: product.name,
         priceCents: salesPriceCents,
         taxRate: product.taxRate,
@@ -327,23 +386,38 @@ export function CheckoutPage() {
         images: product.images,
       });
       setQuantitySelectorOpen(true);
-      setSearchQuery('');
+      setSearchQuery("");
       setShowResults(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to check stock');
+      toast.error(error.response?.data?.message || "Failed to check stock");
     }
   };
 
-  const handleQuantityConfirm = (product: { id: string; sku: string; name: string; priceCents: number; taxRate: number; stock?: number; images?: string[] }, quantity: number) => {
+  const handleQuantityConfirm = (
+    product: {
+      id: string;
+      sku: string;
+      name: string;
+      priceCents: number;
+      taxRate: number;
+      stock?: number;
+      images?: string[];
+    },
+    quantity: number,
+  ) => {
     // Validate product ID before adding to cart
     if (!isValidUUID(product.id)) {
-      console.error(`Invalid productId format: ${product.id} for product: ${product.name}`);
-      toast.error(`Invalid product ID for "${product.name}". This product needs to be recreated with a valid ID.`);
+      console.error(
+        `Invalid productId format: ${product.id} for product: ${product.name}`,
+      );
+      toast.error(
+        `Invalid product ID for "${product.name}". This product needs to be recreated with a valid ID.`,
+      );
       setQuantitySelectorOpen(false);
       setSelectedProduct(null);
       return;
     }
-    
+
     addItem({
       productId: product.id,
       name: product.name,
@@ -351,7 +425,9 @@ export function CheckoutPage() {
       taxRate: product.taxRate,
       quantity,
     });
-    toast.success(`Added ${quantity} ${product.name}${quantity > 1 ? 's' : ''} to cart`);
+    toast.success(
+      `Added ${quantity} ${product.name}${quantity > 1 ? "s" : ""} to cart`,
+    );
     setQuantitySelectorOpen(false);
     setSelectedProduct(null);
     searchInputRef.current?.focus();
@@ -359,42 +435,50 @@ export function CheckoutPage() {
 
   // Helper to validate UUID format
   const isValidUUID = (str: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   };
 
   // Helper to map cart items to order items
-  const mapCartToOrderItems = useCallback((cartItems: typeof cart) => {
-    // Calculate tax per item using tenant tax settings or default 7.5% VAT (if enabled)
-    const defaultVATPercentage = 7.5;
-    const taxPercentage = taxEnabled 
-      ? (taxSettings?.percentage || defaultVATPercentage) / 100 
-      : 0;
-    
-    return cartItems
-      .filter((item) => {
-        // Filter out items with invalid UUID productIds
-        if (!isValidUUID(item.productId)) {
-          console.error(`Invalid productId format: ${item.productId} for product: ${item.name}`);
-          toast.error(`Invalid product ID for ${item.name}. Please remove and re-add this item.`);
-          return false;
-        }
-        return true;
-      })
-      .map((item) => {
-        const itemSubtotal = item.priceCents * item.quantity;
-        const itemDiscount = item.discountCents || 0;
-        const itemTaxCents = (itemSubtotal - itemDiscount) * taxPercentage;
-        
-        return {
-          productId: item.productId,
-          quantity: item.quantity,
-          priceCents: item.priceCents,
-          taxCents: Math.round(itemTaxCents),
-          discountCents: item.discountCents || 0,
-        };
-      });
-  }, [taxEnabled, taxSettings]);
+  const mapCartToOrderItems = useCallback(
+    (cartItems: typeof cart) => {
+      // Calculate tax per item using tenant tax settings or default 7.5% VAT (if enabled)
+      const defaultVATPercentage = 7.5;
+      const taxPercentage = taxEnabled
+        ? (taxSettings?.percentage || defaultVATPercentage) / 100
+        : 0;
+
+      return cartItems
+        .filter((item) => {
+          // Filter out items with invalid UUID productIds
+          if (!isValidUUID(item.productId)) {
+            console.error(
+              `Invalid productId format: ${item.productId} for product: ${item.name}`,
+            );
+            toast.error(
+              `Invalid product ID for ${item.name}. Please remove and re-add this item.`,
+            );
+            return false;
+          }
+          return true;
+        })
+        .map((item) => {
+          const itemSubtotal = item.priceCents * item.quantity;
+          const itemDiscount = item.discountCents || 0;
+          const itemTaxCents = (itemSubtotal - itemDiscount) * taxPercentage;
+
+          return {
+            productId: item.productId,
+            quantity: item.quantity,
+            priceCents: item.priceCents,
+            taxCents: Math.round(itemTaxCents),
+            discountCents: item.discountCents || 0,
+          };
+        });
+    },
+    [taxEnabled, taxSettings],
+  );
 
   // Helper to calculate totals from cart
   const calculateOrderTotals = useCallback(() => {
@@ -403,7 +487,7 @@ export function CheckoutPage() {
       const itemDiscount = item.discountCents || 0;
       return sum + itemSubtotal - itemDiscount;
     }, 0);
-    
+
     // Apply cart-level discount first
     let finalSubtotal = subtotal;
     if (cartDiscountPercent > 0) {
@@ -411,17 +495,17 @@ export function CheckoutPage() {
     } else if (cartDiscountCents > 0) {
       finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
     }
-    
+
     // Calculate tax on discounted subtotal using tenant tax settings or default 7.5% VAT (if enabled)
     const defaultVATPercentage = 7.5;
-    const taxPercentage = taxEnabled 
-      ? (taxSettings?.percentage || defaultVATPercentage) / 100 
+    const taxPercentage = taxEnabled
+      ? (taxSettings?.percentage || defaultVATPercentage) / 100
       : 0;
     const tax = finalSubtotal * taxPercentage;
-    
+
     const totalAmount = finalSubtotal + tax;
     const totalDiscountCents = subtotal - finalSubtotal;
-    
+
     return { subtotal, tax, finalSubtotal, totalAmount, totalDiscountCents };
   }, [cart, cartDiscountPercent, cartDiscountCents, taxEnabled, taxSettings]);
 
@@ -432,135 +516,195 @@ export function CheckoutPage() {
       if (printAvailable) {
         const printSuccess = await receiptService.printReceipt(orderId);
         if (printSuccess) {
-          toast.success('✅ Receipt printed successfully');
+          toast.success("✅ Receipt printed successfully");
           return;
         }
       }
-      const browserPrintSuccess = await receiptService.printReceiptBrowser(orderId);
+      const browserPrintSuccess =
+        await receiptService.printReceiptBrowser(orderId);
       if (browserPrintSuccess) {
-        toast.success('Opening print dialog...');
+        toast.success("Opening print dialog...");
       } else {
         const receipt = await receiptService.getReceipt(orderId);
-        console.log('Receipt:', receipt);
-        toast.success('Receipt generated');
+        console.log("Receipt:", receipt);
+        toast.success("Receipt generated");
       }
     } catch (error) {
-      console.warn('Failed to generate/print receipt:', error);
-      toast.error('Receipt generation failed');
+      console.warn("Failed to generate/print receipt:", error);
+      toast.error("Receipt generation failed");
     }
   }, []);
 
-  const handlePaymentClick = (method: 'card' | 'cash' | 'qr' | 'transfer' | 'credit') => {
+  const handlePaymentClick = (
+    method: "card" | "cash" | "qr" | "transfer" | "credit",
+  ) => {
     if (cart.length === 0) {
-      toast.error('Cart is empty');
+      toast.error("Cart is empty");
       return;
     }
-    
+
     // For credit orders, create directly without payment modal
-    if (method === 'credit') {
+    if (method === "credit") {
       handleCreditOrder();
       return;
     }
-    
+
     setSelectedPaymentMethod(method);
     setPaymentModalOpen(true);
   };
 
   const handleCreditOrder = async () => {
     if (cart.length === 0) {
-      toast.error('Cart is empty');
+      toast.error("Cart is empty");
       return;
     }
 
     if (!accessToken || !user) {
-      toast.error('Not authenticated. Please log in again.');
+      toast.error("Not authenticated. Please log in again.");
       return;
     }
 
-    if (!confirm('Create credit order? Customer will pay later.')) {
+    const trimmedCustomerQuery = customerSearchQuery.trim();
+    if (!selectedCustomer && !trimmedCustomerQuery) {
+      toast.error(
+        "Customer name is required for credit orders. Please select or create a customer first.",
+      );
+      return;
+    }
+
+    const trimmedPhoneInput = customerPhoneInput.trim();
+    const existingCustomerPhone = selectedCustomer?.phone?.trim();
+    const phoneForCredit = existingCustomerPhone || trimmedPhoneInput;
+
+    if (!phoneForCredit) {
+      toast.error(
+        "Customer phone number is required for credit orders. Please enter a phone number for the customer.",
+      );
+      return;
+    }
+
+    if (!confirm("Create credit order? Customer will pay later.")) {
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      // If customer name is entered but not selected, create the customer first
       let customerId = selectedCustomer?.id;
-      console.log('Credit order - Initial customerId:', customerId, 'selectedCustomer:', selectedCustomer, 'customerSearchQuery:', customerSearchQuery);
-      
-      if (!customerId && customerSearchQuery.trim()) {
-        console.log('Creating customer for credit order:', customerSearchQuery);
-        const newCustomer = await createCustomer(customerSearchQuery);
-        if (newCustomer) {
-          customerId = newCustomer.id;
-          console.log('✅ Customer created successfully:', { id: newCustomer.id, name: newCustomer.name });
-          setSelectedCustomer({
-            id: newCustomer.id,
-            name: newCustomer.name,
-            phone: newCustomer.phone,
-          });
-          toast.success(`Customer "${newCustomer.name}" created`);
-        } else {
-          console.error('❌ Failed to create customer');
+      let resolvedCustomerName = selectedCustomer?.name || trimmedCustomerQuery;
+
+      if (selectedCustomer && !existingCustomerPhone) {
+        const updatedCustomer = await updateCustomerPhone(
+          selectedCustomer.id,
+          phoneForCredit,
+        );
+        if (!updatedCustomer) {
+          throw new Error(
+            "Failed to update customer phone number. Please try again.",
+          );
         }
+        setSelectedCustomer({
+          id: updatedCustomer.id,
+          name: updatedCustomer.name,
+          phone: updatedCustomer.phone,
+        });
+        customerId = updatedCustomer.id;
+        resolvedCustomerName = updatedCustomer.name;
+        toast.success(`Saved phone number for ${updatedCustomer.name}`);
       }
 
-      console.log('Credit order - Final customerId before order creation:', customerId);
+      if (!customerId) {
+        const fallbackName =
+          resolvedCustomerName && resolvedCustomerName.length > 0
+            ? resolvedCustomerName
+            : "Credit Customer";
+        const newCustomer = await createCustomer(fallbackName, phoneForCredit);
+        if (!newCustomer) {
+          throw new Error("Failed to create customer for credit order.");
+        }
+        customerId = newCustomer.id;
+        setSelectedCustomer({
+          id: newCustomer.id,
+          name: newCustomer.name,
+          phone: newCustomer.phone,
+        });
+        toast.success(`Customer "${newCustomer.name}" created`);
+      }
 
-      const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
+      console.log(
+        "Credit order - Final customerId before order creation:",
+        customerId,
+      );
+
+      const { subtotal, tax, totalAmount, totalDiscountCents } =
+        calculateOrderTotals();
       const orderUuid = generateUUID();
-      const deviceId = localStorage.getItem('deviceId') || undefined;
+      const deviceId = localStorage.getItem("deviceId") || undefined;
 
       const orderPayload = {
         uuid: orderUuid,
         locationId: user.locationId || undefined,
-        customerId: customerId || undefined, // Explicitly include even if undefined
+        customerId: customerId || undefined,
         items: mapCartToOrderItems(cart),
         subtotalCents: subtotal,
         taxCents: tax,
         discountCents: totalDiscountCents,
-        discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
+        discountPercent:
+          cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
         discountReason: discountReason || undefined,
         totalCents: totalAmount,
         deviceId,
         isCreditOrder: true,
       };
 
-      console.log('📤 Sending credit order with payload:', { ...orderPayload, items: `${orderPayload.items.length} items`, customerId: orderPayload.customerId });
+      console.log("📤 Sending credit order with payload:", {
+        ...orderPayload,
+        items: `${orderPayload.items.length} items`,
+        customerId: orderPayload.customerId,
+      });
 
       const orderResponse = await axios.post(
         `${API_URL}/api/v1/orders`,
         orderPayload,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
-      console.log('📥 Credit order response:', { orderId: orderResponse.data?.id, customerId: orderResponse.data?.customerId });
+      console.log("📥 Credit order response:", {
+        orderId: orderResponse.data?.id,
+        customerId: orderResponse.data?.customerId,
+      });
 
       const order = orderResponse.data;
 
-      toast.success(`Credit order created! Order: ${order.orderNumber || orderUuid}`);
+      toast.success(
+        `Credit order created! Order: ${order.orderNumber || orderUuid}`,
+      );
       setLastCompletedOrderId(order.id);
       clearCart();
       setSelectedCustomer(null);
-      setCustomerSearchQuery('');
+      setCustomerSearchQuery("");
       setCustomerSearchResults([]);
+      setCustomerPhoneInput("");
       setReceiptOptionsOpen(true);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create credit order';
-      toast.error(errorMessage, { duration: 5000, icon: '❌' });
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to create credit order";
+      toast.error(errorMessage, { duration: 5000, icon: "❌" });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handlePayment = async (method: 'card' | 'cash' | 'qr' | 'transfer') => {
+  const handlePayment = async (method: "card" | "cash" | "qr" | "transfer") => {
     if (cart.length === 0) {
-      toast.error('Cart is empty');
+      toast.error("Cart is empty");
       return;
     }
 
     if (!accessToken || !user) {
-      toast.error('Not authenticated. Please log in again.');
+      toast.error("Not authenticated. Please log in again.");
       return;
     }
 
@@ -583,9 +727,10 @@ export function CheckoutPage() {
         }
       }
 
-      const { subtotal, tax, totalAmount, totalDiscountCents } = calculateOrderTotals();
+      const { subtotal, tax, totalAmount, totalDiscountCents } =
+        calculateOrderTotals();
       const orderUuid = generateUUID();
-      const deviceId = localStorage.getItem('deviceId') || undefined;
+      const deviceId = localStorage.getItem("deviceId") || undefined;
 
       const orderResponse = await axios.post(
         `${API_URL}/api/v1/orders`,
@@ -597,27 +742,31 @@ export function CheckoutPage() {
           subtotalCents: subtotal,
           taxCents: tax,
           discountCents: totalDiscountCents,
-          discountPercent: cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
+          discountPercent:
+            cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
           discountReason: discountReason || undefined,
           totalCents: totalAmount,
           deviceId,
         },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
       const order = orderResponse.data;
 
-      toast.success(`Payment confirmed! Order: ${order.orderNumber || orderUuid}`);
+      toast.success(
+        `Payment confirmed! Order: ${order.orderNumber || orderUuid}`,
+      );
       setLastCompletedOrderId(order.id);
       clearCart();
       setSelectedCustomer(null);
-      setCustomerSearchQuery('');
+      setCustomerSearchQuery("");
       setCustomerSearchResults([]);
       // Open receipt options modal for user to choose how to handle receipt
       setReceiptOptionsOpen(true);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Payment failed';
-      toast.error(errorMessage, { duration: 5000, icon: '❌' });
+      const errorMessage =
+        error.response?.data?.message || error.message || "Payment failed";
+      toast.error(errorMessage, { duration: 5000, icon: "❌" });
     } finally {
       setIsProcessing(false);
       setPaymentModalOpen(false);
@@ -626,14 +775,19 @@ export function CheckoutPage() {
   };
 
   // Calculate display totals using the same logic as calculateOrderTotals
-  const { subtotal, tax, finalSubtotal, totalDiscountCents } = calculateOrderTotals();
+  const { subtotal, tax, finalSubtotal, totalDiscountCents } =
+    calculateOrderTotals();
   const totalDiscount = totalDiscountCents;
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden theme-background page-with-nav">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${theme === 'light' ? 'bg-sky-300/40' : 'bg-cyan-500/30'} blur-[160px]`} />
-        <div className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${theme === 'light' ? 'bg-indigo-200/35' : 'bg-indigo-500/25'} blur-[200px]`} />
+        <div
+          className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${theme === "light" ? "bg-sky-300/40" : "bg-cyan-500/30"} blur-[160px]`}
+        />
+        <div
+          className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${theme === "light" ? "bg-indigo-200/35" : "bg-indigo-500/25"} blur-[200px]`}
+        />
       </div>
 
       <div className="relative z-10 flex min-h-screen flex-col overflow-x-hidden w-full">
@@ -647,8 +801,12 @@ export function CheckoutPage() {
                 className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0"
               />
               <div className="min-w-0">
-                <h1 className="theme-text-primary text-lg sm:text-xl font-semibold truncate">Checkout</h1>
-                <p className="theme-text-secondary text-xs truncate">{tenant?.name || 'POS System'}</p>
+                <h1 className="theme-text-primary text-lg sm:text-xl font-semibold truncate">
+                  Checkout
+                </h1>
+                <p className="theme-text-secondary text-xs truncate">
+                  {tenant?.name || "POS System"}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
@@ -691,14 +849,16 @@ export function CheckoutPage() {
             <div className="flex-1 space-y-4 sm:space-y-6 min-w-0">
               {/* Product Search */}
               <div className="theme-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Search Products</h2>
+                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+                  Search Products
+                </h2>
                 <div className="relative">
                   <ScannerInput
                     onScan={handleBarcodeScan}
                     placeholder="Scan barcode/QR or type product name, SKU..."
                     autoFocus={false}
                   />
-                  
+
                   {/* Text Search Input (for manual typing) */}
                   <div className="mt-3">
                     <input
@@ -720,7 +880,7 @@ export function CheckoutPage() {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Search Results Dropdown */}
                   {showResults && searchResults.length > 0 && (
                     <div className="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-white/20 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
@@ -732,8 +892,12 @@ export function CheckoutPage() {
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className="theme-text-primary font-medium truncate">{product.name}</p>
-                              <p className="theme-text-secondary text-xs sm:text-sm">SKU: {product.sku || 'N/A'}</p>
+                              <p className="theme-text-primary font-medium truncate">
+                                {product.name}
+                              </p>
+                              <p className="theme-text-secondary text-xs sm:text-sm">
+                                SKU: {product.sku || "N/A"}
+                              </p>
                             </div>
                             <p className="theme-text-primary font-semibold text-sm sm:text-base whitespace-nowrap">
                               {formatCurrency(product.priceCents)}
@@ -750,7 +914,9 @@ export function CheckoutPage() {
               <div className="theme-card rounded-xl sm:rounded-2xl border backdrop-blur-xl">
                 <div className="border-b border-white/10 p-3 sm:p-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <h2 className="theme-text-primary text-base sm:text-lg font-semibold">Cart</h2>
+                    <h2 className="theme-text-primary text-base sm:text-lg font-semibold">
+                      Cart
+                    </h2>
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                       {sessions.map((session) => (
                         <button
@@ -758,8 +924,8 @@ export function CheckoutPage() {
                           onClick={() => switchSession(session.id)}
                           className={`rounded-lg border px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition ${
                             activeSessionId === session.id
-                              ? 'border-sky-400 bg-sky-500/20 text-sky-200'
-                              : 'border-white/20 bg-white/5 text-white/70 hover:border-white/30 hover:text-white'
+                              ? "border-sky-400 bg-sky-500/20 text-sky-200"
+                              : "border-white/20 bg-white/5 text-white/70 hover:border-white/30 hover:text-white"
                           }`}
                         >
                           {session.label}
@@ -786,19 +952,30 @@ export function CheckoutPage() {
                   {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
                       <div className="text-3xl sm:text-4xl">🛒</div>
-                      <p className="theme-text-primary mt-3 text-base sm:text-lg font-semibold">Cart is empty</p>
-                      <p className="theme-text-secondary mt-1 text-xs sm:text-sm">Search for products to add them here.</p>
+                      <p className="theme-text-primary mt-3 text-base sm:text-lg font-semibold">
+                        Cart is empty
+                      </p>
+                      <p className="theme-text-secondary mt-1 text-xs sm:text-sm">
+                        Search for products to add them here.
+                      </p>
                     </div>
                   ) : (
                     <>
                       {/* Mobile Card View */}
                       <div className="block sm:hidden space-y-3">
                         {cart.map((item) => (
-                          <div key={item.productId} className="theme-surface rounded-xl border p-3 space-y-2">
+                          <div
+                            key={item.productId}
+                            className="theme-surface rounded-xl border p-3 space-y-2"
+                          >
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
-                                <p className="theme-text-primary font-medium text-sm truncate">{item.name}</p>
-                                <p className="theme-text-secondary text-xs mt-1">{formatCurrency(item.priceCents)} each</p>
+                                <p className="theme-text-primary font-medium text-sm truncate">
+                                  {item.name}
+                                </p>
+                                <p className="theme-text-secondary text-xs mt-1">
+                                  {formatCurrency(item.priceCents)} each
+                                </p>
                               </div>
                               <button
                                 onClick={() => removeItem(item.productId)}
@@ -810,22 +987,36 @@ export function CheckoutPage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                  onClick={() =>
+                                    updateQuantity(
+                                      item.productId,
+                                      item.quantity - 1,
+                                    )
+                                  }
                                   className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
                                   disabled={item.quantity <= 1}
                                 >
                                   −
                                 </button>
-                                <span className="theme-text-primary w-10 text-center font-semibold text-sm">{item.quantity}</span>
+                                <span className="theme-text-primary w-10 text-center font-semibold text-sm">
+                                  {item.quantity}
+                                </span>
                                 <button
-                                  onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                  onClick={() =>
+                                    updateQuantity(
+                                      item.productId,
+                                      item.quantity + 1,
+                                    )
+                                  }
                                   className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
                                 >
                                   +
                                 </button>
                               </div>
                               <p className="theme-text-primary font-semibold text-sm">
-                                {formatCurrency(item.priceCents * item.quantity)}
+                                {formatCurrency(
+                                  item.priceCents * item.quantity,
+                                )}
                               </p>
                             </div>
                           </div>
@@ -836,34 +1027,63 @@ export function CheckoutPage() {
                         <table className="w-full">
                           <thead>
                             <tr className="border-b border-white/10">
-                              <th className="theme-text-secondary px-4 py-3 text-left text-sm font-semibold">Product</th>
-                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Price</th>
-                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Quantity</th>
-                              <th className="theme-text-secondary px-4 py-3 text-right text-sm font-semibold">Total</th>
-                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">Action</th>
+                              <th className="theme-text-secondary px-4 py-3 text-left text-sm font-semibold">
+                                Product
+                              </th>
+                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
+                                Price
+                              </th>
+                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
+                                Quantity
+                              </th>
+                              <th className="theme-text-secondary px-4 py-3 text-right text-sm font-semibold">
+                                Total
+                              </th>
+                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
+                                Action
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
                             {cart.map((item) => (
-                              <tr key={item.productId} className="border-b border-white/5">
+                              <tr
+                                key={item.productId}
+                                className="border-b border-white/5"
+                              >
                                 <td className="px-4 py-3">
-                                  <p className="theme-text-primary font-medium">{item.name}</p>
+                                  <p className="theme-text-primary font-medium">
+                                    {item.name}
+                                  </p>
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <p className="theme-text-primary">{formatCurrency(item.priceCents)}</p>
+                                  <p className="theme-text-primary">
+                                    {formatCurrency(item.priceCents)}
+                                  </p>
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center justify-center gap-2">
                                     <button
-                                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                      onClick={() =>
+                                        updateQuantity(
+                                          item.productId,
+                                          item.quantity - 1,
+                                        )
+                                      }
                                       className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
                                       disabled={item.quantity <= 1}
                                     >
                                       −
                                     </button>
-                                    <span className="theme-text-primary w-12 text-center font-semibold">{item.quantity}</span>
+                                    <span className="theme-text-primary w-12 text-center font-semibold">
+                                      {item.quantity}
+                                    </span>
                                     <button
-                                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                      onClick={() =>
+                                        updateQuantity(
+                                          item.productId,
+                                          item.quantity + 1,
+                                        )
+                                      }
                                       className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
                                     >
                                       +
@@ -872,7 +1092,9 @@ export function CheckoutPage() {
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <p className="theme-text-primary font-semibold">
-                                    {formatCurrency(item.priceCents * item.quantity)}
+                                    {formatCurrency(
+                                      item.priceCents * item.quantity,
+                                    )}
                                   </p>
                                 </td>
                                 <td className="px-4 py-3 text-center">
@@ -897,23 +1119,31 @@ export function CheckoutPage() {
             {/* Right: Summary & Checkout */}
             <div className="w-full lg:w-80">
               <div className="theme-card sticky top-20 sm:top-6 rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Summary</h2>
-                
+                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+                  Summary
+                </h2>
+
                 {/* Customer Selector */}
                 <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10 customer-search-container">
-                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">Customer (Optional)</label>
+                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
+                    Customer (Optional)
+                  </label>
                   {selectedCustomer ? (
                     <div className="flex items-center justify-between rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2">
                       <div className="min-w-0 flex-1">
-                        <p className="theme-text-primary text-sm font-medium truncate">{selectedCustomer.name}</p>
+                        <p className="theme-text-primary text-sm font-medium truncate">
+                          {selectedCustomer.name}
+                        </p>
                         {selectedCustomer.phone && (
-                          <p className="theme-text-secondary text-xs truncate">{selectedCustomer.phone}</p>
+                          <p className="theme-text-secondary text-xs truncate">
+                            {selectedCustomer.phone}
+                          </p>
                         )}
                       </div>
                       <button
                         onClick={() => {
                           setSelectedCustomer(null);
-                          setCustomerSearchQuery('');
+                          setCustomerSearchQuery("");
                           setCustomerSearchResults([]);
                         }}
                         className="ml-2 rounded px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition"
@@ -933,19 +1163,27 @@ export function CheckoutPage() {
                         onFocus={() => setShowCustomerSearch(true)}
                         onKeyDown={async (e) => {
                           // Create customer on Enter if no results and query is not empty
-                          if (e.key === 'Enter' && customerSearchQuery.trim() && customerSearchResults.length === 0 && !isSearchingCustomer) {
+                          if (
+                            e.key === "Enter" &&
+                            customerSearchQuery.trim() &&
+                            customerSearchResults.length === 0 &&
+                            !isSearchingCustomer
+                          ) {
                             e.preventDefault();
-                            const newCustomer = await createCustomer(customerSearchQuery);
+                            const newCustomer =
+                              await createCustomer(customerSearchQuery);
                             if (newCustomer) {
                               setSelectedCustomer({
                                 id: newCustomer.id,
                                 name: newCustomer.name,
                                 phone: newCustomer.phone,
                               });
-                              setCustomerSearchQuery('');
+                              setCustomerSearchQuery("");
                               setCustomerSearchResults([]);
                               setShowCustomerSearch(false);
-                              toast.success(`Customer "${newCustomer.name}" created`);
+                              toast.success(
+                                `Customer "${newCustomer.name}" created`,
+                              );
                             }
                           }
                         }}
@@ -969,43 +1207,58 @@ export function CheckoutPage() {
                                     name: customer.name,
                                     phone: customer.phone,
                                   });
-                                  setCustomerSearchQuery('');
+                                  setCustomerSearchQuery("");
                                   setCustomerSearchResults([]);
                                   setShowCustomerSearch(false);
                                 }}
                                 className="w-full border-b border-white/10 px-3 py-2 text-left transition hover:bg-white/10 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
                               >
-                                <p className="theme-text-primary text-sm font-medium">{customer.name}</p>
+                                <p className="theme-text-primary text-sm font-medium">
+                                  {customer.name}
+                                </p>
                                 {customer.phone && (
-                                  <p className="theme-text-secondary text-xs">{customer.phone}</p>
+                                  <p className="theme-text-secondary text-xs">
+                                    {customer.phone}
+                                  </p>
                                 )}
                                 {customer.email && (
-                                  <p className="theme-text-secondary text-xs">{customer.email}</p>
+                                  <p className="theme-text-secondary text-xs">
+                                    {customer.email}
+                                  </p>
                                 )}
                               </button>
                             ))
-                          ) : customerSearchQuery.trim() && !isSearchingCustomer ? (
+                          ) : customerSearchQuery.trim() &&
+                            !isSearchingCustomer ? (
                             <button
                               onClick={async () => {
-                                const newCustomer = await createCustomer(customerSearchQuery);
+                                const newCustomer =
+                                  await createCustomer(customerSearchQuery);
                                 if (newCustomer) {
                                   setSelectedCustomer({
                                     id: newCustomer.id,
                                     name: newCustomer.name,
                                     phone: newCustomer.phone,
                                   });
-                                  setCustomerSearchQuery('');
+                                  setCustomerSearchQuery("");
                                   setCustomerSearchResults([]);
                                   setShowCustomerSearch(false);
-                                  toast.success(`Customer "${newCustomer.name}" created`);
+                                  toast.success(
+                                    `Customer "${newCustomer.name}" created`,
+                                  );
                                 }
                               }}
                               className="w-full px-3 py-2 text-left transition hover:bg-white/10 rounded-lg border-b border-white/10"
                             >
                               <p className="theme-text-primary text-sm font-medium">
-                                ➕ Create customer: <span className="font-semibold">{customerSearchQuery}</span>
+                                ➕ Create customer:{" "}
+                                <span className="font-semibold">
+                                  {customerSearchQuery}
+                                </span>
                               </p>
-                              <p className="theme-text-secondary text-xs mt-0.5">Press Enter or click to create</p>
+                              <p className="theme-text-secondary text-xs mt-0.5">
+                                Press Enter or click to create
+                              </p>
                             </button>
                           ) : null}
                         </div>
@@ -1013,7 +1266,7 @@ export function CheckoutPage() {
                     </div>
                   )}
                 </div>
-                
+
                 {/* VAT Toggle - Always visible, optional for cashier */}
                 <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
                   <input
@@ -1023,21 +1276,26 @@ export function CheckoutPage() {
                     onChange={(e) => setTaxEnabled(e.target.checked)}
                     className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-500 focus:ring-2 focus:ring-sky-400"
                   />
-                  <label htmlFor="vat-toggle" className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer">
+                  <label
+                    htmlFor="vat-toggle"
+                    className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer"
+                  >
                     Apply VAT ({taxSettings?.percentage || 7.5}%)
                   </label>
                 </div>
 
                 {/* Discount Input */}
                 <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
-                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">Discount</label>
+                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
+                    Discount
+                  </label>
                   <div className="flex gap-2">
                     <select
                       value={discountType}
                       onChange={(e) => {
-                        setDiscountType(e.target.value as 'percent' | 'amount');
-                        setDiscountInput('');
-                        setCartDiscount(0, 0, '');
+                        setDiscountType(e.target.value as "percent" | "amount");
+                        setDiscountInput("");
+                        setCartDiscount(0, 0, "");
                       }}
                       className="theme-surface rounded-lg border border-white/20 px-2 sm:px-3 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     >
@@ -1051,68 +1309,82 @@ export function CheckoutPage() {
                         const value = e.target.value;
                         setDiscountInput(value);
                         const numValue = parseFloat(value) || 0;
-                        if (discountType === 'percent') {
-                          setCartDiscount(0, numValue, 'Manual discount');
+                        if (discountType === "percent") {
+                          setCartDiscount(0, numValue, "Manual discount");
                         } else {
-                          setCartDiscount(Math.round(numValue * 100), 0, 'Manual discount');
+                          setCartDiscount(
+                            Math.round(numValue * 100),
+                            0,
+                            "Manual discount",
+                          );
                         }
                       }}
-                      placeholder={discountType === 'percent' ? '0' : '0.00'}
+                      placeholder={discountType === "percent" ? "0" : "0.00"}
                       min="0"
-                      step={discountType === 'percent' ? '1' : '0.01'}
+                      step={discountType === "percent" ? "1" : "0.01"}
                       className="theme-surface flex-1 rounded-lg border border-white/20 px-3 sm:px-4 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2 sm:space-y-3 border-b border-white/10 pb-3 sm:pb-4">
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="theme-text-secondary">Subtotal</span>
-                    <span className="theme-text-primary">{formatCurrency(finalSubtotal)}</span>
+                    <span className="theme-text-primary">
+                      {formatCurrency(finalSubtotal)}
+                    </span>
                   </div>
                   {totalDiscount > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm">
                       <span className="theme-text-secondary">Discount</span>
-                      <span className="theme-text-primary text-emerald-400">-{formatCurrency(totalDiscount)}</span>
+                      <span className="theme-text-primary text-emerald-400">
+                        -{formatCurrency(totalDiscount)}
+                      </span>
                     </div>
                   )}
                   {taxEnabled && tax > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm">
                       <span className="theme-text-secondary">VAT</span>
-                      <span className="theme-text-primary">{formatCurrency(tax)}</span>
+                      <span className="theme-text-primary">
+                        {formatCurrency(tax)}
+                      </span>
                     </div>
                   )}
                 </div>
 
                 <div className="mt-3 sm:mt-4 mb-4 sm:mb-6 flex justify-between border-t border-white/10 pt-3 sm:pt-4">
-                  <span className="theme-text-primary text-base sm:text-lg font-semibold">Total</span>
-                  <span className="theme-text-primary text-lg sm:text-xl font-bold">{formatCurrency(total)}</span>
+                  <span className="theme-text-primary text-base sm:text-lg font-semibold">
+                    Total
+                  </span>
+                  <span className="theme-text-primary text-lg sm:text-xl font-bold">
+                    {formatCurrency(total)}
+                  </span>
                 </div>
 
                 <div className="space-y-2">
                   <button
-                    onClick={() => handlePaymentClick('cash')}
+                    onClick={() => handlePaymentClick("cash")}
                     disabled={cart.length === 0 || isProcessing}
                     className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
-                    {isProcessing ? 'Processing...' : '💵 Pay Cash'}
+                    {isProcessing ? "Processing..." : "💵 Pay Cash"}
                   </button>
                   <button
-                    onClick={() => handlePaymentClick('card')}
+                    onClick={() => handlePaymentClick("card")}
                     disabled={cart.length === 0 || isProcessing}
                     className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
                     💳 Pay Card
                   </button>
                   <button
-                    onClick={() => handlePaymentClick('qr')}
+                    onClick={() => handlePaymentClick("qr")}
                     disabled={cart.length === 0 || isProcessing}
                     className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
                     📱 Pay QR
                   </button>
                   <button
-                    onClick={() => handlePaymentClick('transfer')}
+                    onClick={() => handlePaymentClick("transfer")}
                     disabled={cart.length === 0 || isProcessing}
                     className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
@@ -1120,7 +1392,7 @@ export function CheckoutPage() {
                   </button>
                   {(isAdmin || isManager) && (
                     <button
-                      onClick={() => handlePaymentClick('credit')}
+                      onClick={() => handlePaymentClick("credit")}
                       disabled={cart.length === 0 || isProcessing}
                       className="w-full rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                     >
@@ -1157,7 +1429,7 @@ export function CheckoutPage() {
           if (change !== undefined) {
             setCashChange(change);
           }
-          if (selectedPaymentMethod && selectedPaymentMethod !== 'credit') {
+          if (selectedPaymentMethod && selectedPaymentMethod !== "credit") {
             await handlePayment(selectedPaymentMethod);
           }
         }}

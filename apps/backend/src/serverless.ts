@@ -16,13 +16,9 @@ export const createServer = async (): Promise<Express> => {
   logger.log('Initializing NestJS server for Firebase Functions');
 
   const expressApp = express();
-  const nestApp = await NestFactory.create(
-    AppModule,
-    new ExpressAdapter(expressApp),
-    {
-      bodyParser: true,
-    },
-  );
+  const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
+    bodyParser: true,
+  });
 
   await configureApp(nestApp, { enableSwagger: false });
   await nestApp.init();
@@ -32,4 +28,3 @@ export const createServer = async (): Promise<Express> => {
 
   return cachedServer;
 };
-

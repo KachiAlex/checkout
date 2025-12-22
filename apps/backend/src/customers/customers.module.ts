@@ -10,4 +10,3 @@ import { LoyaltyTransactionsRepository } from './loyalty-transactions.repository
   exports: [CustomersService, CustomersRepository, LoyaltyTransactionsRepository],
 })
 export class CustomersModule {}
-

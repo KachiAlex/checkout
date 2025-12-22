@@ -126,12 +126,7 @@ export class SubscriptionPricingRepository {
         priceCents: 1999, // $19.99/month
         locations: 1,
         users: 3,
-        features: [
-          'All Free features',
-          'Multi-user support',
-          'Basic reports',
-          'Email support',
-        ],
+        features: ['All Free features', 'Multi-user support', 'Basic reports', 'Email support'],
       },
       professional: {
         priceCents: 4999, // $49.99/month
@@ -172,4 +167,3 @@ export class SubscriptionPricingRepository {
     };
   }
 }
-

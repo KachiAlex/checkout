@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import axios from 'axios';
-import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
-import { API_URL } from '../config';
-import { BrandMark } from '../components/BrandMark';
-import { ThemeToggle } from '../components/ThemeToggle';
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../stores/authStore";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
+import { API_URL } from "../config";
+import { BrandMark } from "../components/BrandMark";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 interface Supplier {
   id: string;
@@ -28,16 +28,16 @@ export function SuppliersPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  
+
   const [formData, setFormData] = useState({
-    name: '',
-    contactName: '',
-    email: '',
-    phone: '',
-    address: '',
-    taxId: '',
-    paymentTerms: '',
-    notes: '',
+    name: "",
+    contactName: "",
+    email: "",
+    phone: "",
+    address: "",
+    taxId: "",
+    paymentTerms: "",
+    notes: "",
     active: true,
   });
 
@@ -50,9 +50,9 @@ export function SuppliersPage() {
       });
       setSuppliers(response.data || []);
     } catch (error: any) {
-      console.error('Failed to load suppliers:', error);
+      console.error("Failed to load suppliers:", error);
       if (error.response?.status !== 401) {
-        toast.error('Failed to load suppliers');
+        toast.error("Failed to load suppliers");
       }
     } finally {
       setLoading(false);
@@ -68,7 +68,7 @@ export function SuppliersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken) {
-      toast.error('Not authenticated');
+      toast.error("Not authenticated");
       return;
     }
 
@@ -80,34 +80,32 @@ export function SuppliersPage() {
           formData,
           { headers: { Authorization: `Bearer ${accessToken}` } },
         );
-        toast.success('Supplier updated successfully');
+        toast.success("Supplier updated successfully");
       } else {
         // Create
-        await axios.post(
-          `${API_URL}/api/v1/suppliers`,
-          formData,
-          { headers: { Authorization: `Bearer ${accessToken}` } },
-        );
-        toast.success('Supplier created successfully');
+        await axios.post(`${API_URL}/api/v1/suppliers`, formData, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        toast.success("Supplier created successfully");
       }
-      
+
       setShowForm(false);
       setEditingSupplier(null);
       setFormData({
-        name: '',
-        contactName: '',
-        email: '',
-        phone: '',
-        address: '',
-        taxId: '',
-        paymentTerms: '',
-        notes: '',
+        name: "",
+        contactName: "",
+        email: "",
+        phone: "",
+        address: "",
+        taxId: "",
+        paymentTerms: "",
+        notes: "",
         active: true,
       });
       await loadSuppliers();
     } catch (error: any) {
-      console.error('Failed to save supplier:', error);
-      toast.error(error.response?.data?.message || 'Failed to save supplier');
+      console.error("Failed to save supplier:", error);
+      toast.error(error.response?.data?.message || "Failed to save supplier");
     }
   };
 
@@ -115,13 +113,13 @@ export function SuppliersPage() {
     setEditingSupplier(supplier);
     setFormData({
       name: supplier.name,
-      contactName: supplier.contactName || '',
-      email: supplier.email || '',
-      phone: supplier.phone || '',
-      address: supplier.address || '',
-      taxId: supplier.taxId || '',
-      paymentTerms: supplier.paymentTerms || '',
-      notes: supplier.notes || '',
+      contactName: supplier.contactName || "",
+      email: supplier.email || "",
+      phone: supplier.phone || "",
+      address: supplier.address || "",
+      taxId: supplier.taxId || "",
+      paymentTerms: supplier.paymentTerms || "",
+      notes: supplier.notes || "",
       active: supplier.active,
     });
     setShowForm(true);
@@ -131,14 +129,14 @@ export function SuppliersPage() {
     setShowForm(false);
     setEditingSupplier(null);
     setFormData({
-      name: '',
-      contactName: '',
-      email: '',
-      phone: '',
-      address: '',
-      taxId: '',
-      paymentTerms: '',
-      notes: '',
+      name: "",
+      contactName: "",
+      email: "",
+      phone: "",
+      address: "",
+      taxId: "",
+      paymentTerms: "",
+      notes: "",
       active: true,
     });
   };
@@ -155,8 +153,12 @@ export function SuppliersPage() {
               className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0 sm:w-[56px] sm:h-[56px]"
             />
             <div className="min-w-0 flex-1">
-              <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-[0.35em]">Supplier Management</p>
-              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">Suppliers</h1>
+              <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-[0.35em]">
+                Supplier Management
+              </p>
+              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">
+                Suppliers
+              </h1>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -204,7 +206,7 @@ export function SuppliersPage() {
         {showForm && (
           <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
             <h2 className="theme-text-primary text-xl font-semibold mb-4">
-              {editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
+              {editingSupplier ? "Edit Supplier" : "Add New Supplier"}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -215,7 +217,9 @@ export function SuppliersPage() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     placeholder="Enter supplier name"
                     required
@@ -228,7 +232,9 @@ export function SuppliersPage() {
                   <input
                     type="text"
                     value={formData.contactName}
-                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contactName: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     placeholder="Contact person name"
                   />
@@ -240,7 +246,9 @@ export function SuppliersPage() {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     placeholder="supplier@example.com"
                   />
@@ -252,7 +260,9 @@ export function SuppliersPage() {
                   <input
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     placeholder="+234 800 000 0000"
                   />
@@ -263,7 +273,9 @@ export function SuppliersPage() {
                   </label>
                   <textarea
                     value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     rows={2}
                     placeholder="Supplier address"
@@ -276,7 +288,9 @@ export function SuppliersPage() {
                   <input
                     type="text"
                     value={formData.taxId}
-                    onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, taxId: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     placeholder="Tax identification number"
                   />
@@ -288,7 +302,9 @@ export function SuppliersPage() {
                   <input
                     type="text"
                     value={formData.paymentTerms}
-                    onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, paymentTerms: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     placeholder="e.g., Net 30, COD"
                   />
@@ -299,7 +315,9 @@ export function SuppliersPage() {
                   </label>
                   <textarea
                     value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
                     className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                     rows={3}
                     placeholder="Additional notes"
@@ -311,7 +329,7 @@ export function SuppliersPage() {
                   type="submit"
                   className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70"
                 >
-                  {editingSupplier ? 'Update Supplier' : 'Add Supplier'}
+                  {editingSupplier ? "Update Supplier" : "Add Supplier"}
                 </button>
                 <button
                   type="button"
@@ -328,7 +346,9 @@ export function SuppliersPage() {
         {/* Suppliers List */}
         <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="theme-text-primary text-xl font-semibold">All Suppliers</h2>
+            <h2 className="theme-text-primary text-xl font-semibold">
+              All Suppliers
+            </h2>
             <button
               onClick={loadSuppliers}
               className="theme-chip rounded-full border px-4 py-2 text-sm font-semibold transition"
@@ -338,10 +358,14 @@ export function SuppliersPage() {
           </div>
 
           {loading ? (
-            <p className="theme-text-secondary mt-4 text-sm">Loading suppliers...</p>
+            <p className="theme-text-secondary mt-4 text-sm">
+              Loading suppliers...
+            </p>
           ) : suppliers.length === 0 ? (
             <div className="theme-surface rounded-2xl border border-dashed p-12 text-center">
-              <p className="theme-text-primary text-lg font-semibold">No suppliers found</p>
+              <p className="theme-text-primary text-lg font-semibold">
+                No suppliers found
+              </p>
               <p className="theme-text-secondary mt-2 text-sm">
                 Click "Add Supplier" to create your first supplier.
               </p>
@@ -356,7 +380,9 @@ export function SuppliersPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
-                        <h3 className="theme-text-primary text-lg font-semibold">{supplier.name}</h3>
+                        <h3 className="theme-text-primary text-lg font-semibold">
+                          {supplier.name}
+                        </h3>
                         {!supplier.active && (
                           <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-400">
                             Inactive
@@ -364,24 +390,36 @@ export function SuppliersPage() {
                         )}
                       </div>
                       {supplier.contactName && (
-                        <p className="theme-text-secondary mt-1 text-sm">Contact: {supplier.contactName}</p>
+                        <p className="theme-text-secondary mt-1 text-sm">
+                          Contact: {supplier.contactName}
+                        </p>
                       )}
                       <div className="mt-2 flex flex-wrap gap-4 text-sm">
                         {supplier.email && (
-                          <span className="theme-text-secondary">📧 {supplier.email}</span>
+                          <span className="theme-text-secondary">
+                            📧 {supplier.email}
+                          </span>
                         )}
                         {supplier.phone && (
-                          <span className="theme-text-secondary">📞 {supplier.phone}</span>
+                          <span className="theme-text-secondary">
+                            📞 {supplier.phone}
+                          </span>
                         )}
                         {supplier.paymentTerms && (
-                          <span className="theme-text-secondary">💳 {supplier.paymentTerms}</span>
+                          <span className="theme-text-secondary">
+                            💳 {supplier.paymentTerms}
+                          </span>
                         )}
                       </div>
                       {supplier.address && (
-                        <p className="theme-text-secondary mt-2 text-sm">📍 {supplier.address}</p>
+                        <p className="theme-text-secondary mt-2 text-sm">
+                          📍 {supplier.address}
+                        </p>
                       )}
                       {supplier.notes && (
-                        <p className="theme-text-secondary mt-2 text-sm italic">{supplier.notes}</p>
+                        <p className="theme-text-secondary mt-2 text-sm italic">
+                          {supplier.notes}
+                        </p>
                       )}
                     </div>
                     <button
@@ -400,4 +438,3 @@ export function SuppliersPage() {
     </div>
   );
 }
-

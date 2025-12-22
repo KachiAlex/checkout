@@ -24,5 +24,3 @@ export class UpdateSubscriptionDto {
   @IsString()
   billingCycleEnd?: string | null;
 }
-
-

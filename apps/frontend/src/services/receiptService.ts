@@ -1,44 +1,45 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-import { useAuthStore } from '../stores/authStore';
+import axios from "axios";
+import { API_URL } from "../config";
+import { useAuthStore } from "../stores/authStore";
 
 const isLocalEnvironment = () => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return false;
   }
 
   const host = window.location.hostname;
   return (
-    host === 'localhost' ||
-    host === '127.0.0.1' ||
-    host.endsWith('.local') ||
-    host === 'capacitor://localhost'
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".local") ||
+    host === "capacitor://localhost"
   );
 };
 
 const getPrintProxyUrl = (): string => {
-  if (typeof window === 'undefined') {
-    return '';
+  if (typeof window === "undefined") {
+    return "";
   }
 
-  const stored = localStorage.getItem('printProxyUrl');
-  if (stored && stored.trim() !== '') {
+  const stored = localStorage.getItem("printProxyUrl");
+  if (stored && stored.trim() !== "") {
     return stored;
   }
 
-  const defaultUrl = import.meta.env.VITE_PRINT_PROXY_URL || 'ws://localhost:8080';
+  const defaultUrl =
+    import.meta.env.VITE_PRINT_PROXY_URL || "ws://localhost:8080";
   // Only use default URL automatically in local environments
   if (isLocalEnvironment()) {
     return defaultUrl;
   }
 
   // On production domains, do not auto-connect unless user explicitly configures URL
-  return '';
+  return "";
 };
 
 export interface Printer {
   id: string;
-  type: 'serial' | 'network';
+  type: "serial" | "network";
   config: {
     path?: string;
     host?: string;
@@ -59,7 +60,7 @@ export class ReceiptService {
   async getReceipt(orderId: string): Promise<string> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     const response = await axios.get(`${API_URL}/api/v1/receipts/${orderId}`, {
@@ -76,7 +77,7 @@ export class ReceiptService {
   async sendEmailReceipt(orderId: string, email: string): Promise<boolean> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     try {
@@ -91,7 +92,7 @@ export class ReceiptService {
       );
       return response.data.success;
     } catch (error) {
-      console.error('Failed to send email receipt:', error);
+      console.error("Failed to send email receipt:", error);
       return false;
     }
   }
@@ -112,15 +113,15 @@ export class ReceiptService {
       try {
         const proxyUrl = getPrintProxyUrl();
         // Only attempt connection if URL is valid (not empty)
-        if (!proxyUrl || proxyUrl.trim() === '') {
+        if (!proxyUrl || proxyUrl.trim() === "") {
           this.connectionPromise = null;
-          reject(new Error('Print proxy URL not configured'));
+          reject(new Error("Print proxy URL not configured"));
           return;
         }
         this.ws = new WebSocket(proxyUrl);
 
         this.ws.onopen = () => {
-          console.log('Connected to print proxy');
+          console.log("Connected to print proxy");
           this.connectionPromise = null;
           resolve();
         };
@@ -129,16 +130,19 @@ export class ReceiptService {
           // Silently handle connection errors - print proxy may not be running
           // Only log in debug mode
           if (import.meta.env.DEV) {
-            console.debug('Print proxy connection error (expected if server not running):', error);
+            console.debug(
+              "Print proxy connection error (expected if server not running):",
+              error,
+            );
           }
           this.connectionPromise = null;
-          reject(new Error('Failed to connect to print proxy'));
+          reject(new Error("Failed to connect to print proxy"));
         };
 
         this.ws.onclose = () => {
           // Silently handle disconnection - print proxy may not be running
           if (import.meta.env.DEV) {
-            console.debug('Disconnected from print proxy');
+            console.debug("Disconnected from print proxy");
           }
           this.ws = null;
           this.connectionPromise = null;
@@ -149,7 +153,7 @@ export class ReceiptService {
             const message = JSON.parse(event.data);
             this.handleMessage(message);
           } catch (error) {
-            console.error('Failed to parse print proxy message:', error);
+            console.error("Failed to parse print proxy message:", error);
           }
         };
 
@@ -157,7 +161,7 @@ export class ReceiptService {
         setTimeout(() => {
           if (this.ws?.readyState !== WebSocket.OPEN) {
             this.connectionPromise = null;
-            reject(new Error('Connection timeout'));
+            reject(new Error("Connection timeout"));
           }
         }, 5000);
       } catch (error) {
@@ -174,13 +178,13 @@ export class ReceiptService {
    */
   private handleMessage(message: any): void {
     if (message.error) {
-      console.error('Print proxy error:', message.error);
+      console.error("Print proxy error:", message.error);
       return;
     }
 
     // Handle registered printer responses
-    if (message.success && message.message?.includes('registered')) {
-      console.log('Printer registered:', message.message);
+    if (message.success && message.message?.includes("registered")) {
+      console.log("Printer registered:", message.message);
     }
 
     // Call registered message handlers
@@ -193,18 +197,26 @@ export class ReceiptService {
   /**
    * Register a printer with the print proxy
    */
-  async registerPrinter(printerId: string, type: 'serial' | 'network', config: Printer['config']): Promise<boolean> {
+  async registerPrinter(
+    printerId: string,
+    type: "serial" | "network",
+    config: Printer["config"],
+  ): Promise<boolean> {
     try {
       await this.connect();
 
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        throw new Error('Not connected to print proxy');
+        throw new Error("Not connected to print proxy");
       }
 
       return new Promise((resolve) => {
         const handler = (message: any) => {
           if (message.success) {
-            this.registeredPrinters.set(printerId, { id: printerId, type, config });
+            this.registeredPrinters.set(printerId, {
+              id: printerId,
+              type,
+              config,
+            });
             resolve(true);
           } else {
             resolve(false);
@@ -217,7 +229,7 @@ export class ReceiptService {
         if (this.ws) {
           this.ws.send(
             JSON.stringify({
-              type: 'register-printer',
+              type: "register-printer",
               printerId,
               printerType: type,
               config,
@@ -234,7 +246,7 @@ export class ReceiptService {
         }, 5000);
       });
     } catch (error) {
-      console.error('Failed to register printer:', error);
+      console.error("Failed to register printer:", error);
       return false;
     }
   }
@@ -247,7 +259,7 @@ export class ReceiptService {
       await this.connect();
 
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        throw new Error('Not connected to print proxy');
+        throw new Error("Not connected to print proxy");
       }
 
       return new Promise((resolve) => {
@@ -257,27 +269,27 @@ export class ReceiptService {
           } else {
             resolve([]);
           }
-          this.messageHandlers.delete('list-printers');
+          this.messageHandlers.delete("list-printers");
         };
 
-        this.messageHandlers.set('list-printers', handler);
+        this.messageHandlers.set("list-printers", handler);
 
         this.ws!.send(
           JSON.stringify({
-            type: 'list-printers',
+            type: "list-printers",
           }),
         );
 
         // Timeout after 5 seconds
         setTimeout(() => {
-          if (this.messageHandlers.has('list-printers')) {
-            this.messageHandlers.delete('list-printers');
+          if (this.messageHandlers.has("list-printers")) {
+            this.messageHandlers.delete("list-printers");
             resolve([]);
           }
         }, 5000);
       });
     } catch (error) {
-      console.error('Failed to list printers:', error);
+      console.error("Failed to list printers:", error);
       return [];
     }
   }
@@ -289,15 +301,18 @@ export class ReceiptService {
     try {
       const accessToken = useAuthStore.getState().accessToken;
       if (!accessToken) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Get receipt in ESC/POS format
-      const response = await axios.get(`${API_URL}/api/v1/receipts/${orderId}/print`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+      const response = await axios.get(
+        `${API_URL}/api/v1/receipts/${orderId}/print`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
-      });
+      );
 
       const { escpos } = response.data;
 
@@ -305,11 +320,11 @@ export class ReceiptService {
       await this.connect();
 
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        throw new Error('Not connected to print proxy');
+        throw new Error("Not connected to print proxy");
       }
 
       // Use default printer if none specified
-      const targetPrinterId = printerId || 'default-printer';
+      const targetPrinterId = printerId || "default-printer";
 
       // Send print job
       return new Promise((resolve) => {
@@ -326,10 +341,10 @@ export class ReceiptService {
 
         this.ws!.send(
           JSON.stringify({
-            type: 'print',
+            type: "print",
             printerId: targetPrinterId,
             data: escpos,
-            format: 'escpos',
+            format: "escpos",
           }),
         );
 
@@ -342,7 +357,7 @@ export class ReceiptService {
         }, 10000);
       });
     } catch (error) {
-      console.error('Failed to print receipt:', error);
+      console.error("Failed to print receipt:", error);
       return false;
     }
   }
@@ -350,33 +365,39 @@ export class ReceiptService {
   /**
    * Print receipt to USB Serial printer
    */
-  async printReceiptToSerial(orderId: string, port: SerialPort): Promise<boolean> {
+  async printReceiptToSerial(
+    orderId: string,
+    port: SerialPort,
+  ): Promise<boolean> {
     try {
       const accessToken = useAuthStore.getState().accessToken;
       if (!accessToken) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Get receipt in ESC/POS format
-      const response = await axios.get(`${API_URL}/api/v1/receipts/${orderId}/print`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+      const response = await axios.get(
+        `${API_URL}/api/v1/receipts/${orderId}/print`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
-      });
+      );
 
       const { escpos } = response.data;
-      
+
       // Convert ESC/POS string to Uint8Array
       const encoder = new TextEncoder();
       const data = encoder.encode(escpos);
 
       // Import printer device service
-      const { writeToSerialPort } = await import('./printerDeviceService');
+      const { writeToSerialPort } = await import("./printerDeviceService");
       await writeToSerialPort(port, data);
 
       return true;
     } catch (error) {
-      console.error('Failed to print to serial printer:', error);
+      console.error("Failed to print to serial printer:", error);
       return false;
     }
   }
@@ -384,33 +405,41 @@ export class ReceiptService {
   /**
    * Print receipt to Bluetooth printer
    */
-  async printReceiptToBluetooth(orderId: string, characteristic: BluetoothRemoteGATTCharacteristic): Promise<boolean> {
+  async printReceiptToBluetooth(
+    orderId: string,
+    characteristic: BluetoothRemoteGATTCharacteristic,
+  ): Promise<boolean> {
     try {
       const accessToken = useAuthStore.getState().accessToken;
       if (!accessToken) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Get receipt in ESC/POS format
-      const response = await axios.get(`${API_URL}/api/v1/receipts/${orderId}/print`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+      const response = await axios.get(
+        `${API_URL}/api/v1/receipts/${orderId}/print`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
-      });
+      );
 
       const { escpos } = response.data;
-      
+
       // Convert ESC/POS string to Uint8Array
       const encoder = new TextEncoder();
       const data = encoder.encode(escpos);
 
       // Import printer device service
-      const { writeToBluetoothPrinter } = await import('./printerDeviceService');
+      const { writeToBluetoothPrinter } = await import(
+        "./printerDeviceService"
+      );
       await writeToBluetoothPrinter(characteristic, data);
 
       return true;
     } catch (error) {
-      console.error('Failed to print to Bluetooth printer:', error);
+      console.error("Failed to print to Bluetooth printer:", error);
       return false;
     }
   }
@@ -421,11 +450,13 @@ export class ReceiptService {
   async printReceiptBrowser(orderId: string): Promise<boolean> {
     try {
       const receipt = await this.getReceipt(orderId);
-      
+
       // Create a new window for printing
-      const printWindow = window.open('', '_blank');
+      const printWindow = window.open("", "_blank");
       if (!printWindow) {
-        throw new Error('Popup blocked. Please allow popups to print receipts.');
+        throw new Error(
+          "Popup blocked. Please allow popups to print receipts.",
+        );
       }
 
       // Detect mobile device
@@ -454,9 +485,9 @@ export class ReceiptService {
               
               body {
                 font-family: 'Courier New', 'Courier', monospace;
-                font-size: ${isMobile ? '10px' : '12px'};
+                font-size: ${isMobile ? "10px" : "12px"};
                 line-height: 1.4;
-                padding: ${isMobile ? '10px' : '20px'};
+                padding: ${isMobile ? "10px" : "20px"};
                 white-space: pre-wrap;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
@@ -484,21 +515,21 @@ export class ReceiptService {
               
               @media screen {
                 body {
-                  max-width: ${isMobile ? '100%' : '80mm'};
+                  max-width: ${isMobile ? "100%" : "80mm"};
                   margin: 0 auto;
-                  padding: ${isMobile ? '15px' : '20px'};
+                  padding: ${isMobile ? "15px" : "20px"};
                 }
               }
               
               @media print {
                 @page {
-                  size: ${isMobile ? 'A4' : '80mm'} auto;
-                  margin: ${isMobile ? '5mm' : '0'};
+                  size: ${isMobile ? "A4" : "80mm"} auto;
+                  margin: ${isMobile ? "5mm" : "0"};
                 }
                 body {
                   margin: 0;
-                  padding: ${isMobile ? '10mm' : '10mm'};
-                  font-size: ${isMobile ? '9px' : '12px'};
+                  padding: ${isMobile ? "10mm" : "10mm"};
+                  font-size: ${isMobile ? "9px" : "12px"};
                   max-width: 100%;
                   width: 100%;
                 }
@@ -525,7 +556,7 @@ export class ReceiptService {
             </style>
           </head>
           <body>
-            <pre>${receipt.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+            <pre>${receipt.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
             <script>
               (function() {
                 // Ensure content is loaded before printing
@@ -564,7 +595,7 @@ export class ReceiptService {
 
       return true;
     } catch (error) {
-      console.error('Failed to print receipt via browser:', error);
+      console.error("Failed to print receipt via browser:", error);
       return false;
     }
   }
@@ -587,7 +618,7 @@ export class ReceiptService {
 
   hasConfiguredProxy(): boolean {
     const url = getPrintProxyUrl();
-    return Boolean(url && url.trim() !== '');
+    return Boolean(url && url.trim() !== "");
   }
 
   /**

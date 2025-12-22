@@ -12,7 +12,7 @@ export class ContactService {
     try {
       // Log the demo request
       this.logger.log(`📧 Demo request from ${dto.name} (${dto.email}) - ${dto.companyName}`);
-      
+
       // Send email via SendGrid
       await this.sendGridService.sendDemoRequestEmail({
         name: dto.name,
@@ -36,4 +36,3 @@ export class ContactService {
     }
   }
 }
-

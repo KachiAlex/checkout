@@ -9,4 +9,3 @@ import { SuppliersRepository } from './suppliers.repository';
   exports: [SuppliersService, SuppliersRepository],
 })
 export class SuppliersModule {}
-

@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { useNavigate, Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { BrandMark } from '../components/BrandMark';
-import { useThemeStore } from '../stores/themeStore';
-import { debugLog } from '../utils/debugLog';
-import { generateUUID } from '../utils/uuid';
+import { useState } from "react";
+import { useAuthStore } from "../stores/authStore";
+import { useNavigate, Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { BrandMark } from "../components/BrandMark";
+import { useThemeStore } from "../stores/themeStore";
+import { debugLog } from "../utils/debugLog";
+import { generateUUID } from "../utils/uuid";
 
-type LoginVariant = 'tenant' | 'superadmin';
+type LoginVariant = "tenant" | "superadmin";
 
 interface LoginPageProps {
   variant?: LoginVariant;
@@ -31,11 +31,11 @@ interface DebugInfo {
   requestData?: unknown;
 }
 
-export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
-  const [tenantSlug, setTenantSlug] = useState('');
-  const [pin, setPin] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export function LoginPage({ variant = "tenant" }: LoginPageProps) {
+  const [tenantSlug, setTenantSlug] = useState("");
+  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const { login, loginSuperAdmin } = useAuthStore((state) => ({
@@ -44,69 +44,74 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
   }));
   const navigate = useNavigate();
   const theme = useThemeStore((state) => state.theme);
-  const glowPrimary = theme === 'light' ? 'bg-indigo-200/40' : 'bg-blue-600/40';
-  const glowSecondary = theme === 'light' ? 'bg-cyan-200/35' : 'bg-cyan-500/30';
+  const glowPrimary = theme === "light" ? "bg-indigo-200/40" : "bg-blue-600/40";
+  const glowSecondary = theme === "light" ? "bg-cyan-200/35" : "bg-cyan-500/30";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    let attemptedTenantSlug = '';
-    let attemptedDeviceId = '';
-    let attemptedEmail = '';
+    let attemptedTenantSlug = "";
+    let attemptedDeviceId = "";
+    let attemptedEmail = "";
 
     try {
-      if (variant === 'superadmin') {
+      if (variant === "superadmin") {
         if (!email.trim()) {
-          throw new Error('Email is required');
+          throw new Error("Email is required");
         }
         if (!password) {
-          throw new Error('Password is required');
+          throw new Error("Password is required");
         }
 
         attemptedEmail = email.trim().toLowerCase();
 
         await loginSuperAdmin(attemptedEmail, password);
-        debugLog('Login success', { type: 'superadmin', email: attemptedEmail });
-        toast.success('Welcome back');
-        navigate('/superadmin/dashboard', { replace: true });
+        debugLog("Login success", {
+          type: "superadmin",
+          email: attemptedEmail,
+        });
+        toast.success("Welcome back");
+        navigate("/superadmin/dashboard", { replace: true });
       } else {
         if (!tenantSlug.trim()) {
-          throw new Error('Company slug is required');
+          throw new Error("Company slug is required");
         }
 
         const normalizedSlug = tenantSlug.trim().toLowerCase();
         attemptedTenantSlug = normalizedSlug;
 
         // Generate device ID (store in localStorage for persistence)
-        const deviceId = localStorage.getItem('deviceId') ?? generateUUID();
-        localStorage.setItem('deviceId', deviceId);
+        const deviceId = localStorage.getItem("deviceId") ?? generateUUID();
+        localStorage.setItem("deviceId", deviceId);
         attemptedDeviceId = deviceId;
 
         await login(normalizedSlug, pin, deviceId);
         const { user } = useAuthStore.getState();
-        debugLog('Login success', {
-          type: 'tenant',
+        debugLog("Login success", {
+          type: "tenant",
           tenantSlug: normalizedSlug,
           userRole: user?.role,
           locationId: user?.locationId,
         });
 
-        toast.success('Login successful');
+        toast.success("Login successful");
         if (user?.isPlatformAdmin) {
-          navigate('/superadmin/dashboard', { replace: true });
+          navigate("/superadmin/dashboard", { replace: true });
         } else {
-          navigate('/checkout', { replace: true });
+          navigate("/checkout", { replace: true });
         }
       }
     } catch (error: any) {
       const status = error.response?.status ?? error.status;
       const responseData = error.response?.data ?? error.data ?? null;
-      const message = error.customMessage || error.message || 'Login failed';
+      const message = error.customMessage || error.message || "Login failed";
       const code = error.code ?? error.response?.code;
       const config = error.config ?? error.response?.config;
       const requestUrl =
-        config?.baseURL && config?.url ? `${config.baseURL.replace(/\/+$/, '')}/${config.url.replace(/^\/+/, '')}` : config?.url;
+        config?.baseURL && config?.url
+          ? `${config.baseURL.replace(/\/+$/, "")}/${config.url.replace(/^\/+/, "")}`
+          : config?.url;
       const method = config?.method;
       const isNetworkError = !error.response && !!error.request;
       const headers = error.response?.headers;
@@ -114,7 +119,7 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
       const requestData = config?.data;
 
       toast.error(status ? `${message} (status ${status})` : message);
-      debugLog('Login failed', {
+      debugLog("Login failed", {
         message,
         status,
         statusText,
@@ -124,11 +129,11 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
         deviceId: attemptedDeviceId || undefined,
         email: attemptedEmail || undefined,
       });
-      if (typeof console !== 'undefined') {
-        console.error('[LoginPage] login failed', {
+      if (typeof console !== "undefined") {
+        console.error("[LoginPage] login failed", {
           message,
           status,
-           statusText,
+          statusText,
           code,
           isNetworkError,
           tenantSlug: attemptedTenantSlug || undefined,
@@ -165,8 +170,12 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
   return (
     <div className="theme-background relative flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-10 overflow-x-hidden w-full">
       <div className="pointer-events-none absolute inset-0">
-        <div className={`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${glowPrimary} blur-[180px]`} />
-        <div className={`absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${glowSecondary} blur-[200px]`} />
+        <div
+          className={`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${glowPrimary} blur-[180px]`}
+        />
+        <div
+          className={`absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${glowSecondary} blur-[200px]`}
+        />
       </div>
 
       <div className="relative z-10 flex w-full max-w-md flex-col gap-4 sm:gap-6 px-1 sm:px-0">
@@ -177,25 +186,35 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
           <div className="flex flex-col items-center gap-3 sm:gap-4">
             <BrandMark
               size={64}
-              backgroundClassName={theme === 'light' ? 'bg-white' : 'bg-white/10'}
+              backgroundClassName={
+                theme === "light" ? "bg-white" : "bg-white/10"
+              }
               className="ring-1 ring-slate-200/40 dark:ring-white/10 sm:w-[84px] sm:h-[84px]"
             />
             <div className="space-y-1.5 sm:space-y-2 text-center">
               <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">
-                {variant === 'superadmin' ? 'Checkout Platform Console' : 'POS Checkout MVP'}
+                {variant === "superadmin"
+                  ? "Checkout Platform Console"
+                  : "POS Checkout MVP"}
               </h1>
               <p className="theme-text-secondary text-xs sm:text-sm px-2">
-                {variant === 'superadmin'
-                  ? 'Access the multi-tenant command center to provision and manage companies.'
-                  : 'Enter your company slug and secure PIN to access the checkout console.'}
+                {variant === "superadmin"
+                  ? "Access the multi-tenant command center to provision and manage companies."
+                  : "Enter your company slug and secure PIN to access the checkout console."}
               </p>
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5">
-            {variant === 'superadmin' ? (
+          <form
+            onSubmit={handleSubmit}
+            className="mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5"
+          >
+            {variant === "superadmin" ? (
               <>
                 <div className="space-y-2">
-                  <label htmlFor="email" className="theme-text-secondary text-sm font-medium">
+                  <label
+                    htmlFor="email"
+                    className="theme-text-secondary text-sm font-medium"
+                  >
                     Email
                   </label>
                   <input
@@ -210,7 +229,10 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="password" className="theme-text-secondary text-sm font-medium">
+                  <label
+                    htmlFor="password"
+                    className="theme-text-secondary text-sm font-medium"
+                  >
                     Password
                   </label>
                   <input
@@ -228,7 +250,10 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
             ) : (
               <>
                 <div className="space-y-2">
-                  <label htmlFor="tenant-slug" className="theme-text-secondary text-sm font-medium">
+                  <label
+                    htmlFor="tenant-slug"
+                    className="theme-text-secondary text-sm font-medium"
+                  >
                     Company slug
                   </label>
                   <input
@@ -237,7 +262,7 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
                     value={tenantSlug}
                     onChange={(e) => setTenantSlug(e.target.value)}
                     placeholder="acme-retail"
-                  className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
+                    className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
                     inputMode="text"
                     pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
                     title="Use lowercase letters, numbers, and hyphens only"
@@ -245,7 +270,10 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="pin" className="theme-text-secondary text-sm font-medium">
+                  <label
+                    htmlFor="pin"
+                    className="theme-text-secondary text-sm font-medium"
+                  >
                     Enter PIN or passphrase
                   </label>
                   <input
@@ -267,13 +295,13 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
               type="submit"
               disabled={
                 loading ||
-                (variant === 'superadmin'
+                (variant === "superadmin"
                   ? !email.trim() || !password
                   : !pin || !tenantSlug.trim())
               }
               className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base lg:text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 touch-manipulation"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
           {debugInfo && (
@@ -294,22 +322,30 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
             </div>
           )}
           <div className="theme-text-secondary mt-6 text-center text-xs space-y-2">
-            {variant === 'tenant' ? (
+            {variant === "tenant" ? (
               <>
                 <p>Default PINs: Admin (1234), Cashier (5678)</p>
                 <p>
-                  Platform operator?{' '}
-                  <Link to="/superadmin/login" className="theme-text-primary underline-offset-4 hover:underline">
+                  Platform operator?{" "}
+                  <Link
+                    to="/superadmin/login"
+                    className="theme-text-primary underline-offset-4 hover:underline"
+                  >
                     Sign in here
                   </Link>
                 </p>
               </>
             ) : (
               <>
-                <p>Use the platform credentials shared with your operations lead.</p>
                 <p>
-                  Need to access a tenant console instead?{' '}
-                  <Link to="/login" className="theme-text-primary underline-offset-4 hover:underline">
+                  Use the platform credentials shared with your operations lead.
+                </p>
+                <p>
+                  Need to access a tenant console instead?{" "}
+                  <Link
+                    to="/login"
+                    className="theme-text-primary underline-offset-4 hover:underline"
+                  >
                     Switch to tenant login
                   </Link>
                 </p>
@@ -321,4 +357,3 @@ export function LoginPage({ variant = 'tenant' }: LoginPageProps) {
     </div>
   );
 }
-

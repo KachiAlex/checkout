@@ -22,7 +22,7 @@ export class InventoryService {
 
   async getStock(locationId: string, tenantId?: string) {
     const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-    
+
     if (!tenantId || inventoryRecords.length === 0) {
       // Return records without enrichment if no tenantId or no records
       return inventoryRecords.map((record) => ({
@@ -40,7 +40,7 @@ export class InventoryService {
 
     // OPTIMIZATION: Batch fetch all products, transactions, and users at once
     const productIds = inventoryRecords.map((r) => r.productId);
-    
+
     // Batch fetch all products with error handling
     let productsMap = new Map();
     try {
@@ -50,7 +50,7 @@ export class InventoryService {
       // Fallback to empty map - will show products as missing
       productsMap = new Map();
     }
-    
+
     // Batch fetch all last transactions with error handling
     let transactionsMap = new Map();
     try {
@@ -59,21 +59,22 @@ export class InventoryService {
         locationId,
       );
     } catch (error) {
-      console.error('Failed to batch fetch transactions, continuing without transaction data:', error);
+      console.error(
+        'Failed to batch fetch transactions, continuing without transaction data:',
+        error,
+      );
       transactionsMap = new Map();
     }
-    
+
     // Collect unique user IDs from transactions
     const userIds = Array.from(transactionsMap.values())
       .map((t) => t.userId)
       .filter((id): id is string => Boolean(id));
-    
+
     // Batch fetch all users with error handling
     let usersMap = new Map();
     try {
-      usersMap = userIds.length > 0 
-        ? await this.usersRepository.findByIds(userIds)
-        : new Map();
+      usersMap = userIds.length > 0 ? await this.usersRepository.findByIds(userIds) : new Map();
     } catch (error) {
       console.error('Failed to batch fetch users, continuing without user data:', error);
       usersMap = new Map();
@@ -83,7 +84,7 @@ export class InventoryService {
     const enrichedRecords = inventoryRecords.map((record) => {
       const product = productsMap.get(record.productId);
       const lastTransaction = transactionsMap.get(record.productId);
-      
+
       let lastUpdatedBy = null;
       if (lastTransaction?.userId) {
         const user = usersMap.get(lastTransaction.userId);
@@ -253,7 +254,10 @@ export class InventoryService {
     // Handle category - find or create if name provided
     let categoryId = createDto.categoryId;
     if (!categoryId && createDto.categoryName) {
-      const category = await this.categoriesService.findOrCreateByName(createDto.categoryName, tenantId);
+      const category = await this.categoriesService.findOrCreateByName(
+        createDto.categoryName,
+        tenantId,
+      );
       categoryId = category.id;
     }
 
@@ -327,9 +331,11 @@ export class InventoryService {
     salesPriceCents?: number,
   ) {
     const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);
-    
+
     if (!currentInventory) {
-      throw new NotFoundException(`Inventory not found for product ${productId} at location ${locationId}`);
+      throw new NotFoundException(
+        `Inventory not found for product ${productId} at location ${locationId}`,
+      );
     }
 
     return this.inventoryRepository.upsertInventory({
@@ -339,7 +345,8 @@ export class InventoryService {
       reorderPoint: currentInventory.reorderPoint,
       maxStock: currentInventory.maxStock,
       costCents: costCents !== undefined ? costCents : currentInventory.costCents,
-      salesPriceCents: salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
+      salesPriceCents:
+        salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
     });
   }
 
@@ -352,9 +359,11 @@ export class InventoryService {
     salesPriceCents?: number,
   ) {
     const currentInventory = await this.inventoryRepository.getInventory(productId, locationId);
-    
+
     if (!currentInventory) {
-      throw new NotFoundException(`Inventory not found for product ${productId} at location ${locationId}`);
+      throw new NotFoundException(
+        `Inventory not found for product ${productId} at location ${locationId}`,
+      );
     }
 
     // Calculate quantity delta if quantity is being updated
@@ -368,7 +377,8 @@ export class InventoryService {
       reorderPoint: reorderPoint !== undefined ? reorderPoint : currentInventory.reorderPoint,
       maxStock: currentInventory.maxStock,
       costCents: costCents !== undefined ? costCents : currentInventory.costCents,
-      salesPriceCents: salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
+      salesPriceCents:
+        salesPriceCents !== undefined ? salesPriceCents : currentInventory.salesPriceCents,
     });
 
     // Create transaction if quantity changed

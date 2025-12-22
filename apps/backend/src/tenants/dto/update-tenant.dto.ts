@@ -14,4 +14,3 @@ export class UpdateTenantDto extends PartialType(CreateTenantDto) {
   @IsEmail()
   adminEmail?: string;
 }
-

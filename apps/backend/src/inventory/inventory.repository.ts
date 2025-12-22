@@ -77,7 +77,9 @@ export class InventoryRepository {
     return this.toInventoryRecord(doc.id, doc.data());
   }
 
-  async upsertInventory(record: Omit<InventoryRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryRecord> {
+  async upsertInventory(
+    record: Omit<InventoryRecord, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<InventoryRecord> {
     const existing = await this.getInventory(record.productId, record.locationId);
     const now = FieldValue.serverTimestamp();
 
@@ -117,7 +119,7 @@ export class InventoryRepository {
 
     const docRef = this.transactionsCollection.doc(id);
     const timestampValue =
-      record.ts instanceof Date ? Timestamp.fromDate(record.ts) : record.ts ?? now;
+      record.ts instanceof Date ? Timestamp.fromDate(record.ts) : (record.ts ?? now);
 
     try {
       await docRef.set({
@@ -129,9 +131,13 @@ export class InventoryRepository {
 
       const created = await docRef.get();
       if (!created.exists) {
-        throw new Error(`Failed to create inventory transaction: document ${id} does not exist after creation`);
+        throw new Error(
+          `Failed to create inventory transaction: document ${id} does not exist after creation`,
+        );
       }
-      console.log(`✅ Inventory transaction saved: ${id} (${record.type}, product: ${record.productId}, delta: ${record.delta})`);
+      console.log(
+        `✅ Inventory transaction saved: ${id} (${record.type}, product: ${record.productId}, delta: ${record.delta})`,
+      );
       return this.toTransactionRecord(created.id, created.data() as InventoryTransactionDocument);
     } catch (error) {
       console.error(`❌ Failed to save inventory transaction to Firestore:`, error);
@@ -139,8 +145,14 @@ export class InventoryRepository {
     }
   }
 
-  async listTransactions(locationId: string, from?: Date, to?: Date): Promise<InventoryTransactionRecord[]> {
-    let query = this.transactionsCollection.where('locationId', '==', locationId).orderBy('ts', 'desc');
+  async listTransactions(
+    locationId: string,
+    from?: Date,
+    to?: Date,
+  ): Promise<InventoryTransactionRecord[]> {
+    let query = this.transactionsCollection
+      .where('locationId', '==', locationId)
+      .orderBy('ts', 'desc');
 
     if (from) {
       query = query.where('ts', '>=', Timestamp.fromDate(from));
@@ -154,7 +166,10 @@ export class InventoryRepository {
     return snapshot.docs.map((doc) => this.toTransactionRecord(doc.id, doc.data()));
   }
 
-  async getLastTransaction(productId: string, locationId: string): Promise<InventoryTransactionRecord | null> {
+  async getLastTransaction(
+    productId: string,
+    locationId: string,
+  ): Promise<InventoryTransactionRecord | null> {
     try {
       // Try with orderBy first (requires composite index)
       const snapshot = await this.transactionsCollection
@@ -185,7 +200,7 @@ export class InventoryRepository {
         const transactions = snapshot.docs.map((doc) =>
           this.toTransactionRecord(doc.id, doc.data()),
         );
-        
+
         // Sort by timestamp descending and return the first one
         transactions.sort((a, b) => b.ts.getTime() - a.ts.getTime());
         return transactions[0];
@@ -198,7 +213,10 @@ export class InventoryRepository {
    * Batch fetch last transaction for multiple products (optimized for inventory loading)
    * Fetches recent transactions for the location and groups by productId
    */
-  async getLastTransactionsBatch(productIds: string[], locationId: string): Promise<Map<string, InventoryTransactionRecord>> {
+  async getLastTransactionsBatch(
+    productIds: string[],
+    locationId: string,
+  ): Promise<Map<string, InventoryTransactionRecord>> {
     if (productIds.length === 0) {
       return new Map();
     }
@@ -217,10 +235,10 @@ export class InventoryRepository {
 
       // Group by productId and keep only the latest for each
       const transactionsByProduct = new Map<string, InventoryTransactionRecord>();
-      
+
       for (const doc of snapshot.docs) {
         const transaction = this.toTransactionRecord(doc.id, doc.data());
-        
+
         // Only process transactions for products we're interested in
         if (!uniqueProductIds.has(transaction.productId)) {
           continue;
@@ -237,18 +255,20 @@ export class InventoryRepository {
     } catch (error: any) {
       // If index doesn't exist, fallback to individual queries (slower but works)
       if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-        console.warn('Firestore index not found for batch transaction fetch, using individual queries');
-        const promises = productIds.map((productId) => 
-          this.getLastTransaction(productId, locationId)
+        console.warn(
+          'Firestore index not found for batch transaction fetch, using individual queries',
+        );
+        const promises = productIds.map((productId) =>
+          this.getLastTransaction(productId, locationId),
         );
         const transactions = await Promise.all(promises);
-        
+
         transactions.forEach((transaction, index) => {
           if (transaction) {
             result.set(productIds[index], transaction);
           }
         });
-        
+
         return result;
       }
       throw error;
@@ -321,7 +341,7 @@ export class InventoryRepository {
 
   async clearAllInventory(): Promise<number> {
     const snapshot = await this.inventoryCollection.get();
-    
+
     if (snapshot.empty) {
       return 0;
     }
@@ -369,7 +389,10 @@ export class InventoryRepository {
     };
   }
 
-  private toTransactionRecord(id: string, data: InventoryTransactionDocument | undefined): InventoryTransactionRecord {
+  private toTransactionRecord(
+    id: string,
+    data: InventoryTransactionDocument | undefined,
+  ): InventoryTransactionRecord {
     if (!data) {
       throw new NotFoundException(`Inventory transaction document ${id} has no data.`);
     }
@@ -400,4 +423,3 @@ export class InventoryRepository {
     return new Date();
   }
 }
-

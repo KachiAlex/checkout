@@ -101,7 +101,9 @@ describe('InventoryService', () => {
     productsService = module.get(ProductsService) as jest.Mocked<ProductsService>;
     categoriesService = module.get(CategoriesService) as jest.Mocked<CategoriesService>;
     brandsService = module.get(BrandsService) as jest.Mocked<BrandsService>;
-    batchInventoryRepository = module.get(BatchInventoryRepository) as jest.Mocked<BatchInventoryRepository>;
+    batchInventoryRepository = module.get(
+      BatchInventoryRepository,
+    ) as jest.Mocked<BatchInventoryRepository>;
     usersRepository = module.get(UsersRepository) as jest.Mocked<UsersRepository>;
   });
 
@@ -156,7 +158,10 @@ describe('InventoryService', () => {
     };
 
     it('should create product and inventory item', async () => {
-      categoriesService.findOrCreateByName.mockResolvedValue({ id: 'cat-123', name: 'Category' } as any);
+      categoriesService.findOrCreateByName.mockResolvedValue({
+        id: 'cat-123',
+        name: 'Category',
+      } as any);
       brandsService.findOrCreateByName.mockResolvedValue({ id: 'brand-123', name: 'Brand' } as any);
       productsService.create.mockResolvedValue(mockProduct as any);
       inventoryRepository.upsertInventory.mockResolvedValue(mockInventoryRecord as any);
@@ -183,7 +188,10 @@ describe('InventoryService', () => {
         categoryName: 'New Category',
       };
 
-      categoriesService.findOrCreateByName.mockResolvedValue({ id: 'cat-new', name: 'New Category' } as any);
+      categoriesService.findOrCreateByName.mockResolvedValue({
+        id: 'cat-new',
+        name: 'New Category',
+      } as any);
       brandsService.findOrCreateByName.mockResolvedValue({ id: 'brand-123', name: 'Brand' } as any);
       productsService.create.mockResolvedValue(mockProduct as any);
       inventoryRepository.upsertInventory.mockResolvedValue(mockInventoryRecord as any);
@@ -201,8 +209,14 @@ describe('InventoryService', () => {
         brandName: 'New Brand',
       };
 
-      categoriesService.findOrCreateByName.mockResolvedValue({ id: 'cat-123', name: 'Category' } as any);
-      brandsService.findOrCreateByName.mockResolvedValue({ id: 'brand-new', name: 'New Brand' } as any);
+      categoriesService.findOrCreateByName.mockResolvedValue({
+        id: 'cat-123',
+        name: 'Category',
+      } as any);
+      brandsService.findOrCreateByName.mockResolvedValue({
+        id: 'brand-new',
+        name: 'New Brand',
+      } as any);
       productsService.create.mockResolvedValue(mockProduct as any);
       inventoryRepository.upsertInventory.mockResolvedValue(mockInventoryRecord as any);
       inventoryRepository.createTransaction.mockResolvedValue({} as any);
@@ -404,4 +418,3 @@ describe('InventoryService', () => {
     });
   });
 });
-

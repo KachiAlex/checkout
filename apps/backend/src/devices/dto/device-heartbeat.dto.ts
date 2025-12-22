@@ -9,4 +9,3 @@ export class DeviceHeartbeatDto {
   @IsBoolean()
   isActive?: boolean;
 }
-

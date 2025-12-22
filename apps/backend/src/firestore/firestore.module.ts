@@ -52,7 +52,7 @@ const firestoreSettings: Settings = {
       useFactory: (app: App, configService: ConfigService): Firestore => {
         const firestore = getFirestore(app);
         firestore.settings(firestoreSettings);
-        
+
         // Check if using Firestore Emulator
         const emulatorHost = configService.get<string>('FIRESTORE_EMULATOR_HOST');
         if (emulatorHost) {
@@ -62,7 +62,7 @@ const firestoreSettings: Settings = {
           process.env.FIRESTORE_EMULATOR_HOST = emulatorHost;
           process.env.GCLOUD_PROJECT = projectId;
         }
-        
+
         return firestore;
       },
     },
@@ -71,4 +71,3 @@ const firestoreSettings: Settings = {
   exports: [FirestoreService, FIRESTORE, FIREBASE_APP],
 })
 export class FirestoreModule {}
-

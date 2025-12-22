@@ -34,4 +34,3 @@ export class TaxSettingsController {
     return this.taxSettingsService.updateTaxSettings(req.user.tenantId, body);
   }
 }
-

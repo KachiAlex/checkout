@@ -30,4 +30,3 @@ export class SubscriptionPricingService {
     return this.repository.update(updateData);
   }
 }
-

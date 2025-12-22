@@ -68,7 +68,7 @@ export class CategoriesRepository {
       .where('name', '==', name)
       .limit(1)
       .get();
-    
+
     if (snapshot.empty) {
       return null;
     }
@@ -79,7 +79,7 @@ export class CategoriesRepository {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
     const docRef = this.collection.doc(id);
-    
+
     await docRef.set({
       tenantId: data.tenantId,
       name: data.name.trim(),
@@ -93,14 +93,18 @@ export class CategoriesRepository {
     return this.toRecord(created.id, created.data() as CategoryDocument);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateCategoryInput>): Promise<CategoryRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateCategoryInput>,
+  ): Promise<CategoryRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Category ${id} not found`);
     }
-    
+
     const data = existing.data();
     if (data?.tenantId !== tenantId) {
       throw new Error(`Category ${id} does not belong to tenant ${tenantId}`);
@@ -148,4 +152,3 @@ export class CategoriesRepository {
     return new Date();
   }
 }
-

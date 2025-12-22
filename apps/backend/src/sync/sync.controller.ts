@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SyncService } from './sync.service';
 import { PushChangesDto } from './dto/push-changes.dto';
@@ -28,10 +21,7 @@ export class SyncController {
   @Get('pull-changes')
   @ApiOperation({ summary: 'Pull changes from server since last sync' })
   @ApiResponse({ status: 200, description: 'Changes list' })
-  async pullChanges(
-    @Query('device_id') deviceId: string,
-    @Query('since') since?: string,
-  ) {
+  async pullChanges(@Query('device_id') deviceId: string, @Query('since') since?: string) {
     return this.syncService.pullChanges(deviceId, since);
   }
 }

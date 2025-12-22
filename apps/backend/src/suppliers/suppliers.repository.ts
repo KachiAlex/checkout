@@ -159,7 +159,7 @@ export class SuppliersRepository {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
     const docRef = this.collection.doc(id);
-    
+
     await docRef.set({
       tenantId: data.tenantId,
       name: data.name.trim(),
@@ -179,7 +179,11 @@ export class SuppliersRepository {
     return this.toRecord(created.id, created.data() as SupplierDocument);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateSupplierInput>): Promise<SupplierRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateSupplierInput>,
+  ): Promise<SupplierRecord> {
     if (this.isPostgresEnabled()) {
       const existing = await this.prismaService.prisma.supplier.findUnique({ where: { id } });
       if (!existing) {
@@ -223,11 +227,11 @@ export class SuppliersRepository {
 
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Supplier ${id} not found`);
     }
-    
+
     const data = existing.data();
     if (data?.tenantId !== tenantId) {
       throw new Error(`Supplier ${id} does not belong to tenant ${tenantId}`);
@@ -277,4 +281,3 @@ export class SuppliersRepository {
     return new Date();
   }
 }
-

@@ -90,19 +90,19 @@ export class ProductsRepository {
       const bBarcode = b.barcode?.toLowerCase() || '';
       const aSku = a.sku?.toLowerCase() || '';
       const bSku = b.sku?.toLowerCase() || '';
-      
+
       // Exact barcode match gets highest priority
       if (aBarcode === normalized && bBarcode !== normalized) return -1;
       if (bBarcode === normalized && aBarcode !== normalized) return 1;
-      
+
       // Exact SKU match gets second priority
       if (aSku === normalized && bSku !== normalized) return -1;
       if (bSku === normalized && aSku !== normalized) return 1;
-      
+
       // Barcode starts with query gets third priority
       if (aBarcode.startsWith(normalized) && !bBarcode.startsWith(normalized)) return -1;
       if (bBarcode.startsWith(normalized) && !aBarcode.startsWith(normalized)) return 1;
-      
+
       // Otherwise maintain original order
       return 0;
     });
@@ -154,7 +154,7 @@ export class ProductsRepository {
 
     const result = new Map<string, ProductRecord>();
     const uniqueIds = [...new Set(ids)];
-    
+
     // Firestore getAll() can handle up to 10 document references at once
     const chunkSize = 10;
     const chunks: string[][] = [];
@@ -166,7 +166,7 @@ export class ProductsRepository {
     const promises = chunks.map(async (chunk) => {
       const docRefs = chunk.map((id) => this.collection.doc(id));
       const docs = await this.firestore.getAll(...docRefs);
-      
+
       return docs
         .filter((doc) => doc.exists)
         .map((doc) => this.toRecord(doc.id, doc.data() as ProductDocument))
@@ -174,7 +174,7 @@ export class ProductsRepository {
     });
 
     const allProducts = (await Promise.all(promises)).flat();
-    
+
     // Convert to Map for O(1) lookup
     allProducts.forEach((product) => {
       result.set(product.id, product);
@@ -218,7 +218,11 @@ export class ProductsRepository {
     return this.toRecord(id, created.data() as ProductDocument);
   }
 
-  async update(id: string, tenantId: string, update: Partial<ProductRecord>): Promise<ProductRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<ProductRecord>,
+  ): Promise<ProductRecord> {
     const docRef = this.collection.doc(id);
     const existingDoc = await docRef.get();
     if (!existingDoc.exists) {
@@ -291,4 +295,3 @@ export class ProductsRepository {
     return new Date();
   }
 }
-

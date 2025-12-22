@@ -12,4 +12,3 @@ export class SuperAdminLoginDto {
   @MaxLength(128)
   password!: string;
 }
-

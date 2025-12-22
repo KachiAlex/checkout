@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { UsersRepository, UserRecord } from './users.repository';
 import { ChangePinDto } from './dto/change-pin.dto';
@@ -86,7 +91,12 @@ export class UsersService {
     };
   }
 
-  async updateUser(tenantId: string, userId: string, dto: UpdateUserDto, actor: UserRecord): Promise<SafeUser> {
+  async updateUser(
+    tenantId: string,
+    userId: string,
+    dto: UpdateUserDto,
+    actor: UserRecord,
+  ): Promise<SafeUser> {
     const user = await this.usersRepository.findById(userId);
     this.ensureTenant(user, tenantId);
 
@@ -138,7 +148,10 @@ export class UsersService {
     return tenantLocations.length > 0 ? tenantLocations[0].id : undefined;
   }
 
-  private async validateLocationOwnership(tenantId: string, locationId?: string | null): Promise<string | undefined> {
+  private async validateLocationOwnership(
+    tenantId: string,
+    locationId?: string | null,
+  ): Promise<string | undefined> {
     if (!locationId?.trim()) {
       return undefined;
     }
@@ -167,7 +180,12 @@ export class UsersService {
     await this.usersRepository.delete(userId);
   }
 
-  async resetPin(tenantId: string, userId: string, newPin: string, actor: UserRecord): Promise<void> {
+  async resetPin(
+    tenantId: string,
+    userId: string,
+    newPin: string,
+    actor: UserRecord,
+  ): Promise<void> {
     if (actor.role !== UserRole.ADMIN && !actor.isPlatformAdmin) {
       throw new ForbiddenException('Only admins can reset PINs');
     }
@@ -179,4 +197,3 @@ export class UsersService {
     await this.usersRepository.update(userId, { pinHash });
   }
 }
-

@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Param, Patch, Query, UseGuards, Request, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+  Request,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,9 +31,9 @@ export class CustomersController {
       if (!req?.user?.tenantId) {
         throw new UnauthorizedException('Tenant ID is required');
       }
-      
+
       const customers = await this.customersService.findAll(req.user.tenantId);
-      
+
       // Simple search filter with null safety
       if (search) {
         const searchLower = search.toLowerCase().trim();
@@ -33,7 +45,7 @@ export class CustomersController {
             (c.loyaltyId && c.loyaltyId.toLowerCase().includes(searchLower)),
         );
       }
-      
+
       return customers;
     } catch (error: any) {
       console.error('Error in customers.findAll:', error);
@@ -44,15 +56,15 @@ export class CustomersController {
         tenantId: req?.user?.tenantId,
         search,
       });
-      
+
       // If it's already a NestJS exception, re-throw it
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      
+
       // Otherwise, wrap in InternalServerErrorException with helpful message
       throw new InternalServerErrorException(
-        `Failed to fetch customers: ${error.message || 'Unknown error'}. Please check server logs for details.`
+        `Failed to fetch customers: ${error.message || 'Unknown error'}. Please check server logs for details.`,
       );
     }
   }
@@ -68,7 +80,7 @@ export class CustomersController {
     if (!req?.user?.tenantId) {
       throw new UnauthorizedException('Tenant ID is required');
     }
-    
+
     if (phone) {
       return this.customersService.findByPhone(phone, req.user.tenantId);
     }
@@ -166,4 +178,3 @@ export class CustomersController {
     return this.customersService.getLoyaltyTransactions(id, req.user.tenantId, limitNum);
   }
 }
-

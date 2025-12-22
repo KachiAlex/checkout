@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
@@ -23,26 +36,23 @@ export class InventoryController {
   @ApiOperation({ summary: 'Get inventory stock for a location' })
   @ApiResponse({ status: 200, description: 'Inventory stock list' })
   @ApiResponse({ status: 403, description: 'Access denied to this location' })
-  async getStock(
-    @Param('location_id') locationId: string,
-    @Request() req: any,
-  ) {
+  async getStock(@Param('location_id') locationId: string, @Request() req: any) {
     if (!req.user || !req.user.tenantId) {
       throw new BadRequestException('User or tenantId not found in request');
     }
-    
+
     const tenantId = req.user.tenantId;
-    
+
     // Verify location belongs to tenant
     const location = await this.locationsRepository.findById(locationId);
     if (!location) {
       throw new BadRequestException(`Location with ID ${locationId} not found`);
     }
-    
+
     if (location.tenantId !== tenantId) {
       throw new ForbiddenException('Access denied to this location');
     }
-    
+
     return this.inventoryService.getStock(locationId, tenantId);
   }
 
@@ -56,17 +66,17 @@ export class InventoryController {
     @Request() req: any,
   ) {
     const tenantId = req.user?.tenantId;
-    
+
     // Verify location belongs to tenant
     const location = await this.locationsRepository.findById(locationId);
     if (!location) {
       throw new BadRequestException(`Location with ID ${locationId} not found`);
     }
-    
+
     if (location.tenantId !== tenantId) {
       throw new ForbiddenException('Access denied to this location');
     }
-    
+
     return this.inventoryService.getBatchInventory(productId, locationId);
   }
 
@@ -90,7 +100,11 @@ export class InventoryController {
 
     // Ignore locationId, userId, and referenceId from request - they will be resolved automatically
     // Only include referenceId if explicitly provided and valid (for order returns, etc.)
-    if (adjustDto.referenceId != null && adjustDto.referenceId !== undefined && adjustDto.referenceId !== '') {
+    if (
+      adjustDto.referenceId != null &&
+      adjustDto.referenceId !== undefined &&
+      adjustDto.referenceId !== ''
+    ) {
       const referenceIdStr = String(adjustDto.referenceId).trim();
       if (referenceIdStr !== '' && isUUID(referenceIdStr)) {
         cleanDto.referenceId = referenceIdStr;
@@ -112,7 +126,9 @@ export class InventoryController {
     if (!locationId) {
       const locations = await this.locationsRepository.findByTenant(tenantId);
       if (locations.length === 0) {
-        throw new BadRequestException('No locations found for this tenant. Please create a location first.');
+        throw new BadRequestException(
+          'No locations found for this tenant. Please create a location first.',
+        );
       }
       locationId = locations[0].id;
     }
@@ -123,7 +139,7 @@ export class InventoryController {
       locationId,
       userId: cleanDto.userId || userId,
     };
-    
+
     return this.inventoryService.adjust(adjustedDto);
   }
 
@@ -138,27 +154,24 @@ export class InventoryController {
     @Query('to') to?: string,
   ) {
     const tenantId = req.user?.tenantId;
-    
+
     // Verify location belongs to tenant
     const location = await this.locationsRepository.findById(locationId);
     if (!location) {
       throw new BadRequestException(`Location with ID ${locationId} not found`);
     }
-    
+
     if (location.tenantId !== tenantId) {
       throw new ForbiddenException('Access denied to this location');
     }
-    
+
     return this.inventoryService.getTransactions(locationId, from, to);
   }
 
   @Post('create-item')
   @ApiOperation({ summary: 'Create product and inventory in one operation' })
   @ApiResponse({ status: 201, description: 'Product and inventory created' })
-  async createInventoryItem(
-    @Body() createDto: CreateInventoryItemDto,
-    @Request() req: any,
-  ) {
+  async createInventoryItem(@Body() createDto: CreateInventoryItemDto, @Request() req: any) {
     // Extract user info from JWT payload (sub is the user ID)
     const userId = req.user?.sub || req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -172,17 +185,14 @@ export class InventoryController {
     if (!locationId) {
       const locations = await this.locationsRepository.findByTenant(tenantId);
       if (locations.length === 0) {
-        throw new BadRequestException('No locations found for this tenant. Please create a location first.');
+        throw new BadRequestException(
+          'No locations found for this tenant. Please create a location first.',
+        );
       }
       locationId = locations[0].id;
     }
 
-    return this.inventoryService.createInventoryItem(
-      createDto,
-      locationId,
-      tenantId,
-      userId,
-    );
+    return this.inventoryService.createInventoryItem(createDto, locationId, tenantId, userId);
   }
 
   @Get('duplicates')
@@ -217,7 +227,9 @@ export class InventoryController {
     if (!locationId) {
       const locations = await this.locationsRepository.findByTenant(tenantId);
       if (locations.length === 0) {
-        throw new BadRequestException('No locations found for this tenant. Please create a location first.');
+        throw new BadRequestException(
+          'No locations found for this tenant. Please create a location first.',
+        );
       }
       locationId = locations[0].id;
     }
@@ -231,7 +243,9 @@ export class InventoryController {
   }
 
   @Put('item')
-  @ApiOperation({ summary: 'Update inventory item (quantity, reorder point, cost and sales prices)' })
+  @ApiOperation({
+    summary: 'Update inventory item (quantity, reorder point, cost and sales prices)',
+  })
   @ApiResponse({ status: 200, description: 'Inventory item updated' })
   async updateInventoryItem(@Body() updateDto: UpdateInventoryItemDto, @Request() req: any) {
     const tenantId = req.user?.tenantId;
@@ -240,7 +254,9 @@ export class InventoryController {
     if (!locationId) {
       const locations = await this.locationsRepository.findByTenant(tenantId);
       if (locations.length === 0) {
-        throw new BadRequestException('No locations found for this tenant. Please create a location first.');
+        throw new BadRequestException(
+          'No locations found for this tenant. Please create a location first.',
+        );
       }
       locationId = locations[0].id;
     }

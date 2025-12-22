@@ -11,5 +11,3 @@ export class SuspendTenantDto {
   @MaxLength(280)
   reason?: string;
 }
-
-

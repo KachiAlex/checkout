@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../stores/authStore";
 import {
   PrinterDevice,
   isSerialAPISupported,
@@ -14,9 +14,9 @@ import {
   getSerialPortInfo,
   getAvailableSerialPorts,
   closeSerialPort,
-} from '../services/printerDeviceService';
-import { receiptService } from '../services/receiptService';
-import toast from 'react-hot-toast';
+} from "../services/printerDeviceService";
+import { receiptService } from "../services/receiptService";
+import toast from "react-hot-toast";
 
 interface PrinterDeviceManagerProps {
   onClose?: () => void;
@@ -44,8 +44,8 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
       const devices = await listPrinterDevices(user?.locationId);
       setPrinters(devices);
     } catch (error: any) {
-      console.error('Failed to load printers:', error);
-      toast.error('Failed to load printers');
+      console.error("Failed to load printers:", error);
+      toast.error("Failed to load printers");
     } finally {
       setLoading(false);
     }
@@ -57,47 +57,48 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
         const ports = await getAvailableSerialPorts();
         setAvailablePorts(ports);
       } catch (error) {
-        console.warn('Failed to load serial ports:', error);
+        console.warn("Failed to load serial ports:", error);
       }
     }
   };
 
   const handleConnectUSB = async () => {
     if (!isSerialAPISupported()) {
-      toast.error('Web Serial API not supported. Use Chrome/Edge on desktop.');
+      toast.error("Web Serial API not supported. Use Chrome/Edge on desktop.");
       return;
     }
 
-    setConnecting('usb');
+    setConnecting("usb");
     try {
       // Request port access
       const port = await requestSerialPrinter();
-      
+
       if (!port) {
-        throw new Error('No port selected');
+        throw new Error("No port selected");
       }
-      
+
       // Get port info
       const portInfo = await getSerialPortInfo(port);
-      
+
       // Connect with default settings (can be customized)
       await connectSerialPort(port, {
         baudRate: 9600, // Common for ESC/POS printers
         dataBits: 8,
         stopBits: 1,
-        parity: 'none',
+        parity: "none",
       });
 
       // Register device
-      const identifier = portInfo.vendorId && portInfo.productId
-        ? `usb_${portInfo.vendorId}_${portInfo.productId}`
-        : `usb_serial_${Date.now()}`;
+      const identifier =
+        portInfo.vendorId && portInfo.productId
+          ? `usb_${portInfo.vendorId}_${portInfo.productId}`
+          : `usb_serial_${Date.now()}`;
 
       const printer = await registerPrinterDevice({
         identifier,
-        name: portInfo.deviceName || 'USB Serial Printer',
-        type: 'usb',
-        connectionType: 'serial',
+        name: portInfo.deviceName || "USB Serial Printer",
+        type: "usb",
+        connectionType: "serial",
         hardwareId: identifier,
         vendorId: portInfo.vendorId,
         productId: portInfo.productId,
@@ -106,7 +107,7 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
           baudRate: 9600,
           dataBits: 8,
           stopBits: 1,
-          parity: 'none',
+          parity: "none",
         },
         metadata: {
           portInfo: portInfo,
@@ -119,8 +120,8 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
       setPrinters([...printers, printer]);
       toast.success(`Connected to ${printer.name}`);
     } catch (error: any) {
-      console.error('Failed to connect USB printer:', error);
-      toast.error(error.message || 'Failed to connect USB printer');
+      console.error("Failed to connect USB printer:", error);
+      toast.error(error.message || "Failed to connect USB printer");
     } finally {
       setConnecting(null);
     }
@@ -128,33 +129,35 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
 
   const handleConnectBluetooth = async () => {
     if (!isBluetoothAPISupported()) {
-      toast.error('Web Bluetooth API not supported. Use Chrome/Edge on desktop or Android.');
+      toast.error(
+        "Web Bluetooth API not supported. Use Chrome/Edge on desktop or Android.",
+      );
       return;
     }
 
-    setConnecting('bluetooth');
+    setConnecting("bluetooth");
     try {
       // Request Bluetooth device
       const device = await requestBluetoothPrinter();
-      
+
       if (!device) {
-        throw new Error('No Bluetooth device selected');
+        throw new Error("No Bluetooth device selected");
       }
-      
+
       // Connect to device
       const characteristic = await connectBluetoothPrinter(device);
-      
+
       if (!characteristic) {
-        throw new Error('Failed to get write characteristic');
+        throw new Error("Failed to get write characteristic");
       }
 
       // Register device
       const identifier = device.id || `bluetooth_${Date.now()}`;
       const printer = await registerPrinterDevice({
         identifier,
-        name: device.name || 'Bluetooth Printer',
-        type: 'bluetooth',
-        connectionType: 'bluetooth',
+        name: device.name || "Bluetooth Printer",
+        type: "bluetooth",
+        connectionType: "bluetooth",
         hardwareId: device.id,
         locationId: user?.locationId,
         metadata: {
@@ -169,8 +172,8 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
       setPrinters([...printers, printer]);
       toast.success(`Connected to ${printer.name}`);
     } catch (error: any) {
-      console.error('Failed to connect Bluetooth printer:', error);
-      toast.error(error.message || 'Failed to connect Bluetooth printer');
+      console.error("Failed to connect Bluetooth printer:", error);
+      toast.error(error.message || "Failed to connect Bluetooth printer");
     } finally {
       setConnecting(null);
     }
@@ -178,28 +181,34 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
 
   const handleTestPrint = async (printer: PrinterDevice) => {
     if (!accessToken) {
-      toast.error('Not authenticated');
+      toast.error("Not authenticated");
       return;
     }
 
     setTesting(printer.id);
     try {
       // Create a test order ID (in real app, you'd use an actual order)
-      const testOrderId = 'test-print';
-      
-      if (printer.connectionType === 'serial' && printer.port) {
+      const testOrderId = "test-print";
+
+      if (printer.connectionType === "serial" && printer.port) {
         await receiptService.printReceiptToSerial(testOrderId, printer.port);
-      } else if (printer.connectionType === 'bluetooth' && (printer as any).characteristic) {
-        await receiptService.printReceiptToBluetooth(testOrderId, (printer as any).characteristic);
+      } else if (
+        printer.connectionType === "bluetooth" &&
+        (printer as any).characteristic
+      ) {
+        await receiptService.printReceiptToBluetooth(
+          testOrderId,
+          (printer as any).characteristic,
+        );
       } else {
-        toast.error('Printer not connected');
+        toast.error("Printer not connected");
         return;
       }
 
-      toast.success('Test print sent successfully');
+      toast.success("Test print sent successfully");
     } catch (error: any) {
-      console.error('Test print failed:', error);
-      toast.error(error.message || 'Test print failed');
+      console.error("Test print failed:", error);
+      toast.error(error.message || "Test print failed");
     } finally {
       setTesting(null);
     }
@@ -214,18 +223,20 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
         (printer as any).bluetoothDevice.gatt.disconnect();
       }
 
-      setPrinters(printers.filter(p => p.id !== printer.id));
-      toast.success('Printer disconnected');
+      setPrinters(printers.filter((p) => p.id !== printer.id));
+      toast.success("Printer disconnected");
     } catch (error: any) {
-      console.error('Failed to disconnect printer:', error);
-      toast.error('Failed to disconnect printer');
+      console.error("Failed to disconnect printer:", error);
+      toast.error("Failed to disconnect printer");
     }
   };
 
   return (
     <div className="theme-surface rounded-2xl border theme-border p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold theme-text-primary">Printer Devices</h2>
+        <h2 className="text-xl font-semibold theme-text-primary">
+          Printer Devices
+        </h2>
         {onClose && (
           <button
             onClick={onClose}
@@ -248,7 +259,11 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
             <div className="text-left">
               <p className="font-semibold theme-text-primary">USB Printer</p>
               <p className="text-xs theme-text-secondary">
-                {connecting === 'usb' ? 'Connecting...' : isSerialAPISupported() ? 'Connect via USB Serial' : 'Not supported'}
+                {connecting === "usb"
+                  ? "Connecting..."
+                  : isSerialAPISupported()
+                    ? "Connect via USB Serial"
+                    : "Not supported"}
               </p>
             </div>
           </div>
@@ -262,9 +277,15 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
           <div className="flex items-center gap-3">
             <span className="text-2xl">📶</span>
             <div className="text-left">
-              <p className="font-semibold theme-text-primary">Bluetooth Printer</p>
+              <p className="font-semibold theme-text-primary">
+                Bluetooth Printer
+              </p>
               <p className="text-xs theme-text-secondary">
-                {connecting === 'bluetooth' ? 'Connecting...' : isBluetoothAPISupported() ? 'Connect via Bluetooth' : 'Not supported'}
+                {connecting === "bluetooth"
+                  ? "Connecting..."
+                  : isBluetoothAPISupported()
+                    ? "Connect via Bluetooth"
+                    : "Not supported"}
               </p>
             </div>
           </div>
@@ -273,12 +294,16 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
 
       {/* Connected Printers */}
       <div>
-        <h3 className="text-lg font-semibold theme-text-primary mb-4">Connected Printers</h3>
+        <h3 className="text-lg font-semibold theme-text-primary mb-4">
+          Connected Printers
+        </h3>
         {loading ? (
           <p className="theme-text-secondary text-sm">Loading printers...</p>
         ) : printers.length === 0 ? (
           <div className="theme-surface rounded-xl border border-dashed theme-border p-8 text-center">
-            <p className="theme-text-secondary text-sm">No printers connected</p>
+            <p className="theme-text-secondary text-sm">
+              No printers connected
+            </p>
             <p className="theme-text-secondary text-xs mt-2">
               Connect a USB or Bluetooth printer to get started
             </p>
@@ -293,12 +318,18 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-semibold theme-text-primary">{printer.name}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        printer.type === 'usb' ? 'bg-blue-500/20 text-blue-400' :
-                        printer.type === 'bluetooth' ? 'bg-purple-500/20 text-purple-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
+                      <h4 className="font-semibold theme-text-primary">
+                        {printer.name}
+                      </h4>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          printer.type === "usb"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : printer.type === "bluetooth"
+                              ? "bg-purple-500/20 text-purple-400"
+                              : "bg-gray-500/20 text-gray-400"
+                        }`}
+                      >
                         {printer.type.toUpperCase()}
                       </span>
                     </div>
@@ -308,7 +339,10 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
                         <p>Baud Rate: {printer.config.baudRate}</p>
                       )}
                       {printer.lastUsedAt && (
-                        <p>Last Used: {new Date(printer.lastUsedAt).toLocaleString()}</p>
+                        <p>
+                          Last Used:{" "}
+                          {new Date(printer.lastUsedAt).toLocaleString()}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -318,7 +352,7 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
                       disabled={testing === printer.id}
                       className="px-4 py-2 rounded-lg bg-sky-500/20 text-sky-400 text-sm font-medium hover:bg-sky-500/30 transition disabled:opacity-50 touch-manipulation"
                     >
-                      {testing === printer.id ? 'Printing...' : 'Test Print'}
+                      {testing === printer.id ? "Printing..." : "Test Print"}
                     </button>
                     <button
                       onClick={() => handleDisconnect(printer)}
@@ -336,15 +370,26 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
 
       {/* Info */}
       <div className="theme-surface rounded-xl border theme-border p-4">
-        <h4 className="font-semibold theme-text-primary mb-2">About Printer Connections</h4>
+        <h4 className="font-semibold theme-text-primary mb-2">
+          About Printer Connections
+        </h4>
         <ul className="text-sm theme-text-secondary space-y-1 list-disc list-inside">
-          <li>USB printers: Requires Chrome/Edge browser with Web Serial API support</li>
-          <li>Bluetooth printers: Requires HTTPS or localhost, Chrome/Edge on desktop or Android</li>
-          <li>Most USB scanners work automatically as keyboards - no setup needed</li>
-          <li>Printers are registered per location and can be used by all staff</li>
+          <li>
+            USB printers: Requires Chrome/Edge browser with Web Serial API
+            support
+          </li>
+          <li>
+            Bluetooth printers: Requires HTTPS or localhost, Chrome/Edge on
+            desktop or Android
+          </li>
+          <li>
+            Most USB scanners work automatically as keyboards - no setup needed
+          </li>
+          <li>
+            Printers are registered per location and can be used by all staff
+          </li>
         </ul>
       </div>
     </div>
   );
 }
-

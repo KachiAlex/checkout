@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Param,
-  Body,
-  UseGuards,
-  ParseUUIDPipe,
-} from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
@@ -39,10 +31,7 @@ export class PaymentsController {
   @Post('refund')
   @ApiOperation({ summary: 'Refund a completed payment' })
   @ApiResponse({ status: 200, description: 'Payment refunded' })
-  async refund(
-    @Body('paymentId') paymentId: string,
-    @Body('amountCents') amountCents?: number,
-  ) {
+  async refund(@Body('paymentId') paymentId: string, @Body('amountCents') amountCents?: number) {
     return this.paymentsService.refund(paymentId, amountCents);
   }
 

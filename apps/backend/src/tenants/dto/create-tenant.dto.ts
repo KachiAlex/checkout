@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Min, ValidateNested } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { TenantPlan, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 
@@ -35,25 +45,40 @@ export class CreateTenantDto {
   @IsString()
   adminName?: string;
 
-  @ApiProperty({ description: 'Billing cycle start date (ISO format)', required: false, example: '2025-01-01' })
+  @ApiProperty({
+    description: 'Billing cycle start date (ISO format)',
+    required: false,
+    example: '2025-01-01',
+  })
   @IsOptional()
   @IsString()
   billingCycleStart?: string;
 
-  @ApiProperty({ description: 'Billing cycle end date (ISO format)', required: false, example: '2025-12-31' })
+  @ApiProperty({
+    description: 'Billing cycle end date (ISO format)',
+    required: false,
+    example: '2025-12-31',
+  })
   @IsOptional()
   @IsString()
   billingCycleEnd?: string;
 
-  @ApiProperty({ enum: Industry, description: 'Industry type', required: false, default: Industry.GENERAL })
+  @ApiProperty({
+    enum: Industry,
+    description: 'Industry type',
+    required: false,
+    default: Industry.GENERAL,
+  })
   @IsOptional()
   @IsEnum(Industry)
   industry?: Industry;
 
-  @ApiProperty({ description: 'Custom feature flags (will be merged with industry defaults)', required: false })
+  @ApiProperty({
+    description: 'Custom feature flags (will be merged with industry defaults)',
+    required: false,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => Object)
   featureFlags?: Partial<IndustryFeatureFlags>;
 }
-

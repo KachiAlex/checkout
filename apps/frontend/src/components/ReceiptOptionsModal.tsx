@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config';
-import { receiptService } from '../services/receiptService';
-import { useAuthStore } from '../stores/authStore';
-import toast from 'react-hot-toast';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { API_URL } from "../config";
+import { receiptService } from "../services/receiptService";
+import { useAuthStore } from "../stores/authStore";
+import toast from "react-hot-toast";
 
 interface ReceiptOptionsModalProps {
   isOpen: boolean;
@@ -11,21 +11,30 @@ interface ReceiptOptionsModalProps {
   onClose: () => void;
 }
 
-export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptionsModalProps) {
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+export function ReceiptOptionsModal({
+  isOpen,
+  orderId,
+  onClose,
+}: ReceiptOptionsModalProps) {
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingSMS, setSendingSMS] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
-  const [printerAvailable, setPrinterAvailable] = useState<boolean | null>(null);
+  const [printerAvailable, setPrinterAvailable] = useState<boolean | null>(
+    null,
+  );
   const [printing, setPrinting] = useState(false);
   const { accessToken } = useAuthStore();
 
   // Check printer availability when modal opens
   useEffect(() => {
     if (isOpen) {
-      receiptService.isAvailable().then(setPrinterAvailable).catch(() => setPrinterAvailable(false));
+      receiptService
+        .isAvailable()
+        .then(setPrinterAvailable)
+        .catch(() => setPrinterAvailable(false));
     }
   }, [isOpen]);
 
@@ -37,7 +46,7 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
       const receipt = await receiptService.getReceipt(orderId);
       setPreview(receipt);
     } catch (error: any) {
-      toast.error('Failed to load receipt preview');
+      toast.error("Failed to load receipt preview");
       console.error(error);
     } finally {
       setLoadingPreview(false);
@@ -45,8 +54,8 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
   };
 
   const handleSendEmail = async () => {
-    if (!email || !email.includes('@')) {
-      toast.error('Please enter a valid email address');
+    if (!email || !email.includes("@")) {
+      toast.error("Please enter a valid email address");
       return;
     }
 
@@ -64,13 +73,13 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
 
       if (response.data.success) {
         toast.success(`Receipt sent to ${email}`);
-        setEmail('');
+        setEmail("");
         onClose();
       } else {
-        toast.error('Failed to send receipt');
+        toast.error("Failed to send receipt");
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send receipt');
+      toast.error(error.response?.data?.message || "Failed to send receipt");
     } finally {
       setSendingEmail(false);
     }
@@ -78,7 +87,7 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
 
   const handleSendSMS = async () => {
     if (!phone || phone.length < 10) {
-      toast.error('Please enter a valid phone number');
+      toast.error("Please enter a valid phone number");
       return;
     }
 
@@ -86,7 +95,7 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
     try {
       // Note: SMS endpoint may need to be implemented in backend
       // For now, we'll show a message that it's coming soon
-      toast.error('SMS receipt feature coming soon');
+      toast.error("SMS receipt feature coming soon");
       // const response = await axios.post(
       //   `${API_URL}/api/v1/receipts/${orderId}/sms`,
       //   { phone },
@@ -97,7 +106,7 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
       //   },
       // );
     } catch (error: any) {
-      toast.error('Failed to send SMS receipt');
+      toast.error("Failed to send SMS receipt");
     } finally {
       setSendingSMS(false);
     }
@@ -110,10 +119,10 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
         // Use browser print dialog
         const success = await receiptService.printReceiptBrowser(orderId);
         if (success) {
-          toast.success('Opening print dialog...');
+          toast.success("Opening print dialog...");
           onClose();
         } else {
-          toast.error('Failed to open print dialog');
+          toast.error("Failed to open print dialog");
         }
       } else {
         // Try ESC/POS printer via print proxy
@@ -121,17 +130,17 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
         if (printAvailable) {
           const success = await receiptService.printReceipt(orderId);
           if (success) {
-            toast.success('Receipt sent to printer');
+            toast.success("Receipt sent to printer");
             onClose();
           } else {
-            toast.error('Failed to print receipt. Try browser print instead.');
+            toast.error("Failed to print receipt. Try browser print instead.");
           }
         } else {
-          toast.error('Printer not available. Use browser print instead.');
+          toast.error("Printer not available. Use browser print instead.");
         }
       }
     } catch (error: any) {
-      toast.error('Failed to print receipt');
+      toast.error("Failed to print receipt");
     } finally {
       setPrinting(false);
     }
@@ -141,7 +150,9 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
       <div className="theme-card w-full max-w-2xl rounded-2xl sm:rounded-3xl border p-4 sm:p-6 lg:p-8 shadow-2xl my-auto">
         <div className="mb-4 sm:mb-6 flex items-center justify-between">
-          <h2 className="theme-text-primary text-xl sm:text-2xl font-bold">Receipt Options</h2>
+          <h2 className="theme-text-primary text-xl sm:text-2xl font-bold">
+            Receipt Options
+          </h2>
           <button
             onClick={onClose}
             className="theme-chip rounded-full border p-2 transition hover:bg-white/10 touch-manipulation"
@@ -154,10 +165,14 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
         <div className="space-y-4 sm:space-y-6">
           {/* Preview Section */}
           <div className="theme-surface rounded-xl sm:rounded-2xl border p-4 sm:p-6">
-            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">Preview Receipt</h3>
+            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+              Preview Receipt
+            </h3>
             {preview ? (
               <div className="theme-surface max-h-64 sm:max-h-96 overflow-y-auto rounded-lg sm:rounded-xl border p-3 sm:p-4">
-                <pre className="whitespace-pre-wrap font-mono text-xs sm:text-sm theme-text-primary break-words overflow-wrap-anywhere">{preview}</pre>
+                <pre className="whitespace-pre-wrap font-mono text-xs sm:text-sm theme-text-primary break-words overflow-wrap-anywhere">
+                  {preview}
+                </pre>
               </div>
             ) : (
               <button
@@ -165,14 +180,16 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
                 disabled={loadingPreview}
                 className="w-full rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:shadow-lg disabled:opacity-50 touch-manipulation"
               >
-                {loadingPreview ? 'Loading...' : '📄 Preview Receipt'}
+                {loadingPreview ? "Loading..." : "📄 Preview Receipt"}
               </button>
             )}
           </div>
 
           {/* Email Section */}
           <div className="theme-surface rounded-xl sm:rounded-2xl border p-4 sm:p-6">
-            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">📧 Send via Email</h3>
+            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+              📧 Send via Email
+            </h3>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <input
                 type="email"
@@ -187,19 +204,21 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
                 disabled={sendingEmail || !email}
                 className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation w-full sm:w-auto"
               >
-                {sendingEmail ? 'Sending...' : 'Send'}
+                {sendingEmail ? "Sending..." : "Send"}
               </button>
             </div>
           </div>
 
           {/* SMS Section */}
           <div className="theme-surface rounded-xl sm:rounded-2xl border p-4 sm:p-6">
-            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">📱 Send via SMS</h3>
+            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+              📱 Send via SMS
+            </h3>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                 placeholder="Phone number"
                 className="theme-text-primary flex-1 rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
                 disabled={sendingSMS}
@@ -209,19 +228,25 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
                 disabled={sendingSMS || !phone}
                 className="rounded-full bg-gradient-to-r from-purple-400 to-pink-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation w-full sm:w-auto"
               >
-                {sendingSMS ? 'Sending...' : 'Send'}
+                {sendingSMS ? "Sending..." : "Send"}
               </button>
             </div>
-            <p className="theme-text-secondary mt-2 text-xs">SMS receipt feature coming soon</p>
+            <p className="theme-text-secondary mt-2 text-xs">
+              SMS receipt feature coming soon
+            </p>
           </div>
 
           {/* Print Section */}
           <div className="theme-surface rounded-xl sm:rounded-2xl border p-4 sm:p-6">
-            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">🖨️ Print Receipt</h3>
+            <h3 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+              🖨️ Print Receipt
+            </h3>
             {printerAvailable === null ? (
               <div className="text-center py-4">
                 <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-                <p className="theme-text-secondary mt-2 text-xs sm:text-sm">Checking printer status...</p>
+                <p className="theme-text-secondary mt-2 text-xs sm:text-sm">
+                  Checking printer status...
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -251,7 +276,7 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
                       disabled={printing}
                       className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                     >
-                      {printing ? 'Printing...' : 'Print to ESC/POS'}
+                      {printing ? "Printing..." : "Print to ESC/POS"}
                     </button>
                   )}
                   <button
@@ -259,7 +284,7 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
                     disabled={printing}
                     className="flex-1 rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   >
-                    {printing ? 'Opening...' : 'Browser Print'}
+                    {printing ? "Opening..." : "Browser Print"}
                   </button>
                 </div>
               </div>
@@ -277,4 +302,3 @@ export function ReceiptOptionsModal({ isOpen, orderId, onClose }: ReceiptOptions
     </div>
   );
 }
-

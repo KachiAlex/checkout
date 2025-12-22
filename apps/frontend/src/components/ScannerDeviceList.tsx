@@ -1,29 +1,33 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { format } from 'date-fns';
-import toast from 'react-hot-toast';
-import { useScannerDeviceStore, ScannerDevice } from '../stores/scannerDeviceStore';
-import { useAuthStore } from '../stores/authStore';
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { format } from "date-fns";
+import toast from "react-hot-toast";
+import {
+  useScannerDeviceStore,
+  ScannerDevice,
+} from "../stores/scannerDeviceStore";
+import { useAuthStore } from "../stores/authStore";
 import {
   fetchRegisteredDevices,
   registerUSBDevice,
   registerBluetoothDevice,
   registerNativeDevice,
-} from '../services/scannerDeviceService';
-import { connectBluetoothScanner } from '../services/scannerService';
-import { NativeDeviceSummary } from '../types/nativeDevices';
+} from "../services/scannerDeviceService";
+import { connectBluetoothScanner } from "../services/scannerService";
+import { NativeDeviceSummary } from "../types/nativeDevices";
 
 export function ScannerDeviceList() {
   const { user } = useAuthStore();
-  const { devices, removeDevice, setActiveDevice, activeDeviceId, addDevice } = useScannerDeviceStore();
+  const { devices, removeDevice, setActiveDevice, activeDeviceId, addDevice } =
+    useScannerDeviceStore();
   const [isRegisteringUsb, setIsRegisteringUsb] = useState(false);
   const [isPairingBluetooth, setIsPairingBluetooth] = useState(false);
   const isNativeBridge = useMemo(
     () =>
-      typeof window !== 'undefined' &&
+      typeof window !== "undefined" &&
       Boolean(
         window.__IS_ELECTRON__ &&
           window.posApp &&
-          typeof window.posApp.listNativeDevices === 'function',
+          typeof window.posApp.listNativeDevices === "function",
       ),
     [],
   );
@@ -44,8 +48,8 @@ export function ScannerDeviceList() {
           setActiveDevice(response[0].id);
         }
       } catch (error) {
-        console.warn('Failed to load registered devices', error);
-        toast.error('Unable to load registered scanners');
+        console.warn("Failed to load registered devices", error);
+        toast.error("Unable to load registered scanners");
       }
     };
 
@@ -57,23 +61,32 @@ export function ScannerDeviceList() {
   }, [addDevice, activeDeviceId, setActiveDevice, user?.locationId]);
 
   const selectNativeDevice = useCallback(
-    async (type: 'usb' | 'bluetooth'): Promise<NativeDeviceSummary | null> => {
-      if (!window.posApp || typeof window.posApp.listNativeDevices !== 'function') {
+    async (type: "usb" | "bluetooth"): Promise<NativeDeviceSummary | null> => {
+      if (
+        !window.posApp ||
+        typeof window.posApp.listNativeDevices !== "function"
+      ) {
         toast.error(
-          'Native device bridge unavailable. Reinstall the desktop app and try again.',
+          "Native device bridge unavailable. Reinstall the desktop app and try again.",
         );
         return null;
       }
 
       const nativeDevices =
-        type === 'usb' || !window.posApp.scanBluetoothDevices
+        type === "usb" || !window.posApp.scanBluetoothDevices
           ? await window.posApp.listNativeDevices()
           : await window.posApp.scanBluetoothDevices(10_000);
 
-      const filtered = nativeDevices.filter((device) => device.type === type || (type === 'bluetooth' && device.type === 'unknown'));
+      const filtered = nativeDevices.filter(
+        (device) =>
+          device.type === type ||
+          (type === "bluetooth" && device.type === "unknown"),
+      );
 
       if (filtered.length === 0) {
-        toast.error(`No ${type === 'usb' ? 'USB' : 'Bluetooth'} devices detected.`);
+        toast.error(
+          `No ${type === "usb" ? "USB" : "Bluetooth"} devices detected.`,
+        );
         return null;
       }
 
@@ -83,25 +96,33 @@ export function ScannerDeviceList() {
 
       const options = filtered
         .map((device, index) => {
-          const vendor = device.vendorId ? device.vendorId.toString(16).padStart(4, '0') : '----';
-          const product = device.productId ? device.productId.toString(16).padStart(4, '0') : '----';
+          const vendor = device.vendorId
+            ? device.vendorId.toString(16).padStart(4, "0")
+            : "----";
+          const product = device.productId
+            ? device.productId.toString(16).padStart(4, "0")
+            : "----";
           return `${index + 1}. ${device.name} (vendor: ${vendor}, product: ${product})`;
         })
-        .join('\n');
+        .join("\n");
 
       const choice = window.prompt(
         `Multiple devices detected. Enter the number of the ${type} device to register:\n${options}`,
-        '1',
+        "1",
       );
 
       if (!choice) {
-        toast('Cancelled selection');
+        toast("Cancelled selection");
         return null;
       }
 
       const selectedIndex = Number.parseInt(choice, 10) - 1;
-      if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= filtered.length) {
-        toast.error('Invalid selection');
+      if (
+        Number.isNaN(selectedIndex) ||
+        selectedIndex < 0 ||
+        selectedIndex >= filtered.length
+      ) {
+        toast.error("Invalid selection");
         return null;
       }
 
@@ -117,7 +138,7 @@ export function ScannerDeviceList() {
     try {
       let device;
       if (isNativeBridge && window.posApp) {
-        const selected = await selectNativeDevice('usb');
+        const selected = await selectNativeDevice("usb");
         if (!selected) {
           return;
         }
@@ -127,12 +148,17 @@ export function ScannerDeviceList() {
       }
       const deviceId = addDevice(device);
       setActiveDevice(deviceId);
-      toast.success(`Registered ${device.name}. USB scanners work automatically - just plug in and scan!`);
+      toast.success(
+        `Registered ${device.name}. USB scanners work automatically - just plug in and scan!`,
+      );
     } catch (error: any) {
       // Even if registration fails, USB HID scanners still work as keyboards
-      const message = error?.message || 'USB scanner registration note';
-      toast.error(`${message}. Most USB scanners work automatically - just plug in and scan!`, { duration: 5000 });
-      console.log('USB registration note:', error);
+      const message = error?.message || "USB scanner registration note";
+      toast.error(
+        `${message}. Most USB scanners work automatically - just plug in and scan!`,
+        { duration: 5000 },
+      );
+      console.log("USB registration note:", error);
     } finally {
       setIsRegisteringUsb(false);
     }
@@ -153,15 +179,19 @@ export function ScannerDeviceList() {
     try {
       let registered;
       if (isNativeBridge && window.posApp) {
-        const selected = await selectNativeDevice('bluetooth');
+        const selected = await selectNativeDevice("bluetooth");
         if (!selected) {
           return;
         }
-        registered = await registerNativeDevice(selected, user?.locationId, user?.id);
+        registered = await registerNativeDevice(
+          selected,
+          user?.locationId,
+          user?.id,
+        );
       } else {
         const bluetoothDevice = await connectBluetoothScanner();
         if (!bluetoothDevice) {
-          toast.error('No Bluetooth device selected');
+          toast.error("No Bluetooth device selected");
           return;
         }
 
@@ -175,9 +205,9 @@ export function ScannerDeviceList() {
       setActiveDevice(deviceId);
       toast.success(`Paired ${registered.name}`);
     } catch (error: any) {
-      const message = error?.message || 'Unable to pair Bluetooth scanner';
+      const message = error?.message || "Unable to pair Bluetooth scanner";
       toast.error(message);
-      console.warn('Bluetooth pairing failed', error);
+      console.warn("Bluetooth pairing failed", error);
     } finally {
       setIsPairingBluetooth(false);
     }
@@ -191,29 +221,29 @@ export function ScannerDeviceList() {
     selectNativeDevice,
   ]);
 
-  const getDeviceTypeIcon = (type: ScannerDevice['type']) => {
+  const getDeviceTypeIcon = (type: ScannerDevice["type"]) => {
     switch (type) {
-      case 'usb':
-        return '🔌';
-      case 'bluetooth':
-        return '📡';
-      case 'camera':
-        return '📷';
+      case "usb":
+        return "🔌";
+      case "bluetooth":
+        return "📡";
+      case "camera":
+        return "📷";
       default:
-        return '📱';
+        return "📱";
     }
   };
 
-  const getDeviceTypeLabel = (type: ScannerDevice['type']) => {
+  const getDeviceTypeLabel = (type: ScannerDevice["type"]) => {
     switch (type) {
-      case 'usb':
-        return 'USB';
-      case 'bluetooth':
-        return 'Bluetooth';
-      case 'camera':
-        return 'Camera';
+      case "usb":
+        return "USB";
+      case "bluetooth":
+        return "Bluetooth";
+      case "camera":
+        return "Camera";
       default:
-        return 'Unknown';
+        return "Unknown";
     }
   };
 
@@ -221,9 +251,12 @@ export function ScannerDeviceList() {
     <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="theme-text-primary text-lg font-semibold">Registered scanners</h3>
+          <h3 className="theme-text-primary text-lg font-semibold">
+            Registered scanners
+          </h3>
           <p className="theme-text-secondary text-sm">
-            Devices automatically register the first time they scan or pair with this checkout.
+            Devices automatically register the first time they scan or pair with
+            this checkout.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -233,7 +266,7 @@ export function ScannerDeviceList() {
             className="theme-chip inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span>🔌</span>
-            {isRegisteringUsb ? 'Registering USB…' : 'Register USB'}
+            {isRegisteringUsb ? "Registering USB…" : "Register USB"}
           </button>
           <button
             onClick={handlePairBluetooth}
@@ -241,29 +274,36 @@ export function ScannerDeviceList() {
             className="theme-chip inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span>📡</span>
-            {isPairingBluetooth ? 'Pairing…' : 'Pair Bluetooth'}
+            {isPairingBluetooth ? "Pairing…" : "Pair Bluetooth"}
           </button>
           <span className="theme-chip inline-flex items-center gap-2 rounded-full border px-4 py-1 text-xs font-medium">
             <span className="text-base">🛰️</span>
-            {devices.length} device{devices.length === 1 ? '' : 's'}
+            {devices.length} device{devices.length === 1 ? "" : "s"}
           </span>
         </div>
       </div>
 
       {/* Scanner Information */}
       <div className="mt-6 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
-        <h4 className="theme-text-primary mb-2 text-sm font-semibold text-sky-400">📋 How Scanners Work</h4>
+        <h4 className="theme-text-primary mb-2 text-sm font-semibold text-sky-400">
+          📋 How Scanners Work
+        </h4>
         <div className="space-y-2 text-xs theme-text-secondary">
           <p>
-            <strong className="theme-text-primary">USB Scanners:</strong> Most USB barcode scanners work automatically as keyboards. 
-            Just plug in your scanner and start scanning - no setup needed! The scanner will type barcodes into the input field.
+            <strong className="theme-text-primary">USB Scanners:</strong> Most
+            USB barcode scanners work automatically as keyboards. Just plug in
+            your scanner and start scanning - no setup needed! The scanner will
+            type barcodes into the input field.
           </p>
           <p>
-            <strong className="theme-text-primary">Bluetooth Scanners:</strong> Click "Pair Bluetooth" to connect wireless scanners. 
-            Requires Chrome/Edge browser and HTTPS or localhost.
+            <strong className="theme-text-primary">Bluetooth Scanners:</strong>{" "}
+            Click "Pair Bluetooth" to connect wireless scanners. Requires
+            Chrome/Edge browser and HTTPS or localhost.
           </p>
           <p>
-            <strong className="theme-text-primary">Camera Scanner:</strong> Use the camera button to scan QR codes and barcodes with your device camera.
+            <strong className="theme-text-primary">Camera Scanner:</strong> Use
+            the camera button to scan QR codes and barcodes with your device
+            camera.
           </p>
         </div>
       </div>
@@ -271,9 +311,12 @@ export function ScannerDeviceList() {
       {devices.length === 0 ? (
         <div className="theme-surface mt-6 rounded-2xl border border-dashed p-8 text-center">
           <div className="text-4xl mb-4">🔌</div>
-          <p className="theme-text-primary text-lg font-semibold mb-2">No Scanners Registered Yet</p>
+          <p className="theme-text-primary text-lg font-semibold mb-2">
+            No Scanners Registered Yet
+          </p>
           <p className="theme-text-secondary text-sm mb-4">
-            USB scanners work automatically - just plug in and scan! Registration is optional for tracking purposes.
+            USB scanners work automatically - just plug in and scan!
+            Registration is optional for tracking purposes.
           </p>
           <div className="flex flex-wrap justify-center gap-2 mt-4">
             <button
@@ -281,14 +324,14 @@ export function ScannerDeviceList() {
               disabled={isRegisteringUsb}
               className="theme-chip rounded-full border border-sky-400/40 bg-sky-500/15 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25 disabled:opacity-50"
             >
-              {isRegisteringUsb ? 'Registering...' : '🔌 Register USB Scanner'}
+              {isRegisteringUsb ? "Registering..." : "🔌 Register USB Scanner"}
             </button>
             <button
               onClick={handlePairBluetooth}
               disabled={isPairingBluetooth}
               className="theme-chip rounded-full border border-purple-400/40 bg-purple-500/15 px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/25 disabled:opacity-50"
             >
-              {isPairingBluetooth ? 'Pairing...' : '📡 Pair Bluetooth Scanner'}
+              {isPairingBluetooth ? "Pairing..." : "📡 Pair Bluetooth Scanner"}
             </button>
           </div>
         </div>
@@ -299,8 +342,8 @@ export function ScannerDeviceList() {
               key={device.id}
               className={`theme-surface rounded-2xl border p-4 transition ${
                 device.id === activeDeviceId
-                  ? 'border-sky-400/60 shadow-[0_20px_45px_-30px_rgba(56,189,248,0.4)]'
-                  : 'hover:border-white/25'
+                  ? "border-sky-400/60 shadow-[0_20px_45px_-30px_rgba(56,189,248,0.4)]"
+                  : "hover:border-white/25"
               }`}
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -310,7 +353,9 @@ export function ScannerDeviceList() {
                   </div>
                   <div className="space-y-2">
                     <div>
-                      <h4 className="theme-text-primary text-sm font-semibold">{device.name}</h4>
+                      <h4 className="theme-text-primary text-sm font-semibold">
+                        {device.name}
+                      </h4>
                       <p className="theme-text-secondary text-xs">
                         {getDeviceTypeLabel(device.type)}
                         {device.id === activeDeviceId && (
@@ -322,12 +367,16 @@ export function ScannerDeviceList() {
                     </div>
                     <div className="grid gap-2 text-xs theme-text-secondary sm:grid-cols-2">
                       <div>
-                        <span className="theme-text-primary font-semibold">Connected</span>
-                        <p>{format(device.connectedAt, 'MMM d, yyyy HH:mm')}</p>
+                        <span className="theme-text-primary font-semibold">
+                          Connected
+                        </span>
+                        <p>{format(device.connectedAt, "MMM d, yyyy HH:mm")}</p>
                       </div>
                       <div>
-                        <span className="theme-text-primary font-semibold">Last used</span>
-                        <p>{format(device.lastUsedAt, 'MMM d, yyyy HH:mm')}</p>
+                        <span className="theme-text-primary font-semibold">
+                          Last used
+                        </span>
+                        <p>{format(device.lastUsedAt, "MMM d, yyyy HH:mm")}</p>
                       </div>
                     </div>
                     {device.metadata?.manufacturer && (
@@ -351,7 +400,11 @@ export function ScannerDeviceList() {
                   )}
                   <button
                     onClick={() => {
-                      if (confirm(`Remove "${device.name}" from registered devices?`)) {
+                      if (
+                        confirm(
+                          `Remove "${device.name}" from registered devices?`,
+                        )
+                      ) {
                         removeDevice(device.id);
                       }
                     }}
@@ -369,4 +422,3 @@ export function ScannerDeviceList() {
     </div>
   );
 }
-

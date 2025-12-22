@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Headers, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { PaymentStatus } from '@pos-checkout/shared';
@@ -58,7 +66,11 @@ export class WebhooksController {
   @Post('monnify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Webhook endpoint for Monnify payment status updates' })
-  @ApiHeader({ name: 'monnify-signature', required: false, description: 'Monnify webhook signature for verification' })
+  @ApiHeader({
+    name: 'monnify-signature',
+    required: false,
+    description: 'Monnify webhook signature for verification',
+  })
   async handleMonnifyWebhook(
     @Body() payload: MonnifyWebhookPayload,
     @Headers('monnify-signature') signature?: string,
@@ -68,7 +80,7 @@ export class WebhooksController {
       if (this.monnifyAdapter && signature) {
         const payloadString = JSON.stringify(payload);
         const isValid = this.monnifyAdapter.verifyWebhookSignature(payloadString, signature);
-        
+
         if (!isValid) {
           throw new BadRequestException('Invalid webhook signature');
         }
@@ -77,11 +89,11 @@ export class WebhooksController {
       // Handle different event types
       if (payload.eventType === 'SUCCESSFUL_TRANSACTION') {
         const { eventData } = payload;
-        
+
         // Map Monnify payment status to our PaymentStatus enum
         let status: PaymentStatus;
         const monnifyStatus = eventData.paymentStatus.toUpperCase();
-        
+
         switch (monnifyStatus) {
           case 'PAID':
           case 'OVERPAID':
@@ -114,7 +126,7 @@ export class WebhooksController {
             currency: eventData.currency,
             customer: eventData.customer,
             metaData: eventData.metaData,
-          }
+          },
         );
 
         return {

@@ -1,16 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from "vitest";
 
-vi.mock('@capacitor/core', () => ({
+vi.mock("@capacitor/core", () => ({
   Capacitor: {
-    getPlatform: () => 'web',
+    getPlatform: () => "web",
   },
 }));
 
-import { isNativePlatform } from './nativePlatform';
+import { isNativePlatform } from "./nativePlatform";
 
-describe('nativePlatform helper', () => {
-  it('returns false when Capacitor reports a web platform', () => {
+describe("nativePlatform helper", () => {
+  it("returns false when Capacitor reports a web platform", () => {
     expect(isNativePlatform()).toBe(false);
   });
 });
-

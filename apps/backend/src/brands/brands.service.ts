@@ -32,8 +32,11 @@ export class BrandsService {
     return this.brandsRepository.create(data);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateBrandInput>): Promise<BrandRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateBrandInput>,
+  ): Promise<BrandRecord> {
     return this.brandsRepository.update(id, tenantId, update);
   }
 }
-

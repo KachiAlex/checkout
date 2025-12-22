@@ -44,10 +44,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     'https://localhost:5173',
   ];
 
-  const corsOriginConfig = configService.get<string>(
-    'CORS_ORIGIN',
-    defaultCorsOrigins.join(','),
-  );
+  const corsOriginConfig = configService.get<string>('CORS_ORIGIN', defaultCorsOrigins.join(','));
 
   let corsOrigins: true | string[];
 
@@ -61,7 +58,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
   } else {
     corsOrigins = corsOriginConfig
       .split(',')
-      .map(origin => origin.trim())
+      .map((origin) => origin.trim())
       .filter(Boolean);
   }
 
@@ -72,14 +69,19 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
   const originHandler =
     corsOrigins === true
       ? true
-      : (requestOrigin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      : (
+          requestOrigin: string | undefined,
+          callback: (err: Error | null, allow?: boolean) => void,
+        ) => {
           if (!requestOrigin) {
             return callback(null, true);
           }
 
           const normalizedOrigin = requestOrigin.trim().toLowerCase();
-          const normalizedCorsOrigins = (corsOrigins as string[]).map(origin => origin.trim().toLowerCase());
-          
+          const normalizedCorsOrigins = (corsOrigins as string[]).map((origin) =>
+            origin.trim().toLowerCase(),
+          );
+
           const allowByPrefix =
             normalizedOrigin.startsWith('capacitor://') ||
             normalizedOrigin.startsWith('http://localhost') ||
@@ -122,7 +124,10 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
       corsOrigins === true ? 'ALL' : corsOrigins.join(',')
     }`,
   );
-  console.log(`🔧 CORS Configuration - Allowed Origins:`, corsOrigins === true ? 'ALL (*)' : corsOrigins);
+  console.log(
+    `🔧 CORS Configuration - Allowed Origins:`,
+    corsOrigins === true ? 'ALL (*)' : corsOrigins,
+  );
   console.log(`🔧 CORS Configuration - CORS_ORIGIN env var:`, corsOriginConfig);
 
   // Enable CORS BEFORE other middleware
@@ -132,44 +137,51 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
   // This is a safety net in case NestJS CORS middleware doesn't catch all cases
   app.use((req: any, res: any, next: any) => {
     const origin = req.headers.origin;
-    
+
     // Log auth-related requests for debugging
     if (req.method === 'OPTIONS' || req.url.includes('/auth/')) {
       console.log(`[CORS] ${req.method} ${req.url} from origin: ${origin || 'none'}`);
     }
-    
+
     // Check if origin is allowed
-    const isAllowedOrigin = corsOrigins === true || 
-      !origin || 
-      (Array.isArray(corsOrigins) && (
-        corsOrigins.some(allowed => origin.toLowerCase() === allowed.toLowerCase()) ||
-        origin.startsWith('http://localhost') ||
-        origin.startsWith('http://127.0.0.1') ||
-        origin.startsWith('https://localhost') ||
-        origin.startsWith('capacitor://')
-      ));
+    const isAllowedOrigin =
+      corsOrigins === true ||
+      !origin ||
+      (Array.isArray(corsOrigins) &&
+        (corsOrigins.some((allowed) => origin.toLowerCase() === allowed.toLowerCase()) ||
+          origin.startsWith('http://localhost') ||
+          origin.startsWith('http://127.0.0.1') ||
+          origin.startsWith('https://localhost') ||
+          origin.startsWith('capacitor://')));
 
     if (isAllowedOrigin && origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
     } else if (corsOrigins === true) {
       res.setHeader('Access-Control-Allow-Origin', origin || '*');
     }
-    
+
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,Cache-Control,Pragma,Expires');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type,Authorization,Accept,X-Requested-With,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,Cache-Control,Pragma,Expires',
+    );
     res.setHeader('Access-Control-Expose-Headers', 'Authorization,Content-Length,X-Requested-With');
     res.setHeader('Access-Control-Max-Age', '86400');
 
     // Handle preflight OPTIONS requests immediately
     if (req.method === 'OPTIONS') {
-      console.log(`✅ Handling OPTIONS preflight from origin: ${origin || 'none'} - Allowed: ${isAllowedOrigin}`);
+      console.log(
+        `✅ Handling OPTIONS preflight from origin: ${origin || 'none'} - Allowed: ${isAllowedOrigin}`,
+      );
       return res.status(204).end();
     }
 
     // Log all requests for debugging
     if (origin) {
-      console.log(`🌐 Request from origin: ${origin} - Method: ${req.method} - Path: ${req.path} - Allowed: ${isAllowedOrigin}`);
+      console.log(
+        `🌐 Request from origin: ${origin} - Method: ${req.method} - Path: ${req.path} - Allowed: ${isAllowedOrigin}`,
+      );
     }
 
     next();
@@ -192,9 +204,12 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
       crossOriginEmbedderPolicy: false,
-      contentSecurityPolicy: nodeEnv === 'production' ? {
-        directives: cspDirectives,
-      } : false, // Disable CSP in development for easier debugging
+      contentSecurityPolicy:
+        nodeEnv === 'production'
+          ? {
+              directives: cspDirectives,
+            }
+          : false, // Disable CSP in development for easier debugging
     }),
   );
 
@@ -219,9 +234,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
   console.log('✅ CORS middleware active');
 
   const shouldEnableSwagger =
-    typeof options?.enableSwagger === 'boolean'
-      ? options.enableSwagger
-      : nodeEnv !== 'production';
+    typeof options?.enableSwagger === 'boolean' ? options.enableSwagger : nodeEnv !== 'production';
 
   if (shouldEnableSwagger) {
     const config = new DocumentBuilder()
@@ -256,4 +269,3 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     configService,
   };
 }
-

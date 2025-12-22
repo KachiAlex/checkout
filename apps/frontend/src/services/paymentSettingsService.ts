@@ -1,8 +1,8 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-import { useAuthStore } from '../stores/authStore';
+import axios from "axios";
+import { API_URL } from "../config";
+import { useAuthStore } from "../stores/authStore";
 
-export type GatewayKey = 'monnify' | 'opay' | 'palmpay' | 'firstbank';
+export type GatewayKey = "monnify" | "opay" | "palmpay" | "firstbank";
 
 export interface GatewayConfig {
   enabled?: boolean;
@@ -61,7 +61,7 @@ export class PaymentSettingsService {
   static async getPaymentSettings(): Promise<PaymentSettings> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     const response = await axios.get<PaymentSettings>(
@@ -70,7 +70,7 @@ export class PaymentSettingsService {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     return response.data;
@@ -79,10 +79,12 @@ export class PaymentSettingsService {
   /**
    * Update payment settings for current tenant
    */
-  static async updatePaymentSettings(settings: UpdatePaymentSettingsRequest): Promise<PaymentSettings> {
+  static async updatePaymentSettings(
+    settings: UpdatePaymentSettingsRequest,
+  ): Promise<PaymentSettings> {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error("Not authenticated");
     }
 
     const response = await axios.put<PaymentSettings>(
@@ -92,10 +94,9 @@ export class PaymentSettingsService {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     return response.data;
   }
 }
-

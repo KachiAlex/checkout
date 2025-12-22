@@ -35,7 +35,9 @@ export class TaxSettingsService {
       throw new NotFoundException('Tenant not found');
     }
 
-    const currentSettings = this.ensureSettings(tenant.metadata?.taxSettings as TaxSettings | undefined);
+    const currentSettings = this.ensureSettings(
+      tenant.metadata?.taxSettings as TaxSettings | undefined,
+    );
     const updatedSettings: TaxSettings = {
       ...currentSettings,
       enabled: dto.enabled ?? currentSettings.enabled ?? false,
@@ -60,4 +62,3 @@ export class TaxSettingsService {
     return this.ensureSettings(updatedTenant.metadata?.taxSettings as TaxSettings | undefined);
   }
 }
-

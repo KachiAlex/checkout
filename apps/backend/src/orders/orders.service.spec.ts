@@ -239,9 +239,9 @@ describe('OrdersService', () => {
       ordersRepository.list.mockResolvedValue([]);
       inventoryService.getStockByProduct.mockResolvedValue(1); // Less than requested quantity
 
-      await expect(
-        service.create(mockCreateOrderDto, userId, tenantId),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.create(mockCreateOrderDto, userId, tenantId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should award loyalty points for completed orders with customer', async () => {
@@ -404,9 +404,7 @@ describe('OrdersService', () => {
     it('should throw error if trying to hold completed order', async () => {
       ordersRepository.findById.mockResolvedValue(mockOrder);
 
-      await expect(service.holdOrder('order-123')).rejects.toThrow(
-        'Cannot hold a completed order',
-      );
+      await expect(service.holdOrder('order-123')).rejects.toThrow('Cannot hold a completed order');
     });
   });
 
@@ -510,4 +508,3 @@ describe('OrdersService', () => {
     });
   });
 });
-

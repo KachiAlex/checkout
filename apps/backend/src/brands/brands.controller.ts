@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+  Request,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BrandsService } from './brands.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -42,4 +52,3 @@ export class BrandsController {
     return this.brandsService.update(id, req.user.tenantId, updateDto);
   }
 }
-

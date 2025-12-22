@@ -9,4 +9,3 @@ import { SendGridService } from './sendgrid.service';
   exports: [ContactService, SendGridService],
 })
 export class ContactModule {}
-

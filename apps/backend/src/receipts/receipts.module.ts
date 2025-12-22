@@ -9,7 +9,14 @@ import { EmailModule } from '../email/email.module';
 import { CustomizationModule } from '../customization/customization.module';
 
 @Module({
-  imports: [OrdersModule, PaymentsModule, LocationsModule, UsersModule, EmailModule, CustomizationModule],
+  imports: [
+    OrdersModule,
+    PaymentsModule,
+    LocationsModule,
+    UsersModule,
+    EmailModule,
+    CustomizationModule,
+  ],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],
   exports: [ReceiptsService],

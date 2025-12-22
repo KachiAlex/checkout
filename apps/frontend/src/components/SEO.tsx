@@ -1,4 +1,4 @@
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from "react-helmet-async";
 
 type StructuredData = Record<string, any>;
 
@@ -11,10 +11,10 @@ type SEOProps = {
   jsonLd?: StructuredData | StructuredData[];
 };
 
-const DEFAULT_TITLE = 'Checkout POS | Fast POS & Retail Management Software';
+const DEFAULT_TITLE = "Checkout POS | Fast POS & Retail Management Software";
 const DEFAULT_DESCRIPTION =
-  'Checkout POS is the modern point-of-sale platform for pharmacies, supermarkets, restaurants, and retailers that need lightning-fast checkout, real-time inventory, and actionable analytics.';
-const BASE_URL = 'https://checkout-77d99.web.app';
+  "Checkout POS is the modern point-of-sale platform for pharmacies, supermarkets, restaurants, and retailers that need lightning-fast checkout, real-time inventory, and actionable analytics.";
+const BASE_URL = "https://checkout-77d99.web.app";
 const DEFAULT_IMAGE = `${BASE_URL}/checkout-icon-512.png`;
 
 export function SEO({
@@ -28,21 +28,28 @@ export function SEO({
   const url = canonical ?? (pathname ? `${BASE_URL}${pathname}` : BASE_URL);
   const openGraphImage = image ?? DEFAULT_IMAGE;
   const defaultStructuredData: StructuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'Checkout POS',
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Checkout POS",
     url: BASE_URL,
     logo: DEFAULT_IMAGE,
-    sameAs: ['https://twitter.com/checkoutpos', 'https://www.linkedin.com/company/checkout-pos'],
+    sameAs: [
+      "https://twitter.com/checkoutpos",
+      "https://www.linkedin.com/company/checkout-pos",
+    ],
     contactPoint: [
       {
-        '@type': 'ContactPoint',
-        contactType: 'sales',
-        email: 'sales@checkoutpos.com',
+        "@type": "ContactPoint",
+        contactType: "sales",
+        email: "sales@checkoutpos.com",
       },
     ],
   };
-  const resolvedJsonLd = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
+  const resolvedJsonLd = Array.isArray(jsonLd)
+    ? jsonLd
+    : jsonLd
+      ? [jsonLd]
+      : [];
   const structuredDataList = [defaultStructuredData, ...resolvedJsonLd];
 
   return (

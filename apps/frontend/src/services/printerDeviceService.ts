@@ -1,19 +1,19 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-import { useAuthStore } from '../stores/authStore';
+import axios from "axios";
+import { API_URL } from "../config";
+import { useAuthStore } from "../stores/authStore";
 
 export interface PrinterDevice {
   id: string;
   name: string;
-  type: 'usb' | 'bluetooth' | 'network' | 'escpos-proxy';
-  connectionType: 'serial' | 'bluetooth' | 'network' | 'websocket';
+  type: "usb" | "bluetooth" | "network" | "escpos-proxy";
+  connectionType: "serial" | "bluetooth" | "network" | "websocket";
   port?: SerialPort;
   bluetoothDevice?: BluetoothDevice;
   config?: {
     baudRate?: number;
     dataBits?: number;
     stopBits?: number;
-    parity?: 'none' | 'even' | 'odd';
+    parity?: "none" | "even" | "odd";
     host?: string;
     port?: number;
   };
@@ -27,8 +27,8 @@ export interface PrinterDevice {
 interface RegisterPrinterInput {
   identifier: string;
   name: string;
-  type: 'usb' | 'bluetooth' | 'network' | 'escpos-proxy';
-  connectionType: 'serial' | 'bluetooth' | 'network' | 'websocket';
+  type: "usb" | "bluetooth" | "network" | "escpos-proxy";
+  connectionType: "serial" | "bluetooth" | "network" | "websocket";
   hardwareId?: string;
   vendorId?: string;
   productId?: string;
@@ -37,7 +37,7 @@ interface RegisterPrinterInput {
     baudRate?: number;
     dataBits?: number;
     stopBits?: number;
-    parity?: 'none' | 'even' | 'odd';
+    parity?: "none" | "even" | "odd";
     host?: string;
     port?: number;
   };
@@ -48,14 +48,14 @@ interface RegisterPrinterInput {
  * Check if Web Serial API is supported
  */
 export function isSerialAPISupported(): boolean {
-  return 'serial' in navigator;
+  return "serial" in navigator;
 }
 
 /**
  * Check if Web Bluetooth API is supported
  */
 export function isBluetoothAPISupported(): boolean {
-  return 'bluetooth' in navigator;
+  return "bluetooth" in navigator;
 }
 
 /**
@@ -63,17 +63,19 @@ export function isBluetoothAPISupported(): boolean {
  */
 export async function requestSerialPrinter(): Promise<SerialPort | null> {
   if (!isSerialAPISupported()) {
-    throw new Error('Web Serial API not supported. Use Chrome/Edge on desktop.');
+    throw new Error(
+      "Web Serial API not supported. Use Chrome/Edge on desktop.",
+    );
   }
 
   try {
     const port = await (navigator as any).serial.requestPort();
     return port;
   } catch (error: any) {
-    if (error.name === 'NotFoundError') {
-      throw new Error('No serial port selected.');
-    } else if (error.name === 'SecurityError') {
-      throw new Error('Serial port access denied.');
+    if (error.name === "NotFoundError") {
+      throw new Error("No serial port selected.");
+    } else if (error.name === "SecurityError") {
+      throw new Error("Serial port access denied.");
     }
     throw error;
   }
@@ -88,14 +90,14 @@ export async function connectSerialPort(
     baudRate?: number;
     dataBits?: 7 | 8;
     stopBits?: 1 | 2;
-    parity?: 'none' | 'even' | 'odd';
-  } = {}
+    parity?: "none" | "even" | "odd";
+  } = {},
 ): Promise<void> {
   const defaultOptions: SerialOptions = {
     baudRate: 9600,
     dataBits: 8,
     stopBits: 1,
-    parity: 'none',
+    parity: "none",
     ...options,
   };
 
@@ -105,10 +107,13 @@ export async function connectSerialPort(
 /**
  * Write data to serial port (for ESC/POS printing)
  */
-export async function writeToSerialPort(port: SerialPort, data: Uint8Array): Promise<void> {
+export async function writeToSerialPort(
+  port: SerialPort,
+  data: Uint8Array,
+): Promise<void> {
   const writer = port.writable?.getWriter();
   if (!writer) {
-    throw new Error('Port is not writable');
+    throw new Error("Port is not writable");
   }
 
   try {
@@ -132,42 +137,49 @@ export async function closeSerialPort(port: SerialPort): Promise<void> {
  */
 export async function requestBluetoothPrinter(): Promise<BluetoothDevice | null> {
   if (!isBluetoothAPISupported()) {
-    throw new Error('Web Bluetooth API not supported. Use Chrome/Edge on desktop or Android.');
+    throw new Error(
+      "Web Bluetooth API not supported. Use Chrome/Edge on desktop or Android.",
+    );
   }
 
-  const isSecure = window.location.protocol === 'https:' || 
-                   window.location.hostname === 'localhost' || 
-                   window.location.hostname === '127.0.0.1';
-  
+  const isSecure =
+    window.location.protocol === "https:" ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+
   if (!isSecure) {
-    throw new Error('Bluetooth requires HTTPS or localhost.');
+    throw new Error("Bluetooth requires HTTPS or localhost.");
   }
 
   try {
     const device = await (navigator as any).bluetooth.requestDevice({
       filters: [
         // Serial Port Profile (SPP) - common for Bluetooth printers
-        { services: ['00001101-0000-1000-8000-00805f9b34fb'] },
+        { services: ["00001101-0000-1000-8000-00805f9b34fb"] },
         // Generic printer services
-        { namePrefix: 'Printer' },
-        { namePrefix: 'POS' },
-        { namePrefix: 'Receipt' },
+        { namePrefix: "Printer" },
+        { namePrefix: "POS" },
+        { namePrefix: "Receipt" },
       ],
       optionalServices: [
-        'battery_service',
-        'device_information',
-        '00001101-0000-1000-8000-00805f9b34fb', // Serial Port Profile
+        "battery_service",
+        "device_information",
+        "00001101-0000-1000-8000-00805f9b34fb", // Serial Port Profile
       ],
     });
 
     return device;
   } catch (error: any) {
-    if (error.name === 'NotFoundError') {
-      throw new Error('No Bluetooth printer found. Make sure it is in pairing mode.');
-    } else if (error.name === 'SecurityError') {
-      throw new Error('Bluetooth access denied. Please allow in browser settings.');
-    } else if (error.name === 'AbortError') {
-      throw new Error('Bluetooth pairing cancelled.');
+    if (error.name === "NotFoundError") {
+      throw new Error(
+        "No Bluetooth printer found. Make sure it is in pairing mode.",
+      );
+    } else if (error.name === "SecurityError") {
+      throw new Error(
+        "Bluetooth access denied. Please allow in browser settings.",
+      );
+    } else if (error.name === "AbortError") {
+      throw new Error("Bluetooth pairing cancelled.");
     }
     throw error;
   }
@@ -176,27 +188,33 @@ export async function requestBluetoothPrinter(): Promise<BluetoothDevice | null>
 /**
  * Connect to Bluetooth printer and get GATT service
  */
-export async function connectBluetoothPrinter(device: BluetoothDevice): Promise<BluetoothRemoteGATTCharacteristic | null> {
+export async function connectBluetoothPrinter(
+  device: BluetoothDevice,
+): Promise<BluetoothRemoteGATTCharacteristic | null> {
   if (!device.gatt) {
-    throw new Error('Device does not support GATT');
+    throw new Error("Device does not support GATT");
   }
 
   try {
     const server = await device.gatt.connect();
-    
+
     // Try to get Serial Port Profile service
-    const service = await server.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
-    
+    const service = await server.getPrimaryService(
+      "00001101-0000-1000-8000-00805f9b34fb",
+    );
+
     // Get characteristic for writing data
     const characteristics = await service.getCharacteristics();
-    const writeCharacteristic = characteristics.find(char => 
-      char.properties.write || char.properties.writeWithoutResponse
+    const writeCharacteristic = characteristics.find(
+      (char) => char.properties.write || char.properties.writeWithoutResponse,
     );
 
     return writeCharacteristic || null;
   } catch (error) {
-    console.warn('Failed to connect to Bluetooth printer:', error);
-    throw new Error('Failed to connect to Bluetooth printer. Make sure it supports Serial Port Profile.');
+    console.warn("Failed to connect to Bluetooth printer:", error);
+    throw new Error(
+      "Failed to connect to Bluetooth printer. Make sure it supports Serial Port Profile.",
+    );
   }
 }
 
@@ -205,27 +223,29 @@ export async function connectBluetoothPrinter(device: BluetoothDevice): Promise<
  */
 export async function writeToBluetoothPrinter(
   characteristic: BluetoothRemoteGATTCharacteristic,
-  data: Uint8Array
+  data: Uint8Array,
 ): Promise<void> {
   // Create a new Uint8Array view to ensure we have a proper BufferSource
   const buffer = new Uint8Array(data);
-  
+
   if (characteristic.properties.writeWithoutResponse) {
     await characteristic.writeValueWithoutResponse(buffer);
   } else if (characteristic.properties.write) {
     await characteristic.writeValue(buffer);
   } else {
-    throw new Error('Characteristic does not support writing');
+    throw new Error("Characteristic does not support writing");
   }
 }
 
 /**
  * Register a printer device in the backend
  */
-export async function registerPrinterDevice(printer: RegisterPrinterInput): Promise<PrinterDevice> {
+export async function registerPrinterDevice(
+  printer: RegisterPrinterInput,
+): Promise<PrinterDevice> {
   const accessToken = useAuthStore.getState().accessToken;
   if (!accessToken) {
-    throw new Error('Not authenticated');
+    throw new Error("Not authenticated");
   }
 
   const response = await axios.post(
@@ -242,7 +262,7 @@ export async function registerPrinterDevice(printer: RegisterPrinterInput): Prom
         ...printer.metadata,
         connectionType: printer.connectionType,
         config: printer.config,
-        deviceType: 'printer',
+        deviceType: "printer",
       },
       isActive: true,
     },
@@ -250,7 +270,7 @@ export async function registerPrinterDevice(printer: RegisterPrinterInput): Prom
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-    }
+    },
   );
 
   const deviceData = response.data;
@@ -263,7 +283,9 @@ export async function registerPrinterDevice(printer: RegisterPrinterInput): Prom
     isConnected: false,
     locationId: deviceData.locationId,
     registeredById: deviceData.registeredById,
-    lastUsedAt: deviceData.lastUsedAt ? new Date(deviceData.lastUsedAt) : undefined,
+    lastUsedAt: deviceData.lastUsedAt
+      ? new Date(deviceData.lastUsedAt)
+      : undefined,
     metadata: deviceData.metadata,
   };
 }
@@ -271,10 +293,12 @@ export async function registerPrinterDevice(printer: RegisterPrinterInput): Prom
 /**
  * List registered printer devices
  */
-export async function listPrinterDevices(locationId?: string): Promise<PrinterDevice[]> {
+export async function listPrinterDevices(
+  locationId?: string,
+): Promise<PrinterDevice[]> {
   const accessToken = useAuthStore.getState().accessToken;
   if (!accessToken) {
-    throw new Error('Not authenticated');
+    throw new Error("Not authenticated");
   }
 
   const params = locationId ? { location_id: locationId } : {};
@@ -287,12 +311,12 @@ export async function listPrinterDevices(locationId?: string): Promise<PrinterDe
 
   // Filter for printer devices
   return response.data
-    .filter((device: any) => device.metadata?.deviceType === 'printer')
+    .filter((device: any) => device.metadata?.deviceType === "printer")
     .map((device: any) => ({
       id: device.id,
       name: device.name,
       type: device.type,
-      connectionType: device.metadata?.connectionType || 'websocket',
+      connectionType: device.metadata?.connectionType || "websocket",
       config: device.metadata?.config,
       isConnected: false,
       locationId: device.locationId,
@@ -307,11 +331,11 @@ export async function listPrinterDevices(locationId?: string): Promise<PrinterDe
  */
 export async function updatePrinterDevice(
   deviceId: string,
-  updates: Partial<RegisterPrinterInput>
+  updates: Partial<RegisterPrinterInput>,
 ): Promise<PrinterDevice> {
   const accessToken = useAuthStore.getState().accessToken;
   if (!accessToken) {
-    throw new Error('Not authenticated');
+    throw new Error("Not authenticated");
   }
 
   const updatePayload: any = {};
@@ -319,7 +343,8 @@ export async function updatePrinterDevice(
   if (updates.config !== undefined) {
     updatePayload.metadata = { config: updates.config };
   }
-  if (updates.locationId !== undefined) updatePayload.locationId = updates.locationId;
+  if (updates.locationId !== undefined)
+    updatePayload.locationId = updates.locationId;
 
   const response = await axios.patch(
     `${API_URL}/api/v1/devices/${deviceId}`,
@@ -328,7 +353,7 @@ export async function updatePrinterDevice(
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-    }
+    },
   );
 
   const deviceData = response.data;
@@ -336,12 +361,14 @@ export async function updatePrinterDevice(
     id: deviceData.id,
     name: deviceData.name,
     type: deviceData.type,
-    connectionType: deviceData.metadata?.connectionType || 'websocket',
+    connectionType: deviceData.metadata?.connectionType || "websocket",
     config: deviceData.metadata?.config,
     isConnected: false,
     locationId: deviceData.locationId,
     registeredById: deviceData.registeredById,
-    lastUsedAt: deviceData.lastUsedAt ? new Date(deviceData.lastUsedAt) : undefined,
+    lastUsedAt: deviceData.lastUsedAt
+      ? new Date(deviceData.lastUsedAt)
+      : undefined,
     metadata: deviceData.metadata,
   };
 }
@@ -358,7 +385,7 @@ export async function getAvailableSerialPorts(): Promise<SerialPort[]> {
     const ports = await (navigator as any).serial.getPorts();
     return ports;
   } catch (error) {
-    console.warn('Failed to get serial ports:', error);
+    console.warn("Failed to get serial ports:", error);
     return [];
   }
 }
@@ -374,14 +401,13 @@ export async function getSerialPortInfo(port: SerialPort): Promise<{
   const info = (port as any).getInfo?.();
   if (!info) {
     return {
-      deviceName: 'USB Serial Printer',
+      deviceName: "USB Serial Printer",
     };
   }
 
   return {
-    vendorId: info.usbVendorId?.toString(16).padStart(4, '0'),
-    productId: info.usbProductId?.toString(16).padStart(4, '0'),
-    deviceName: info.usbProductName || 'USB Serial Printer',
+    vendorId: info.usbVendorId?.toString(16).padStart(4, "0"),
+    productId: info.usbProductId?.toString(16).padStart(4, "0"),
+    deviceName: info.usbProductName || "USB Serial Printer",
   };
 }
-

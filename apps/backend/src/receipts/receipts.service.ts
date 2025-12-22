@@ -25,9 +25,11 @@ export class ReceiptsService {
     }
 
     const [payment] = await this.paymentsRepository.findByOrderId(order.id);
-    const location = order.locationId ? await this.locationsRepository.findById(order.locationId) : null;
+    const location = order.locationId
+      ? await this.locationsRepository.findById(order.locationId)
+      : null;
     const user = order.createdBy ? await this.usersRepository.findById(order.createdBy) : null;
-    
+
     // Get customization settings from location's tenantId
     let customization = null;
     if (location?.tenantId) {
@@ -39,7 +41,13 @@ export class ReceiptsService {
       }
     }
 
-    return this.formatReceipt(order, payment ?? undefined, location ?? undefined, user ?? undefined, customization ?? undefined);
+    return this.formatReceipt(
+      order,
+      payment ?? undefined,
+      location ?? undefined,
+      user ?? undefined,
+      customization ?? undefined,
+    );
   }
 
   private formatReceipt(
@@ -47,7 +55,16 @@ export class ReceiptsService {
     payment?: PaymentRecord,
     location?: LocationRecord,
     user?: UserRecord,
-    customization?: { companyName?: string; logoUrl?: string; address?: string; phone?: string; email?: string; website?: string; headerInfo?: string; footerMessage?: string },
+    customization?: {
+      companyName?: string;
+      logoUrl?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+      website?: string;
+      headerInfo?: string;
+      footerMessage?: string;
+    },
   ): string {
     const companyName = customization?.companyName || '';
     const headerInfo = customization?.headerInfo || '';
@@ -57,9 +74,7 @@ export class ReceiptsService {
     const website = customization?.website || '';
     const footerMessage = customization?.footerMessage || 'Thank you for your purchase!';
 
-    const receipt = [
-      '╔═══════════════════════════════════╗',
-    ];
+    const receipt = ['╔═══════════════════════════════════╗'];
 
     // Add company name if available
     if (companyName) {
@@ -68,27 +83,27 @@ export class ReceiptsService {
 
     // Add location name
     receipt.push(`║    ${(location?.name || 'Store').padEnd(33).substring(0, 33)}  ║`);
-    
+
     // Add address
     if (address) {
       receipt.push(`║  ${address.padEnd(33).substring(0, 33)}  ║`);
     }
-    
+
     // Add phone
     if (phone) {
       receipt.push(`║  ${phone.padEnd(33).substring(0, 33)}  ║`);
     }
-    
+
     // Add email
     if (email) {
       receipt.push(`║  ${email.padEnd(33).substring(0, 33)}  ║`);
     }
-    
+
     // Add website
     if (website) {
       receipt.push(`║  ${website.padEnd(33).substring(0, 33)}  ║`);
     }
-    
+
     // Add header info
     if (headerInfo) {
       receipt.push(`║  ${headerInfo.padEnd(33).substring(0, 33)}  ║`);
@@ -145,7 +160,9 @@ export class ReceiptsService {
 
       const receiptText = await this.generateReceipt(orderId);
       const [payment] = await this.paymentsRepository.findByOrderId(order.id);
-      const location = order.locationId ? await this.locationsRepository.findById(order.locationId) : null;
+      const location = order.locationId
+        ? await this.locationsRepository.findById(order.locationId)
+        : null;
       const user = order.createdBy ? await this.usersRepository.findById(order.createdBy) : null;
 
       // Get customization settings from location's tenantId
@@ -159,7 +176,13 @@ export class ReceiptsService {
         }
       }
 
-      const receiptHTML = this.formatReceiptHTML(order, payment ?? undefined, location ?? undefined, user ?? undefined, customization ?? undefined);
+      const receiptHTML = this.formatReceiptHTML(
+        order,
+        payment ?? undefined,
+        location ?? undefined,
+        user ?? undefined,
+        customization ?? undefined,
+      );
 
       const success = await this.emailService.sendEmail({
         to: email,
@@ -180,7 +203,16 @@ export class ReceiptsService {
     payment?: PaymentRecord,
     location?: LocationRecord,
     user?: UserRecord,
-    customization?: { companyName?: string; logoUrl?: string; address?: string; phone?: string; email?: string; website?: string; headerInfo?: string; footerMessage?: string },
+    customization?: {
+      companyName?: string;
+      logoUrl?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+      website?: string;
+      headerInfo?: string;
+      footerMessage?: string;
+    },
   ): string {
     const companyName = customization?.companyName || '';
     const logoUrl = customization?.logoUrl || '';
@@ -337,24 +369,32 @@ export class ReceiptsService {
                 <span>Tax:</span>
                 <span>₦${(order.taxCents / 100).toFixed(2)}</span>
               </div>
-              ${order.discountCents > 0 ? `
+              ${
+                order.discountCents > 0
+                  ? `
                 <div class="totals-row">
                   <span>Discount:</span>
                   <span>-₦${(order.discountCents / 100).toFixed(2)}</span>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
               <div class="totals-row total-row">
                 <span>TOTAL:</span>
                 <span>₦${(order.totalCents / 100).toFixed(2)}</span>
               </div>
             </div>
 
-            ${payment ? `
+            ${
+              payment
+                ? `
               <div class="payment-info">
                 <p><strong>Payment Method:</strong> ${payment.method.toUpperCase()}</p>
                 ${payment.transactionId ? `<p><strong>Transaction ID:</strong> ${payment.transactionId}</p>` : ''}
               </div>
-            ` : ''}
+            `
+                : ''
+            }
 
             <div class="footer">
               <p>${footerMessage}</p>

@@ -57,7 +57,10 @@ export class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    const smtpFrom = this.configService.get<string>('SMTP_FROM') || this.configService.get<string>('SMTP_USER') || 'noreply@pos-checkout.com';
+    const smtpFrom =
+      this.configService.get<string>('SMTP_FROM') ||
+      this.configService.get<string>('SMTP_USER') ||
+      'noreply@pos-checkout.com';
 
     // If transporter is not available, log to console (development mode)
     if (!this.transporter) {
@@ -107,4 +110,3 @@ export class EmailService {
     }
   }
 }
-

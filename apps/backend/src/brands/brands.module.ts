@@ -9,4 +9,3 @@ import { BrandsRepository } from './brands.repository';
   exports: [BrandsService, BrandsRepository],
 })
 export class BrandsModule {}
-

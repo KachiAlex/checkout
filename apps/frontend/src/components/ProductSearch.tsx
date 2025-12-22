@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { useAuthStore } from '../stores/authStore';
-import toast from 'react-hot-toast';
-import { API_URL } from '../config';
-import { formatCurrency, formatNumber } from '../utils/numberFormat';
+import { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import { useAuthStore } from "../stores/authStore";
+import toast from "react-hot-toast";
+import { API_URL } from "../config";
+import { formatCurrency, formatNumber } from "../utils/numberFormat";
 
 interface Product {
   id: string;
@@ -25,8 +25,17 @@ interface ProductSearchProps {
   onSelectProduct?: (product: ProductWithStock) => void;
   onUpdateQuantity?: (productId: string, quantity: number) => void;
   onRemoveFromCart?: (productId: string) => void;
-  onItemDiscount?: (item: { productId: string; name: string; priceCents: number; quantity: number }) => void;
-  cartItems?: Array<{ productId: string; quantity: number; discountCents?: number }>;
+  onItemDiscount?: (item: {
+    productId: string;
+    name: string;
+    priceCents: number;
+    quantity: number;
+  }) => void;
+  cartItems?: Array<{
+    productId: string;
+    quantity: number;
+    discountCents?: number;
+  }>;
   searchInputRef?: React.RefObject<HTMLInputElement>;
 }
 
@@ -40,28 +49,32 @@ interface SearchFilters {
   lowStockOnly: boolean;
 }
 
-export function ProductSearch({ 
-  onAddToCart, 
-  onPriceOverride, 
-  onSelectProduct, 
+export function ProductSearch({
+  onAddToCart,
+  onPriceOverride,
+  onSelectProduct,
   onUpdateQuantity,
   onRemoveFromCart,
   onItemDiscount,
   cartItems = [],
-  searchInputRef 
+  searchInputRef,
 }: ProductSearchProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<ProductWithStock[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<ProductWithStock[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithStock[]>(
+    [],
+  );
   const [loading, setLoading] = useState(false);
-  const [recentlyScanned, setRecentlyScanned] = useState<ProductWithStock[]>([]);
+  const [recentlyScanned, setRecentlyScanned] = useState<ProductWithStock[]>(
+    [],
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({
-    name: '',
-    sku: '',
-    barcode: '',
-    minPrice: '',
-    maxPrice: '',
+    name: "",
+    sku: "",
+    barcode: "",
+    minPrice: "",
+    maxPrice: "",
     inStockOnly: false,
     lowStockOnly: false,
   });
@@ -97,7 +110,9 @@ export function ProductSearch({
     // Apply advanced filters
     if (filters.name) {
       const nameQuery = filters.name.toLowerCase();
-      filtered = filtered.filter((p) => p.name.toLowerCase().includes(nameQuery));
+      filtered = filtered.filter((p) =>
+        p.name.toLowerCase().includes(nameQuery),
+      );
     }
 
     if (filters.sku) {
@@ -107,7 +122,9 @@ export function ProductSearch({
 
     if (filters.barcode) {
       const barcodeQuery = filters.barcode.toLowerCase();
-      filtered = filtered.filter((p) => p.barcode?.toLowerCase().includes(barcodeQuery));
+      filtered = filtered.filter((p) =>
+        p.barcode?.toLowerCase().includes(barcodeQuery),
+      );
     }
 
     if (filters.minPrice) {
@@ -125,7 +142,9 @@ export function ProductSearch({
     }
 
     if (filters.lowStockOnly) {
-      filtered = filtered.filter((p) => p.stock !== undefined && p.stock > 0 && p.stock < 10);
+      filtered = filtered.filter(
+        (p) => p.stock !== undefined && p.stock > 0 && p.stock < 10,
+      );
     }
 
     setFilteredProducts(filtered);
@@ -134,7 +153,7 @@ export function ProductSearch({
   // Debounced search - wait 300ms after user stops typing
   useEffect(() => {
     if (!accessToken) return;
-    
+
     // Clear existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -159,7 +178,9 @@ export function ProductSearch({
   }, [searchQuery, accessToken]);
 
   // Load stock levels for products
-  const loadStockLevels = async (productList: Product[]): Promise<ProductWithStock[]> => {
+  const loadStockLevels = async (
+    productList: Product[],
+  ): Promise<ProductWithStock[]> => {
     if (!user?.locationId || !accessToken) {
       return productList.map((p) => ({ ...p, stock: undefined }));
     }
@@ -172,24 +193,27 @@ export function ProductSearch({
         },
       );
       const stockMap = new Map<string, number>(
-        (stockResponse.data || []).map((item: any) => [item.productId, item.quantity]),
+        (stockResponse.data || []).map((item: any) => [
+          item.productId,
+          item.quantity,
+        ]),
       );
       return productList.map((product) => ({
         ...product,
         stock: stockMap.get(product.id) as number | undefined,
       }));
     } catch (error) {
-      console.warn('Failed to load stock levels:', error);
+      console.warn("Failed to load stock levels:", error);
       return productList.map((p) => ({ ...p, stock: undefined }));
     }
   };
 
   const searchProducts = async (query: string) => {
     if (!accessToken) {
-      console.warn('No access token available');
+      console.warn("No access token available");
       return;
     }
-    
+
     setLoading(true);
     try {
       const response = await axios.get(
@@ -199,7 +223,7 @@ export function ProductSearch({
       const productsWithStock = await loadStockLevels(productList);
       setProducts(productsWithStock);
     } catch (error) {
-      console.error('Failed to search products:', error);
+      console.error("Failed to search products:", error);
       setProducts([]);
     } finally {
       setLoading(false);
@@ -208,10 +232,10 @@ export function ProductSearch({
 
   const loadAllProducts = async () => {
     if (!accessToken) {
-      console.warn('No access token available');
+      console.warn("No access token available");
       return;
     }
-    
+
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/api/v1/products`);
@@ -219,7 +243,7 @@ export function ProductSearch({
       const productsWithStock = await loadStockLevels(productList);
       setProducts(productsWithStock);
     } catch (error) {
-      console.error('Failed to load products:', error);
+      console.error("Failed to load products:", error);
       setProducts([]);
     } finally {
       setLoading(false);
@@ -228,44 +252,49 @@ export function ProductSearch({
 
   // Load recently scanned products from localStorage
   useEffect(() => {
-    const recent = localStorage.getItem('recentlyScanned');
+    const recent = localStorage.getItem("recentlyScanned");
     if (recent) {
       try {
         const recentProducts = JSON.parse(recent) as Product[];
         loadStockLevels(recentProducts).then(setRecentlyScanned);
       } catch (error) {
-        console.warn('Failed to load recently scanned:', error);
+        console.warn("Failed to load recently scanned:", error);
       }
     }
   }, []);
 
   // Save to recently scanned when product is added
   const saveToRecentlyScanned = (product: Product) => {
-    const recent = localStorage.getItem('recentlyScanned');
+    const recent = localStorage.getItem("recentlyScanned");
     let recentProducts: Product[] = recent ? JSON.parse(recent) : [];
-    
+
     // Remove if already exists
     recentProducts = recentProducts.filter((p) => p.id !== product.id);
-    
+
     // Add to beginning
     recentProducts.unshift(product);
-    
+
     // Keep only last 10
     recentProducts = recentProducts.slice(0, 10);
-    
-    localStorage.setItem('recentlyScanned', JSON.stringify(recentProducts));
+
+    localStorage.setItem("recentlyScanned", JSON.stringify(recentProducts));
     loadStockLevels(recentProducts).then(setRecentlyScanned);
   };
 
   const handleProductClick = async (product: ProductWithStock) => {
     // Validate product ID format (must be UUID)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(product.id)) {
-      console.error(`Invalid productId format: ${product.id} for product: ${product.name}`);
-      toast.error(`Invalid product ID for "${product.name}". This product needs to be recreated.`);
+      console.error(
+        `Invalid productId format: ${product.id} for product: ${product.name}`,
+      );
+      toast.error(
+        `Invalid product ID for "${product.name}". This product needs to be recreated.`,
+      );
       return;
     }
-    
+
     // Check stock before opening quantity selector
     if (product.stock !== undefined && product.stock <= 0) {
       toast.error(`${product.name} is out of stock`);
@@ -285,22 +314,24 @@ export function ProductSearch({
         quantity: 1,
       });
       saveToRecentlyScanned(product);
-      toast.success(`Added: ${product.name}${product.stock !== undefined ? ` (${product.stock} in stock)` : ''}`);
+      toast.success(
+        `Added: ${product.name}${product.stock !== undefined ? ` (${product.stock} in stock)` : ""}`,
+      );
     }
   };
 
   const handleBarcodeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // If Enter is pressed and input looks like a barcode (numeric/alphanumeric, 4+ chars)
-    if (e.key === 'Enter' && searchQuery.trim().length >= 4) {
+    if (e.key === "Enter" && searchQuery.trim().length >= 4) {
       e.preventDefault();
       // Try to find product by barcode first
       const barcodeMatch = filteredProducts.find(
-        (p) => p.barcode?.toLowerCase() === searchQuery.trim().toLowerCase()
+        (p) => p.barcode?.toLowerCase() === searchQuery.trim().toLowerCase(),
       );
-      
+
       if (barcodeMatch) {
         handleProductClick(barcodeMatch);
-        setSearchQuery('');
+        setSearchQuery("");
       } else {
         // If not found, show message
         toast.error(`Product with barcode "${searchQuery.trim()}" not found`);
@@ -310,11 +341,11 @@ export function ProductSearch({
 
   const clearFilters = () => {
     setFilters({
-      name: '',
-      sku: '',
-      barcode: '',
-      minPrice: '',
-      maxPrice: '',
+      name: "",
+      sku: "",
+      barcode: "",
+      minPrice: "",
+      maxPrice: "",
       inStockOnly: false,
       lowStockOnly: false,
     });
@@ -322,16 +353,27 @@ export function ProductSearch({
 
   const hasActiveFilters = () => {
     return Object.values(filters).some((value) => {
-      if (typeof value === 'boolean') return value;
-      return value.trim() !== '';
+      if (typeof value === "boolean") return value;
+      return value.trim() !== "";
     });
   };
 
   const getStockStatus = (stock: number | undefined) => {
     if (stock === undefined) return null;
-    if (stock === 0) return { label: 'Out of Stock', color: 'text-rose-400 bg-rose-500/15 border-rose-400/40' };
-    if (stock < 10) return { label: `Low Stock (${stock})`, color: 'text-amber-400 bg-amber-500/15 border-amber-400/40' };
-    return { label: `In Stock (${stock})`, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-400/40' };
+    if (stock === 0)
+      return {
+        label: "Out of Stock",
+        color: "text-rose-400 bg-rose-500/15 border-rose-400/40",
+      };
+    if (stock < 10)
+      return {
+        label: `Low Stock (${stock})`,
+        color: "text-amber-400 bg-amber-500/15 border-amber-400/40",
+      };
+    return {
+      label: `In Stock (${stock})`,
+      color: "text-emerald-400 bg-emerald-500/15 border-emerald-400/40",
+    };
   };
 
   return (
@@ -354,23 +396,24 @@ export function ProductSearch({
             autoComplete="off"
           />
           <span id="search-help" className="sr-only">
-            Press F1 to focus this search box. Type to search for products by name, SKU, or barcode. Press Enter to add product.
+            Press F1 to focus this search box. Type to search for products by
+            name, SKU, or barcode. Press Enter to add product.
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`theme-chip rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                 showFilters || hasActiveFilters()
-                  ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
-                  : ''
+                  ? "border-sky-400/40 bg-sky-500/15 text-sky-200"
+                  : ""
               }`}
               title="Toggle advanced filters"
             >
-              🔧 Filters {hasActiveFilters() && '•'}
+              🔧 Filters {hasActiveFilters() && "•"}
             </button>
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => setSearchQuery("")}
                 className="theme-chip rounded-full border px-3 py-1.5 text-xs font-semibold transition"
               >
                 Clear
@@ -384,7 +427,9 @@ export function ProductSearch({
       {showFilters && (
         <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="theme-text-primary text-lg font-semibold">Advanced Filters</h3>
+            <h3 className="theme-text-primary text-lg font-semibold">
+              Advanced Filters
+            </h3>
             {hasActiveFilters() && (
               <button
                 onClick={clearFilters}
@@ -402,7 +447,9 @@ export function ProductSearch({
               <input
                 type="text"
                 value={filters.name}
-                onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, name: e.target.value })
+                }
                 placeholder="Filter by name..."
                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
               />
@@ -414,7 +461,9 @@ export function ProductSearch({
               <input
                 type="text"
                 value={filters.sku}
-                onChange={(e) => setFilters({ ...filters, sku: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, sku: e.target.value })
+                }
                 placeholder="Filter by SKU..."
                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
               />
@@ -426,7 +475,9 @@ export function ProductSearch({
               <input
                 type="text"
                 value={filters.barcode}
-                onChange={(e) => setFilters({ ...filters, barcode: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, barcode: e.target.value })
+                }
                 placeholder="Filter by barcode..."
                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
               />
@@ -439,7 +490,9 @@ export function ProductSearch({
                 type="number"
                 step="0.01"
                 value={filters.minPrice}
-                onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, minPrice: e.target.value })
+                }
                 placeholder="0.00"
                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
               />
@@ -452,7 +505,9 @@ export function ProductSearch({
                 type="number"
                 step="0.01"
                 value={filters.maxPrice}
-                onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, maxPrice: e.target.value })
+                }
                 placeholder="999999.99"
                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
               />
@@ -465,19 +520,27 @@ export function ProductSearch({
                 <input
                   type="checkbox"
                   checked={filters.inStockOnly}
-                  onChange={(e) => setFilters({ ...filters, inStockOnly: e.target.checked })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, inStockOnly: e.target.checked })
+                  }
                   className="rounded border-white/20 bg-transparent text-sky-400 focus:ring-sky-400"
                 />
-                <span className="text-sm theme-text-secondary">In Stock Only</span>
+                <span className="text-sm theme-text-secondary">
+                  In Stock Only
+                </span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.lowStockOnly}
-                  onChange={(e) => setFilters({ ...filters, lowStockOnly: e.target.checked })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, lowStockOnly: e.target.checked })
+                  }
                   className="rounded border-white/20 bg-transparent text-sky-400 focus:ring-sky-400"
                 />
-                <span className="text-sm theme-text-secondary">Low Stock Only (&lt;10)</span>
+                <span className="text-sm theme-text-secondary">
+                  Low Stock Only (&lt;10)
+                </span>
               </label>
             </div>
           </div>
@@ -493,13 +556,18 @@ export function ProductSearch({
       {loading ? (
         <div className="theme-card flex flex-col items-center justify-center rounded-3xl border p-12 text-center">
           <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-700 border-t-sky-400" />
-          <p className="theme-text-secondary mt-5 text-sm uppercase tracking-[0.3em]">Loading</p>
+          <p className="theme-text-secondary mt-5 text-sm uppercase tracking-[0.3em]">
+            Loading
+          </p>
         </div>
       ) : filteredProducts.length === 0 ? (
         <div className="theme-card rounded-3xl border p-10 text-center">
-          <p className="theme-text-primary text-lg font-semibold">No products found</p>
+          <p className="theme-text-primary text-lg font-semibold">
+            No products found
+          </p>
           <p className="theme-text-secondary mt-2 text-sm">
-            Try a different keyword or scan a barcode to identify products instantly.
+            Try a different keyword or scan a barcode to identify products
+            instantly.
           </p>
         </div>
       ) : (
@@ -523,15 +591,22 @@ export function ProductSearch({
                           alt={product.name}
                           className="h-full w-full object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
                           }}
                         />
                       </div>
                     )}
-                    <h4 className="theme-text-primary line-clamp-1 text-sm font-semibold">{product.name}</h4>
-                    <p className="theme-text-secondary mt-1 text-xs">{formatCurrency(product.priceCents)}</p>
+                    <h4 className="theme-text-primary line-clamp-1 text-sm font-semibold">
+                      {product.name}
+                    </h4>
+                    <p className="theme-text-secondary mt-1 text-xs">
+                      {formatCurrency(product.priceCents)}
+                    </p>
                     {getStockStatus(product.stock) && (
-                      <span className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[0.65rem] font-medium ${getStockStatus(product.stock)?.color}`}>
+                      <span
+                        className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[0.65rem] font-medium ${getStockStatus(product.stock)?.color}`}
+                      >
                         {getStockStatus(product.stock)?.label}
                       </span>
                     )}
@@ -591,15 +666,18 @@ export function ProductSearch({
                 <tbody className="divide-y divide-white/10">
                   {filteredProducts.map((product) => {
                     const stockStatus = getStockStatus(product.stock);
-                    const cartItem = cartItems.find(item => item.productId === product.id);
+                    const cartItem = cartItems.find(
+                      (item) => item.productId === product.id,
+                    );
                     const quantity = cartItem?.quantity || 0;
                     const isInCart = quantity > 0;
-                    const hasDiscount = cartItem?.discountCents && cartItem.discountCents > 0;
-                    
+                    const hasDiscount =
+                      cartItem?.discountCents && cartItem.discountCents > 0;
+
                     return (
                       <tr
                         key={product.id}
-                        className={`hover:bg-white/5 transition ${isInCart ? 'bg-sky-500/5' : ''}`}
+                        className={`hover:bg-white/5 transition ${isInCart ? "bg-sky-500/5" : ""}`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="theme-text-secondary text-sm font-mono">
@@ -615,7 +693,9 @@ export function ProductSearch({
                                   alt={product.name}
                                   className="h-full w-full object-cover"
                                   onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (
+                                      e.target as HTMLImageElement
+                                    ).style.display = "none";
                                   }}
                                 />
                               </div>
@@ -637,11 +717,15 @@ export function ProductSearch({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {stockStatus ? (
-                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${stockStatus.color}`}>
+                            <span
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${stockStatus.color}`}
+                            >
                               {stockStatus.label}
                             </span>
                           ) : (
-                            <span className="theme-text-secondary text-sm">—</span>
+                            <span className="theme-text-secondary text-sm">
+                              —
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -649,7 +733,13 @@ export function ProductSearch({
                             {isInCart ? (
                               <>
                                 <button
-                                  onClick={() => onUpdateQuantity && onUpdateQuantity(product.id, Math.max(0, quantity - 1))}
+                                  onClick={() =>
+                                    onUpdateQuantity &&
+                                    onUpdateQuantity(
+                                      product.id,
+                                      Math.max(0, quantity - 1),
+                                    )
+                                  }
                                   className="theme-chip flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition hover:border-white/30 hover:bg-white/20 touch-manipulation"
                                   aria-label="Decrease quantity"
                                 >
@@ -660,7 +750,8 @@ export function ProductSearch({
                                   min="0"
                                   value={quantity}
                                   onChange={(e) => {
-                                    const newQty = parseInt(e.target.value) || 0;
+                                    const newQty =
+                                      parseInt(e.target.value) || 0;
                                     if (onUpdateQuantity) {
                                       onUpdateQuantity(product.id, newQty);
                                     }
@@ -668,8 +759,14 @@ export function ProductSearch({
                                   className="w-16 text-center theme-surface rounded-lg border border-white/20 bg-transparent px-2 py-2 text-base font-semibold theme-text-primary focus:border-sky-400 focus:outline-none"
                                 />
                                 <button
-                                  onClick={() => onUpdateQuantity && onUpdateQuantity(product.id, quantity + 1)}
-                                  disabled={product.stock !== undefined && quantity >= product.stock}
+                                  onClick={() =>
+                                    onUpdateQuantity &&
+                                    onUpdateQuantity(product.id, quantity + 1)
+                                  }
+                                  disabled={
+                                    product.stock !== undefined &&
+                                    quantity >= product.stock
+                                  }
                                   className="theme-chip flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition hover:border-white/30 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                                   aria-label="Increase quantity"
                                 >
@@ -701,20 +798,22 @@ export function ProductSearch({
                           <div className="flex items-center justify-end gap-2">
                             {isInCart && onItemDiscount && (
                               <button
-                                onClick={() => onItemDiscount({
-                                  productId: product.id,
-                                  name: product.name,
-                                  priceCents: product.priceCents,
-                                  quantity: quantity,
-                                })}
+                                onClick={() =>
+                                  onItemDiscount({
+                                    productId: product.id,
+                                    name: product.name,
+                                    priceCents: product.priceCents,
+                                    quantity: quantity,
+                                  })
+                                }
                                 className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
                                   hasDiscount
-                                    ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
-                                    : 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                                    ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-200"
+                                    : "border-sky-400/40 bg-sky-500/15 text-sky-200"
                                 }`}
                                 title="Apply discount"
                               >
-                                {hasDiscount ? '✓ Discount' : 'Discount'}
+                                {hasDiscount ? "✓ Discount" : "Discount"}
                               </button>
                             )}
                             {onPriceOverride && (

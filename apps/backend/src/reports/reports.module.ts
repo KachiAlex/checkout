@@ -10,7 +10,15 @@ import { SuppliersModule } from '../suppliers/suppliers.module';
 import { LocationsModule } from '../locations/locations.module';
 
 @Module({
-  imports: [OrdersModule, InventoryModule, UsersModule, ProductsModule, CustomersModule, SuppliersModule, LocationsModule],
+  imports: [
+    OrdersModule,
+    InventoryModule,
+    UsersModule,
+    ProductsModule,
+    CustomersModule,
+    SuppliersModule,
+    LocationsModule,
+  ],
   controllers: [ReportsController],
   providers: [ReportsService],
   exports: [ReportsService],

@@ -1,9 +1,9 @@
 /**
  * E2E Test Setup
- * 
+ *
  * This file sets up the Firestore emulator for E2E tests.
  * The emulator should be started before running tests (via docker-compose or manually).
- * 
+ *
  * The Firebase Admin SDK automatically connects to the emulator when
  * FIRESTORE_EMULATOR_HOST environment variable is set.
  */
@@ -17,7 +17,7 @@ export async function setupFirestoreEmulator() {
   // The Admin SDK will automatically use these when initializing Firestore
   process.env.FIRESTORE_EMULATOR_HOST = FIRESTORE_EMULATOR_HOST;
   process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-pos-checkout';
-  
+
   // Also set for Auth emulator if needed
   if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) {
     process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
@@ -32,4 +32,3 @@ export async function cleanupFirestoreEmulator() {
   // In practice, you might want to delete specific test data
   // The emulator data is typically cleared when the emulator restarts
 }
-

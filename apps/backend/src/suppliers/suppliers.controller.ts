@@ -46,4 +46,3 @@ export class SuppliersController {
     return this.suppliersService.update(id, req.user.tenantId, updateDto);
   }
 }
-

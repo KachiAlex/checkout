@@ -40,9 +40,7 @@ async function main() {
       };
 
       if (!json.client_email || !json.private_key) {
-        throw new Error(
-          'GOOGLE_APPLICATION_CREDENTIALS JSON is missing client_email/private_key',
-        );
+        throw new Error('GOOGLE_APPLICATION_CREDENTIALS JSON is missing client_email/private_key');
       }
 
       console.log(`Service account from JSON: ${json.client_email}`);
@@ -291,7 +289,9 @@ async function main() {
       const tenantId = data.tenantId && tenantIds.has(data.tenantId) ? data.tenantId : null;
       if (data.tenantId && !tenantId) {
         locationsSkipped += 1;
-        console.warn(`Skipping location ${doc.id}: tenantId ${data.tenantId} not found in migrated tenants`);
+        console.warn(
+          `Skipping location ${doc.id}: tenantId ${data.tenantId} not found in migrated tenants`,
+        );
         continue;
       }
 
@@ -342,7 +342,8 @@ async function main() {
       }
 
       const brandId = data.brandId && brandIds.has(data.brandId) ? data.brandId : null;
-      const categoryId = data.categoryId && categoryIds.has(data.categoryId) ? data.categoryId : null;
+      const categoryId =
+        data.categoryId && categoryIds.has(data.categoryId) ? data.categoryId : null;
 
       productIds.add(doc.id);
 
@@ -450,8 +451,7 @@ async function main() {
       const data = doc.data() as any;
 
       const inferredTenantId =
-        data.tenantId ??
-        (data.locationId ? locationTenantById.get(String(data.locationId)) : null);
+        data.tenantId ?? (data.locationId ? locationTenantById.get(String(data.locationId)) : null);
 
       await ensureTenant(inferredTenantId, `order ${doc.id}`);
       if (!inferredTenantId || !tenantIds.has(inferredTenantId)) {
@@ -536,7 +536,9 @@ async function main() {
       for (let i = 0; i < items.length; i += 1) {
         const item = items[i];
         if (!item?.productId || !productIds.has(item.productId)) {
-          console.warn(`Skipping order item ${doc.id}#${i}: missing/unknown productId ${item?.productId}`);
+          console.warn(
+            `Skipping order item ${doc.id}#${i}: missing/unknown productId ${item?.productId}`,
+          );
           continue;
         }
 
@@ -710,7 +712,9 @@ async function main() {
       }
       if (!data.locationId || !locationIds.has(data.locationId)) {
         purchaseOrdersSkipped += 1;
-        console.warn(`Skipping purchase_order ${doc.id}: missing/unknown locationId ${data.locationId}`);
+        console.warn(
+          `Skipping purchase_order ${doc.id}: missing/unknown locationId ${data.locationId}`,
+        );
         continue;
       }
       if (!data.supplierId) {
@@ -789,7 +793,9 @@ async function main() {
       }
       if (!data.purchaseOrderId || !purchaseOrderIds.has(String(data.purchaseOrderId))) {
         grnsSkipped += 1;
-        console.warn(`Skipping grn ${doc.id}: missing/unknown purchaseOrderId ${data.purchaseOrderId}`);
+        console.warn(
+          `Skipping grn ${doc.id}: missing/unknown purchaseOrderId ${data.purchaseOrderId}`,
+        );
         continue;
       }
       if (!data.supplierId) {

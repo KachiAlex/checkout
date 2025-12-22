@@ -17,4 +17,3 @@ export class ContactController {
     return this.contactService.handleDemoRequest(dto);
   }
 }
-

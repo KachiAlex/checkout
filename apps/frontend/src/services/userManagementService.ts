@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { API_URL } from '../config';
+import axios from "axios";
+import { API_URL } from "../config";
 
 export interface TenantUser {
   id: string;
@@ -38,21 +38,34 @@ export interface CreateTenantUserResponse {
   temporaryPin?: string;
 }
 
-export async function createTenantUser(payload: CreateTenantUserPayload): Promise<CreateTenantUserResponse> {
-  const { data } = await axios.post<CreateTenantUserResponse>(`${API_URL}/api/v1/users`, payload);
+export async function createTenantUser(
+  payload: CreateTenantUserPayload,
+): Promise<CreateTenantUserResponse> {
+  const { data } = await axios.post<CreateTenantUserResponse>(
+    `${API_URL}/api/v1/users`,
+    payload,
+  );
   return data;
 }
 
-export async function updateTenantUser(id: string, payload: UpdateTenantUserPayload): Promise<TenantUser> {
-  const { data } = await axios.patch<TenantUser>(`${API_URL}/api/v1/users/${id}`, payload);
+export async function updateTenantUser(
+  id: string,
+  payload: UpdateTenantUserPayload,
+): Promise<TenantUser> {
+  const { data } = await axios.patch<TenantUser>(
+    `${API_URL}/api/v1/users/${id}`,
+    payload,
+  );
   return data;
 }
 
-export async function resetTenantUserPin(id: string, pin: string): Promise<void> {
+export async function resetTenantUserPin(
+  id: string,
+  pin: string,
+): Promise<void> {
   await axios.patch(`${API_URL}/api/v1/users/${id}/reset-pin`, { pin });
 }
 
 export async function deleteTenantUser(id: string): Promise<void> {
   await axios.delete(`${API_URL}/api/v1/users/${id}`);
 }
-

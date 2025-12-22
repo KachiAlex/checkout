@@ -1,10 +1,13 @@
-import { Capacitor } from '@capacitor/core';
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { ensureCameraPermission, isBluetoothSupported } from '../services/scannerService';
+import { Capacitor } from "@capacitor/core";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import {
+  ensureCameraPermission,
+  isBluetoothSupported,
+} from "../services/scannerService";
 
-const STORAGE_KEY = 'pos-onboarding-banner-dismissed';
+const STORAGE_KEY = "pos-onboarding-banner-dismissed";
 
 interface OnboardingBannerProps {
   locationId?: string;
@@ -15,14 +18,14 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
   const [bluetoothReady, setBluetoothReady] = useState(false);
   const isNativeApp = useMemo(
     () =>
-      typeof Capacitor?.isNativePlatform === 'function'
+      typeof Capacitor?.isNativePlatform === "function"
         ? Capacitor.isNativePlatform()
-        : Capacitor?.getPlatform?.() !== 'web',
+        : Capacitor?.getPlatform?.() !== "web",
     [],
   );
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
@@ -39,7 +42,7 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
   }
 
   const handleDismiss = () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, new Date().toISOString());
     }
     setIsVisible(false);
@@ -48,22 +51,31 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
   const handleCameraCheck = async () => {
     try {
       await ensureCameraPermission();
-      toast.success('Camera ready for scanning');
+      toast.success("Camera ready for scanning");
     } catch (error: any) {
-      toast.error(error?.message || 'Camera access is blocked. Allow it in browser settings.');
+      toast.error(
+        error?.message ||
+          "Camera access is blocked. Allow it in browser settings.",
+      );
     }
   };
 
   const handleBluetoothInfo = () => {
     if (isNativeApp) {
-      toast.error('Bluetooth pairing is not supported in the mobile app yet. Use the camera scanner instead.');
+      toast.error(
+        "Bluetooth pairing is not supported in the mobile app yet. Use the camera scanner instead.",
+      );
       return;
     }
 
     if (bluetoothReady) {
-      toast.success('Bluetooth is supported. Use the Bluetooth button in the scanner to pair.');
+      toast.success(
+        "Bluetooth is supported. Use the Bluetooth button in the scanner to pair.",
+      );
     } else {
-      toast.error('Bluetooth pairing requires Chrome/Edge on desktop or Android over HTTPS.');
+      toast.error(
+        "Bluetooth pairing requires Chrome/Edge on desktop or Android over HTTPS.",
+      );
     }
   };
 
@@ -80,7 +92,8 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
                 Welcome! Let’s get you ready to sell.
               </h2>
               <p className="theme-text-secondary mt-2 max-w-xl text-sm">
-                Complete these quick checks so scanners, camera mode, and inventory stay silky smooth during rush hour.
+                Complete these quick checks so scanners, camera mode, and
+                inventory stay silky smooth during rush hour.
               </p>
             </div>
             <button
@@ -98,7 +111,8 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
                 <span>Camera ready</span>
               </div>
               <p className="theme-text-secondary mt-3 text-sm">
-                Enable scanner camera access now so Chrome doesn’t interrupt your queue later.
+                Enable scanner camera access now so Chrome doesn’t interrupt
+                your queue later.
               </p>
               <button
                 onClick={handleCameraCheck}
@@ -115,7 +129,8 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
                   <span>Pair a scanner</span>
                 </div>
                 <p className="theme-text-secondary mt-3 text-sm">
-                  Put your Bluetooth scanner in pairing mode and tap the Bluetooth option inside the scanner panel.
+                  Put your Bluetooth scanner in pairing mode and tap the
+                  Bluetooth option inside the scanner panel.
                 </p>
                 <button
                   onClick={handleBluetoothInfo}
@@ -133,7 +148,8 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
               </div>
               <p className="theme-text-secondary mt-3 text-sm">
                 Review products and stock levels
-                {locationId ? ` for location ${locationId}` : ''} before customers walk in.
+                {locationId ? ` for location ${locationId}` : ""} before
+                customers walk in.
               </p>
               <Link
                 to="/inventory"
@@ -148,4 +164,3 @@ export function OnboardingBanner({ locationId }: OnboardingBannerProps) {
     </div>
   );
 }
-

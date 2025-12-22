@@ -40,7 +40,10 @@ export interface OrderRecord {
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type OrderDocument = Omit<OrderRecord, 'id' | 'createdAt' | 'updatedAt' | 'completedAt' | 'heldAt' | 'paidAt' | 'returnedAt'> & {
+type OrderDocument = Omit<
+  OrderRecord,
+  'id' | 'createdAt' | 'updatedAt' | 'completedAt' | 'heldAt' | 'paidAt' | 'returnedAt'
+> & {
   customerId?: string;
   isHeld?: boolean;
   isCreditOrder?: boolean;
@@ -91,12 +94,12 @@ export class OrdersRepository {
     // Firestore query structure:
     // When using range queries (>=, <=) with orderBy:
     // 1. Equality filters come first
-    // 2. orderBy comes after equality filters  
+    // 2. orderBy comes after equality filters
     // 3. Range filters come last (must match orderBy field)
     // Note: Composite indexes are required when combining multiple where clauses with orderBy
-    
+
     let query: any = this.collection;
-    
+
     // Add equality filters first (most selective first for better performance)
     // These filters reduce the dataset before ordering
     if (params.tenantId) {
@@ -123,10 +126,10 @@ export class OrdersRepository {
     if (params.paymentStatus) {
       query = query.where('paymentStatus', '==', params.paymentStatus);
     }
-    
+
     // orderBy comes after equality filters
     query = query.orderBy('createdAt', 'desc');
-    
+
     // Range filters come last (must match orderBy field: createdAt)
     if (params.from) {
       query = query.where('createdAt', '>=', Timestamp.fromDate(params.from));
@@ -146,9 +149,9 @@ export class OrdersRepository {
         if (lastDoc) {
           batchQuery = query.startAfter(lastDoc);
         }
-        
+
         const snapshot = await batchQuery.limit(batchSize).get();
-        
+
         if (snapshot.empty) {
           break;
         }
@@ -170,15 +173,19 @@ export class OrdersRepository {
       console.error('Query params:', params);
       console.error('Error code:', error.code);
       console.error('Full error:', error);
-      
+
       // If it's an index error (code 9 = FAILED_PRECONDITION), try a simpler query
-      if (error.code === 9 || error.message?.includes('index') || error.message?.includes('requires an index')) {
+      if (
+        error.code === 9 ||
+        error.message?.includes('index') ||
+        error.message?.includes('requires an index')
+      ) {
         console.warn('⚠️ Firestore index missing, attempting fallback query...');
-        
+
         // Fallback: Use a simpler query without some filters, then filter in memory
         try {
           let fallbackQuery: any = this.collection.orderBy('createdAt', 'desc');
-          
+
           // Only use the most critical filters in the query
           if (params.tenantId) {
             fallbackQuery = fallbackQuery.where('tenantId', '==', params.tenantId);
@@ -186,53 +193,55 @@ export class OrdersRepository {
           if (params.status) {
             fallbackQuery = fallbackQuery.where('status', '==', params.status);
           }
-          
+
           // Get all matching orders
           const fallbackSnapshot = await fallbackQuery.limit(5000).get(); // Limit to prevent huge fetches
-          const fallbackOrders = fallbackSnapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
-          
+          const fallbackOrders = fallbackSnapshot.docs.map((doc) =>
+            this.toRecord(doc.id, doc.data()),
+          );
+
           // Filter in memory
           let filtered = fallbackOrders;
           if (params.locationId) {
-            filtered = filtered.filter(o => o.locationId === params.locationId);
+            filtered = filtered.filter((o) => o.locationId === params.locationId);
           }
           if (params.deviceId) {
-            filtered = filtered.filter(o => o.deviceId === params.deviceId);
+            filtered = filtered.filter((o) => o.deviceId === params.deviceId);
           }
           if (params.isHeld !== undefined) {
-            filtered = filtered.filter(o => o.isHeld === params.isHeld);
+            filtered = filtered.filter((o) => o.isHeld === params.isHeld);
           }
           if (params.customerId) {
-            filtered = filtered.filter(o => o.customerId === params.customerId);
+            filtered = filtered.filter((o) => o.customerId === params.customerId);
           }
           if (params.isCreditOrder !== undefined) {
-            filtered = filtered.filter(o => o.isCreditOrder === params.isCreditOrder);
+            filtered = filtered.filter((o) => o.isCreditOrder === params.isCreditOrder);
           }
           if (params.paymentStatus) {
-            filtered = filtered.filter(o => o.paymentStatus === params.paymentStatus);
+            filtered = filtered.filter((o) => o.paymentStatus === params.paymentStatus);
           }
           if (params.from) {
-            filtered = filtered.filter(o => o.createdAt >= params.from!);
+            filtered = filtered.filter((o) => o.createdAt >= params.from!);
           }
           if (params.to) {
-            filtered = filtered.filter(o => o.createdAt <= params.to!);
+            filtered = filtered.filter((o) => o.createdAt <= params.to!);
           }
-          
+
           // Sort by createdAt desc (already sorted from query, but ensure it)
           filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-          
+
           console.log(`✅ Fallback query successful: ${filtered.length} orders after filtering`);
           return filtered;
         } catch (fallbackError: any) {
           console.error('❌ Fallback query also failed:', fallbackError);
           throw new Error(
             `Firestore query failed. Indexes are being built - please wait a few minutes and try again. ` +
-            `If the error persists, check Firebase Console for index build status. ` +
-            `Original error: ${error.message}`
+              `If the error persists, check Firebase Console for index build status. ` +
+              `Original error: ${error.message}`,
           );
         }
       }
-      
+
       // Re-throw other errors
       throw error;
     }
@@ -272,7 +281,7 @@ export class OrdersRepository {
       createdAt: now,
       updatedAt: now,
     };
-    
+
     // Explicitly omit paidAt and returnedAt for new credit orders (they should only be set when marked as paid/returned)
     if (!data.paidAt) {
       delete doc.paidAt;
@@ -320,7 +329,9 @@ export class OrdersRepository {
     };
 
     if (update.completedAt !== undefined) {
-      updateDoc.completedAt = update.completedAt ? Timestamp.fromDate(update.completedAt) : undefined;
+      updateDoc.completedAt = update.completedAt
+        ? Timestamp.fromDate(update.completedAt)
+        : undefined;
     } else {
       updateDoc.completedAt = data.completedAt;
     }
@@ -333,17 +344,19 @@ export class OrdersRepository {
 
     if (update.paidAt !== undefined) {
       // If paidAt is null or undefined, delete the field; otherwise set it
-      updateDoc.paidAt = (update.paidAt !== null && update.paidAt !== undefined) 
-        ? Timestamp.fromDate(update.paidAt) 
-        : FieldValue.delete();
+      updateDoc.paidAt =
+        update.paidAt !== null && update.paidAt !== undefined
+          ? Timestamp.fromDate(update.paidAt)
+          : FieldValue.delete();
     }
     // Note: If paidAt is undefined in the update, we don't update it (keeps existing value)
 
     if (update.returnedAt !== undefined) {
       // If returnedAt is null or undefined, delete the field; otherwise set it
-      updateDoc.returnedAt = (update.returnedAt !== null && update.returnedAt !== undefined) 
-        ? Timestamp.fromDate(update.returnedAt) 
-        : FieldValue.delete();
+      updateDoc.returnedAt =
+        update.returnedAt !== null && update.returnedAt !== undefined
+          ? Timestamp.fromDate(update.returnedAt)
+          : FieldValue.delete();
     }
     // Note: If returnedAt is undefined in the update, we don't update it (keeps existing value)
 
@@ -354,7 +367,7 @@ export class OrdersRepository {
     if (update.isHeld !== undefined) updateDoc.isHeld = update.isHeld;
     if (update.isCreditOrder !== undefined) updateDoc.isCreditOrder = update.isCreditOrder;
     if (update.paymentStatus !== undefined) updateDoc.paymentStatus = update.paymentStatus;
-    
+
     await docRef.set(updateDoc, { merge: true });
 
     const updated = await docRef.get();
@@ -395,13 +408,15 @@ export class OrdersRepository {
       paymentStatus: data.paymentStatus,
       heldAt: this.timestampToDate(data.heldAt),
       // Only return paidAt if paymentStatus is COMPLETED (data validation to fix incorrect data)
-      paidAt: (data.paymentStatus === PaymentStatus.COMPLETED) 
-        ? (this.timestampToDate(data.paidAt) || undefined)
-        : undefined,
+      paidAt:
+        data.paymentStatus === PaymentStatus.COMPLETED
+          ? this.timestampToDate(data.paidAt) || undefined
+          : undefined,
       // Only return returnedAt if paymentStatus is REFUNDED (data validation to fix incorrect data)
-      returnedAt: (data.paymentStatus === PaymentStatus.REFUNDED)
-        ? (this.timestampToDate(data.returnedAt) || undefined)
-        : undefined,
+      returnedAt:
+        data.paymentStatus === PaymentStatus.REFUNDED
+          ? this.timestampToDate(data.returnedAt) || undefined
+          : undefined,
       createdAt: this.timestampToDate(data.createdAt) || new Date(),
       updatedAt: this.timestampToDate(data.updatedAt) || new Date(),
     };
@@ -418,4 +433,3 @@ export class OrdersRepository {
     return undefined;
   }
 }
-

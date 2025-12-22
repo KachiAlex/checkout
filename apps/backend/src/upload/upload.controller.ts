@@ -10,7 +10,14 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -60,10 +67,7 @@ export class UploadController {
   })
   @ApiResponse({ status: 200, description: 'File uploaded successfully' })
   @ApiResponse({ status: 400, description: 'Invalid file or request' })
-  async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
-    @Request() req: any,
-  ) {
+  async uploadFile(@UploadedFile() file: Express.Multer.File, @Request() req: any) {
     // With multipart/form-data, body fields are parsed by multer and available in req.body
     const folder = req.body?.folder;
     const tenantId = req.body?.tenantId;
@@ -86,9 +90,12 @@ export class UploadController {
 
     // Use tenantId from JWT if not provided in body
     const effectiveTenantId = tenantId || req.user?.tenantId;
-    
+
     if (!effectiveTenantId) {
-      console.error('[UploadController] No tenant ID available:', { tenantId, userTenantId: req.user?.tenantId });
+      console.error('[UploadController] No tenant ID available:', {
+        tenantId,
+        userTenantId: req.user?.tenantId,
+      });
       throw new BadRequestException('Tenant ID is required');
     }
 
@@ -98,4 +105,3 @@ export class UploadController {
     return this.uploadService.uploadFile(file, effectiveFolder, effectiveTenantId);
   }
 }
-

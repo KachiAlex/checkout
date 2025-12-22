@@ -51,9 +51,11 @@ export class FirestoreService {
       }
       return true;
     } catch (error) {
-      this.logger.error('Firestore health check failed', error instanceof Error ? error.stack : undefined);
+      this.logger.error(
+        'Firestore health check failed',
+        error instanceof Error ? error.stack : undefined,
+      );
       return false;
     }
   }
 }
-

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import axios from 'axios';
-import { API_URL } from '../config';
-import { toast } from 'react-hot-toast';
-import { format } from 'date-fns';
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../stores/authStore";
+import axios from "axios";
+import { API_URL } from "../config";
+import { toast } from "react-hot-toast";
+import { format } from "date-fns";
 
 interface ReturnItem {
   orderItemId: string;
@@ -20,7 +20,7 @@ interface Return {
   orderNumber: string;
   items: ReturnItem[];
   totalRefundCents: number;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: "PENDING" | "APPROVED" | "REJECTED";
   reason?: string;
   notes?: string;
   createdAt: string;
@@ -46,29 +46,62 @@ export function ReturnsPage() {
   const [returns, setReturns] = useState<Return[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [returnItems, setReturnItems] = useState<Array<{
-    orderItemId: string;
-    productId: string;
-    productName: string;
-    quantity: number;
-    returnQuantity: number;
-    refundAmountCents: number;
-  }>>([]);
-  const [returnReason, setReturnReason] = useState<ReturnReason>('CUSTOMER_REQUEST');
-  const [returnNotes, setReturnNotes] = useState('');
+  const [returnItems, setReturnItems] = useState<
+    Array<{
+      orderItemId: string;
+      productId: string;
+      productName: string;
+      quantity: number;
+      returnQuantity: number;
+      refundAmountCents: number;
+    }>
+  >([]);
+  const [returnReason, setReturnReason] =
+    useState<ReturnReason>("CUSTOMER_REQUEST");
+  const [returnNotes, setReturnNotes] = useState("");
 
-  const RETURN_REASONS: Array<{ value: ReturnReason; label: string; description?: string }> = [
-    { value: 'CUSTOMER_REQUEST', label: 'Customer Request', description: 'Customer requested return' },
-    { value: 'DEFECTIVE', label: 'Defective Product', description: 'Product is defective or not working' },
-    { value: 'WRONG_ITEM', label: 'Wrong Item', description: 'Wrong item was delivered' },
-    { value: 'DAMAGED', label: 'Damaged', description: 'Product arrived damaged' },
-    { value: 'EXPIRED', label: 'Expired', description: 'Product is expired' },
-    { value: 'OTHER', label: 'Other', description: 'Other reason (specify in notes)' },
+  const RETURN_REASONS: Array<{
+    value: ReturnReason;
+    label: string;
+    description?: string;
+  }> = [
+    {
+      value: "CUSTOMER_REQUEST",
+      label: "Customer Request",
+      description: "Customer requested return",
+    },
+    {
+      value: "DEFECTIVE",
+      label: "Defective Product",
+      description: "Product is defective or not working",
+    },
+    {
+      value: "WRONG_ITEM",
+      label: "Wrong Item",
+      description: "Wrong item was delivered",
+    },
+    {
+      value: "DAMAGED",
+      label: "Damaged",
+      description: "Product arrived damaged",
+    },
+    { value: "EXPIRED", label: "Expired", description: "Product is expired" },
+    {
+      value: "OTHER",
+      label: "Other",
+      description: "Other reason (specify in notes)",
+    },
   ];
 
-  type ReturnReason = 'DEFECTIVE' | 'WRONG_ITEM' | 'CUSTOMER_REQUEST' | 'EXPIRED' | 'DAMAGED' | 'OTHER';
+  type ReturnReason =
+    | "DEFECTIVE"
+    | "WRONG_ITEM"
+    | "CUSTOMER_REQUEST"
+    | "EXPIRED"
+    | "DAMAGED"
+    | "OTHER";
 
   const loadReturns = async () => {
     if (!accessToken) return;
@@ -81,9 +114,9 @@ export function ReturnsPage() {
       });
       setReturns(response.data || []);
     } catch (error: any) {
-      console.error('Failed to load returns:', error);
+      console.error("Failed to load returns:", error);
       if (error.response?.status !== 401) {
-        toast.error('Failed to load returns');
+        toast.error("Failed to load returns");
       }
     } finally {
       setLoading(false);
@@ -108,13 +141,16 @@ export function ReturnsPage() {
         const itemsWithNames = await Promise.all(
           order.items.map(async (item: any) => {
             try {
-              const productResponse = await axios.get(`${API_URL}/api/v1/products/${item.productId}`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-              });
+              const productResponse = await axios.get(
+                `${API_URL}/api/v1/products/${item.productId}`,
+                {
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                },
+              );
               return {
                 orderItemId: item.id,
                 productId: item.productId,
-                productName: productResponse.data.name || 'Unknown Product',
+                productName: productResponse.data.name || "Unknown Product",
                 quantity: item.quantity,
                 returnQuantity: 0,
                 refundAmountCents: 0,
@@ -123,7 +159,7 @@ export function ReturnsPage() {
               return {
                 orderItemId: item.id,
                 productId: item.productId,
-                productName: 'Unknown Product',
+                productName: "Unknown Product",
                 quantity: item.quantity,
                 returnQuantity: 0,
                 refundAmountCents: 0,
@@ -133,23 +169,36 @@ export function ReturnsPage() {
         );
         setReturnItems(itemsWithNames);
       } else {
-        toast.error('Order not found');
+        toast.error("Order not found");
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to search order');
+      toast.error(error.response?.data?.message || "Failed to search order");
     }
   };
 
-  const handleItemReturnQuantityChange = (orderItemId: string, returnQuantity: number) => {
+  const handleItemReturnQuantityChange = (
+    orderItemId: string,
+    returnQuantity: number,
+  ) => {
     setReturnItems((items) =>
       items.map((item) => {
         if (item.orderItemId === orderItemId) {
           const maxQuantity = item.quantity;
-          const actualReturnQuantity = Math.min(Math.max(0, returnQuantity), maxQuantity);
-          const refundAmountCents = Math.round(
-            (actualReturnQuantity / item.quantity) * (selectedOrder?.items.find((i) => i.id === orderItemId)?.priceCents || 0) * actualReturnQuantity,
+          const actualReturnQuantity = Math.min(
+            Math.max(0, returnQuantity),
+            maxQuantity,
           );
-          return { ...item, returnQuantity: actualReturnQuantity, refundAmountCents };
+          const refundAmountCents = Math.round(
+            (actualReturnQuantity / item.quantity) *
+              (selectedOrder?.items.find((i) => i.id === orderItemId)
+                ?.priceCents || 0) *
+              actualReturnQuantity,
+          );
+          return {
+            ...item,
+            returnQuantity: actualReturnQuantity,
+            refundAmountCents,
+          };
         }
         return item;
       }),
@@ -161,7 +210,7 @@ export function ReturnsPage() {
 
     const itemsToReturn = returnItems.filter((item) => item.returnQuantity > 0);
     if (itemsToReturn.length === 0) {
-      toast.error('Please select items to return');
+      toast.error("Please select items to return");
       return;
     }
 
@@ -173,7 +222,9 @@ export function ReturnsPage() {
           items: itemsToReturn.map((item) => ({
             productId: item.productId,
             quantity: item.returnQuantity,
-            priceCents: selectedOrder.items.find((i) => i.id === item.orderItemId)?.priceCents || 0,
+            priceCents:
+              selectedOrder.items.find((i) => i.id === item.orderItemId)
+                ?.priceCents || 0,
             reason: returnReason,
             notes: returnNotes,
           })),
@@ -184,15 +235,15 @@ export function ReturnsPage() {
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
-      toast.success('Return request created');
+      toast.success("Return request created");
       setShowCreateForm(false);
       setSelectedOrder(null);
       setReturnItems([]);
-      setReturnReason('CUSTOMER_REQUEST');
-      setReturnNotes('');
+      setReturnReason("CUSTOMER_REQUEST");
+      setReturnNotes("");
       loadReturns();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create return');
+      toast.error(error.response?.data?.message || "Failed to create return");
     }
   };
 
@@ -204,10 +255,10 @@ export function ReturnsPage() {
         {},
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      toast.success('Return approved');
+      toast.success("Return approved");
       loadReturns();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to approve return');
+      toast.error(error.response?.data?.message || "Failed to approve return");
     }
   };
 
@@ -219,14 +270,17 @@ export function ReturnsPage() {
         {},
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      toast.success('Return rejected');
+      toast.success("Return rejected");
       loadReturns();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to reject return');
+      toast.error(error.response?.data?.message || "Failed to reject return");
     }
   };
 
-  const totalRefund = returnItems.reduce((sum, item) => sum + item.refundAmountCents, 0);
+  const totalRefund = returnItems.reduce(
+    (sum, item) => sum + item.refundAmountCents,
+    0,
+  );
 
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">
@@ -234,8 +288,12 @@ export function ReturnsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
-            <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">Returns & Refunds</h1>
-            <p className="theme-text-secondary mt-1 text-xs sm:text-sm">Process returns and refunds for orders</p>
+            <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">
+              Returns & Refunds
+            </h1>
+            <p className="theme-text-secondary mt-1 text-xs sm:text-sm">
+              Process returns and refunds for orders
+            </p>
           </div>
           <button
             onClick={() => setShowCreateForm(true)}
@@ -259,9 +317,13 @@ export function ReturnsPage() {
         {/* Returns List */}
         <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
           {loading ? (
-            <div className="theme-text-secondary text-center py-8">Loading returns...</div>
+            <div className="theme-text-secondary text-center py-8">
+              Loading returns...
+            </div>
           ) : returns.length === 0 ? (
-            <div className="theme-text-secondary text-center py-8">No returns found</div>
+            <div className="theme-text-secondary text-center py-8">
+              No returns found
+            </div>
           ) : (
             <div className="space-y-3">
               {returns.map((returnItem) => (
@@ -277,11 +339,11 @@ export function ReturnsPage() {
                         </h3>
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            returnItem.status === 'APPROVED'
-                              ? 'bg-emerald-500/15 text-emerald-200'
-                              : returnItem.status === 'REJECTED'
-                              ? 'bg-rose-500/15 text-rose-200'
-                              : 'bg-amber-500/15 text-amber-200'
+                            returnItem.status === "APPROVED"
+                              ? "bg-emerald-500/15 text-emerald-200"
+                              : returnItem.status === "REJECTED"
+                                ? "bg-rose-500/15 text-rose-200"
+                                : "bg-amber-500/15 text-amber-200"
                           }`}
                         >
                           {returnItem.status}
@@ -291,19 +353,28 @@ export function ReturnsPage() {
                         Order: {returnItem.orderNumber}
                       </p>
                       <p className="theme-text-secondary text-sm">
-                        Items: {returnItem.items.length} • Refund: ₦{(returnItem.totalRefundCents / 100).toFixed(2)}
+                        Items: {returnItem.items.length} • Refund: ₦
+                        {(returnItem.totalRefundCents / 100).toFixed(2)}
                       </p>
                       {returnItem.reason && (
-                        <p className="theme-text-secondary mt-2 text-sm">Reason: {returnItem.reason}</p>
+                        <p className="theme-text-secondary mt-2 text-sm">
+                          Reason: {returnItem.reason}
+                        </p>
                       )}
                       {returnItem.notes && (
-                        <p className="theme-text-secondary mt-1 text-sm italic">{returnItem.notes}</p>
+                        <p className="theme-text-secondary mt-1 text-sm italic">
+                          {returnItem.notes}
+                        </p>
                       )}
                       <p className="theme-text-secondary mt-2 text-xs">
-                        Created: {format(new Date(returnItem.createdAt), 'MMM d, yyyy HH:mm')}
+                        Created:{" "}
+                        {format(
+                          new Date(returnItem.createdAt),
+                          "MMM d, yyyy HH:mm",
+                        )}
                       </p>
                     </div>
-                    {returnItem.status === 'PENDING' && (
+                    {returnItem.status === "PENDING" && (
                       <div className="flex flex-col gap-2">
                         <button
                           onClick={() => handleApproveReturn(returnItem.id)}
@@ -330,7 +401,9 @@ export function ReturnsPage() {
         {showCreateForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="theme-card w-full max-w-3xl rounded-3xl border p-6 backdrop-blur-xl max-h-[90vh] overflow-y-auto">
-              <h2 className="theme-text-primary text-xl font-semibold mb-4">Create Return</h2>
+              <h2 className="theme-text-primary text-xl font-semibold mb-4">
+                Create Return
+              </h2>
 
               {!selectedOrder ? (
                 <div className="space-y-4">
@@ -344,14 +417,16 @@ export function ReturnsPage() {
                         placeholder="Enter order number..."
                         className="flex-1 theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
+                          if (e.key === "Enter") {
                             searchOrder(e.currentTarget.value);
                           }
                         }}
                       />
                       <button
                         onClick={() => {
-                          const input = document.querySelector('input[placeholder="Enter order number..."]') as HTMLInputElement;
+                          const input = document.querySelector(
+                            'input[placeholder="Enter order number..."]',
+                          ) as HTMLInputElement;
                           if (input) searchOrder(input.value);
                         }}
                         className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-3 text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70"
@@ -365,7 +440,9 @@ export function ReturnsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="theme-text-primary font-semibold">Order: {selectedOrder.orderNumber}</p>
+                      <p className="theme-text-primary font-semibold">
+                        Order: {selectedOrder.orderNumber}
+                      </p>
                       <p className="theme-text-secondary text-sm">
                         Total: ₦{(selectedOrder.totalCents / 100).toFixed(2)}
                       </p>
@@ -382,7 +459,9 @@ export function ReturnsPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="theme-text-primary font-semibold">Select Items to Return</h3>
+                    <h3 className="theme-text-primary font-semibold">
+                      Select Items to Return
+                    </h3>
                     {returnItems.map((item) => (
                       <div
                         key={item.orderItemId}
@@ -390,17 +469,26 @@ export function ReturnsPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <p className="theme-text-primary font-semibold">{item.productName}</p>
+                            <p className="theme-text-primary font-semibold">
+                              {item.productName}
+                            </p>
                             <p className="theme-text-secondary text-sm">
                               Quantity: {item.quantity} • Price: ₦
-                              {((selectedOrder.items.find((i) => i.id === item.orderItemId)?.priceCents || 0) / 100).toFixed(2)}
+                              {(
+                                (selectedOrder.items.find(
+                                  (i) => i.id === item.orderItemId,
+                                )?.priceCents || 0) / 100
+                              ).toFixed(2)}
                             </p>
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() =>
-                                  handleItemReturnQuantityChange(item.orderItemId, item.returnQuantity - 1)
+                                  handleItemReturnQuantityChange(
+                                    item.orderItemId,
+                                    item.returnQuantity - 1,
+                                  )
                                 }
                                 className="rounded border border-white/20 bg-transparent px-2 py-1 text-sm font-semibold theme-text-primary transition hover:bg-white/5"
                                 disabled={item.returnQuantity <= 0}
@@ -411,7 +499,10 @@ export function ReturnsPage() {
                                 type="number"
                                 value={item.returnQuantity}
                                 onChange={(e) =>
-                                  handleItemReturnQuantityChange(item.orderItemId, parseInt(e.target.value) || 0)
+                                  handleItemReturnQuantityChange(
+                                    item.orderItemId,
+                                    parseInt(e.target.value) || 0,
+                                  )
                                 }
                                 min="0"
                                 max={item.quantity}
@@ -419,7 +510,10 @@ export function ReturnsPage() {
                               />
                               <button
                                 onClick={() =>
-                                  handleItemReturnQuantityChange(item.orderItemId, item.returnQuantity + 1)
+                                  handleItemReturnQuantityChange(
+                                    item.orderItemId,
+                                    item.returnQuantity + 1,
+                                  )
                                 }
                                 className="rounded border border-white/20 bg-transparent px-2 py-1 text-sm font-semibold theme-text-primary transition hover:bg-white/5"
                                 disabled={item.returnQuantity >= item.quantity}
@@ -444,17 +538,20 @@ export function ReturnsPage() {
                     </label>
                     <select
                       value={returnReason}
-                      onChange={(e) => setReturnReason(e.target.value as ReturnReason)}
+                      onChange={(e) =>
+                        setReturnReason(e.target.value as ReturnReason)
+                      }
                       className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                       required
                     >
                       {RETURN_REASONS.map((reason) => (
                         <option key={reason.value} value={reason.value}>
-                          {reason.label} {reason.description ? `- ${reason.description}` : ''}
+                          {reason.label}{" "}
+                          {reason.description ? `- ${reason.description}` : ""}
                         </option>
                       ))}
                     </select>
-                    {returnReason === 'OTHER' && (
+                    {returnReason === "OTHER" && (
                       <p className="theme-text-secondary mt-2 text-xs">
                         Please provide details in the notes field below
                       </p>
@@ -476,7 +573,9 @@ export function ReturnsPage() {
 
                   <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 p-4">
                     <div className="flex items-center justify-between">
-                      <span className="theme-text-primary font-semibold">Total Refund</span>
+                      <span className="theme-text-primary font-semibold">
+                        Total Refund
+                      </span>
                       <span className="text-2xl font-bold text-emerald-400">
                         ₦{(totalRefund / 100).toFixed(2)}
                       </span>
@@ -489,8 +588,8 @@ export function ReturnsPage() {
                         setShowCreateForm(false);
                         setSelectedOrder(null);
                         setReturnItems([]);
-                        setReturnReason('CUSTOMER_REQUEST');
-                        setReturnNotes('');
+                        setReturnReason("CUSTOMER_REQUEST");
+                        setReturnNotes("");
                       }}
                       className="flex-1 rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5"
                     >
@@ -498,7 +597,10 @@ export function ReturnsPage() {
                     </button>
                     <button
                       onClick={handleCreateReturn}
-                      disabled={returnItems.filter((item) => item.returnQuantity > 0).length === 0}
+                      disabled={
+                        returnItems.filter((item) => item.returnQuantity > 0)
+                          .length === 0
+                      }
                       className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Create Return
@@ -513,4 +615,3 @@ export function ReturnsPage() {
     </div>
   );
 }
-

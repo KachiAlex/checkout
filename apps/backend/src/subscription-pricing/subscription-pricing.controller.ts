@@ -31,4 +31,3 @@ export class SubscriptionPricingController {
     return this.pricingService.updatePricing(dto, userId);
   }
 }
-

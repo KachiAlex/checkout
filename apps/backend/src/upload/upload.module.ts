@@ -10,4 +10,3 @@ import { FirestoreModule } from '../firestore/firestore.module';
   exports: [UploadService],
 })
 export class UploadModule {}
-

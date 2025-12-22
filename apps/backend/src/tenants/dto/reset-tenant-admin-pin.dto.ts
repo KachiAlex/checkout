@@ -10,5 +10,3 @@ export class ResetTenantAdminPinDto {
   @IsEmail()
   adminEmail?: string;
 }
-
-

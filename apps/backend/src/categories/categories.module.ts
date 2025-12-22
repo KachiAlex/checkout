@@ -9,4 +9,3 @@ import { CategoriesRepository } from './categories.repository';
   exports: [CategoriesService, CategoriesRepository],
 })
 export class CategoriesModule {}
-

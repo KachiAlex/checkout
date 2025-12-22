@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { ReturnsRepository, ReturnRecord, ReturnStatus, CreateReturnInput } from './returns.repository';
+import {
+  ReturnsRepository,
+  ReturnRecord,
+  ReturnStatus,
+  CreateReturnInput,
+} from './returns.repository';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { OrdersService } from '../orders/orders.service';
 import { InventoryService } from '../inventory/inventory.service';
@@ -15,22 +20,28 @@ export class ReturnsService {
     private readonly paymentsService: PaymentsService,
   ) {}
 
-  async create(createReturnDto: CreateReturnDto, userId: string, locationId: string): Promise<ReturnRecord> {
+  async create(
+    createReturnDto: CreateReturnDto,
+    userId: string,
+    locationId: string,
+  ): Promise<ReturnRecord> {
     // Verify order exists
     const order = await this.ordersService.findOne(createReturnDto.orderId);
-    
+
     if (!order) {
       throw new NotFoundException(`Order ${createReturnDto.orderId} not found`);
     }
 
     // Validate return items exist in order
     for (const returnItem of createReturnDto.items) {
-      const orderItem = order.items.find(item => item.productId === returnItem.productId);
+      const orderItem = order.items.find((item) => item.productId === returnItem.productId);
       if (!orderItem) {
         throw new BadRequestException(`Product ${returnItem.productId} not found in order`);
       }
       if (returnItem.quantity > orderItem.quantity) {
-        throw new BadRequestException(`Return quantity (${returnItem.quantity}) exceeds ordered quantity (${orderItem.quantity})`);
+        throw new BadRequestException(
+          `Return quantity (${returnItem.quantity}) exceeds ordered quantity (${orderItem.quantity})`,
+        );
       }
     }
 
@@ -52,7 +63,7 @@ export class ReturnsService {
 
   async approve(returnId: string, userId: string): Promise<ReturnRecord> {
     const returnRecord = await this.returnsRepository.findById(returnId);
-    
+
     if (!returnRecord) {
       throw new NotFoundException(`Return ${returnId} not found`);
     }
@@ -75,7 +86,7 @@ export class ReturnsService {
     const orderPayments = await this.paymentsService.getOrderPayments(returnRecord.orderId);
     if (orderPayments.length > 0) {
       // Refund the first completed payment (or implement more sophisticated refund logic)
-      const completedPayment = orderPayments.find(p => p.status === PaymentStatus.COMPLETED);
+      const completedPayment = orderPayments.find((p) => p.status === PaymentStatus.COMPLETED);
       if (completedPayment) {
         await this.paymentsService.refund(completedPayment.id, returnRecord.totalRefundCents);
       }
@@ -91,7 +102,7 @@ export class ReturnsService {
 
   async reject(returnId: string, userId: string, reason?: string): Promise<ReturnRecord> {
     const returnRecord = await this.returnsRepository.findById(returnId);
-    
+
     if (!returnRecord) {
       throw new NotFoundException(`Return ${returnId} not found`);
     }
@@ -104,19 +115,23 @@ export class ReturnsService {
       status: ReturnStatus.REJECTED,
       processedBy: userId,
       processedAt: new Date(),
-      notes: reason ? `${returnRecord.notes || ''}\nRejection reason: ${reason}`.trim() : returnRecord.notes,
+      notes: reason
+        ? `${returnRecord.notes || ''}\nRejection reason: ${reason}`.trim()
+        : returnRecord.notes,
     });
   }
 
   async complete(returnId: string, userId: string): Promise<ReturnRecord> {
     const returnRecord = await this.returnsRepository.findById(returnId);
-    
+
     if (!returnRecord) {
       throw new NotFoundException(`Return ${returnId} not found`);
     }
 
     if (returnRecord.status !== ReturnStatus.APPROVED) {
-      throw new BadRequestException(`Return must be APPROVED before completion. Current status: ${returnRecord.status}`);
+      throw new BadRequestException(
+        `Return must be APPROVED before completion. Current status: ${returnRecord.status}`,
+      );
     }
 
     return this.returnsRepository.update(returnId, {
@@ -151,4 +166,3 @@ export class ReturnsService {
     });
   }
 }
-

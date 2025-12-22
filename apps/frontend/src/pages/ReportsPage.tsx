@@ -1,30 +1,33 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { BrandMark } from '../components/BrandMark';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { useAuthStore } from '../stores/authStore';
-import axios from 'axios';
-import { API_URL } from '../config';
-import { format } from 'date-fns';
-import toast from 'react-hot-toast';
-import { receiptService } from '../services/receiptService';
-import { ReceiptOptionsModal } from '../components/ReceiptOptionsModal';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { BrandMark } from "../components/BrandMark";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { useAuthStore } from "../stores/authStore";
+import axios from "axios";
+import { API_URL } from "../config";
+import { format } from "date-fns";
+import toast from "react-hot-toast";
+import { receiptService } from "../services/receiptService";
+import { ReceiptOptionsModal } from "../components/ReceiptOptionsModal";
 
 // Helper to get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
   const today = new Date();
-  return format(today, 'yyyy-MM-dd');
+  return format(today, "yyyy-MM-dd");
 };
 
 // Helper to safely format dates
-const safeFormatDate = (dateValue: string | Date | undefined | null, formatStr: string = 'MMM d, yyyy HH:mm'): string => {
-  if (!dateValue) return 'N/A';
+const safeFormatDate = (
+  dateValue: string | Date | undefined | null,
+  formatStr: string = "MMM d, yyyy HH:mm",
+): string => {
+  if (!dateValue) return "N/A";
   try {
     const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-    if (isNaN(date.getTime())) return 'N/A';
+    if (isNaN(date.getTime())) return "N/A";
     return format(date, formatStr);
   } catch (error) {
-    return 'N/A';
+    return "N/A";
   }
 };
 
@@ -46,21 +49,42 @@ interface PurchaseOrder {
   approvedAt?: string;
 }
 
-type ReportTab = 'sales' | 'top-sellers' | 'analytics' | 'alerts' | 'fraud' | 'expiry' | 'shrinkage' | 'staff' | 'inventory' | 'purchase-orders';
+type ReportTab =
+  | "sales"
+  | "top-sellers"
+  | "analytics"
+  | "alerts"
+  | "fraud"
+  | "expiry"
+  | "shrinkage"
+  | "staff"
+  | "inventory"
+  | "purchase-orders";
 
 export function ReportsPage() {
   const { accessToken, user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<ReportTab>('sales');
+  const [activeTab, setActiveTab] = useState<ReportTab>("sales");
   const [loading, setLoading] = useState(false);
-  const [locationId, setLocationId] = useState<string | null>(user?.locationId || null);
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
-  const [dateRange, setDateRange] = useState({ from: getTodayDate(), to: getTodayDate() });
-  const [salesAnalyticsPeriod, setSalesAnalyticsPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('daily');
+  const [locationId, setLocationId] = useState<string | null>(
+    user?.locationId || null,
+  );
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [dateRange, setDateRange] = useState({
+    from: getTodayDate(),
+    to: getTodayDate(),
+  });
+  const [salesAnalyticsPeriod, setSalesAnalyticsPeriod] = useState<
+    "daily" | "weekly" | "monthly" | "quarterly" | "yearly"
+  >("daily");
 
   // Report data states
   const [salesReport, setSalesReport] = useState<any>(null);
   const [topSellers, setTopSellers] = useState<any>(null);
-  const [topSellersType, setTopSellersType] = useState<'product' | 'staff'>('product');
+  const [topSellersType, setTopSellersType] = useState<"product" | "staff">(
+    "product",
+  );
   const [salesAnalytics, setSalesAnalytics] = useState<any>(null);
   const [alerts, setAlerts] = useState<any>(null);
   const [fraudAlerts, setFraudAlerts] = useState<any>(null);
@@ -69,7 +93,7 @@ export function ReportsPage() {
   const [staffPerformance, setStaffPerformance] = useState<any>(null);
   const [inventoryAnalytics, setInventoryAnalytics] = useState<any>(null);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  
+
   // Pagination states
   const [salesPage, setSalesPage] = useState(1);
   const [topSellersPage, setTopSellersPage] = useState(1);
@@ -82,17 +106,20 @@ export function ReportsPage() {
   const [shrinkagePage, setShrinkagePage] = useState(1);
   const [inventoryPage, setInventoryPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   // Receipt modal state
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  
+
   // Detail modal state
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<any>(null);
 
   // Memoize date range string to avoid unnecessary re-renders
-  const dateRangeKey = useMemo(() => `${dateRange.from}-${dateRange.to}`, [dateRange.from, dateRange.to]);
+  const dateRangeKey = useMemo(
+    () => `${dateRange.from}-${dateRange.to}`,
+    [dateRange.from, dateRange.to],
+  );
 
   const loadLocations = useCallback(async () => {
     if (!accessToken) return;
@@ -104,7 +131,7 @@ export function ReportsPage() {
         setLocationId(response.data[0].id);
       }
     } catch (error) {
-      console.error('Failed to load locations:', error);
+      console.error("Failed to load locations:", error);
     }
   }, [accessToken, locationId]);
 
@@ -113,90 +140,120 @@ export function ReportsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (locationId) params.append('location_id', locationId);
-      if (dateRange.from) params.append('from', dateRange.from);
-      if (dateRange.to) params.append('to', dateRange.to);
+      if (locationId) params.append("location_id", locationId);
+      if (dateRange.from) params.append("from", dateRange.from);
+      if (dateRange.to) params.append("to", dateRange.to);
 
       switch (activeTab) {
-        case 'sales':
+        case "sales":
           // Add pagination parameters for server-side pagination
-          params.append('limit', itemsPerPage.toString());
-          params.append('offset', ((salesPage - 1) * itemsPerPage).toString());
+          params.append("limit", itemsPerPage.toString());
+          params.append("offset", ((salesPage - 1) * itemsPerPage).toString());
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const salesRes = await axios.get(`${API_URL}/api/v1/reports/sales?${params}`);
+          const salesRes = await axios.get(
+            `${API_URL}/api/v1/reports/sales?${params}`,
+          );
           setSalesReport(salesRes.data);
           break;
 
-        case 'top-sellers':
-          params.append('limit', '20');
+        case "top-sellers":
+          params.append("limit", "20");
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const topRes = await axios.get(`${API_URL}/api/v1/reports/top-sellers?${params}`);
+          const topRes = await axios.get(
+            `${API_URL}/api/v1/reports/top-sellers?${params}`,
+          );
           setTopSellers(topRes.data);
           // Always load staff performance for staff top sellers view (reload when date range changes)
-          const topSellersStaffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
+          const topSellersStaffRes = await axios.get(
+            `${API_URL}/api/v1/reports/staff-performance?${params}`,
+          );
           setStaffPerformance(topSellersStaffRes.data);
           break;
 
-        case 'analytics':
-          params.append('period', salesAnalyticsPeriod);
+        case "analytics":
+          params.append("period", salesAnalyticsPeriod);
           // Date range is already in params from above
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const analyticsRes = await axios.get(`${API_URL}/api/v1/reports/sales-analytics?${params}`);
+          const analyticsRes = await axios.get(
+            `${API_URL}/api/v1/reports/sales-analytics?${params}`,
+          );
           setSalesAnalytics(analyticsRes.data);
           break;
 
-        case 'alerts':
+        case "alerts":
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const alertsRes = await axios.get(`${API_URL}/api/v1/reports/alerts?${params}`);
+          const alertsRes = await axios.get(
+            `${API_URL}/api/v1/reports/alerts?${params}`,
+          );
           setAlerts(alertsRes.data);
           break;
 
-        case 'fraud':
+        case "fraud":
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const fraudRes = await axios.get(`${API_URL}/api/v1/reports/fraud-detection?${params}`);
+          const fraudRes = await axios.get(
+            `${API_URL}/api/v1/reports/fraud-detection?${params}`,
+          );
           setFraudAlerts(fraudRes.data);
           break;
 
-        case 'expiry':
+        case "expiry":
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const expiryRes = await axios.get(`${API_URL}/api/v1/reports/expiry-analytics?${params}`);
+          const expiryRes = await axios.get(
+            `${API_URL}/api/v1/reports/expiry-analytics?${params}`,
+          );
           setExpiryAnalytics(expiryRes.data);
           break;
 
-        case 'shrinkage':
+        case "shrinkage":
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const shrinkageRes = await axios.get(`${API_URL}/api/v1/reports/shrinkage-detection?${params}`);
+          const shrinkageRes = await axios.get(
+            `${API_URL}/api/v1/reports/shrinkage-detection?${params}`,
+          );
           setShrinkageAlerts(shrinkageRes.data);
           break;
 
-        case 'staff':
+        case "staff":
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const staffRes = await axios.get(`${API_URL}/api/v1/reports/staff-performance?${params}`);
+          const staffRes = await axios.get(
+            `${API_URL}/api/v1/reports/staff-performance?${params}`,
+          );
           setStaffPerformance(staffRes.data);
           break;
 
-        case 'inventory':
-          params.append('period', 'daily');
+        case "inventory":
+          params.append("period", "daily");
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
-          const invRes = await axios.get(`${API_URL}/api/v1/reports/inventory-analytics?${params}`);
+          const invRes = await axios.get(
+            `${API_URL}/api/v1/reports/inventory-analytics?${params}`,
+          );
           setInventoryAnalytics(invRes.data);
           break;
 
-        case 'purchase-orders':
+        case "purchase-orders":
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const poRes = await axios.get(`${API_URL}/api/v1/purchase-orders`);
           setPurchaseOrders(poRes.data || []);
           break;
       }
     } catch (error: any) {
-      console.error('Failed to load report:', error);
+      console.error("Failed to load report:", error);
       if (error.response?.status !== 401) {
         toast.error(`Failed to load ${activeTab} report`);
       }
     } finally {
       setLoading(false);
     }
-  }, [accessToken, activeTab, locationId, dateRange.from, dateRange.to, salesPage, itemsPerPage, topSellersPage, salesAnalyticsPeriod]);
+  }, [
+    accessToken,
+    activeTab,
+    locationId,
+    dateRange.from,
+    dateRange.to,
+    salesPage,
+    itemsPerPage,
+    topSellersPage,
+    salesAnalyticsPeriod,
+  ]);
 
   // Memoize format functions
   const formatCurrency = useCallback((amount: number) => {
@@ -216,12 +273,12 @@ export function ReportsPage() {
     try {
       const success = await receiptService.printReceiptBrowser(orderId);
       if (success) {
-        toast.success('Opening print dialog...');
+        toast.success("Opening print dialog...");
       } else {
-        toast.error('Failed to open print dialog');
+        toast.error("Failed to open print dialog");
       }
     } catch (error) {
-      toast.error('Failed to print receipt');
+      toast.error("Failed to print receipt");
     }
   }, []);
 
@@ -236,53 +293,62 @@ export function ReportsPage() {
   }, []);
 
   // Memoize pagination helper
-  const paginate = useCallback(<T,>(items: T[], page: number, perPage: number) => {
-    const start = (page - 1) * perPage;
-    const end = start + perPage;
-    return {
-      items: items.slice(start, end),
-      totalPages: Math.ceil(items.length / perPage),
-      currentPage: page,
-      totalItems: items.length,
-    };
-  }, []);
+  const paginate = useCallback(
+    <T,>(items: T[], page: number, perPage: number) => {
+      const start = (page - 1) * perPage;
+      const end = start + perPage;
+      return {
+        items: items.slice(start, end),
+        totalPages: Math.ceil(items.length / perPage),
+        currentPage: page,
+        totalItems: items.length,
+      };
+    },
+    [],
+  );
 
-  const getSeverityColor = useCallback((severity: string, alertType?: string) => {
-    // Special styling for low stock alerts
-    if (alertType === 'low_stock' || alertType === 'stockout') {
-      switch (severity) {
-        case 'critical':
-          return 'bg-red-600/30 text-red-200 border-red-500/70 shadow-lg shadow-red-500/20 animate-pulse';
-        case 'warning':
-          return 'bg-orange-500/30 text-orange-200 border-orange-500/70 shadow-lg shadow-orange-500/20';
-        default:
-          return 'bg-yellow-500/30 text-yellow-200 border-yellow-500/70 shadow-lg shadow-yellow-500/20';
+  const getSeverityColor = useCallback(
+    (severity: string, alertType?: string) => {
+      // Special styling for low stock alerts
+      if (alertType === "low_stock" || alertType === "stockout") {
+        switch (severity) {
+          case "critical":
+            return "bg-red-600/30 text-red-200 border-red-500/70 shadow-lg shadow-red-500/20 animate-pulse";
+          case "warning":
+            return "bg-orange-500/30 text-orange-200 border-orange-500/70 shadow-lg shadow-orange-500/20";
+          default:
+            return "bg-yellow-500/30 text-yellow-200 border-yellow-500/70 shadow-lg shadow-yellow-500/20";
+        }
       }
-    }
-    
-    switch (severity) {
-      case 'critical':
-        return 'bg-red-500/20 text-red-400 border-red-500/50';
-      case 'warning':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
-      default:
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
-    }
-  }, []);
+
+      switch (severity) {
+        case "critical":
+          return "bg-red-500/20 text-red-400 border-red-500/50";
+        case "warning":
+          return "bg-yellow-500/20 text-yellow-400 border-yellow-500/50";
+        default:
+          return "bg-blue-500/20 text-blue-400 border-blue-500/50";
+      }
+    },
+    [],
+  );
 
   // Memoize tabs array
-  const tabs: Array<{ id: ReportTab; label: string; icon: string }> = useMemo(() => [
-    { id: 'sales', label: 'Sales Report', icon: '💰' },
-    { id: 'top-sellers', label: 'Top Sellers', icon: '🏆' },
-    { id: 'analytics', label: 'Sales Analytics', icon: '📊' },
-    { id: 'alerts', label: 'Smart Alerts', icon: '🔔' },
-    { id: 'fraud', label: 'Fraud Detection', icon: '🛡️' },
-    { id: 'expiry', label: 'Expiry Analytics', icon: '⏰' },
-    { id: 'shrinkage', label: 'Shrinkage Detection', icon: '📉' },
-    { id: 'staff', label: 'Staff Performance', icon: '👥' },
-    { id: 'inventory', label: 'Inventory Analytics', icon: '📦' },
-    { id: 'purchase-orders', label: 'Purchase Orders', icon: '📋' },
-  ], []);
+  const tabs: Array<{ id: ReportTab; label: string; icon: string }> = useMemo(
+    () => [
+      { id: "sales", label: "Sales Report", icon: "💰" },
+      { id: "top-sellers", label: "Top Sellers", icon: "🏆" },
+      { id: "analytics", label: "Sales Analytics", icon: "📊" },
+      { id: "alerts", label: "Smart Alerts", icon: "🔔" },
+      { id: "fraud", label: "Fraud Detection", icon: "🛡️" },
+      { id: "expiry", label: "Expiry Analytics", icon: "⏰" },
+      { id: "shrinkage", label: "Shrinkage Detection", icon: "📉" },
+      { id: "staff", label: "Staff Performance", icon: "👥" },
+      { id: "inventory", label: "Inventory Analytics", icon: "📦" },
+      { id: "purchase-orders", label: "Purchase Orders", icon: "📋" },
+    ],
+    [],
+  );
 
   const activeTabMeta = useMemo(() => {
     return tabs.find((t) => t.id === activeTab) ?? tabs[0];
@@ -300,7 +366,7 @@ export function ReportsPage() {
       orderNumber: string;
       orderId: string;
     }> = [];
-    
+
     salesReport.orders.forEach((order: any) => {
       order.items?.forEach((item: any) => {
         rows.push({
@@ -314,7 +380,7 @@ export function ReportsPage() {
         });
       });
     });
-    
+
     return rows;
   }, [salesReport]);
 
@@ -381,34 +447,46 @@ export function ReportsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {locations.length > 0 && (
               <div className="sm:col-span-1">
-                <label className="block text-xs font-medium theme-text-secondary mb-1.5">Location</label>
+                <label className="block text-xs font-medium theme-text-secondary mb-1.5">
+                  Location
+                </label>
                 <select
-                  value={locationId || ''}
+                  value={locationId || ""}
                   onChange={(e) => setLocationId(e.target.value || null)}
                   className="w-full theme-surface rounded-lg border theme-border px-3 py-2.5 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
                 >
                   <option value="">All Locations</option>
-                  {locations.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
                   ))}
                 </select>
               </div>
             )}
             <div className="sm:col-span-1">
-              <label className="block text-xs font-medium theme-text-secondary mb-1.5">From Date</label>
+              <label className="block text-xs font-medium theme-text-secondary mb-1.5">
+                From Date
+              </label>
               <input
                 type="date"
                 value={dateRange.from}
-                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                onChange={(e) =>
+                  setDateRange({ ...dateRange, from: e.target.value })
+                }
                 className="w-full theme-surface rounded-lg border theme-border px-3 py-2.5 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
               />
             </div>
             <div className="sm:col-span-1 lg:col-span-1">
-              <label className="block text-xs font-medium theme-text-secondary mb-1.5">To Date</label>
+              <label className="block text-xs font-medium theme-text-secondary mb-1.5">
+                To Date
+              </label>
               <input
                 type="date"
                 value={dateRange.to}
-                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                onChange={(e) =>
+                  setDateRange({ ...dateRange, to: e.target.value })
+                }
                 className="w-full theme-surface rounded-lg border theme-border px-3 py-2.5 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
               />
             </div>
@@ -418,7 +496,9 @@ export function ReportsPage() {
         {/* Tabs */}
         <div className="mb-4 sm:mb-6 space-y-3">
           <div className="sm:hidden">
-            <label className="block text-xs font-medium theme-text-secondary mb-1.5">Report</label>
+            <label className="block text-xs font-medium theme-text-secondary mb-1.5">
+              Report
+            </label>
             <select
               value={activeTab}
               onChange={(e) => setActiveTab(e.target.value as ReportTab)}
@@ -440,8 +520,8 @@ export function ReportsPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium transition whitespace-nowrap border ${
                     activeTab === tab.id
-                      ? 'bg-sky-400/15 text-sky-300 border-sky-400/40'
-                      : 'theme-text-secondary border-transparent hover:theme-text-primary hover:bg-white/5'
+                      ? "bg-sky-400/15 text-sky-300 border-sky-400/40"
+                      : "theme-text-secondary border-transparent hover:theme-text-primary hover:bg-white/5"
                   }`}
                 >
                   <span className="text-base">{tab.icon}</span>
@@ -457,8 +537,10 @@ export function ReportsPage() {
                 {activeTabMeta.icon} {activeTabMeta.label}
               </h2>
               <p className="text-xs sm:text-sm theme-text-secondary truncate">
-                {locationId ? `Location: ${locations.find((l) => l.id === locationId)?.name ?? locationId}` : 'All locations'}
-                {' • '}
+                {locationId
+                  ? `Location: ${locations.find((l) => l.id === locationId)?.name ?? locationId}`
+                  : "All locations"}
+                {" • "}
                 {dateRange.from} to {dateRange.to}
               </p>
             </div>
@@ -470,264 +552,282 @@ export function ReportsPage() {
           {loading ? (
             <div className="text-center py-8 sm:py-12">
               <div className="inline-block h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-sky-400 border-t-transparent mb-3 sm:mb-4" />
-              <p className="theme-text-secondary text-sm sm:text-base">Loading report...</p>
+              <p className="theme-text-secondary text-sm sm:text-base">
+                Loading report...
+              </p>
             </div>
           ) : (
             <>
               {/* Show message if no data for current tab */}
-              {activeTab === 'sales' && !salesReport && !loading && (
+              {activeTab === "sales" && !salesReport && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No sales data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No sales data available. Try adjusting your filters or date
+                    range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'top-sellers' && !topSellers && !loading && (
+              {activeTab === "top-sellers" && !topSellers && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No top sellers data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No top sellers data available. Try adjusting your filters or
+                    date range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'analytics' && !salesAnalytics && !loading && (
+              {activeTab === "analytics" && !salesAnalytics && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No analytics data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No analytics data available. Try adjusting your filters or
+                    date range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'alerts' && !alerts && !loading && (
+              {activeTab === "alerts" && !alerts && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No alerts data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No alerts data available. Try adjusting your filters or date
+                    range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'fraud' && !fraudAlerts && !loading && (
+              {activeTab === "fraud" && !fraudAlerts && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No fraud detection data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No fraud detection data available. Try adjusting your
+                    filters or date range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'expiry' && !expiryAnalytics && !loading && (
+              {activeTab === "expiry" && !expiryAnalytics && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No expiry analytics data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No expiry analytics data available. Try adjusting your
+                    filters or date range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'shrinkage' && !shrinkageAlerts && !loading && (
+              {activeTab === "shrinkage" && !shrinkageAlerts && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No shrinkage data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No shrinkage data available. Try adjusting your filters or
+                    date range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'staff' && !staffPerformance && !loading && (
+              {activeTab === "staff" && !staffPerformance && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No staff performance data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No staff performance data available. Try adjusting your
+                    filters or date range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'inventory' && !inventoryAnalytics && !loading && (
+              {activeTab === "inventory" && !inventoryAnalytics && !loading && (
                 <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No inventory analytics data available. Try adjusting your filters or date range.</p>
+                  <p className="theme-text-secondary text-sm sm:text-base px-4">
+                    No inventory analytics data available. Try adjusting your
+                    filters or date range.
+                  </p>
                 </div>
               )}
-              {activeTab === 'purchase-orders' && purchaseOrders.length === 0 && !loading && (
-                <div className="text-center py-8 sm:py-12">
-                  <p className="theme-text-secondary text-sm sm:text-base px-4">No purchase orders found.</p>
-                </div>
-              )}
+              {activeTab === "purchase-orders" &&
+                purchaseOrders.length === 0 &&
+                !loading && (
+                  <div className="text-center py-8 sm:py-12">
+                    <p className="theme-text-secondary text-sm sm:text-base px-4">
+                      No purchase orders found.
+                    </p>
+                  </div>
+                )}
               {/* Sales Report */}
-              {activeTab === 'sales' && salesReport && (() => {
-                const pagination = salesReport.pagination || { limit: itemsPerPage, offset: 0, total: salesReport.totalOrders || 0, hasMore: false };
-                const totalPages = Math.ceil(pagination.total / pagination.limit);
-                const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
+              {activeTab === "sales" &&
+                salesReport &&
+                (() => {
+                  const pagination = salesReport.pagination || {
+                    limit: itemsPerPage,
+                    offset: 0,
+                    total: salesReport.totalOrders || 0,
+                    hasMore: false,
+                  };
+                  const totalPages = Math.ceil(
+                    pagination.total / pagination.limit,
+                  );
+                  const currentPage =
+                    Math.floor(pagination.offset / pagination.limit) + 1;
 
-                return (
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-sky-500/10 to-blue-500/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">Total Sales</p>
-                        <span className="text-lg sm:text-xl">💰</span>
-                      </div>
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">{formatCurrency(salesReport.totalSales)}</p>
-                    </div>
-                    <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-green-500/10 to-emerald-500/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">Total Orders</p>
-                        <span className="text-lg sm:text-xl">📦</span>
-                      </div>
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">{salesReport.totalOrders}</p>
-                    </div>
-                    <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-purple-500/10 to-pink-500/5 sm:col-span-2 lg:col-span-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">Avg Order Value</p>
-                        <span className="text-lg sm:text-xl">📊</span>
-                      </div>
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">{formatCurrency(salesReport.averageOrderValue)}</p>
-                    </div>
-                  </div>
-                    
-                    {salesRows.length > 0 ? (
-                    <div>
-                        <div className="space-y-2">
-                          {salesRows.map((row, idx) => (
-                            <div
-                              key={`${row.orderId}-${row.productId}-${idx}`}
-                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl">📦</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium theme-text-primary truncate">{row.productName}</p>
-                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                    <span>Order: {row.orderNumber}</span>
-                                    <span>Qty: {row.totalOrder}</span>
-                                    <span>Price: {formatCurrency(row.price)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <button
-                                  onClick={() => handleViewDetails({ ...row, type: 'sales' })}
-                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
-                                  title="View Details"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleViewReceipt(row.orderId)}
-                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
-                                  title="View Receipt"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handlePrintReceipt(row.orderId)}
-                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
-                                  title="Print Receipt"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t theme-border">
-                            <p className="text-xs sm:text-sm theme-text-secondary text-center sm:text-left">
-                              Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
+                  return (
+                    <div className="space-y-4 sm:space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-sky-500/10 to-blue-500/5">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">
+                              Total Sales
                             </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setSalesPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setSalesPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages || !pagination.hasMore}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
-                      </div>
-                    </div>
-                    )}
-                </div>
-                    ) : (
-                      <p className="theme-text-secondary text-center py-8 text-sm sm:text-base px-4">No sales data available</p>
-              )}
-                  </div>
-                );
-              })()}
-
-              {/* Top Sellers */}
-              {activeTab === 'top-sellers' && topSellers && (
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                    <h3 className="text-base sm:text-lg font-semibold theme-text-primary">Top Sellers</h3>
-                    <div className="flex gap-2 border theme-border rounded-lg p-1 w-full sm:w-auto">
-                      <button
-                        onClick={() => setTopSellersType('product')}
-                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition ${
-                          topSellersType === 'product'
-                            ? 'bg-sky-400 text-white'
-                            : 'theme-text-secondary hover:theme-text-primary'
-                        }`}
-                      >
-                        Product
-                      </button>
-                      <button
-                        onClick={() => setTopSellersType('staff')}
-                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition ${
-                          topSellersType === 'staff'
-                            ? 'bg-sky-400 text-white'
-                            : 'theme-text-secondary hover:theme-text-primary'
-                        }`}
-                      >
-                        Staff
-                      </button>
-                            </div>
+                            <span className="text-lg sm:text-xl">💰</span>
                           </div>
-                  
-                  {topSellersType === 'product' ? (
-                    topSellers.topSellers && topSellers.topSellers.length > 0 ? (() => {
-                      const paginated = paginate(topSellers.topSellers, topSellersPage, itemsPerPage);
-                      return (
-                        <>
-                          <div className="space-y-2 sm:space-y-3">
-                            {paginated.items.map((item: any, idx: number) => (
+                          <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">
+                            {formatCurrency(salesReport.totalSales)}
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-green-500/10 to-emerald-500/5">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">
+                              Total Orders
+                            </p>
+                            <span className="text-lg sm:text-xl">📦</span>
+                          </div>
+                          <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">
+                            {salesReport.totalOrders}
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-lg sm:rounded-xl border theme-border p-4 sm:p-5 bg-gradient-to-br from-purple-500/10 to-pink-500/5 sm:col-span-2 lg:col-span-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs sm:text-sm font-medium theme-text-secondary uppercase tracking-wide">
+                              Avg Order Value
+                            </p>
+                            <span className="text-lg sm:text-xl">📊</span>
+                          </div>
+                          <p className="text-xl sm:text-2xl lg:text-3xl font-bold theme-text-primary">
+                            {formatCurrency(salesReport.averageOrderValue)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {salesRows.length > 0 ? (
+                        <div>
+                          <div className="space-y-2">
+                            {salesRows.map((row, idx) => (
                               <div
-                                key={item.productId}
-                                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                                key={`${row.orderId}-${row.productId}-${idx}`}
+                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
                               >
-                                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                                  <div className="flex-shrink-0 text-lg sm:text-2xl font-bold theme-text-primary">
-                                    #{(topSellersPage - 1) * itemsPerPage + idx + 1}
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl">
+                                    📦
                                   </div>
-                                  <div className="flex-shrink-0 text-xl sm:text-2xl">🏆</div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-medium theme-text-primary truncate text-sm sm:text-base">{item.productName || item.productId}</p>
-                                    <div className="flex flex-wrap gap-2 sm:gap-3 mt-1.5 text-xs sm:text-sm theme-text-secondary">
-                                      <span className="px-2 py-0.5 rounded bg-white/5">Qty: {item.quantitySold}</span>
-                                      <span className="px-2 py-0.5 rounded bg-white/5 font-semibold">Revenue: {formatCurrency(item.revenue)}</span>
-                                      {item.productName && item.productId !== item.productName && (
-                                        <span className="text-xs opacity-60 px-2 py-0.5 rounded bg-white/5">ID: {item.productId}</span>
-                                      )}
+                                    <p className="font-medium theme-text-primary truncate">
+                                      {row.productName}
+                                    </p>
+                                    <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                      <span>Order: {row.orderNumber}</span>
+                                      <span>Qty: {row.totalOrder}</span>
+                                      <span>
+                                        Price: {formatCurrency(row.price)}
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => handleViewDetails({ ...item, type: 'top-seller-product' })}
-                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 self-end sm:self-auto active:scale-95"
-                                  title="View Details"
-                                >
-                                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                </button>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <button
+                                    onClick={() =>
+                                      handleViewDetails({
+                                        ...row,
+                                        type: "sales",
+                                      })
+                                    }
+                                    className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
+                                    title="View Details"
+                                  >
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                      />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleViewReceipt(row.orderId)
+                                    }
+                                    className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
+                                    title="View Receipt"
+                                  >
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handlePrintReceipt(row.orderId)
+                                    }
+                                    className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition"
+                                    title="Print Receipt"
+                                  >
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
-                          
-                          {paginated.totalPages > 1 && (
+
+                          {/* Pagination */}
+                          {totalPages > 1 && (
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t theme-border">
                               <p className="text-xs sm:text-sm theme-text-secondary text-center sm:text-left">
-                                Showing {((topSellersPage - 1) * itemsPerPage) + 1} to {Math.min(topSellersPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                                Showing {pagination.offset + 1} to{" "}
+                                {Math.min(
+                                  pagination.offset + pagination.limit,
+                                  pagination.total,
+                                )}{" "}
+                                of {pagination.total}
                               </p>
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => setTopSellersPage(p => Math.max(1, p - 1))}
-                                  disabled={topSellersPage === 1}
+                                  onClick={() =>
+                                    setSalesPage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={currentPage === 1}
                                   className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Previous
                                 </button>
                                 <button
-                                  onClick={() => setTopSellersPage(p => Math.min(paginated.totalPages, p + 1))}
-                                  disabled={topSellersPage === paginated.totalPages}
+                                  onClick={() =>
+                                    setSalesPage((p) =>
+                                      Math.min(totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={
+                                    currentPage === totalPages ||
+                                    !pagination.hasMore
+                                  }
                                   className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Next
@@ -735,22 +835,196 @@ export function ReportsPage() {
                               </div>
                             </div>
                           )}
-                        </>
-                      );
-                    })() : (
-                    <p className="theme-text-secondary text-center py-8">No sales data available</p>
+                        </div>
+                      ) : (
+                        <p className="theme-text-secondary text-center py-8 text-sm sm:text-base px-4">
+                          No sales data available
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
+              {/* Top Sellers */}
+              {activeTab === "top-sellers" && topSellers && (
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                    <h3 className="text-base sm:text-lg font-semibold theme-text-primary">
+                      Top Sellers
+                    </h3>
+                    <div className="flex gap-2 border theme-border rounded-lg p-1 w-full sm:w-auto">
+                      <button
+                        onClick={() => setTopSellersType("product")}
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition ${
+                          topSellersType === "product"
+                            ? "bg-sky-400 text-white"
+                            : "theme-text-secondary hover:theme-text-primary"
+                        }`}
+                      >
+                        Product
+                      </button>
+                      <button
+                        onClick={() => setTopSellersType("staff")}
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition ${
+                          topSellersType === "staff"
+                            ? "bg-sky-400 text-white"
+                            : "theme-text-secondary hover:theme-text-primary"
+                        }`}
+                      >
+                        Staff
+                      </button>
+                    </div>
+                  </div>
+
+                  {topSellersType === "product" ? (
+                    topSellers.topSellers &&
+                    topSellers.topSellers.length > 0 ? (
+                      (() => {
+                        const paginated = paginate(
+                          topSellers.topSellers,
+                          topSellersPage,
+                          itemsPerPage,
+                        );
+                        return (
+                          <>
+                            <div className="space-y-2 sm:space-y-3">
+                              {paginated.items.map((item: any, idx: number) => (
+                                <div
+                                  key={item.productId}
+                                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                                >
+                                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                    <div className="flex-shrink-0 text-lg sm:text-2xl font-bold theme-text-primary">
+                                      #
+                                      {(topSellersPage - 1) * itemsPerPage +
+                                        idx +
+                                        1}
+                                    </div>
+                                    <div className="flex-shrink-0 text-xl sm:text-2xl">
+                                      🏆
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium theme-text-primary truncate text-sm sm:text-base">
+                                        {item.productName || item.productId}
+                                      </p>
+                                      <div className="flex flex-wrap gap-2 sm:gap-3 mt-1.5 text-xs sm:text-sm theme-text-secondary">
+                                        <span className="px-2 py-0.5 rounded bg-white/5">
+                                          Qty: {item.quantitySold}
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded bg-white/5 font-semibold">
+                                          Revenue:{" "}
+                                          {formatCurrency(item.revenue)}
+                                        </span>
+                                        {item.productName &&
+                                          item.productId !==
+                                            item.productName && (
+                                            <span className="text-xs opacity-60 px-2 py-0.5 rounded bg-white/5">
+                                              ID: {item.productId}
+                                            </span>
+                                          )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() =>
+                                      handleViewDetails({
+                                        ...item,
+                                        type: "top-seller-product",
+                                      })
+                                    }
+                                    className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 self-end sm:self-auto active:scale-95"
+                                    title="View Details"
+                                  >
+                                    <svg
+                                      className="w-4 h-4 sm:w-5 sm:h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                      />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+
+                            {paginated.totalPages > 1 && (
+                              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t theme-border">
+                                <p className="text-xs sm:text-sm theme-text-secondary text-center sm:text-left">
+                                  Showing{" "}
+                                  {(topSellersPage - 1) * itemsPerPage + 1} to{" "}
+                                  {Math.min(
+                                    topSellersPage * itemsPerPage,
+                                    paginated.totalItems,
+                                  )}{" "}
+                                  of {paginated.totalItems}
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() =>
+                                      setTopSellersPage((p) =>
+                                        Math.max(1, p - 1),
+                                      )
+                                    }
+                                    disabled={topSellersPage === 1}
+                                    className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                  >
+                                    Previous
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setTopSellersPage((p) =>
+                                        Math.min(paginated.totalPages, p + 1),
+                                      )
+                                    }
+                                    disabled={
+                                      topSellersPage === paginated.totalPages
+                                    }
+                                    className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                  >
+                                    Next
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <p className="theme-text-secondary text-center py-8">
+                        No sales data available
+                      </p>
                     )
-                  ) : (
-                    staffPerformance && staffPerformance.staffPerformance && staffPerformance.staffPerformance.length > 0 ? (() => {
-                      const staffList = staffPerformance.staffPerformance.map((staff: any) => ({
-                        userId: staff.userId,
-                        userName: staff.userName,
-                        totalSales: staff.sales?.totalSales || 0,
-                        orderCount: staff.sales?.orderCount || 0,
-                      })).sort((a: any, b: any) => b.totalSales - a.totalSales);
-                      
-                      const paginated = paginate(staffList, topSellersPage, itemsPerPage);
-                      
+                  ) : staffPerformance &&
+                    staffPerformance.staffPerformance &&
+                    staffPerformance.staffPerformance.length > 0 ? (
+                    (() => {
+                      const staffList = staffPerformance.staffPerformance
+                        .map((staff: any) => ({
+                          userId: staff.userId,
+                          userName: staff.userName,
+                          totalSales: staff.sales?.totalSales || 0,
+                          orderCount: staff.sales?.orderCount || 0,
+                        }))
+                        .sort((a: any, b: any) => b.totalSales - a.totalSales);
+
+                      const paginated = paginate(
+                        staffList,
+                        topSellersPage,
+                        itemsPerPage,
+                      );
+
                       return (
                         <>
                           <div className="space-y-2">
@@ -761,47 +1035,91 @@ export function ReportsPage() {
                               >
                                 <div className="flex items-center gap-4 flex-1 min-w-0">
                                   <div className="flex-shrink-0 text-2xl font-bold theme-text-primary">
-                                    #{(topSellersPage - 1) * itemsPerPage + idx + 1}
+                                    #
+                                    {(topSellersPage - 1) * itemsPerPage +
+                                      idx +
+                                      1}
                                   </div>
-                                  <div className="flex-shrink-0 text-2xl">👤</div>
+                                  <div className="flex-shrink-0 text-2xl">
+                                    👤
+                                  </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-medium theme-text-primary truncate">{staff.userName}</p>
+                                    <p className="font-medium theme-text-primary truncate">
+                                      {staff.userName}
+                                    </p>
                                     <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                      <span>Sales: {formatCurrency(staff.totalSales)}</span>
+                                      <span>
+                                        Sales:{" "}
+                                        {formatCurrency(staff.totalSales)}
+                                      </span>
                                       <span>Orders: {staff.orderCount}</span>
                                     </div>
                                   </div>
                                 </div>
                                 <button
-                                  onClick={() => handleViewDetails({ ...staff, type: 'top-seller-staff' })}
+                                  onClick={() =>
+                                    handleViewDetails({
+                                      ...staff,
+                                      type: "top-seller-staff",
+                                    })
+                                  }
                                   className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
                                   title="View Details"
                                 >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    />
                                   </svg>
                                 </button>
                               </div>
                             ))}
                           </div>
-                          
+
                           {paginated.totalPages > 1 && (
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 border-t theme-border">
                               <p className="text-xs sm:text-sm theme-text-secondary text-center sm:text-left">
-                                Showing {((topSellersPage - 1) * itemsPerPage) + 1} to {Math.min(topSellersPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                                Showing{" "}
+                                {(topSellersPage - 1) * itemsPerPage + 1} to{" "}
+                                {Math.min(
+                                  topSellersPage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
                               </p>
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => setTopSellersPage(p => Math.max(1, p - 1))}
+                                  onClick={() =>
+                                    setTopSellersPage((p) => Math.max(1, p - 1))
+                                  }
                                   disabled={topSellersPage === 1}
                                   className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Previous
                                 </button>
                                 <button
-                                  onClick={() => setTopSellersPage(p => Math.min(paginated.totalPages, p + 1))}
-                                  disabled={topSellersPage === paginated.totalPages}
+                                  onClick={() =>
+                                    setTopSellersPage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={
+                                    topSellersPage === paginated.totalPages
+                                  }
                                   className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                                 >
                                   Next
@@ -811,513 +1129,918 @@ export function ReportsPage() {
                           )}
                         </>
                       );
-                    })() : (
-                      <p className="theme-text-secondary text-center py-8">No staff data available</p>
-                    )
+                    })()
+                  ) : (
+                    <p className="theme-text-secondary text-center py-8">
+                      No staff data available
+                    </p>
                   )}
                 </div>
               )}
 
               {/* Sales Analytics */}
-              {activeTab === 'analytics' && salesAnalytics && (() => {
-                const paginated = paginate(salesAnalytics.data || [], analyticsPage, itemsPerPage);
-                const formatDelta = (v: any) => {
-                  if (!v || typeof v.delta !== 'number') return null;
-                  const isUp = v.delta > 0;
-                  const isDown = v.delta < 0;
-                  const colorClass = isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : 'theme-text-secondary';
-                  const sign = isUp ? '+' : '';
-                  const percent = typeof v.deltaPercent === 'number' ? v.deltaPercent : null;
-                  return (
-                    <span className={`text-xs font-medium ${colorClass}`}>
-                      {sign}{Number(v.delta).toFixed(2)}{percent !== null ? ` (${sign}${percent.toFixed(1)}%)` : ''}
-                    </span>
+              {activeTab === "analytics" &&
+                salesAnalytics &&
+                (() => {
+                  const paginated = paginate(
+                    salesAnalytics.data || [],
+                    analyticsPage,
+                    itemsPerPage,
                   );
-                };
+                  const formatDelta = (v: any) => {
+                    if (!v || typeof v.delta !== "number") return null;
+                    const isUp = v.delta > 0;
+                    const isDown = v.delta < 0;
+                    const colorClass = isUp
+                      ? "text-emerald-400"
+                      : isDown
+                        ? "text-red-400"
+                        : "theme-text-secondary";
+                    const sign = isUp ? "+" : "";
+                    const percent =
+                      typeof v.deltaPercent === "number"
+                        ? v.deltaPercent
+                        : null;
+                    return (
+                      <span className={`text-xs font-medium ${colorClass}`}>
+                        {sign}
+                        {Number(v.delta).toFixed(2)}
+                        {percent !== null
+                          ? ` (${sign}${percent.toFixed(1)}%)`
+                          : ""}
+                      </span>
+                    );
+                  };
 
-                const bestWorstRevenue = salesAnalytics.bestWorst?.revenue;
-                const bestWorstProfit = salesAnalytics.bestWorst?.grossProfit;
-                return (
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-semibold theme-text-primary">Sales Analytics</h3>
-                      <p className="text-xs sm:text-sm theme-text-secondary">Period breakdown and profitability insights</p>
-                    </div>
-                    <div className="w-full sm:w-auto">
-                      <label className="block text-xs font-medium theme-text-secondary mb-1.5">Period</label>
-                      <select
-                        value={salesAnalyticsPeriod}
-                        onChange={(e) => setSalesAnalyticsPeriod(e.target.value as any)}
-                        className="w-full sm:w-48 theme-surface rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="yearly">Yearly</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Revenue</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totals?.revenue ?? salesAnalytics.totalSales ?? 0)}</p>
-                    </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Orders</p>
-                      <p className="text-2xl font-bold theme-text-primary">{salesAnalytics.totals?.orders ?? salesAnalytics.totalOrders ?? 0}</p>
-                    </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Avg Order Value</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totals?.averageOrderValue ?? salesAnalytics.averageOrderValue ?? 0)}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Gross Profit</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(salesAnalytics.totals?.grossProfit ?? 0)}</p>
-                    </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Gross Margin</p>
-                      <p className="text-2xl font-bold theme-text-primary">{(salesAnalytics.totals?.grossMarginPercent ?? 0).toFixed(1)}%</p>
-                    </div>
-                    <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Sales Frequency</p>
-                      <p className="text-2xl font-bold theme-text-primary">{(salesAnalytics.frequency?.salesFrequencyPercent ?? 0).toFixed(0)}%</p>
-                      <p className="text-xs theme-text-secondary mt-1">
-                        {salesAnalytics.frequency?.salesDays ?? 0} / {salesAnalytics.frequency?.totalDays ?? 0} days with sales
-                      </p>
-                    </div>
-                  </div>
-
-                  {salesAnalytics.comparison && (
-                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                        <p className="text-sm theme-text-secondary">Compared to previous period</p>
-                        {(salesAnalytics.comparison.from && salesAnalytics.comparison.to) && (
-                          <p className="text-xs theme-text-secondary">
-                            {String(salesAnalytics.comparison.from).slice(0, 10)} → {String(salesAnalytics.comparison.to).slice(0, 10)}
+                  const bestWorstRevenue = salesAnalytics.bestWorst?.revenue;
+                  const bestWorstProfit = salesAnalytics.bestWorst?.grossProfit;
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base sm:text-lg font-semibold theme-text-primary">
+                            Sales Analytics
+                          </h3>
+                          <p className="text-xs sm:text-sm theme-text-secondary">
+                            Period breakdown and profitability insights
                           </p>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                        <div className="p-3 rounded-lg border theme-border">
-                          <p className="text-xs theme-text-secondary">Revenue</p>
-                          <p className="text-sm font-semibold theme-text-primary">{formatCurrency(salesAnalytics.totals?.revenue ?? 0)}</p>
-                          {formatDelta(salesAnalytics.comparison.revenue)}
                         </div>
-                        <div className="p-3 rounded-lg border theme-border">
-                          <p className="text-xs theme-text-secondary">Gross Profit</p>
-                          <p className="text-sm font-semibold theme-text-primary">{formatCurrency(salesAnalytics.totals?.grossProfit ?? 0)}</p>
-                          {formatDelta(salesAnalytics.comparison.grossProfit)}
-                        </div>
-                        <div className="p-3 rounded-lg border theme-border">
-                          <p className="text-xs theme-text-secondary">Orders</p>
-                          <p className="text-sm font-semibold theme-text-primary">{salesAnalytics.totals?.orders ?? 0}</p>
-                          {formatDelta(salesAnalytics.comparison.orders)}
-                        </div>
-                        <div className="p-3 rounded-lg border theme-border">
-                          <p className="text-xs theme-text-secondary">Avg Order</p>
-                          <p className="text-sm font-semibold theme-text-primary">{formatCurrency(salesAnalytics.totals?.averageOrderValue ?? 0)}</p>
-                          {formatDelta(salesAnalytics.comparison.averageOrderValue)}
-                        </div>
-                        <div className="p-3 rounded-lg border theme-border">
-                          <p className="text-xs theme-text-secondary">Margin</p>
-                          <p className="text-sm font-semibold theme-text-primary">{(salesAnalytics.totals?.grossMarginPercent ?? 0).toFixed(1)}%</p>
-                          {formatDelta(salesAnalytics.comparison.grossMarginPercent)}
+                        <div className="w-full sm:w-auto">
+                          <label className="block text-xs font-medium theme-text-secondary mb-1.5">
+                            Period
+                          </label>
+                          <select
+                            value={salesAnalyticsPeriod}
+                            onChange={(e) =>
+                              setSalesAnalyticsPeriod(e.target.value as any)
+                            }
+                            className="w-full sm:w-48 theme-surface rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary bg-transparent focus:ring-2 focus:ring-sky-400/50 focus:border-sky-400 transition"
+                          >
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                          </select>
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  {(bestWorstRevenue || bestWorstProfit) && (
-                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
-                      <p className="text-sm theme-text-secondary mb-3">Best / Worst Day</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-3 rounded-lg border theme-border">
-                          <p className="text-xs theme-text-secondary mb-2">Revenue</p>
-                          <div className="flex flex-col gap-1 text-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="theme-text-secondary">Best</span>
-                              <span className="theme-text-primary font-medium">
-                                {bestWorstRevenue?.best?.day ? String(bestWorstRevenue.best.day) : '—'}
-                                {bestWorstRevenue?.best?.revenue !== undefined ? ` • ${formatCurrency(bestWorstRevenue.best.revenue)}` : ''}
-                              </span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Revenue
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {formatCurrency(
+                              salesAnalytics.totals?.revenue ??
+                                salesAnalytics.totalSales ??
+                                0,
+                            )}
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Total Orders
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {salesAnalytics.totals?.orders ??
+                              salesAnalytics.totalOrders ??
+                              0}
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Avg Order Value
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {formatCurrency(
+                              salesAnalytics.totals?.averageOrderValue ??
+                                salesAnalytics.averageOrderValue ??
+                                0,
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Gross Profit
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {formatCurrency(
+                              salesAnalytics.totals?.grossProfit ?? 0,
+                            )}
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Gross Margin
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {(
+                              salesAnalytics.totals?.grossMarginPercent ?? 0
+                            ).toFixed(1)}
+                            %
+                          </p>
+                        </div>
+                        <div className="theme-surface rounded-xl border theme-border p-4">
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Sales Frequency
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {(
+                              salesAnalytics.frequency?.salesFrequencyPercent ??
+                              0
+                            ).toFixed(0)}
+                            %
+                          </p>
+                          <p className="text-xs theme-text-secondary mt-1">
+                            {salesAnalytics.frequency?.salesDays ?? 0} /{" "}
+                            {salesAnalytics.frequency?.totalDays ?? 0} days with
+                            sales
+                          </p>
+                        </div>
+                      </div>
+
+                      {salesAnalytics.comparison && (
+                        <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                            <p className="text-sm theme-text-secondary">
+                              Compared to previous period
+                            </p>
+                            {salesAnalytics.comparison.from &&
+                              salesAnalytics.comparison.to && (
+                                <p className="text-xs theme-text-secondary">
+                                  {String(salesAnalytics.comparison.from).slice(
+                                    0,
+                                    10,
+                                  )}{" "}
+                                  →{" "}
+                                  {String(salesAnalytics.comparison.to).slice(
+                                    0,
+                                    10,
+                                  )}
+                                </p>
+                              )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                            <div className="p-3 rounded-lg border theme-border">
+                              <p className="text-xs theme-text-secondary">
+                                Revenue
+                              </p>
+                              <p className="text-sm font-semibold theme-text-primary">
+                                {formatCurrency(
+                                  salesAnalytics.totals?.revenue ?? 0,
+                                )}
+                              </p>
+                              {formatDelta(salesAnalytics.comparison.revenue)}
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="theme-text-secondary">Worst</span>
-                              <span className="theme-text-primary font-medium">
-                                {bestWorstRevenue?.worst?.day ? String(bestWorstRevenue.worst.day) : '—'}
-                                {bestWorstRevenue?.worst?.revenue !== undefined ? ` • ${formatCurrency(bestWorstRevenue.worst.revenue)}` : ''}
-                              </span>
+                            <div className="p-3 rounded-lg border theme-border">
+                              <p className="text-xs theme-text-secondary">
+                                Gross Profit
+                              </p>
+                              <p className="text-sm font-semibold theme-text-primary">
+                                {formatCurrency(
+                                  salesAnalytics.totals?.grossProfit ?? 0,
+                                )}
+                              </p>
+                              {formatDelta(
+                                salesAnalytics.comparison.grossProfit,
+                              )}
+                            </div>
+                            <div className="p-3 rounded-lg border theme-border">
+                              <p className="text-xs theme-text-secondary">
+                                Orders
+                              </p>
+                              <p className="text-sm font-semibold theme-text-primary">
+                                {salesAnalytics.totals?.orders ?? 0}
+                              </p>
+                              {formatDelta(salesAnalytics.comparison.orders)}
+                            </div>
+                            <div className="p-3 rounded-lg border theme-border">
+                              <p className="text-xs theme-text-secondary">
+                                Avg Order
+                              </p>
+                              <p className="text-sm font-semibold theme-text-primary">
+                                {formatCurrency(
+                                  salesAnalytics.totals?.averageOrderValue ?? 0,
+                                )}
+                              </p>
+                              {formatDelta(
+                                salesAnalytics.comparison.averageOrderValue,
+                              )}
+                            </div>
+                            <div className="p-3 rounded-lg border theme-border">
+                              <p className="text-xs theme-text-secondary">
+                                Margin
+                              </p>
+                              <p className="text-sm font-semibold theme-text-primary">
+                                {(
+                                  salesAnalytics.totals?.grossMarginPercent ?? 0
+                                ).toFixed(1)}
+                                %
+                              </p>
+                              {formatDelta(
+                                salesAnalytics.comparison.grossMarginPercent,
+                              )}
                             </div>
                           </div>
                         </div>
+                      )}
 
-                        <div className="p-3 rounded-lg border theme-border">
-                          <p className="text-xs theme-text-secondary mb-2">Gross Profit</p>
-                          <div className="flex flex-col gap-1 text-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="theme-text-secondary">Best</span>
-                              <span className="theme-text-primary font-medium">
-                                {bestWorstProfit?.best?.day ? String(bestWorstProfit.best.day) : '—'}
-                                {bestWorstProfit?.best?.grossProfit !== undefined ? ` • ${formatCurrency(bestWorstProfit.best.grossProfit)}` : ''}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="theme-text-secondary">Worst</span>
-                              <span className="theme-text-primary font-medium">
-                                {bestWorstProfit?.worst?.day ? String(bestWorstProfit.worst.day) : '—'}
-                                {bestWorstProfit?.worst?.grossProfit !== undefined ? ` • ${formatCurrency(bestWorstProfit.worst.grossProfit)}` : ''}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {Array.isArray(salesAnalytics.peakHours) && salesAnalytics.peakHours.length > 0 && (
-                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
-                      <p className="text-sm theme-text-secondary mb-2">Peak Hours (Top)</p>
-                      <div className="flex flex-wrap gap-3 text-sm theme-text-primary">
-                        {salesAnalytics.peakHours.map((h: any) => (
-                          <span key={h.hour} className="px-3 py-1 rounded-full border theme-border bg-white/5">
-                            {h.hour}:00 • {h.orders} orders • {formatCurrency(h.revenue)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {Array.isArray((salesAnalytics as any).ordersPerHour) && (salesAnalytics as any).ordersPerHour.length > 0 && (
-                    <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
-                      <p className="text-sm theme-text-secondary mb-3">Orders per Hour</p>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="text-left theme-text-secondary">
-                              <th className="py-2 pr-4 font-medium">Hour</th>
-                              <th className="py-2 pr-4 font-medium">Orders</th>
-                              <th className="py-2 pr-4 font-medium">Revenue</th>
-                              <th className="py-2 pr-4 font-medium">Gross Profit</th>
-                              <th className="py-2 pr-0 font-medium">Margin</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(salesAnalytics as any).ordersPerHour.map((h: any) => (
-                              <tr key={h.hour} className="border-t theme-border">
-                                <td className="py-2 pr-4 theme-text-primary font-medium">{h.hour}:00</td>
-                                <td className="py-2 pr-4 theme-text-primary">{h.orders ?? 0}</td>
-                                <td className="py-2 pr-4 theme-text-primary">{formatCurrency(h.revenue ?? 0)}</td>
-                                <td className="py-2 pr-4 theme-text-primary">{formatCurrency(h.grossProfit ?? 0)}</td>
-                                <td className="py-2 pr-0 theme-text-primary">{(h.grossMarginPercent ?? 0).toFixed(1)}%</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                    
-                    {paginated.items.length > 0 ? (
-                      <>
-                        <div className="space-y-2">
-                          {paginated.items.map((period: any) => (
-                            <div
-                              key={period.period}
-                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl">📊</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium theme-text-primary">{period.period}</p>
-                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                    <span>Revenue: {formatCurrency(period.revenue ?? period.sales)}</span>
-                                    <span>Orders: {period.orders}</span>
-                                    <span>Items: {period.items}</span>
-                                    <span>Avg: {formatCurrency(period.averageOrderValue)}</span>
-                                    {period.grossProfit !== undefined && (
-                                      <span>Profit: {formatCurrency(period.grossProfit)}</span>
-                                    )}
-                                    {period.grossMarginPercent !== undefined && (
-                                      <span>Margin: {Number(period.grossMarginPercent).toFixed(1)}%</span>
-                                    )}
-                                  </div>
+                      {(bestWorstRevenue || bestWorstProfit) && (
+                        <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                          <p className="text-sm theme-text-secondary mb-3">
+                            Best / Worst Day
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-3 rounded-lg border theme-border">
+                              <p className="text-xs theme-text-secondary mb-2">
+                                Revenue
+                              </p>
+                              <div className="flex flex-col gap-1 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="theme-text-secondary">
+                                    Best
+                                  </span>
+                                  <span className="theme-text-primary font-medium">
+                                    {bestWorstRevenue?.best?.day
+                                      ? String(bestWorstRevenue.best.day)
+                                      : "—"}
+                                    {bestWorstRevenue?.best?.revenue !==
+                                    undefined
+                                      ? ` • ${formatCurrency(bestWorstRevenue.best.revenue)}`
+                                      : ""}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="theme-text-secondary">
+                                    Worst
+                                  </span>
+                                  <span className="theme-text-primary font-medium">
+                                    {bestWorstRevenue?.worst?.day
+                                      ? String(bestWorstRevenue.worst.day)
+                                      : "—"}
+                                    {bestWorstRevenue?.worst?.revenue !==
+                                    undefined
+                                      ? ` • ${formatCurrency(bestWorstRevenue.worst.revenue)}`
+                                      : ""}
+                                  </span>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => handleViewDetails({ ...period, type: 'analytics' })}
-                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
-                                title="View Details"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
                             </div>
-                          ))}
+
+                            <div className="p-3 rounded-lg border theme-border">
+                              <p className="text-xs theme-text-secondary mb-2">
+                                Gross Profit
+                              </p>
+                              <div className="flex flex-col gap-1 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="theme-text-secondary">
+                                    Best
+                                  </span>
+                                  <span className="theme-text-primary font-medium">
+                                    {bestWorstProfit?.best?.day
+                                      ? String(bestWorstProfit.best.day)
+                                      : "—"}
+                                    {bestWorstProfit?.best?.grossProfit !==
+                                    undefined
+                                      ? ` • ${formatCurrency(bestWorstProfit.best.grossProfit)}`
+                                      : ""}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="theme-text-secondary">
+                                    Worst
+                                  </span>
+                                  <span className="theme-text-primary font-medium">
+                                    {bestWorstProfit?.worst?.day
+                                      ? String(bestWorstProfit.worst.day)
+                                      : "—"}
+                                    {bestWorstProfit?.worst?.grossProfit !==
+                                    undefined
+                                      ? ` • ${formatCurrency(bestWorstProfit.worst.grossProfit)}`
+                                      : ""}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        
-                        {paginated.totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
-                              Showing {((analyticsPage - 1) * itemsPerPage) + 1} to {Math.min(analyticsPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                      )}
+
+                      {Array.isArray(salesAnalytics.peakHours) &&
+                        salesAnalytics.peakHours.length > 0 && (
+                          <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                            <p className="text-sm theme-text-secondary mb-2">
+                              Peak Hours (Top)
                             </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setAnalyticsPage(p => Math.max(1, p - 1))}
-                                disabled={analyticsPage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                            <div className="flex flex-wrap gap-3 text-sm theme-text-primary">
+                              {salesAnalytics.peakHours.map((h: any) => (
+                                <span
+                                  key={h.hour}
+                                  className="px-3 py-1 rounded-full border theme-border bg-white/5"
+                                >
+                                  {h.hour}:00 • {h.orders} orders •{" "}
+                                  {formatCurrency(h.revenue)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                      {Array.isArray((salesAnalytics as any).ordersPerHour) &&
+                        (salesAnalytics as any).ordersPerHour.length > 0 && (
+                          <div className="theme-surface rounded-xl border theme-border p-4 mb-6">
+                            <p className="text-sm theme-text-secondary mb-3">
+                              Orders per Hour
+                            </p>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="text-left theme-text-secondary">
+                                    <th className="py-2 pr-4 font-medium">
+                                      Hour
+                                    </th>
+                                    <th className="py-2 pr-4 font-medium">
+                                      Orders
+                                    </th>
+                                    <th className="py-2 pr-4 font-medium">
+                                      Revenue
+                                    </th>
+                                    <th className="py-2 pr-4 font-medium">
+                                      Gross Profit
+                                    </th>
+                                    <th className="py-2 pr-0 font-medium">
+                                      Margin
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(salesAnalytics as any).ordersPerHour.map(
+                                    (h: any) => (
+                                      <tr
+                                        key={h.hour}
+                                        className="border-t theme-border"
+                                      >
+                                        <td className="py-2 pr-4 theme-text-primary font-medium">
+                                          {h.hour}:00
+                                        </td>
+                                        <td className="py-2 pr-4 theme-text-primary">
+                                          {h.orders ?? 0}
+                                        </td>
+                                        <td className="py-2 pr-4 theme-text-primary">
+                                          {formatCurrency(h.revenue ?? 0)}
+                                        </td>
+                                        <td className="py-2 pr-4 theme-text-primary">
+                                          {formatCurrency(h.grossProfit ?? 0)}
+                                        </td>
+                                        <td className="py-2 pr-0 theme-text-primary">
+                                          {(h.grossMarginPercent ?? 0).toFixed(
+                                            1,
+                                          )}
+                                          %
+                                        </td>
+                                      </tr>
+                                    ),
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                      {paginated.items.length > 0 ? (
+                        <>
+                          <div className="space-y-2">
+                            {paginated.items.map((period: any) => (
+                              <div
+                                key={period.period}
+                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
                               >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setAnalyticsPage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={analyticsPage === paginated.totalPages}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl">
+                                    📊
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium theme-text-primary">
+                                      {period.period}
+                                    </p>
+                                    <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                      <span>
+                                        Revenue:{" "}
+                                        {formatCurrency(
+                                          period.revenue ?? period.sales,
+                                        )}
+                                      </span>
+                                      <span>Orders: {period.orders}</span>
+                                      <span>Items: {period.items}</span>
+                                      <span>
+                                        Avg:{" "}
+                                        {formatCurrency(
+                                          period.averageOrderValue,
+                                        )}
+                                      </span>
+                                      {period.grossProfit !== undefined && (
+                                        <span>
+                                          Profit:{" "}
+                                          {formatCurrency(period.grossProfit)}
+                                        </span>
+                                      )}
+                                      {period.grossMarginPercent !==
+                                        undefined && (
+                                        <span>
+                                          Margin:{" "}
+                                          {Number(
+                                            period.grossMarginPercent,
+                                          ).toFixed(1)}
+                                          %
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    handleViewDetails({
+                                      ...period,
+                                      type: "analytics",
+                                    })
+                                  }
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                  title="View Details"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+
+                          {paginated.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm theme-text-secondary">
+                                Showing {(analyticsPage - 1) * itemsPerPage + 1}{" "}
+                                to{" "}
+                                {Math.min(
+                                  analyticsPage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    setAnalyticsPage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={analyticsPage === 1}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setAnalyticsPage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={
+                                    analyticsPage === paginated.totalPages
+                                  }
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="theme-text-secondary text-center py-8">
+                          No analytics data available
+                        </p>
+                      )}
                     </div>
-                </div>
-              )}
-                      </>
-                    ) : (
-                      <p className="theme-text-secondary text-center py-8">No analytics data available</p>
-                    )}
-                  </div>
-                );
-              })()}
+                  );
+                })()}
 
               {/* Smart Alerts */}
-              {activeTab === 'alerts' && alerts && (
+              {activeTab === "alerts" && alerts && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Alerts</p>
-                      <p className="text-2xl font-bold theme-text-primary">{alerts.totalAlerts || 0}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Total Alerts
+                      </p>
+                      <p className="text-2xl font-bold theme-text-primary">
+                        {alerts.totalAlerts || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-red-500/50 p-4 bg-red-500/10">
                       <p className="text-sm text-red-400 mb-1">Critical</p>
-                      <p className={`text-3xl font-bold text-red-400 ${alerts.criticalCount > 0 ? 'animate-pulse' : ''}`}>
+                      <p
+                        className={`text-3xl font-bold text-red-400 ${alerts.criticalCount > 0 ? "animate-pulse" : ""}`}
+                      >
                         {alerts.criticalCount || 0}
                       </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-orange-500/50 p-4 bg-orange-500/10">
                       <p className="text-sm text-orange-400 mb-1">Low Stock</p>
                       <p className="text-3xl font-bold text-orange-400">
-                        {alerts.alerts?.filter((a: any) => a.type === 'low_stock' || a.type === 'stockout').length || 0}
+                        {alerts.alerts?.filter(
+                          (a: any) =>
+                            a.type === "low_stock" || a.type === "stockout",
+                        ).length || 0}
                       </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-yellow-500/50 p-4">
                       <p className="text-sm text-yellow-400 mb-1">Warnings</p>
-                      <p className="text-2xl font-bold text-yellow-400">{alerts.warningCount || 0}</p>
+                      <p className="text-2xl font-bold text-yellow-400">
+                        {alerts.warningCount || 0}
+                      </p>
                     </div>
                   </div>
-                  {alerts.alerts && alerts.alerts.length > 0 ? (() => {
-                    const paginated = paginate(alerts.alerts, alertsPage, itemsPerPage);
-                    return (
-                      <>
-                        <div className="space-y-3">
-                          {paginated.items.map((alert: any, idx: number) => {
-                            const isLowStock = alert.type === 'low_stock' || alert.type === 'stockout';
-                            const isCritical = alert.severity === 'critical';
-                            return (
-                              <div
-                                key={idx}
-                                className={`flex items-center justify-between p-5 rounded-xl border-2 ${getSeverityColor(alert.severity, alert.type)} hover:scale-[1.02] transition-all ${
-                                  isCritical && isLowStock ? 'ring-2 ring-red-500/50' : ''
-                                }`}
-                              >
-                                <div className="flex items-center gap-4 flex-1 min-w-0">
-                                  <div className={`flex-shrink-0 text-3xl ${isLowStock ? 'animate-bounce' : ''}`}>
-                                    {isLowStock ? (isCritical ? '🚨' : '⚠️') : '🔔'}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <p className={`font-bold ${isLowStock ? 'text-lg' : 'font-semibold'}`}>
-                                        {alert.title}
-                                      </p>
-                                      {isLowStock && (
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                          isCritical 
-                                            ? 'bg-red-500 text-white' 
-                                            : 'bg-orange-500 text-white'
-                                        }`}>
-                                          {isCritical ? 'CRITICAL' : 'LOW STOCK'}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className={`${isLowStock ? 'text-base' : 'text-sm'} opacity-90`}>
-                                      {alert.message}
-                                    </p>
-                                    {isLowStock && alert.currentStock !== undefined && (
-                                      <p className="text-xs opacity-75 mt-1 font-mono">
-                                        Current Stock: <span className="font-bold">{alert.currentStock}</span>
-                                        {alert.reorderPoint && ` | Reorder Point: ${alert.reorderPoint}`}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => handleViewDetails({ ...alert, type: 'alert' })}
-                                  className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
-                                  title="View Details"
+                  {alerts.alerts && alerts.alerts.length > 0 ? (
+                    (() => {
+                      const paginated = paginate(
+                        alerts.alerts,
+                        alertsPage,
+                        itemsPerPage,
+                      );
+                      return (
+                        <>
+                          <div className="space-y-3">
+                            {paginated.items.map((alert: any, idx: number) => {
+                              const isLowStock =
+                                alert.type === "low_stock" ||
+                                alert.type === "stockout";
+                              const isCritical = alert.severity === "critical";
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center justify-between p-5 rounded-xl border-2 ${getSeverityColor(alert.severity, alert.type)} hover:scale-[1.02] transition-all ${
+                                    isCritical && isLowStock
+                                      ? "ring-2 ring-red-500/50"
+                                      : ""
+                                  }`}
                                 >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
+                                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                                    <div
+                                      className={`flex-shrink-0 text-3xl ${isLowStock ? "animate-bounce" : ""}`}
+                                    >
+                                      {isLowStock
+                                        ? isCritical
+                                          ? "🚨"
+                                          : "⚠️"
+                                        : "🔔"}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p
+                                          className={`font-bold ${isLowStock ? "text-lg" : "font-semibold"}`}
+                                        >
+                                          {alert.title}
+                                        </p>
+                                        {isLowStock && (
+                                          <span
+                                            className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                              isCritical
+                                                ? "bg-red-500 text-white"
+                                                : "bg-orange-500 text-white"
+                                            }`}
+                                          >
+                                            {isCritical
+                                              ? "CRITICAL"
+                                              : "LOW STOCK"}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p
+                                        className={`${isLowStock ? "text-base" : "text-sm"} opacity-90`}
+                                      >
+                                        {alert.message}
+                                      </p>
+                                      {isLowStock &&
+                                        alert.currentStock !== undefined && (
+                                          <p className="text-xs opacity-75 mt-1 font-mono">
+                                            Current Stock:{" "}
+                                            <span className="font-bold">
+                                              {alert.currentStock}
+                                            </span>
+                                            {alert.reorderPoint &&
+                                              ` | Reorder Point: ${alert.reorderPoint}`}
+                                          </p>
+                                        )}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() =>
+                                      handleViewDetails({
+                                        ...alert,
+                                        type: "alert",
+                                      })
+                                    }
+                                    className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
+                                    title="View Details"
+                                  >
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                      />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {paginated.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm theme-text-secondary">
+                                Showing {(alertsPage - 1) * itemsPerPage + 1} to{" "}
+                                {Math.min(
+                                  alertsPage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    setAlertsPage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={alertsPage === 1}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setAlertsPage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={alertsPage === paginated.totalPages}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Next
                                 </button>
                               </div>
-                            );
-                          })}
-                        </div>
-                        {paginated.totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
-                              Showing {((alertsPage - 1) * itemsPerPage) + 1} to {Math.min(alertsPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setAlertsPage(p => Math.max(1, p - 1))}
-                                disabled={alertsPage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setAlertsPage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={alertsPage === paginated.totalPages}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
                             </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })() : (
-                    <p className="theme-text-secondary text-center py-8">No alerts at this time</p>
+                          )}
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <p className="theme-text-secondary text-center py-8">
+                      No alerts at this time
+                    </p>
                   )}
                 </div>
               )}
 
               {/* Fraud Detection */}
-              {activeTab === 'fraud' && fraudAlerts && (
+              {activeTab === "fraud" && fraudAlerts && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Alerts</p>
-                      <p className="text-2xl font-bold theme-text-primary">{fraudAlerts.totalAlerts || 0}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Total Alerts
+                      </p>
+                      <p className="text-2xl font-bold theme-text-primary">
+                        {fraudAlerts.totalAlerts || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-red-500/50 p-4">
                       <p className="text-sm text-red-400 mb-1">Critical</p>
-                      <p className="text-2xl font-bold text-red-400">{fraudAlerts.criticalCount || 0}</p>
+                      <p className="text-2xl font-bold text-red-400">
+                        {fraudAlerts.criticalCount || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-yellow-500/50 p-4">
                       <p className="text-sm text-yellow-400 mb-1">Warnings</p>
-                      <p className="text-2xl font-bold text-yellow-400">{fraudAlerts.warningCount || 0}</p>
+                      <p className="text-2xl font-bold text-yellow-400">
+                        {fraudAlerts.warningCount || 0}
+                      </p>
                     </div>
                   </div>
-                  {fraudAlerts.fraudAlerts && fraudAlerts.fraudAlerts.length > 0 ? (() => {
-                    const paginated = paginate(fraudAlerts.fraudAlerts, fraudPage, itemsPerPage);
-                    return (
-                      <>
-                        <div className="space-y-2">
-                          {paginated.items.map((alert: any, idx: number) => (
-                            <div
-                              key={idx}
-                              className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl">🛡️</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold mb-1">{alert.title}</p>
-                                  <p className="text-sm opacity-90 truncate mb-2">{alert.message}</p>
-                                  <div className="text-xs opacity-75">
-                                    <p>Order: {alert.orderNumber} • {safeFormatDate(alert.timestamp, 'MMM d, yyyy HH:mm')}</p>
+                  {fraudAlerts.fraudAlerts &&
+                  fraudAlerts.fraudAlerts.length > 0 ? (
+                    (() => {
+                      const paginated = paginate(
+                        fraudAlerts.fraudAlerts,
+                        fraudPage,
+                        itemsPerPage,
+                      );
+                      return (
+                        <>
+                          <div className="space-y-2">
+                            {paginated.items.map((alert: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl">
+                                    🛡️
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold mb-1">
+                                      {alert.title}
+                                    </p>
+                                    <p className="text-sm opacity-90 truncate mb-2">
+                                      {alert.message}
+                                    </p>
+                                    <div className="text-xs opacity-75">
+                                      <p>
+                                        Order: {alert.orderNumber} •{" "}
+                                        {safeFormatDate(
+                                          alert.timestamp,
+                                          "MMM d, yyyy HH:mm",
+                                        )}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
+                                <button
+                                  onClick={() =>
+                                    handleViewDetails({
+                                      ...alert,
+                                      type: "fraud",
+                                    })
+                                  }
+                                  className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
+                                  title="View Details"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    />
+                                  </svg>
+                                </button>
                               </div>
-                              <button
-                                onClick={() => handleViewDetails({ ...alert, type: 'fraud' })}
-                                className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
-                                title="View Details"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        {paginated.totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
-                              Showing {((fraudPage - 1) * itemsPerPage) + 1} to {Math.min(fraudPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setFraudPage(p => Math.max(1, p - 1))}
-                                disabled={fraudPage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setFraudPage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={fraudPage === paginated.totalPages}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
-                            </div>
+                            ))}
                           </div>
-                        )}
-                      </>
-                    );
-                  })() : (
-                    <p className="theme-text-secondary text-center py-8">No fraud alerts detected</p>
+                          {paginated.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm theme-text-secondary">
+                                Showing {(fraudPage - 1) * itemsPerPage + 1} to{" "}
+                                {Math.min(
+                                  fraudPage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    setFraudPage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={fraudPage === 1}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setFraudPage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={fraudPage === paginated.totalPages}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <p className="theme-text-secondary text-center py-8">
+                      No fraud alerts detected
+                    </p>
                   )}
                 </div>
               )}
 
               {/* Expiry Analytics */}
-              {activeTab === 'expiry' && expiryAnalytics && (
+              {activeTab === "expiry" && expiryAnalytics && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Expiring Soon</p>
-                      <p className="text-2xl font-bold theme-text-primary">{expiryAnalytics.totalExpiringSoon || 0}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Expiring Soon
+                      </p>
+                      <p className="text-2xl font-bold theme-text-primary">
+                        {expiryAnalytics.totalExpiringSoon || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-red-500/50 p-4">
                       <p className="text-sm text-red-400 mb-1">Expired</p>
-                      <p className="text-2xl font-bold text-red-400">{expiryAnalytics.totalExpired || 0}</p>
+                      <p className="text-2xl font-bold text-red-400">
+                        {expiryAnalytics.totalExpired || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Loss Forecast</p>
-                      <p className="text-2xl font-bold theme-text-primary">{formatCurrency(expiryAnalytics.lossForecast || 0)}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Loss Forecast
+                      </p>
+                      <p className="text-2xl font-bold theme-text-primary">
+                        {formatCurrency(expiryAnalytics.lossForecast || 0)}
+                      </p>
                     </div>
                   </div>
                   {(() => {
                     const allExpiryItems = [
-                      ...(expiryAnalytics.expiringSoon || []).map((item: any) => ({ ...item, status: 'expiring' })),
-                      ...(expiryAnalytics.expiredItems || []).map((item: any) => ({ ...item, status: 'expired' })),
+                      ...(expiryAnalytics.expiringSoon || []).map(
+                        (item: any) => ({ ...item, status: "expiring" }),
+                      ),
+                      ...(expiryAnalytics.expiredItems || []).map(
+                        (item: any) => ({ ...item, status: "expired" }),
+                      ),
                     ];
-                    const paginated = paginate(allExpiryItems, expiryPage, itemsPerPage);
-                    
+                    const paginated = paginate(
+                      allExpiryItems,
+                      expiryPage,
+                      itemsPerPage,
+                    );
+
                     if (allExpiryItems.length === 0) {
-                      return <p className="theme-text-secondary text-center py-8">No expiry data available</p>;
+                      return (
+                        <p className="theme-text-secondary text-center py-8">
+                          No expiry data available
+                        </p>
+                      );
                     }
-                    
+
                     return (
                       <>
                         <div className="space-y-2">
@@ -1325,31 +2048,54 @@ export function ReportsPage() {
                             <div
                               key={idx}
                               className={`flex items-center justify-between p-4 rounded-lg border ${
-                                item.status === 'expired' ? 'border-red-500/50 bg-red-500/10' : 'border-yellow-500/50 bg-yellow-500/10'
+                                item.status === "expired"
+                                  ? "border-red-500/50 bg-red-500/10"
+                                  : "border-yellow-500/50 bg-yellow-500/10"
                               } hover:opacity-80 transition`}
                             >
                               <div className="flex items-center gap-4 flex-1 min-w-0">
                                 <div className="flex-shrink-0 text-2xl">⏰</div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium theme-text-primary">{item.productName}</p>
+                                  <p className="font-medium theme-text-primary">
+                                    {item.productName}
+                                  </p>
                                   <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
                                     <span>
-                                      {item.status === 'expired' 
+                                      {item.status === "expired"
                                         ? `Expired ${item.daysExpired} days ago`
                                         : `Expires in ${item.daysUntilExpiry} days`}
                                     </span>
-                                    <span>Loss: {formatCurrency(item.potentialLoss)}</span>
+                                    <span>
+                                      Loss: {formatCurrency(item.potentialLoss)}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
                               <button
-                                onClick={() => handleViewDetails({ ...item, type: 'expiry' })}
+                                onClick={() =>
+                                  handleViewDetails({ ...item, type: "expiry" })
+                                }
                                 className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
                                 title="View Details"
                               >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                  />
                                 </svg>
                               </button>
                             </div>
@@ -1358,18 +2104,29 @@ export function ReportsPage() {
                         {paginated.totalPages > 1 && (
                           <div className="flex items-center justify-between mt-4">
                             <p className="text-sm theme-text-secondary">
-                              Showing {((expiryPage - 1) * itemsPerPage) + 1} to {Math.min(expiryPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
+                              Showing {(expiryPage - 1) * itemsPerPage + 1} to{" "}
+                              {Math.min(
+                                expiryPage * itemsPerPage,
+                                paginated.totalItems,
+                              )}{" "}
+                              of {paginated.totalItems}
                             </p>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => setExpiryPage(p => Math.max(1, p - 1))}
+                                onClick={() =>
+                                  setExpiryPage((p) => Math.max(1, p - 1))
+                                }
                                 disabled={expiryPage === 1}
                                 className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
                                 Previous
                               </button>
                               <button
-                                onClick={() => setExpiryPage(p => Math.min(paginated.totalPages, p + 1))}
+                                onClick={() =>
+                                  setExpiryPage((p) =>
+                                    Math.min(paginated.totalPages, p + 1),
+                                  )
+                                }
                                 disabled={expiryPage === paginated.totalPages}
                                 className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
                               >
@@ -1385,186 +2142,325 @@ export function ReportsPage() {
               )}
 
               {/* Shrinkage Detection */}
-              {activeTab === 'shrinkage' && shrinkageAlerts && (
+              {activeTab === "shrinkage" && shrinkageAlerts && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="theme-surface rounded-xl border theme-border p-4">
-                      <p className="text-sm theme-text-secondary mb-1">Total Discrepancies</p>
-                      <p className="text-2xl font-bold theme-text-primary">{shrinkageAlerts.totalDiscrepancies || 0}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Total Discrepancies
+                      </p>
+                      <p className="text-2xl font-bold theme-text-primary">
+                        {shrinkageAlerts.totalDiscrepancies || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-red-500/50 p-4">
                       <p className="text-sm text-red-400 mb-1">Critical</p>
-                      <p className="text-2xl font-bold text-red-400">{shrinkageAlerts.criticalCount || 0}</p>
+                      <p className="text-2xl font-bold text-red-400">
+                        {shrinkageAlerts.criticalCount || 0}
+                      </p>
                     </div>
                     <div className="theme-surface rounded-xl border border-yellow-500/50 p-4">
                       <p className="text-sm text-yellow-400 mb-1">Warnings</p>
-                      <p className="text-2xl font-bold text-yellow-400">{shrinkageAlerts.warningCount || 0}</p>
+                      <p className="text-2xl font-bold text-yellow-400">
+                        {shrinkageAlerts.warningCount || 0}
+                      </p>
                     </div>
                   </div>
-                  {shrinkageAlerts.shrinkageAlerts && shrinkageAlerts.shrinkageAlerts.length > 0 ? (() => {
-                    const paginated = paginate(shrinkageAlerts.shrinkageAlerts, shrinkagePage, itemsPerPage);
-                    return (
-                      <>
-                        <div className="space-y-2">
-                          {paginated.items.map((alert: any, idx: number) => (
-                            <div
-                              key={idx}
-                              className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl">📉</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold mb-1">{alert.title}</p>
-                                  <p className="text-sm opacity-90 truncate mb-2">{alert.message}</p>
-                                  <div className="text-xs opacity-75">
-                                    <p>Actual: {alert.actualStock} | Theoretical: {alert.theoreticalStock} | Difference: {alert.discrepancy}</p>
+                  {shrinkageAlerts.shrinkageAlerts &&
+                  shrinkageAlerts.shrinkageAlerts.length > 0 ? (
+                    (() => {
+                      const paginated = paginate(
+                        shrinkageAlerts.shrinkageAlerts,
+                        shrinkagePage,
+                        itemsPerPage,
+                      );
+                      return (
+                        <>
+                          <div className="space-y-2">
+                            {paginated.items.map((alert: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className={`flex items-center justify-between p-4 rounded-lg border ${getSeverityColor(alert.severity)} hover:opacity-80 transition`}
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl">
+                                    📉
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold mb-1">
+                                      {alert.title}
+                                    </p>
+                                    <p className="text-sm opacity-90 truncate mb-2">
+                                      {alert.message}
+                                    </p>
+                                    <div className="text-xs opacity-75">
+                                      <p>
+                                        Actual: {alert.actualStock} |
+                                        Theoretical: {alert.theoreticalStock} |
+                                        Difference: {alert.discrepancy}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
+                                <button
+                                  onClick={() =>
+                                    handleViewDetails({
+                                      ...alert,
+                                      type: "shrinkage",
+                                    })
+                                  }
+                                  className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
+                                  title="View Details"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    />
+                                  </svg>
+                                </button>
                               </div>
-                              <button
-                                onClick={() => handleViewDetails({ ...alert, type: 'shrinkage' })}
-                                className="p-2 rounded-lg border border-current/30 hover:bg-white/10 transition flex-shrink-0 ml-4"
-                                title="View Details"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        {paginated.totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
-                              Showing {((shrinkagePage - 1) * itemsPerPage) + 1} to {Math.min(shrinkagePage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setShrinkagePage(p => Math.max(1, p - 1))}
-                                disabled={shrinkagePage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setShrinkagePage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={shrinkagePage === paginated.totalPages}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
-                            </div>
+                            ))}
                           </div>
-                        )}
-                      </>
-                    );
-                  })() : (
-                    <p className="theme-text-secondary text-center py-8">{shrinkageAlerts.message || 'No discrepancies detected'}</p>
+                          {paginated.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm theme-text-secondary">
+                                Showing {(shrinkagePage - 1) * itemsPerPage + 1}{" "}
+                                to{" "}
+                                {Math.min(
+                                  shrinkagePage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    setShrinkagePage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={shrinkagePage === 1}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setShrinkagePage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={
+                                    shrinkagePage === paginated.totalPages
+                                  }
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <p className="theme-text-secondary text-center py-8">
+                      {shrinkageAlerts.message || "No discrepancies detected"}
+                    </p>
                   )}
                 </div>
               )}
 
               {/* Staff Performance */}
-              {activeTab === 'staff' && staffPerformance && (() => {
-                const staffList = staffPerformance.staffPerformance || [];
-                const paginated = paginate(staffList, staffPage, itemsPerPage);
-                
-                return (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold theme-text-primary">Staff Performance</h3>
-                    
-                    {paginated.items.length > 0 ? (
-                      <>
-                        <div className="space-y-2">
-                          {paginated.items.map((staff: any, idx: number) => (
-                            <div
-                              key={staff.userId}
-                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl font-bold theme-text-primary">
-                                  #{(staffPage - 1) * itemsPerPage + idx + 1}
-                                </div>
-                                <div className="flex-shrink-0 text-2xl">👥</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium theme-text-primary truncate">{staff.userName}</p>
-                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                    <span>Sales: {formatCurrency(staff.sales?.totalSales || 0)}</span>
-                                    <span>Orders: {staff.sales?.orderCount || 0}</span>
-                                    <span>Items: {staff.sales?.itemCount || 0}</span>
-                                    <span>Avg: {formatCurrency(staff.sales?.averageOrderValue || 0)}</span>
+              {activeTab === "staff" &&
+                staffPerformance &&
+                (() => {
+                  const staffList = staffPerformance.staffPerformance || [];
+                  const paginated = paginate(
+                    staffList,
+                    staffPage,
+                    itemsPerPage,
+                  );
+
+                  return (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold theme-text-primary">
+                        Staff Performance
+                      </h3>
+
+                      {paginated.items.length > 0 ? (
+                        <>
+                          <div className="space-y-2">
+                            {paginated.items.map((staff: any, idx: number) => (
+                              <div
+                                key={staff.userId}
+                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl font-bold theme-text-primary">
+                                    #{(staffPage - 1) * itemsPerPage + idx + 1}
+                                  </div>
+                                  <div className="flex-shrink-0 text-2xl">
+                                    👥
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium theme-text-primary truncate">
+                                      {staff.userName}
+                                    </p>
+                                    <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                      <span>
+                                        Sales:{" "}
+                                        {formatCurrency(
+                                          staff.sales?.totalSales || 0,
+                                        )}
+                                      </span>
+                                      <span>
+                                        Orders: {staff.sales?.orderCount || 0}
+                                      </span>
+                                      <span>
+                                        Items: {staff.sales?.itemCount || 0}
+                                      </span>
+                                      <span>
+                                        Avg:{" "}
+                                        {formatCurrency(
+                                          staff.sales?.averageOrderValue || 0,
+                                        )}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
+                                <button
+                                  onClick={() =>
+                                    handleViewDetails({
+                                      ...staff,
+                                      type: "staff",
+                                    })
+                                  }
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                  title="View Details"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    />
+                                  </svg>
+                                </button>
                               </div>
-                              <button
-                                onClick={() => handleViewDetails({ ...staff, type: 'staff' })}
-                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
-                                title="View Details"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {paginated.totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
-                              Showing {((staffPage - 1) * itemsPerPage) + 1} to {Math.min(staffPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setStaffPage(p => Math.max(1, p - 1))}
-                                disabled={staffPage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setStaffPage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={staffPage === paginated.totalPages}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
+                            ))}
                           </div>
+
+                          {paginated.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm theme-text-secondary">
+                                Showing {(staffPage - 1) * itemsPerPage + 1} to{" "}
+                                {Math.min(
+                                  staffPage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    setStaffPage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={staffPage === 1}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setStaffPage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={staffPage === paginated.totalPages}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Next
+                                </button>
+                              </div>
                             </div>
-                        )}
-                      </>
-                  ) : (
-                    <p className="theme-text-secondary text-center py-8">No staff performance data available</p>
-                  )}
-                </div>
-                );
-              })()}
+                          )}
+                        </>
+                      ) : (
+                        <p className="theme-text-secondary text-center py-8">
+                          No staff performance data available
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
               {/* Inventory Analytics */}
-              {activeTab === 'inventory' && inventoryAnalytics && (
+              {activeTab === "inventory" && inventoryAnalytics && (
                 <div className="space-y-6">
                   {/* Transaction Metrics */}
                   <div>
-                    <h3 className="text-lg font-semibold theme-text-primary mb-4">Transaction Metrics</h3>
+                    <h3 className="text-lg font-semibold theme-text-primary mb-4">
+                      Transaction Metrics
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                       <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Total Received</p>
-                        <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalReceived || 0}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Total Received
+                        </p>
+                        <p className="text-2xl font-bold theme-text-primary">
+                          {inventoryAnalytics.totalReceived || 0}
+                        </p>
                       </div>
                       <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Total Sold</p>
-                        <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalSold || 0}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Total Sold
+                        </p>
+                        <p className="text-2xl font-bold theme-text-primary">
+                          {inventoryAnalytics.totalSold || 0}
+                        </p>
                       </div>
                       <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Total Returned</p>
-                        <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.totalReturned || 0}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Total Returned
+                        </p>
+                        <p className="text-2xl font-bold theme-text-primary">
+                          {inventoryAnalytics.totalReturned || 0}
+                        </p>
                       </div>
                       <div className="theme-surface rounded-xl border theme-border p-4">
-                        <p className="text-sm theme-text-secondary mb-1">Net Change</p>
-                        <p className={`text-2xl font-bold ${(inventoryAnalytics.netChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {inventoryAnalytics.netChange >= 0 ? '+' : ''}{inventoryAnalytics.netChange || 0}
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Net Change
+                        </p>
+                        <p
+                          className={`text-2xl font-bold ${(inventoryAnalytics.netChange || 0) >= 0 ? "text-green-400" : "text-red-400"}`}
+                        >
+                          {inventoryAnalytics.netChange >= 0 ? "+" : ""}
+                          {inventoryAnalytics.netChange || 0}
                         </p>
                       </div>
                     </div>
@@ -1573,267 +2469,470 @@ export function ReportsPage() {
                   {/* Inventorized Products Metrics */}
                   {inventoryAnalytics.inventorizedProducts && (
                     <div>
-                      <h3 className="text-lg font-semibold theme-text-primary mb-4">Inventorized Products</h3>
+                      <h3 className="text-lg font-semibold theme-text-primary mb-4">
+                        Inventorized Products
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div className="theme-surface rounded-xl border theme-border p-4">
-                          <p className="text-sm theme-text-secondary mb-1">Total Products</p>
-                          <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.inventorizedProducts.totalProducts || 0}</p>
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Total Products
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {inventoryAnalytics.inventorizedProducts
+                              .totalProducts || 0}
+                          </p>
                         </div>
                         <div className="theme-surface rounded-xl border theme-border p-4">
-                          <p className="text-sm theme-text-secondary mb-1">Total Stock</p>
-                          <p className="text-2xl font-bold theme-text-primary">{inventoryAnalytics.inventorizedProducts.totalCurrentStock || 0}</p>
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Total Stock
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {inventoryAnalytics.inventorizedProducts
+                              .totalCurrentStock || 0}
+                          </p>
                         </div>
                         <div className="theme-surface rounded-xl border theme-border p-4">
-                          <p className="text-sm theme-text-secondary mb-1">Inventory Value</p>
-                          <p className="text-2xl font-bold theme-text-primary">{formatCurrency(inventoryAnalytics.inventorizedProducts.totalInventoryValue || 0)}</p>
+                          <p className="text-sm theme-text-secondary mb-1">
+                            Inventory Value
+                          </p>
+                          <p className="text-2xl font-bold theme-text-primary">
+                            {formatCurrency(
+                              inventoryAnalytics.inventorizedProducts
+                                .totalInventoryValue || 0,
+                            )}
+                          </p>
                         </div>
                         <div className="theme-surface rounded-xl border border-yellow-500/50 p-4">
-                          <p className="text-sm text-yellow-400 mb-1">Low Stock Items</p>
-                          <p className="text-2xl font-bold text-yellow-400">{inventoryAnalytics.inventorizedProducts.lowStockCount || 0}</p>
+                          <p className="text-sm text-yellow-400 mb-1">
+                            Low Stock Items
+                          </p>
+                          <p className="text-2xl font-bold text-yellow-400">
+                            {inventoryAnalytics.inventorizedProducts
+                              .lowStockCount || 0}
+                          </p>
                         </div>
                       </div>
 
                       {/* Inventorized Products List */}
-                      {inventoryAnalytics.inventorizedProducts.products && inventoryAnalytics.inventorizedProducts.products.length > 0 && (() => {
-                        const productPaginated = paginate(inventoryAnalytics.inventorizedProducts.products, inventoryPage, itemsPerPage);
-                        return (
-                          <div className="mt-6">
-                            <h4 className="text-md font-semibold theme-text-primary mb-3">Product Details</h4>
-                            <div className="space-y-2">
-                              {productPaginated.items.map((product: any, idx: number) => (
-                                <div
-                                  key={`${product.productId}-${idx}`}
-                                  className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
-                                >
-                                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                                    <div className="flex-shrink-0 text-2xl">📦</div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <p className="font-medium theme-text-primary truncate">{product.productName}</p>
-                                        {product.isLowStock ? (
-                                          <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/50">
-                                            Low Stock
-                                          </span>
-                                        ) : (
-                                          <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
-                                            In Stock
-                                          </span>
-                                        )}
+                      {inventoryAnalytics.inventorizedProducts.products &&
+                        inventoryAnalytics.inventorizedProducts.products
+                          .length > 0 &&
+                        (() => {
+                          const productPaginated = paginate(
+                            inventoryAnalytics.inventorizedProducts.products,
+                            inventoryPage,
+                            itemsPerPage,
+                          );
+                          return (
+                            <div className="mt-6">
+                              <h4 className="text-md font-semibold theme-text-primary mb-3">
+                                Product Details
+                              </h4>
+                              <div className="space-y-2">
+                                {productPaginated.items.map(
+                                  (product: any, idx: number) => (
+                                    <div
+                                      key={`${product.productId}-${idx}`}
+                                      className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                                    >
+                                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="flex-shrink-0 text-2xl">
+                                          📦
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <p className="font-medium theme-text-primary truncate">
+                                              {product.productName}
+                                            </p>
+                                            {product.isLowStock ? (
+                                              <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/50">
+                                                Low Stock
+                                              </span>
+                                            ) : (
+                                              <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+                                                In Stock
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                            <span>SKU: {product.sku}</span>
+                                            <span>Qty: {product.quantity}</span>
+                                            {product.reorderPoint && (
+                                              <span>
+                                                Reorder: {product.reorderPoint}
+                                              </span>
+                                            )}
+                                            <span>
+                                              Cost:{" "}
+                                              {formatCurrency(
+                                                product.inventoryValue / 100,
+                                              )}
+                                            </span>
+                                            <span>
+                                              Sales:{" "}
+                                              {formatCurrency(
+                                                product.salesValue / 100,
+                                              )}
+                                            </span>
+                                          </div>
+                                        </div>
                                       </div>
-                                      <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                        <span>SKU: {product.sku}</span>
-                                        <span>Qty: {product.quantity}</span>
-                                        {product.reorderPoint && <span>Reorder: {product.reorderPoint}</span>}
-                                        <span>Cost: {formatCurrency(product.inventoryValue / 100)}</span>
-                                        <span>Sales: {formatCurrency(product.salesValue / 100)}</span>
-                                      </div>
+                                      <button
+                                        onClick={() =>
+                                          handleViewDetails({
+                                            ...product,
+                                            type: "inventory-product",
+                                          })
+                                        }
+                                        className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
+                                        title="View Details"
+                                      >
+                                        <svg
+                                          className="w-5 h-5"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                          />
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                          />
+                                        </svg>
+                                      </button>
                                     </div>
-                                  </div>
-                                  <button
-                                    onClick={() => handleViewDetails({ ...product, type: 'inventory-product' })}
-                                    className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0"
-                                    title="View Details"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                            {productPaginated.totalPages > 1 && (
-                              <div className="flex items-center justify-between mt-4">
-                                <p className="text-sm theme-text-secondary">
-                                  Showing {((inventoryPage - 1) * itemsPerPage) + 1} to {Math.min(inventoryPage * itemsPerPage, productPaginated.totalItems)} of {productPaginated.totalItems}
-                                </p>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
-                                    disabled={inventoryPage === 1}
-                                    className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                                  >
-                                    Previous
-                                  </button>
-                                  <button
-                                    onClick={() => setInventoryPage(p => Math.min(productPaginated.totalPages, p + 1))}
-                                    disabled={inventoryPage === productPaginated.totalPages}
-                                    className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                                  >
-                                    Next
-                                  </button>
-                                </div>
+                                  ),
+                                )}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })()}
+                              {productPaginated.totalPages > 1 && (
+                                <div className="flex items-center justify-between mt-4">
+                                  <p className="text-sm theme-text-secondary">
+                                    Showing{" "}
+                                    {(inventoryPage - 1) * itemsPerPage + 1} to{" "}
+                                    {Math.min(
+                                      inventoryPage * itemsPerPage,
+                                      productPaginated.totalItems,
+                                    )}{" "}
+                                    of {productPaginated.totalItems}
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() =>
+                                        setInventoryPage((p) =>
+                                          Math.max(1, p - 1),
+                                        )
+                                      }
+                                      disabled={inventoryPage === 1}
+                                      className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                    >
+                                      Previous
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        setInventoryPage((p) =>
+                                          Math.min(
+                                            productPaginated.totalPages,
+                                            p + 1,
+                                          ),
+                                        )
+                                      }
+                                      disabled={
+                                        inventoryPage ===
+                                        productPaginated.totalPages
+                                      }
+                                      className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                     </div>
                   )}
 
                   {/* Period Breakdown */}
-                  {inventoryAnalytics.data && inventoryAnalytics.data.length > 0 && (() => {
-                    const paginated = paginate(inventoryAnalytics.data, inventoryPage, itemsPerPage);
-                    return (
-                      <div>
-                        <h3 className="text-lg font-semibold theme-text-primary mb-4">Period Breakdown</h3>
-                        <div className="space-y-2">
-                          {paginated.items.map((period: any) => (
-                            <div
-                              key={period.period}
-                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl">📦</div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <p className="font-medium theme-text-primary">{period.period}</p>
-                                    <p className={`font-semibold ${period.netChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                      {period.netChange >= 0 ? '+' : ''}{period.netChange}
-                                    </p>
+                  {inventoryAnalytics.data &&
+                    inventoryAnalytics.data.length > 0 &&
+                    (() => {
+                      const paginated = paginate(
+                        inventoryAnalytics.data,
+                        inventoryPage,
+                        itemsPerPage,
+                      );
+                      return (
+                        <div>
+                          <h3 className="text-lg font-semibold theme-text-primary mb-4">
+                            Period Breakdown
+                          </h3>
+                          <div className="space-y-2">
+                            {paginated.items.map((period: any) => (
+                              <div
+                                key={period.period}
+                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl">
+                                    📦
                                   </div>
-                                  <div className="flex flex-wrap gap-3 text-sm theme-text-secondary">
-                                    <span>Received: {period.received}</span>
-                                    <span>Sold: {period.sold}</span>
-                                    <span>Returned: {period.returned}</span>
-                                    <span>Adjusted: {period.adjusted}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <p className="font-medium theme-text-primary">
+                                        {period.period}
+                                      </p>
+                                      <p
+                                        className={`font-semibold ${period.netChange >= 0 ? "text-green-400" : "text-red-400"}`}
+                                      >
+                                        {period.netChange >= 0 ? "+" : ""}
+                                        {period.netChange}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 text-sm theme-text-secondary">
+                                      <span>Received: {period.received}</span>
+                                      <span>Sold: {period.sold}</span>
+                                      <span>Returned: {period.returned}</span>
+                                      <span>Adjusted: {period.adjusted}</span>
+                                    </div>
                                   </div>
                                 </div>
+                                <button
+                                  onClick={() =>
+                                    handleViewDetails({
+                                      ...period,
+                                      type: "inventory-period",
+                                    })
+                                  }
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
+                                  title="View Details"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    />
+                                  </svg>
+                                </button>
                               </div>
-                              <button
-                                onClick={() => handleViewDetails({ ...period, type: 'inventory-period' })}
-                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
-                                title="View Details"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        {paginated.totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
-                              Showing {((inventoryPage - 1) * itemsPerPage) + 1} to {Math.min(inventoryPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
-                                disabled={inventoryPage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setInventoryPage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={inventoryPage === paginated.totalPages}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
-                            </div>
+                            ))}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                          {paginated.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm theme-text-secondary">
+                                Showing {(inventoryPage - 1) * itemsPerPage + 1}{" "}
+                                to{" "}
+                                {Math.min(
+                                  inventoryPage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    setInventoryPage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={inventoryPage === 1}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setInventoryPage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={
+                                    inventoryPage === paginated.totalPages
+                                  }
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                 </div>
               )}
 
               {/* Purchase Orders */}
-              {activeTab === 'purchase-orders' && (() => {
-                const paginated = paginate(purchaseOrders, purchaseOrdersPage, itemsPerPage);
-                
-                return (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold theme-text-primary">Purchase Orders</h3>
-                    <Link
-                      to="/purchase-orders"
-                      className="text-sm font-medium text-sky-400 hover:text-sky-300 transition"
-                    >
-                      Manage Purchase Orders →
-                    </Link>
-                  </div>
-                    
-                    {paginated.items.length > 0 ? (
-                      <>
-                        <div className="space-y-2">
-                          {paginated.items.map((po) => (
-                            <div
-                              key={po.id}
-                              className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="flex-shrink-0 text-2xl">📋</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium theme-text-primary truncate">{po.orderNumber}</p>
-                                  <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
-                                    <span>Supplier: {po.supplierName}</span>
-                                    <span>Total: {formatCurrencyCents(po.totalCents)}</span>
-                                    <span>Items: {po.items.length}</span>
-                                    <span>{safeFormatDate(po.createdAt, 'MMM d, yyyy')}</span>
+              {activeTab === "purchase-orders" &&
+                (() => {
+                  const paginated = paginate(
+                    purchaseOrders,
+                    purchaseOrdersPage,
+                    itemsPerPage,
+                  );
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold theme-text-primary">
+                          Purchase Orders
+                        </h3>
+                        <Link
+                          to="/purchase-orders"
+                          className="text-sm font-medium text-sky-400 hover:text-sky-300 transition"
+                        >
+                          Manage Purchase Orders →
+                        </Link>
+                      </div>
+
+                      {paginated.items.length > 0 ? (
+                        <>
+                          <div className="space-y-2">
+                            {paginated.items.map((po) => (
+                              <div
+                                key={po.id}
+                                className="flex items-center justify-between p-4 rounded-lg border theme-border hover:bg-white/5 transition"
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex-shrink-0 text-2xl">
+                                    📋
                                   </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium theme-text-primary truncate">
+                                      {po.orderNumber}
+                                    </p>
+                                    <div className="flex flex-wrap gap-3 mt-1 text-sm theme-text-secondary">
+                                      <span>Supplier: {po.supplierName}</span>
+                                      <span>
+                                        Total:{" "}
+                                        {formatCurrencyCents(po.totalCents)}
+                                      </span>
+                                      <span>Items: {po.items.length}</span>
+                                      <span>
+                                        {safeFormatDate(
+                                          po.createdAt,
+                                          "MMM d, yyyy",
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                      po.status === "received"
+                                        ? "bg-green-500/20 text-green-400 border border-green-500/50"
+                                        : po.status === "approved"
+                                          ? "bg-blue-500/20 text-blue-400 border border-blue-500/50"
+                                          : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/50"
+                                    }`}
+                                  >
+                                    {po.status.toUpperCase()}
+                                  </span>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                                  po.status === 'received' ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
-                                  : po.status === 'approved' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' 
-                                  : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                                }`}>
-                                  {po.status.toUpperCase()}
-                                </span>
+                                <button
+                                  onClick={() =>
+                                    handleViewDetails({
+                                      ...po,
+                                      type: "purchase-order",
+                                    })
+                                  }
+                                  className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
+                                  title="View Details"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    />
+                                  </svg>
+                                </button>
                               </div>
-                              <button
-                                onClick={() => handleViewDetails({ ...po, type: 'purchase-order' })}
-                                className="p-2 rounded-lg border theme-border hover:bg-white/10 theme-text-primary transition flex-shrink-0 ml-4"
-                                title="View Details"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
+                            ))}
+                          </div>
+
+                          {paginated.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm theme-text-secondary">
+                                Showing{" "}
+                                {(purchaseOrdersPage - 1) * itemsPerPage + 1} to{" "}
+                                {Math.min(
+                                  purchaseOrdersPage * itemsPerPage,
+                                  paginated.totalItems,
+                                )}{" "}
+                                of {paginated.totalItems}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    setPurchaseOrdersPage((p) =>
+                                      Math.max(1, p - 1),
+                                    )
+                                  }
+                                  disabled={purchaseOrdersPage === 1}
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setPurchaseOrdersPage((p) =>
+                                      Math.min(paginated.totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={
+                                    purchaseOrdersPage === paginated.totalPages
+                                  }
+                                  className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
+                                >
+                                  Next
+                                </button>
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                        
-                        {paginated.totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm theme-text-secondary">
-                              Showing {((purchaseOrdersPage - 1) * itemsPerPage) + 1} to {Math.min(purchaseOrdersPage * itemsPerPage, paginated.totalItems)} of {paginated.totalItems}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setPurchaseOrdersPage(p => Math.max(1, p - 1))}
-                                disabled={purchaseOrdersPage === 1}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Previous
-                              </button>
-                              <button
-                                onClick={() => setPurchaseOrdersPage(p => Math.min(paginated.totalPages, p + 1))}
-                                disabled={purchaseOrdersPage === paginated.totalPages}
-                                className="px-3 sm:px-4 py-2 rounded-lg border theme-border theme-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition active:scale-95"
-                              >
-                                Next
-                              </button>
-                        </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="theme-text-secondary text-center py-8">
+                          No purchase orders found
+                        </p>
+                      )}
                     </div>
-                        )}
-                      </>
-                  ) : (
-                    <p className="theme-text-secondary text-center py-8">No purchase orders found</p>
-                  )}
-                </div>
-                );
-              })()}
+                  );
+                })()}
             </>
           )}
         </div>
       </main>
-      
+
       {/* Receipt Options Modal */}
       {selectedOrderId && (
         <ReceiptOptionsModal
@@ -1851,131 +2950,225 @@ export function ReportsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="theme-surface rounded-2xl border theme-border max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 theme-surface border-b theme-border p-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold theme-text-primary">Details</h3>
+              <h3 className="text-lg font-semibold theme-text-primary">
+                Details
+              </h3>
               <button
                 onClick={handleCloseDetail}
                 className="p-2 rounded-lg hover:bg-white/10 theme-text-primary transition"
                 title="Close"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {selectedDetail.type === 'sales' && (
+              {selectedDetail.type === "sales" && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Product Name</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.productName}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Product Name
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.productName}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Order Number</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.orderNumber}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Order Number
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.orderNumber}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm theme-text-secondary mb-1">Price</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.price)}</p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.price)}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Quantity</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.totalOrder}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Quantity
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.totalOrder}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.avgOrderValue)}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Average Order Value
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.avgOrderValue)}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Product ID</p>
-                      <p className="font-mono text-xs theme-text-secondary">{selectedDetail.productId}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Product ID
+                      </p>
+                      <p className="font-mono text-xs theme-text-secondary">
+                        {selectedDetail.productId}
+                      </p>
                     </div>
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'top-seller-product' && (
+              {selectedDetail.type === "top-seller-product" && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Product ID</p>
-                      <p className="font-mono text-xs theme-text-primary">{selectedDetail.productId}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Product ID
+                      </p>
+                      <p className="font-mono text-xs theme-text-primary">
+                        {selectedDetail.productId}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Quantity Sold</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.quantitySold}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Quantity Sold
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.quantitySold}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Revenue</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.revenue)}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Revenue
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.revenue)}
+                      </p>
                     </div>
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'top-seller-staff' && (
+              {selectedDetail.type === "top-seller-staff" && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Staff Name</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.userName}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Staff Name
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.userName}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">User ID</p>
-                      <p className="font-mono text-xs theme-text-secondary">{selectedDetail.userId}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        User ID
+                      </p>
+                      <p className="font-mono text-xs theme-text-secondary">
+                        {selectedDetail.userId}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.totalSales)}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Total Sales
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.totalSales)}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Order Count</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.orderCount}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Order Count
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.orderCount}
+                      </p>
                     </div>
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'alert' && (
+              {selectedDetail.type === "alert" && (
                 <>
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm theme-text-secondary mb-1">Title</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.title}</p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.title}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Message</p>
-                      <p className="theme-text-primary">{selectedDetail.message}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Message
+                      </p>
+                      <p className="theme-text-primary">
+                        {selectedDetail.message}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Severity</p>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Severity
+                      </p>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}
+                      >
                         {selectedDetail.severity.toUpperCase()}
                       </span>
                     </div>
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'fraud' && (
+              {selectedDetail.type === "fraud" && (
                 <>
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm theme-text-secondary mb-1">Title</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.title}</p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.title}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Message</p>
-                      <p className="theme-text-primary">{selectedDetail.message}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Message
+                      </p>
+                      <p className="theme-text-primary">
+                        {selectedDetail.message}
+                      </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Order Number</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.orderNumber}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Order Number
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.orderNumber}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Date</p>
-                        <p className="font-medium theme-text-primary">{safeFormatDate(selectedDetail.createdAt || selectedDetail.timestamp, 'MMM d, yyyy HH:mm')}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Date
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {safeFormatDate(
+                            selectedDetail.createdAt ||
+                              selectedDetail.timestamp,
+                            "MMM d, yyyy HH:mm",
+                          )}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Severity</p>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Severity
+                        </p>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}
+                        >
                           {selectedDetail.severity.toUpperCase()}
                         </span>
                       </div>
@@ -1983,66 +3176,112 @@ export function ReportsPage() {
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'expiry' && (
+              {selectedDetail.type === "expiry" && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Product Name</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.productName}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Product Name
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.productName}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Status</p>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        selectedDetail.status === 'expired' ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                      }`}>
-                        {selectedDetail.status === 'expired' ? 'EXPIRED' : 'EXPIRING SOON'}
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Status
+                      </p>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          selectedDetail.status === "expired"
+                            ? "bg-red-500/20 text-red-400 border border-red-500/50"
+                            : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/50"
+                        }`}
+                      >
+                        {selectedDetail.status === "expired"
+                          ? "EXPIRED"
+                          : "EXPIRING SOON"}
                       </span>
                     </div>
-                    {selectedDetail.status === 'expired' ? (
+                    {selectedDetail.status === "expired" ? (
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Days Expired</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.daysExpired} days ago</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Days Expired
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.daysExpired} days ago
+                        </p>
                       </div>
                     ) : (
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Days Until Expiry</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.daysUntilExpiry} days</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Days Until Expiry
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.daysUntilExpiry} days
+                        </p>
                       </div>
                     )}
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Potential Loss</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.potentialLoss)}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Potential Loss
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.potentialLoss)}
+                      </p>
                     </div>
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'shrinkage' && (
+              {selectedDetail.type === "shrinkage" && (
                 <>
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm theme-text-secondary mb-1">Title</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.title}</p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.title}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Message</p>
-                      <p className="theme-text-primary">{selectedDetail.message}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Message
+                      </p>
+                      <p className="theme-text-primary">
+                        {selectedDetail.message}
+                      </p>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Actual Stock</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.actualStock}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Actual Stock
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.actualStock}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Theoretical Stock</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.theoreticalStock}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Theoretical Stock
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.theoreticalStock}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Difference</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.discrepancy}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Difference
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.discrepancy}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Severity</p>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Severity
+                        </p>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedDetail.severity)}`}
+                        >
                           {selectedDetail.severity.toUpperCase()}
                         </span>
                       </div>
@@ -2050,153 +3289,266 @@ export function ReportsPage() {
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'staff' && (
+              {selectedDetail.type === "staff" && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Staff Name</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.userName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">User ID</p>
-                      <p className="font-mono text-xs theme-text-secondary">{selectedDetail.userId}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Total Sales</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.sales?.totalSales || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Order Count</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.sales?.orderCount || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Item Count</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.sales?.itemCount || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.sales?.averageOrderValue || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Items per Order</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Staff Name
+                      </p>
                       <p className="font-medium theme-text-primary">
-                        {selectedDetail.sales?.orderCount > 0 
-                          ? ((selectedDetail.sales?.itemCount || 0) / selectedDetail.sales.orderCount).toFixed(1)
-                          : '0.0'}
+                        {selectedDetail.userName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        User ID
+                      </p>
+                      <p className="font-mono text-xs theme-text-secondary">
+                        {selectedDetail.userId}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Total Sales
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.sales?.totalSales || 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Order Count
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.sales?.orderCount || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Item Count
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.sales?.itemCount || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Average Order Value
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(
+                          selectedDetail.sales?.averageOrderValue || 0,
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Items per Order
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.sales?.orderCount > 0
+                          ? (
+                              (selectedDetail.sales?.itemCount || 0) /
+                              selectedDetail.sales.orderCount
+                            ).toFixed(1)
+                          : "0.0"}
                       </p>
                     </div>
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'analytics' && (
+              {selectedDetail.type === "analytics" && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Period</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.period}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Period
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.period}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm theme-text-secondary mb-1">Sales</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.sales)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Orders</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.orders}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Items</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.items}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Average Order Value</p>
-                      <p className="font-medium theme-text-primary">{formatCurrency(selectedDetail.averageOrderValue)}</p>
-                    </div>
-                  </div>
-                </>
-              )}
-              {selectedDetail.type === 'inventory-period' && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Period</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.period}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Net Change</p>
-                      <p className={`font-medium ${selectedDetail.netChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {selectedDetail.netChange >= 0 ? '+' : ''}{selectedDetail.netChange}
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.sales)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Received</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.received}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Orders
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.orders}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Sold</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.sold}</p>
+                      <p className="text-sm theme-text-secondary mb-1">Items</p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.items}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm theme-text-secondary mb-1">Returned</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.returned}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm theme-text-secondary mb-1">Adjusted</p>
-                      <p className="font-medium theme-text-primary">{selectedDetail.adjusted}</p>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Average Order Value
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {formatCurrency(selectedDetail.averageOrderValue)}
+                      </p>
                     </div>
                   </div>
                 </>
               )}
-              {selectedDetail.type === 'purchase-order' && (
+              {selectedDetail.type === "inventory-period" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Period
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.period}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Net Change
+                      </p>
+                      <p
+                        className={`font-medium ${selectedDetail.netChange >= 0 ? "text-green-400" : "text-red-400"}`}
+                      >
+                        {selectedDetail.netChange >= 0 ? "+" : ""}
+                        {selectedDetail.netChange}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Received
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.received}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">Sold</p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.sold}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Returned
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.returned}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm theme-text-secondary mb-1">
+                        Adjusted
+                      </p>
+                      <p className="font-medium theme-text-primary">
+                        {selectedDetail.adjusted}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedDetail.type === "purchase-order" && (
                 <>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Order Number</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.orderNumber}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Order Number
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.orderNumber}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Status</p>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          selectedDetail.status === 'received' ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
-                          : selectedDetail.status === 'approved' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' 
-                          : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                        }`}>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Status
+                        </p>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            selectedDetail.status === "received"
+                              ? "bg-green-500/20 text-green-400 border border-green-500/50"
+                              : selectedDetail.status === "approved"
+                                ? "bg-blue-500/20 text-blue-400 border border-blue-500/50"
+                                : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/50"
+                          }`}
+                        >
                           {selectedDetail.status.toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Supplier</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.supplierName}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Supplier
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.supplierName}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Total</p>
-                        <p className="font-medium theme-text-primary">{formatCurrencyCents(selectedDetail.totalCents)}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Total
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {formatCurrencyCents(selectedDetail.totalCents)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Items Count</p>
-                        <p className="font-medium theme-text-primary">{selectedDetail.items.length}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Items Count
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {selectedDetail.items.length}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm theme-text-secondary mb-1">Created</p>
-                        <p className="font-medium theme-text-primary">{safeFormatDate(selectedDetail.createdAt || selectedDetail.timestamp, 'MMM d, yyyy HH:mm')}</p>
+                        <p className="text-sm theme-text-secondary mb-1">
+                          Created
+                        </p>
+                        <p className="font-medium theme-text-primary">
+                          {safeFormatDate(
+                            selectedDetail.createdAt ||
+                              selectedDetail.timestamp,
+                            "MMM d, yyyy HH:mm",
+                          )}
+                        </p>
                       </div>
                     </div>
-                    {selectedDetail.items && selectedDetail.items.length > 0 && (
-                      <div>
-                        <p className="text-sm theme-text-secondary mb-2">Items</p>
-                        <div className="space-y-2">
-                          {selectedDetail.items.map((item: any, idx: number) => (
-                            <div key={idx} className="p-3 rounded-lg border theme-border">
-                              <p className="font-medium theme-text-primary">{item.productName}</p>
-                              <div className="flex gap-4 mt-1 text-sm theme-text-secondary">
-                                <span>Qty: {item.quantity}</span>
-                                <span>Unit Cost: {formatCurrencyCents(item.unitCostCents)}</span>
-                              </div>
-                            </div>
-                          ))}
+                    {selectedDetail.items &&
+                      selectedDetail.items.length > 0 && (
+                        <div>
+                          <p className="text-sm theme-text-secondary mb-2">
+                            Items
+                          </p>
+                          <div className="space-y-2">
+                            {selectedDetail.items.map(
+                              (item: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className="p-3 rounded-lg border theme-border"
+                                >
+                                  <p className="font-medium theme-text-primary">
+                                    {item.productName}
+                                  </p>
+                                  <div className="flex gap-4 mt-1 text-sm theme-text-secondary">
+                                    <span>Qty: {item.quantity}</span>
+                                    <span>
+                                      Unit Cost:{" "}
+                                      {formatCurrencyCents(item.unitCostCents)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ),
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 </>
               )}

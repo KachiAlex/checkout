@@ -1,8 +1,8 @@
-import { Link } from 'react-router-dom';
-import { BrandMark } from '../components/BrandMark';
-import { DOWNLOAD_LINKS } from '../config';
+import { Link } from "react-router-dom";
+import { BrandMark } from "../components/BrandMark";
+import { DOWNLOAD_LINKS } from "../config";
 
-type PlatformKey = keyof typeof DOWNLOAD_LINKS | 'macos' | 'ios';
+type PlatformKey = keyof typeof DOWNLOAD_LINKS | "macos" | "ios";
 
 interface PlatformConfig {
   key: PlatformKey;
@@ -18,53 +18,57 @@ interface PlatformConfig {
 
 const platformConfigs: PlatformConfig[] = [
   {
-    key: 'windows',
-    name: 'Windows',
-    icon: '🪟',
-    description: 'Full-featured desktop experience with native USB and Bluetooth scanner support.',
-    cta: 'Download for Windows',
-    note: 'Works on Windows 10 and newer.',
+    key: "windows",
+    name: "Windows",
+    icon: "🪟",
+    description:
+      "Full-featured desktop experience with native USB and Bluetooth scanner support.",
+    cta: "Download for Windows",
+    note: "Works on Windows 10 and newer.",
   },
   {
-    key: 'macos',
-    name: 'macOS',
-    icon: '🧭',
-    description: 'Optimised for Apple Silicon with secure kiosk mode and offline resilience.',
-    cta: 'Download for macOS',
+    key: "macos",
+    name: "macOS",
+    icon: "🧭",
+    description:
+      "Optimised for Apple Silicon with secure kiosk mode and offline resilience.",
+    cta: "Download for macOS",
     comingSoon: true,
-    note: 'Beta builds start shipping Q1.',
+    note: "Beta builds start shipping Q1.",
   },
   {
-    key: 'android',
-    name: 'Android',
-    icon: '🤖',
-    description: 'Convert handhelds into mobile POS terminals with camera and Bluetooth scanners.',
-    cta: 'Download for Android',
+    key: "android",
+    name: "Android",
+    icon: "🤖",
+    description:
+      "Convert handhelds into mobile POS terminals with camera and Bluetooth scanners.",
+    cta: "Download for Android",
     comingSoon: true,
-    note: 'Compatible with Android 9+. Enable installs from trusted sources.',
+    note: "Compatible with Android 9+. Enable installs from trusted sources.",
   },
   {
-    key: 'ios',
-    name: 'iOS & iPadOS',
-    icon: '📱',
-    description: 'Native app for Apple devices with guided selling flows and kiosk lockdown.',
-    cta: 'Join waitlist',
-    secondary: 'mailto:hello@checkouthq.com?subject=Checkout%20iOS%20Waitlist',
-    secondaryLabel: 'Email us to join the waitlist',
+    key: "ios",
+    name: "iOS & iPadOS",
+    icon: "📱",
+    description:
+      "Native app for Apple devices with guided selling flows and kiosk lockdown.",
+    cta: "Join waitlist",
+    secondary: "mailto:hello@checkouthq.com?subject=Checkout%20iOS%20Waitlist",
+    secondaryLabel: "Email us to join the waitlist",
     comingSoon: true,
-    note: 'Pilot programme launching soon — join the waitlist to get early access.',
+    note: "Pilot programme launching soon — join the waitlist to get early access.",
   },
 ];
 
 function resolveDownloadUrl(key: PlatformKey): string | null {
   switch (key) {
-    case 'windows':
+    case "windows":
       return DOWNLOAD_LINKS.windows;
-    case 'android':
+    case "android":
       return DOWNLOAD_LINKS.android;
-    case 'macos':
+    case "macos":
       return DOWNLOAD_LINKS.macos;
-    case 'ios':
+    case "ios":
       return DOWNLOAD_LINKS.ios;
     default:
       return null;
@@ -76,7 +80,10 @@ export function GetAppPage() {
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-white/10 bg-slate-950/70 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-          <Link to="/" className="flex items-center gap-3 text-lg font-semibold tracking-tight">
+          <Link
+            to="/"
+            className="flex items-center gap-3 text-lg font-semibold tracking-tight"
+          >
             <BrandMark
               size={40}
               withPadding={false}
@@ -109,8 +116,10 @@ export function GetAppPage() {
               Get the Checkout app for your team&apos;s devices
             </h1>
             <p className="max-w-2xl text-base text-slate-300">
-              Roll out native experiences on the hardware your operators already use. Download installers for desktop
-              deployments or side-load the Android build for handhelds. iOS and macOS packages are arriving shortly.
+              Roll out native experiences on the hardware your operators already
+              use. Download installers for desktop deployments or side-load the
+              Android build for handhelds. iOS and macOS packages are arriving
+              shortly.
             </p>
           </div>
         </section>
@@ -122,7 +131,11 @@ export function GetAppPage() {
                 const downloadUrl = resolveDownloadUrl(platform.key);
                 const isAvailable = Boolean(downloadUrl);
                 const showComingSoon = platform.comingSoon && !isAvailable;
-                const primaryLabel = isAvailable ? platform.cta : showComingSoon ? 'Coming soon' : platform.cta;
+                const primaryLabel = isAvailable
+                  ? platform.cta
+                  : showComingSoon
+                    ? "Coming soon"
+                    : platform.cta;
 
                 return (
                   <div
@@ -134,7 +147,9 @@ export function GetAppPage() {
                         <span className="text-xl">{platform.icon}</span>
                         {platform.name}
                       </div>
-                      <p className="text-sm text-slate-200">{platform.description}</p>
+                      <p className="text-sm text-slate-200">
+                        {platform.description}
+                      </p>
                     </div>
                     <div className="mt-6 space-y-4">
                       {!isAvailable ? (
@@ -155,16 +170,20 @@ export function GetAppPage() {
                           {primaryLabel}
                         </a>
                       )}
-                      {!isAvailable && platform.secondary && platform.secondaryLabel && (
-                        <a
-                          href={platform.secondary}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-white/40"
-                        >
-                          {platform.secondaryLabel}
-                        </a>
-                      )}
+                      {!isAvailable &&
+                        platform.secondary &&
+                        platform.secondaryLabel && (
+                          <a
+                            href={platform.secondary}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-white/40"
+                          >
+                            {platform.secondaryLabel}
+                          </a>
+                        )}
                       {platform.note && (
-                        <p className="text-xs text-slate-400">{platform.note}</p>
+                        <p className="text-xs text-slate-400">
+                          {platform.note}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -173,12 +192,18 @@ export function GetAppPage() {
             </div>
 
             <div className="mt-14 rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-slate-300">
-              <h2 className="text-base font-semibold text-white">Need another format?</h2>
+              <h2 className="text-base font-semibold text-white">
+                Need another format?
+              </h2>
               <p className="mt-3">
-                Have a device fleet that needs custom packaging, MDM deployment, or offline installers? Reach out to
-                <a href="mailto:hello@checkouthq.com" className="ml-1 text-sky-300 underline">
+                Have a device fleet that needs custom packaging, MDM deployment,
+                or offline installers? Reach out to
+                <a
+                  href="mailto:hello@checkouthq.com"
+                  className="ml-1 text-sky-300 underline"
+                >
                   hello@checkouthq.com
-                </a>{' '}
+                </a>{" "}
                 and we&apos;ll ship a tailored build.
               </p>
             </div>
@@ -188,7 +213,9 @@ export function GetAppPage() {
 
       <footer className="border-t border-white/10 bg-slate-950/80 py-8 text-sm text-slate-400">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 md:flex-row md:items-center md:justify-between">
-          <p>&copy; {new Date().getFullYear()} Checkout. All rights reserved.</p>
+          <p>
+            &copy; {new Date().getFullYear()} Checkout. All rights reserved.
+          </p>
           <div className="flex flex-wrap gap-4">
             <Link to="/" className="hover:text-white">
               Home
@@ -205,4 +232,3 @@ export function GetAppPage() {
     </div>
   );
 }
-

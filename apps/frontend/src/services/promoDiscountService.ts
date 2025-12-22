@@ -1,12 +1,12 @@
-import axios from 'axios';
-import { API_URL } from '../config';
+import axios from "axios";
+import { API_URL } from "../config";
 
 export interface PromoDiscount {
   id: string;
   code: string;
   name: string;
   description?: string;
-  discountType: 'percentage' | 'fixed';
+  discountType: "percentage" | "fixed";
   discountValue: number;
   applicablePlans: string[];
   minPurchaseCents?: number;
@@ -24,7 +24,7 @@ export interface CreatePromoDiscountPayload {
   code: string;
   name: string;
   description?: string;
-  discountType: 'percentage' | 'fixed';
+  discountType: "percentage" | "fixed";
   discountValue: number;
   applicablePlans: string[];
   minPurchaseCents?: number;
@@ -35,12 +35,17 @@ export interface CreatePromoDiscountPayload {
   isActive?: boolean;
 }
 
-export async function getPromoDiscounts(accessToken: string): Promise<PromoDiscount[]> {
-  const { data } = await axios.get<PromoDiscount[]>(`${API_URL}/api/v1/promo-discounts`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
+export async function getPromoDiscounts(
+  accessToken: string,
+): Promise<PromoDiscount[]> {
+  const { data } = await axios.get<PromoDiscount[]>(
+    `${API_URL}/api/v1/promo-discounts`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
-  });
+  );
   return data;
 }
 
@@ -77,11 +82,13 @@ export async function updatePromoDiscount(
   return data;
 }
 
-export async function deletePromoDiscount(id: string, accessToken: string): Promise<void> {
+export async function deletePromoDiscount(
+  id: string,
+  accessToken: string,
+): Promise<void> {
   await axios.delete(`${API_URL}/api/v1/promo-discounts/${id}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
 }
-

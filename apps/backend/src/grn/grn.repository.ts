@@ -81,11 +81,15 @@ export class GRNRepository {
   }
 
   private toPrismaStatus(status: GRNStatus): PrismaGRNStatus {
-    return String(status || '').trim().toUpperCase() as PrismaGRNStatus;
+    return String(status || '')
+      .trim()
+      .toUpperCase() as PrismaGRNStatus;
   }
 
   private fromPrismaStatus(status: PrismaGRNStatus): GRNStatus {
-    return String(status || '').trim().toLowerCase() as GRNStatus;
+    return String(status || '')
+      .trim()
+      .toLowerCase() as GRNStatus;
   }
 
   async findAll(tenantId: string, locationId?: string): Promise<GRNRecord[]> {
@@ -121,11 +125,11 @@ export class GRNRepository {
     }
 
     let query = this.collection.where('tenantId', '==', tenantId);
-    
+
     if (locationId) {
       query = query.where('locationId', '==', locationId) as any;
     }
-    
+
     const snapshot = await query.orderBy('receivedAt', 'desc').get();
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
   }
@@ -258,7 +262,7 @@ export class GRNRepository {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
     const grnNumber = `GRN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    
+
     const docRef = this.collection.doc(id);
     await docRef.set({
       tenantId: data.tenantId,
@@ -299,15 +303,27 @@ export class GRNRepository {
       supplierName: data.supplierName,
       grnNumber: data.grnNumber,
       status: data.status,
-      items: data.items.map(item => ({
+      items: data.items.map((item) => ({
         ...item,
-        expiryDate: item.expiryDate ? (item.expiryDate instanceof Timestamp ? item.expiryDate.toDate() : (typeof item.expiryDate === 'string' ? new Date(item.expiryDate) : undefined)) : undefined,
+        expiryDate: item.expiryDate
+          ? item.expiryDate instanceof Timestamp
+            ? item.expiryDate.toDate()
+            : typeof item.expiryDate === 'string'
+              ? new Date(item.expiryDate)
+              : undefined
+          : undefined,
       })),
       subtotalCents: data.subtotalCents,
       taxCents: data.taxCents,
       totalCents: data.totalCents,
       receivedBy: data.receivedBy,
-      receivedAt: data.receivedAt ? (data.receivedAt instanceof Timestamp ? data.receivedAt.toDate() : (typeof data.receivedAt === 'string' ? new Date(data.receivedAt) : new Date())) : new Date(),
+      receivedAt: data.receivedAt
+        ? data.receivedAt instanceof Timestamp
+          ? data.receivedAt.toDate()
+          : typeof data.receivedAt === 'string'
+            ? new Date(data.receivedAt)
+            : new Date()
+        : new Date(),
       notes: data.notes,
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),
@@ -324,4 +340,3 @@ export class GRNRepository {
     return new Date();
   }
 }
-

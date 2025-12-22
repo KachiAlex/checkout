@@ -24,7 +24,7 @@ export class AuthController {
       deviceId: loginDto.deviceId,
       timestamp: new Date().toISOString(),
     });
-    
+
     try {
       const result = await this.authService.login(loginDto);
       console.log('[Auth Controller] Login successful for tenant:', loginDto.tenantSlug);
@@ -56,7 +56,7 @@ export class AuthController {
   @ApiResponse({ status: 403, description: 'Invalid PIN or insufficient permissions' })
   async verifyManager(@Body() verifyDto: VerifyManagerDto, @Request() req: any) {
     const user = req.user;
-    
+
     // Check if current user is already a manager/admin
     if (user.role === UserRole.MANAGER || user.role === UserRole.ADMIN) {
       return { authorized: true, message: 'User is already authorized' };
@@ -64,7 +64,7 @@ export class AuthController {
 
     // Verify manager PIN
     const manager = await this.authService.validateUser(verifyDto.pin, user.tenantId);
-    
+
     if (!manager) {
       return { authorized: false, message: 'Invalid manager PIN' };
     }

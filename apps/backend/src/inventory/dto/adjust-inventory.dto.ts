@@ -1,13 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsUUID,
-  IsNumber,
-  IsEnum,
-  IsOptional,
-  IsString,
-  Min,
-  ValidateIf,
-} from 'class-validator';
+import { IsUUID, IsNumber, IsEnum, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { InventoryTransactionType } from '@pos-checkout/shared';
 
@@ -16,7 +8,10 @@ export class AdjustInventoryDto {
   @IsUUID()
   productId: string;
 
-  @ApiProperty({ description: 'Location ID (optional, will be resolved from user context if not provided)', required: false })
+  @ApiProperty({
+    description: 'Location ID (optional, will be resolved from user context if not provided)',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   locationId?: string;

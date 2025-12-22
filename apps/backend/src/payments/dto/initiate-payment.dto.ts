@@ -1,10 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
 import { PaymentMethod } from '@pos-checkout/shared';
 
 export class InitiatePaymentDto {
@@ -21,7 +16,10 @@ export class InitiatePaymentDto {
   @Min(0)
   amount: number;
 
-  @ApiProperty({ description: 'Additional metadata (e.g., token for card payments)', required: false })
+  @ApiProperty({
+    description: 'Additional metadata (e.g., token for card payments)',
+    required: false,
+  })
   @IsOptional()
   metadata?: Record<string, unknown>;
 }

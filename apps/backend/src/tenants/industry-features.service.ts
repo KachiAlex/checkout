@@ -107,4 +107,3 @@ export class IndustryFeaturesService {
       .map(([feature]) => feature);
   }
 }
-

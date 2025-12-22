@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MinLength, IsEmail, IsOptional, IsEnum, IsIn } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  IsEmail,
+  IsOptional,
+  IsEnum,
+  IsIn,
+} from 'class-validator';
 import { TenantPlan } from '@pos-checkout/shared';
 
 export class RegisterDto {
@@ -29,25 +37,24 @@ export class RegisterDto {
   @MinLength(6)
   adminPassword!: string;
 
-  @ApiProperty({ 
-    description: 'Subscription plan', 
-    enum: TenantPlan, 
+  @ApiProperty({
+    description: 'Subscription plan',
+    enum: TenantPlan,
     required: false,
-    example: TenantPlan.FREE 
+    example: TenantPlan.FREE,
   })
   @IsOptional()
   @IsEnum(TenantPlan)
   plan?: TenantPlan;
 
-  @ApiProperty({ 
-    description: 'Business industry type', 
+  @ApiProperty({
+    description: 'Business industry type',
     enum: ['retail', 'pharmacy', 'restaurant', 'supermarket', 'other'],
     required: false,
-    example: 'retail' 
+    example: 'retail',
   })
   @IsOptional()
   @IsString()
   @IsIn(['retail', 'pharmacy', 'restaurant', 'supermarket', 'other'])
   industry?: string;
 }
-

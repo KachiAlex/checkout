@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import axios from 'axios';
-import toast from 'react-hot-toast';
-import { Link, useSearchParams } from 'react-router-dom';
-import { format } from 'date-fns';
-import { API_URL } from '../config';
-import { BrandMark } from '../components/BrandMark';
-import { ThemeToggle } from '../components/ThemeToggle';
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../stores/authStore";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { Link, useSearchParams } from "react-router-dom";
+import { format } from "date-fns";
+import { API_URL } from "../config";
+import { BrandMark } from "../components/BrandMark";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 interface PurchaseOrder {
   id: string;
@@ -45,16 +45,16 @@ interface GRNItem {
 export function GRNPage() {
   const { logout, accessToken } = useAuthStore();
   const [searchParams] = useSearchParams();
-  const poIdFromUrl = searchParams.get('poId');
-  
+  const poIdFromUrl = searchParams.get("poId");
+
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+
   const [grnItems, setGrnItems] = useState<GRNItem[]>([]);
   const [formData, setFormData] = useState({
-    notes: '',
+    notes: "",
   });
 
   const loadPurchaseOrders = async () => {
@@ -66,10 +66,11 @@ export function GRNPage() {
       });
       // Filter for approved or partially received POs
       const approvedPOs = (response.data || []).filter(
-        (po: PurchaseOrder) => po.status === 'approved' || po.status === 'partially_received'
+        (po: PurchaseOrder) =>
+          po.status === "approved" || po.status === "partially_received",
       );
       setPurchaseOrders(approvedPOs);
-      
+
       // If poId is in URL, select that PO
       if (poIdFromUrl) {
         const po = approvedPOs.find((p: PurchaseOrder) => p.id === poIdFromUrl);
@@ -79,9 +80,9 @@ export function GRNPage() {
         }
       }
     } catch (error: any) {
-      console.error('Failed to load purchase orders:', error);
+      console.error("Failed to load purchase orders:", error);
       if (error.response?.status !== 401) {
-        toast.error('Failed to load purchase orders');
+        toast.error("Failed to load purchase orders");
       }
     } finally {
       setLoading(false);
@@ -91,14 +92,17 @@ export function GRNPage() {
   const loadPurchaseOrder = async (poId: string) => {
     if (!accessToken) return;
     try {
-      const response = await axios.get(`${API_URL}/api/v1/purchase-orders/${poId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const response = await axios.get(
+        `${API_URL}/api/v1/purchase-orders/${poId}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
       setSelectedPO(response.data);
       initializeGRNItems(response.data);
     } catch (error: any) {
-      console.error('Failed to load purchase order:', error);
-      toast.error('Failed to load purchase order');
+      console.error("Failed to load purchase order:", error);
+      toast.error("Failed to load purchase order");
     }
   };
 
@@ -112,8 +116,8 @@ export function GRNPage() {
         sku: item.sku,
         orderedQuantity: item.quantity,
         receivedQuantity: remaining > 0 ? remaining : 0, // Default to remaining quantity
-        batchNumber: '',
-        expiryDate: '',
+        batchNumber: "",
+        expiryDate: "",
         unitCostCents: item.unitCostCents,
         totalCostCents: item.unitCostCents * (remaining > 0 ? remaining : 0),
       };
@@ -143,22 +147,28 @@ export function GRNPage() {
   const updateGRNItem = (index: number, field: string, value: any) => {
     const newItems = [...grnItems];
     const item = { ...newItems[index] };
-    
-    if (field === 'receivedQuantity') {
+
+    if (field === "receivedQuantity") {
       const qty = parseFloat(value) || 0;
-      const maxQty = item.orderedQuantity - (selectedPO?.items.find(i => i.productId === item.productId)?.receivedQuantity || 0);
+      const maxQty =
+        item.orderedQuantity -
+        (selectedPO?.items.find((i) => i.productId === item.productId)
+          ?.receivedQuantity || 0);
       item.receivedQuantity = Math.min(Math.max(0, qty), maxQty);
       item.totalCostCents = item.receivedQuantity * item.unitCostCents;
-    } else if (field === 'batchNumber' || field === 'expiryDate') {
+    } else if (field === "batchNumber" || field === "expiryDate") {
       item[field] = value;
     }
-    
+
     newItems[index] = item;
     setGrnItems(newItems);
   };
 
   const calculateTotals = () => {
-    const subtotal = grnItems.reduce((sum, item) => sum + item.totalCostCents, 0);
+    const subtotal = grnItems.reduce(
+      (sum, item) => sum + item.totalCostCents,
+      0,
+    );
     const tax = Math.round(subtotal * 0.075); // 7.5% tax
     const total = subtotal + tax;
     return { subtotal, tax, total };
@@ -167,25 +177,29 @@ export function GRNPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken || !selectedPO) {
-      toast.error('Not authenticated or no PO selected');
+      toast.error("Not authenticated or no PO selected");
       return;
     }
 
     // Validate that at least one item has received quantity > 0
-    const hasReceivedItems = grnItems.some(item => item.receivedQuantity > 0);
+    const hasReceivedItems = grnItems.some((item) => item.receivedQuantity > 0);
     if (!hasReceivedItems) {
-      toast.error('Please enter received quantities for at least one item');
+      toast.error("Please enter received quantities for at least one item");
       return;
     }
 
     // Validate received quantities don't exceed ordered
     for (const item of grnItems) {
       if (item.receivedQuantity > 0) {
-        const poItem = selectedPO.items.find(i => i.productId === item.productId);
+        const poItem = selectedPO.items.find(
+          (i) => i.productId === item.productId,
+        );
         const alreadyReceived = poItem?.receivedQuantity || 0;
         const maxAllowed = (poItem?.quantity || 0) - alreadyReceived;
         if (item.receivedQuantity > maxAllowed) {
-          toast.error(`${item.productName}: Received quantity cannot exceed remaining ordered quantity`);
+          toast.error(
+            `${item.productName}: Received quantity cannot exceed remaining ordered quantity`,
+          );
           return;
         }
       }
@@ -194,14 +208,14 @@ export function GRNPage() {
     setSubmitting(true);
     try {
       const { subtotal, tax, total } = calculateTotals();
-      
+
       const response = await axios.post(
         `${API_URL}/api/v1/grn`,
         {
           purchaseOrderId: selectedPO.id,
           items: grnItems
-            .filter(item => item.receivedQuantity > 0)
-            .map(item => ({
+            .filter((item) => item.receivedQuantity > 0)
+            .map((item) => ({
               productId: item.productId,
               productName: item.productName,
               sku: item.sku,
@@ -219,34 +233,40 @@ export function GRNPage() {
         },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      
+
       // Show notifications based on response metadata
       const metadata = (response.data as any)?.metadata;
       if (metadata) {
         if (metadata.newProductsCount > 0) {
-          toast.success(`✅ ${metadata.newProductsCount} new product${metadata.newProductsCount > 1 ? 's' : ''} added to inventory!`, {
-            duration: 5000,
-          });
+          toast.success(
+            `✅ ${metadata.newProductsCount} new product${metadata.newProductsCount > 1 ? "s" : ""} added to inventory!`,
+            {
+              duration: 5000,
+            },
+          );
         }
         if (metadata.restockedProductsCount > 0) {
-          toast.success(`📦 ${metadata.restockedProductsCount} product${metadata.restockedProductsCount > 1 ? 's' : ''} restocked!`, {
-            duration: 5000,
-          });
+          toast.success(
+            `📦 ${metadata.restockedProductsCount} product${metadata.restockedProductsCount > 1 ? "s" : ""} restocked!`,
+            {
+              duration: 5000,
+            },
+          );
         }
       } else {
-        toast.success('GRN created successfully! Inventory updated.');
+        toast.success("GRN created successfully! Inventory updated.");
       }
-      
+
       // Reset form
       setSelectedPO(null);
       setGrnItems([]);
-      setFormData({ notes: '' });
-      
+      setFormData({ notes: "" });
+
       // Reload purchase orders
       await loadPurchaseOrders();
     } catch (error: any) {
-      console.error('Failed to create GRN:', error);
-      toast.error(error.response?.data?.message || 'Failed to create GRN');
+      console.error("Failed to create GRN:", error);
+      toast.error(error.response?.data?.message || "Failed to create GRN");
     } finally {
       setSubmitting(false);
     }
@@ -268,8 +288,12 @@ export function GRNPage() {
               className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0 sm:w-[56px] sm:h-[56px]"
             />
             <div className="min-w-0 flex-1">
-              <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-[0.35em]">Goods Received Note</p>
-              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">Receive Items</h1>
+              <p className="theme-text-secondary text-[10px] sm:text-xs uppercase tracking-[0.35em]">
+                Goods Received Note
+              </p>
+              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">
+                Receive Items
+              </h1>
               <p className="theme-text-secondary text-xs sm:text-sm">
                 Receive items from approved purchase orders
               </p>
@@ -313,12 +337,18 @@ export function GRNPage() {
         {/* Select Purchase Order */}
         {!selectedPO && (
           <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
-            <h2 className="theme-text-primary text-xl font-semibold mb-4">Select Purchase Order</h2>
+            <h2 className="theme-text-primary text-xl font-semibold mb-4">
+              Select Purchase Order
+            </h2>
             {loading ? (
-              <p className="theme-text-secondary text-sm">Loading purchase orders...</p>
+              <p className="theme-text-secondary text-sm">
+                Loading purchase orders...
+              </p>
             ) : purchaseOrders.length === 0 ? (
               <div className="theme-surface rounded-2xl border border-dashed p-12 text-center">
-                <p className="theme-text-primary text-lg font-semibold">No approved purchase orders found</p>
+                <p className="theme-text-primary text-lg font-semibold">
+                  No approved purchase orders found
+                </p>
                 <p className="theme-text-secondary mt-2 text-sm">
                   Purchase orders must be approved before items can be received.
                 </p>
@@ -346,22 +376,38 @@ export function GRNPage() {
                           {po.orderNumber}
                         </h3>
                         <p className="theme-text-secondary text-sm mb-2">
-                          Supplier: <span className="font-semibold">{po.supplierName}</span>
+                          Supplier:{" "}
+                          <span className="font-semibold">
+                            {po.supplierName}
+                          </span>
                         </p>
                         <div className="grid gap-2 sm:grid-cols-3 text-sm">
                           <div>
-                            <span className="theme-text-secondary">Items: </span>
-                            <span className="theme-text-primary font-semibold">{po.items.length}</span>
+                            <span className="theme-text-secondary">
+                              Items:{" "}
+                            </span>
+                            <span className="theme-text-primary font-semibold">
+                              {po.items.length}
+                            </span>
                           </div>
                           <div>
-                            <span className="theme-text-secondary">Total: </span>
-                            <span className="theme-text-primary font-semibold">{formatCurrency(po.totalCents)}</span>
+                            <span className="theme-text-secondary">
+                              Total:{" "}
+                            </span>
+                            <span className="theme-text-primary font-semibold">
+                              {formatCurrency(po.totalCents)}
+                            </span>
                           </div>
                           {po.expectedDeliveryDate && (
                             <div>
-                              <span className="theme-text-secondary">Expected: </span>
+                              <span className="theme-text-secondary">
+                                Expected:{" "}
+                              </span>
                               <span className="theme-text-primary font-semibold">
-                                {format(new Date(po.expectedDeliveryDate), 'MMM d, yyyy')}
+                                {format(
+                                  new Date(po.expectedDeliveryDate),
+                                  "MMM d, yyyy",
+                                )}
                               </span>
                             </div>
                           )}
@@ -383,16 +429,19 @@ export function GRNPage() {
           <div className="theme-card rounded-3xl border p-6 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="theme-text-primary text-xl font-semibold">Create GRN</h2>
+                <h2 className="theme-text-primary text-xl font-semibold">
+                  Create GRN
+                </h2>
                 <p className="theme-text-secondary text-sm mt-1">
-                  PO: {selectedPO.orderNumber} • Supplier: {selectedPO.supplierName}
+                  PO: {selectedPO.orderNumber} • Supplier:{" "}
+                  {selectedPO.supplierName}
                 </p>
               </div>
               <button
                 onClick={() => {
                   setSelectedPO(null);
                   setGrnItems([]);
-                  setFormData({ notes: '' });
+                  setFormData({ notes: "" });
                 }}
                 className="rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold theme-text-primary transition hover:bg-white/5"
               >
@@ -403,7 +452,9 @@ export function GRNPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Items */}
               <div className="space-y-3">
-                <h3 className="theme-text-primary text-lg font-semibold">Items to Receive</h3>
+                <h3 className="theme-text-primary text-lg font-semibold">
+                  Items to Receive
+                </h3>
                 {grnItems.length === 0 ? (
                   <p className="theme-text-secondary text-sm text-center py-4">
                     No items to receive.
@@ -411,24 +462,33 @@ export function GRNPage() {
                 ) : (
                   <div className="space-y-3">
                     {grnItems.map((item, index) => {
-                      const poItem = selectedPO.items.find(i => i.productId === item.productId);
+                      const poItem = selectedPO.items.find(
+                        (i) => i.productId === item.productId,
+                      );
                       const alreadyReceived = poItem?.receivedQuantity || 0;
-                      const maxAllowed = (poItem?.quantity || 0) - alreadyReceived;
-                      
+                      const maxAllowed =
+                        (poItem?.quantity || 0) - alreadyReceived;
+
                       return (
                         <div
                           key={index}
                           className="theme-surface rounded-xl border border-white/10 p-4"
                         >
                           <div className="mb-3">
-                            <h4 className="theme-text-primary font-semibold">{item.productName}</h4>
+                            <h4 className="theme-text-primary font-semibold">
+                              {item.productName}
+                            </h4>
                             <p className="theme-text-secondary text-xs">
-                              SKU: {item.sku} • Ordered: {item.orderedQuantity} 
+                              SKU: {item.sku} • Ordered: {item.orderedQuantity}
                               {alreadyReceived > 0 && (
-                                <span className="ml-2">• Already Received: {alreadyReceived}</span>
+                                <span className="ml-2">
+                                  • Already Received: {alreadyReceived}
+                                </span>
                               )}
                               {maxAllowed > 0 && (
-                                <span className="ml-2 text-emerald-400">• Remaining: {maxAllowed}</span>
+                                <span className="ml-2 text-emerald-400">
+                                  • Remaining: {maxAllowed}
+                                </span>
                               )}
                             </p>
                           </div>
@@ -443,7 +503,13 @@ export function GRNPage() {
                                 max={maxAllowed}
                                 step="1"
                                 value={item.receivedQuantity}
-                                onChange={(e) => updateGRNItem(index, 'receivedQuantity', e.target.value)}
+                                onChange={(e) =>
+                                  updateGRNItem(
+                                    index,
+                                    "receivedQuantity",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                                 required={item.receivedQuantity > 0}
                               />
@@ -455,7 +521,13 @@ export function GRNPage() {
                               <input
                                 type="text"
                                 value={item.batchNumber}
-                                onChange={(e) => updateGRNItem(index, 'batchNumber', e.target.value)}
+                                onChange={(e) =>
+                                  updateGRNItem(
+                                    index,
+                                    "batchNumber",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                                 placeholder="Optional"
                               />
@@ -467,7 +539,13 @@ export function GRNPage() {
                               <input
                                 type="date"
                                 value={item.expiryDate}
-                                onChange={(e) => updateGRNItem(index, 'expiryDate', e.target.value)}
+                                onChange={(e) =>
+                                  updateGRNItem(
+                                    index,
+                                    "expiryDate",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                               />
                             </div>
@@ -508,7 +586,9 @@ export function GRNPage() {
                 </label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   rows={2}
                   placeholder="Additional notes..."
@@ -516,7 +596,7 @@ export function GRNPage() {
               </div>
 
               {/* Totals */}
-              {grnItems.some(item => item.receivedQuantity > 0) && (
+              {grnItems.some((item) => item.receivedQuantity > 0) && (
                 <div className="theme-surface rounded-xl border border-white/10 p-4">
                   <div className="flex justify-end">
                     <div className="w-full max-w-xs space-y-2">
@@ -527,13 +607,17 @@ export function GRNPage() {
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="theme-text-secondary">Tax (7.5%):</span>
+                        <span className="theme-text-secondary">
+                          Tax (7.5%):
+                        </span>
                         <span className="theme-text-primary font-semibold">
                           {formatCurrency(calculateTotals().tax)}
                         </span>
                       </div>
                       <div className="flex justify-between border-t border-white/10 pt-2 text-base">
-                        <span className="theme-text-primary font-semibold">Total:</span>
+                        <span className="theme-text-primary font-semibold">
+                          Total:
+                        </span>
                         <span className="theme-text-primary font-bold">
                           {formatCurrency(calculateTotals().total)}
                         </span>
@@ -546,17 +630,22 @@ export function GRNPage() {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={submitting || !grnItems.some(item => item.receivedQuantity > 0)}
+                  disabled={
+                    submitting ||
+                    !grnItems.some((item) => item.receivedQuantity > 0)
+                  }
                   className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? 'Creating GRN...' : 'Create GRN & Update Inventory'}
+                  {submitting
+                    ? "Creating GRN..."
+                    : "Create GRN & Update Inventory"}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedPO(null);
                     setGrnItems([]);
-                    setFormData({ notes: '' });
+                    setFormData({ notes: "" });
                   }}
                   className="rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5"
                 >
@@ -570,4 +659,3 @@ export function GRNPage() {
     </div>
   );
 }
-

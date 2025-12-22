@@ -20,4 +20,3 @@ export class ChangePinDto {
   @MaxLength(64)
   newPin!: string;
 }
-

@@ -19,8 +19,9 @@ export class SendGridService {
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('SENDGRID_API_KEY');
-    this.fromEmail = this.configService.get<string>('SENDGRID_FROM_EMAIL') || 'noreply@checkout.com';
-    
+    this.fromEmail =
+      this.configService.get<string>('SENDGRID_FROM_EMAIL') || 'noreply@checkout.com';
+
     if (apiKey) {
       sgMail.setApiKey(apiKey);
       this.isConfigured = true;
@@ -56,14 +57,14 @@ export class SendGridService {
       return true;
     } catch (error: any) {
       this.logger.error('❌ Failed to send email via SendGrid:', error);
-      
+
       if (error.response) {
         this.logger.error('SendGrid error response:', {
           statusCode: error.response.statusCode,
           body: error.response.body,
         });
       }
-      
+
       throw error;
     }
   }
@@ -78,7 +79,7 @@ export class SendGridService {
     recipientEmail: string;
   }): Promise<boolean> {
     const subject = `Demo Request from ${data.name} - ${data.companyName}`;
-    
+
     const textContent = `
 New Demo Request
 
@@ -211,12 +212,16 @@ Reply to this email to contact ${data.name} directly.
               </div>
             </div>
             
-            ${data.message ? `
+            ${
+              data.message
+                ? `
               <div class="field">
                 <div class="field-label">Additional Information</div>
                 <div class="message-box">${data.message.replace(/\n/g, '<br>')}</div>
               </div>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
           
           <div class="footer">
@@ -238,4 +243,3 @@ Reply to this email to contact ${data.name} directly.
     });
   }
 }
-

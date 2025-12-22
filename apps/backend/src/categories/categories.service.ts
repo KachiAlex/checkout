@@ -32,8 +32,11 @@ export class CategoriesService {
     return this.categoriesRepository.create(data);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateCategoryInput>): Promise<CategoryRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateCategoryInput>,
+  ): Promise<CategoryRecord> {
     return this.categoriesRepository.update(id, tenantId, update);
   }
 }
-

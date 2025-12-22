@@ -48,7 +48,10 @@ export class AuthService {
           }
         }
       } catch (error) {
-        console.warn('[AuthService] Device-based lookup failed, falling back to full scan:', (error as any)?.message);
+        console.warn(
+          '[AuthService] Device-based lookup failed, falling back to full scan:',
+          (error as any)?.message,
+        );
       }
     }
 
@@ -59,10 +62,12 @@ export class AuthService {
     const users = await this.getTenantUsers(tenantId); // Remove limit to allow all users to log in
     const fetchTime = Date.now() - startTime;
     console.log(`[AuthService] Fetched ${users.length} users in ${fetchTime}ms`);
-    
+
     // Warn if tenant has many users (potential performance concern)
     if (users.length > 200) {
-      console.warn(`[AuthService] Tenant ${tenantId} has ${users.length} users - consider optimizing authentication for large tenants`);
+      console.warn(
+        `[AuthService] Tenant ${tenantId} has ${users.length} users - consider optimizing authentication for large tenants`,
+      );
     }
 
     // Sequential validation with early exit
@@ -85,12 +90,18 @@ export class AuthService {
           return user;
         }
       } catch (error) {
-        console.error('[AuthService] Error comparing PIN for user', user.id, (error as any)?.message);
+        console.error(
+          '[AuthService] Error comparing PIN for user',
+          user.id,
+          (error as any)?.message,
+        );
       }
     }
-    
+
     const totalTime = Date.now() - startTime;
-    console.log(`[AuthService] PIN validation failed after checking ${users.length} users in ${totalTime}ms`);
+    console.log(
+      `[AuthService] PIN validation failed after checking ${users.length} users in ${totalTime}ms`,
+    );
 
     return null;
   }
@@ -109,12 +120,12 @@ export class AuthService {
     }
 
     const user = await this.validateUser(loginDto.pin, tenant.id, loginDto.deviceId);
-    
+
     if (!user) {
       console.log(`[AuthService] Login failed for tenant: ${loginDto.tenantSlug}`);
       throw new UnauthorizedException('Invalid PIN');
     }
-    
+
     console.log(`[AuthService] Login successful for user: ${user.id} (${user.name})`);
 
     const payload = {

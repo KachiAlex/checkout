@@ -6,7 +6,10 @@ export class UpdateInventoryItemDto {
   @IsUUID()
   productId: string;
 
-  @ApiProperty({ description: 'Location ID (optional, will be resolved from user context if not provided)', required: false })
+  @ApiProperty({
+    description: 'Location ID (optional, will be resolved from user context if not provided)',
+    required: false,
+  })
   @IsOptional()
   @IsUUID()
   locationId?: string;
@@ -35,4 +38,3 @@ export class UpdateInventoryItemDto {
   @Min(0)
   salesPriceCents?: number;
 }
-

@@ -47,7 +47,10 @@ export interface PurchaseOrderRecord {
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type PurchaseOrderDocument = Omit<PurchaseOrderRecord, 'id' | 'createdAt' | 'updatedAt' | 'expectedDeliveryDate' | 'approvedAt'> & {
+type PurchaseOrderDocument = Omit<
+  PurchaseOrderRecord,
+  'id' | 'createdAt' | 'updatedAt' | 'expectedDeliveryDate' | 'approvedAt'
+> & {
   expectedDeliveryDate?: TimestampField;
   approvedAt?: TimestampField;
   createdAt?: TimestampField;
@@ -82,11 +85,15 @@ export class PurchaseOrdersRepository {
   }
 
   private toPrismaStatus(status: PurchaseOrderStatus): PrismaPurchaseOrderStatus {
-    return String(status || '').trim().toUpperCase() as PrismaPurchaseOrderStatus;
+    return String(status || '')
+      .trim()
+      .toUpperCase() as PrismaPurchaseOrderStatus;
   }
 
   private fromPrismaStatus(status: PrismaPurchaseOrderStatus): PurchaseOrderStatus {
-    return String(status || '').trim().toLowerCase() as PurchaseOrderStatus;
+    return String(status || '')
+      .trim()
+      .toLowerCase() as PurchaseOrderStatus;
   }
 
   async findAll(tenantId: string, locationId?: string): Promise<PurchaseOrderRecord[]> {
@@ -122,11 +129,11 @@ export class PurchaseOrdersRepository {
     }
 
     let query = this.collection.where('tenantId', '==', tenantId);
-    
+
     if (locationId) {
       query = query.where('locationId', '==', locationId) as any;
     }
-    
+
     const snapshot = await query.orderBy('createdAt', 'desc').get();
     return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
   }
@@ -173,7 +180,10 @@ export class PurchaseOrdersRepository {
     return this.toRecord(doc.id, data);
   }
 
-  async findByOrderNumber(orderNumber: string, tenantId: string): Promise<PurchaseOrderRecord | null> {
+  async findByOrderNumber(
+    orderNumber: string,
+    tenantId: string,
+  ): Promise<PurchaseOrderRecord | null> {
     if (this.isPostgresEnabled()) {
       const row = await this.prismaService.prisma.purchaseOrder.findFirst({
         where: { tenantId, orderNumber },
@@ -209,7 +219,7 @@ export class PurchaseOrdersRepository {
       .where('orderNumber', '==', orderNumber)
       .limit(1)
       .get();
-    
+
     if (snapshot.empty) {
       return null;
     }
@@ -265,7 +275,7 @@ export class PurchaseOrdersRepository {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
     const orderNumber = `PO-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    
+
     const docRef = this.collection.doc(id);
     await docRef.set({
       tenantId: data.tenantId,
@@ -278,7 +288,9 @@ export class PurchaseOrdersRepository {
       subtotalCents: data.subtotalCents,
       taxCents: data.taxCents,
       totalCents: data.totalCents,
-      expectedDeliveryDate: data.expectedDeliveryDate ? Timestamp.fromDate(data.expectedDeliveryDate) : undefined,
+      expectedDeliveryDate: data.expectedDeliveryDate
+        ? Timestamp.fromDate(data.expectedDeliveryDate)
+        : undefined,
       notes: data.notes,
       createdBy: data.createdBy,
       createdAt: now,
@@ -289,7 +301,11 @@ export class PurchaseOrdersRepository {
     return this.toRecord(created.id, created.data() as PurchaseOrderDocument);
   }
 
-  async update(id: string, tenantId: string, update: Partial<PurchaseOrderRecord>): Promise<PurchaseOrderRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<PurchaseOrderRecord>,
+  ): Promise<PurchaseOrderRecord> {
     if (this.isPostgresEnabled()) {
       const existing = await this.prismaService.prisma.purchaseOrder.findUnique({ where: { id } });
       if (!existing) {
@@ -339,11 +355,11 @@ export class PurchaseOrdersRepository {
 
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Purchase order ${id} not found`);
     }
-    
+
     const data = existing.data();
     if (data?.tenantId !== tenantId) {
       throw new Error(`Purchase order ${id} does not belong to tenant ${tenantId}`);
@@ -387,11 +403,23 @@ export class PurchaseOrdersRepository {
       subtotalCents: data.subtotalCents,
       taxCents: data.taxCents,
       totalCents: data.totalCents,
-      expectedDeliveryDate: data.expectedDeliveryDate ? (data.expectedDeliveryDate instanceof Timestamp ? data.expectedDeliveryDate.toDate() : (typeof data.expectedDeliveryDate === 'string' ? new Date(data.expectedDeliveryDate) : undefined)) : undefined,
+      expectedDeliveryDate: data.expectedDeliveryDate
+        ? data.expectedDeliveryDate instanceof Timestamp
+          ? data.expectedDeliveryDate.toDate()
+          : typeof data.expectedDeliveryDate === 'string'
+            ? new Date(data.expectedDeliveryDate)
+            : undefined
+        : undefined,
       notes: data.notes,
       createdBy: data.createdBy,
       approvedBy: data.approvedBy,
-      approvedAt: data.approvedAt ? (data.approvedAt instanceof Timestamp ? data.approvedAt.toDate() : (typeof data.approvedAt === 'string' ? new Date(data.approvedAt) : undefined)) : undefined,
+      approvedAt: data.approvedAt
+        ? data.approvedAt instanceof Timestamp
+          ? data.approvedAt.toDate()
+          : typeof data.approvedAt === 'string'
+            ? new Date(data.approvedAt)
+            : undefined
+        : undefined,
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),
     };
@@ -407,4 +435,3 @@ export class PurchaseOrdersRepository {
     return new Date();
   }
 }
-

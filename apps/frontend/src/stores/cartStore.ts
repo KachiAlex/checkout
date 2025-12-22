@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface CartItem {
   productId: string;
@@ -35,11 +35,15 @@ interface CartState {
   activeSessionId: string;
 
   // Cart operations affect the active session
-  addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
+  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   updateItemDiscount: (productId: string, discountCents: number) => void;
-  setCartDiscount: (discountCents: number, discountPercent: number, reason?: string) => void;
+  setCartDiscount: (
+    discountCents: number,
+    discountPercent: number,
+    reason?: string,
+  ) => void;
   setTaxEnabled: (enabled: boolean) => void;
   clearCart: () => void;
   getTotal: () => number;
@@ -53,14 +57,14 @@ interface CartState {
 
 // Generate a unique session ID for this tab/window
 const getSessionId = (): string => {
-  if (typeof window === 'undefined') return 'default';
-  
+  if (typeof window === "undefined") return "default";
+
   // Check if we already have a session ID for this tab
-  let sessionId = sessionStorage.getItem('checkout-session-id');
+  let sessionId = sessionStorage.getItem("checkout-session-id");
   if (!sessionId) {
     // Generate a new session ID
     sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    sessionStorage.setItem('checkout-session-id', sessionId);
+    sessionStorage.setItem("checkout-session-id", sessionId);
   }
   return sessionId;
 };
@@ -76,7 +80,7 @@ export const useCartStore = create<CartState>()(
         lastRemovedItem: null,
         cartDiscountCents: 0,
         cartDiscountPercent: 0,
-        discountReason: '',
+        discountReason: "",
         taxEnabled: false, // Tax disabled by default
       });
 
@@ -86,20 +90,23 @@ export const useCartStore = create<CartState>()(
         lastRemovedItem: null,
         cartDiscountCents: 0,
         cartDiscountPercent: 0,
-        discountReason: '',
+        discountReason: "",
         taxEnabled: false, // Tax disabled by default
         sessions: [createEmptySession(1)],
-        activeSessionId: 'cart-1',
+        activeSessionId: "cart-1",
 
         addItem: (item) => {
           // Validate product ID format (must be UUID) before adding to cart
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
           if (!uuidRegex.test(item.productId)) {
-            console.error(`Invalid productId format: ${item.productId} for product: ${item.name}`);
+            console.error(
+              `Invalid productId format: ${item.productId} for product: ${item.name}`,
+            );
             // Don't add invalid items - validation error should be shown by caller
             return;
           }
-          
+
           set((state) => {
             const sessions = [...state.sessions];
             const idx = sessions.findIndex(
@@ -273,7 +280,7 @@ export const useCartStore = create<CartState>()(
               ...session,
               cartDiscountCents: discountCents,
               cartDiscountPercent: discountPercent,
-              discountReason: reason || '',
+              discountReason: reason || "",
             };
             sessions[idx] = updatedSession;
 
@@ -325,7 +332,7 @@ export const useCartStore = create<CartState>()(
               lastRemovedItem: null,
               cartDiscountCents: 0,
               cartDiscountPercent: 0,
-              discountReason: '',
+              discountReason: "",
               taxEnabled: false,
             };
             sessions[idx] = updatedSession;
@@ -337,7 +344,7 @@ export const useCartStore = create<CartState>()(
               lastRemovedItem: null,
               cartDiscountCents: 0,
               cartDiscountPercent: 0,
-              discountReason: '',
+              discountReason: "",
               taxEnabled: false,
             };
           });
@@ -424,7 +431,7 @@ export const useCartStore = create<CartState>()(
                 lastRemovedItem: null,
                 cartDiscountCents: 0,
                 cartDiscountPercent: 0,
-                discountReason: '',
+                discountReason: "",
               };
 
               return {
@@ -435,13 +442,11 @@ export const useCartStore = create<CartState>()(
                 lastRemovedItem: null,
                 cartDiscountCents: 0,
                 cartDiscountPercent: 0,
-                discountReason: '',
+                discountReason: "",
               };
             }
 
-            const remainingSessions = state.sessions.filter(
-              (s) => s.id !== id,
-            );
+            const remainingSessions = state.sessions.filter((s) => s.id !== id);
             let activeSessionId = state.activeSessionId;
 
             // If we closed the active session, switch to the first remaining
@@ -470,7 +475,7 @@ export const useCartStore = create<CartState>()(
     {
       name: `cart-storage-${getSessionId()}`, // Unique storage key per session/tab
       storage:
-        typeof window !== 'undefined'
+        typeof window !== "undefined"
           ? {
               getItem: (name) => {
                 const value = sessionStorage.getItem(name);

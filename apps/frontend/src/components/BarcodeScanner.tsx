@@ -1,29 +1,29 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/library';
-import { useScannerDeviceStore } from '../stores/scannerDeviceStore';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { BrowserMultiFormatReader } from "@zxing/library";
+import { useScannerDeviceStore } from "../stores/scannerDeviceStore";
 import {
   registerUSBDevice,
   registerBluetoothDevice,
   registerCameraDevice,
   sendDeviceHeartbeat,
-} from '../services/scannerDeviceService';
-import { ensureCameraPermission } from '../services/scannerService';
-import { useAuthStore } from '../stores/authStore';
-import toast from 'react-hot-toast';
-import { debugLog } from '../utils/debugLog';
-import { isNativePlatform } from '../utils/nativePlatform';
-import { startNativeScan, stopNativeScan } from '../utils/nativeScanner';
-import { NativeDeviceSummary } from '../types/nativeDevices';
+} from "../services/scannerDeviceService";
+import { ensureCameraPermission } from "../services/scannerService";
+import { useAuthStore } from "../stores/authStore";
+import toast from "react-hot-toast";
+import { debugLog } from "../utils/debugLog";
+import { isNativePlatform } from "../utils/nativePlatform";
+import { startNativeScan, stopNativeScan } from "../utils/nativeScanner";
+import { NativeDeviceSummary } from "../types/nativeDevices";
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
 }
 
-type ScanMode = 'keyboard' | 'camera' | 'camera-snap' | 'bluetooth';
+type ScanMode = "keyboard" | "camera" | "camera-snap" | "bluetooth";
 
 export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
-  const [input, setInput] = useState('');
-  const [scanMode, setScanMode] = useState<ScanMode>('keyboard');
+  const [input, setInput] = useState("");
+  const [scanMode, setScanMode] = useState<ScanMode>("keyboard");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isConnectingBluetooth, setIsConnectingBluetooth] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -36,79 +36,104 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   const lastScanTimeRef = useRef<number>(0);
   const usbDeviceRegisteredRef = useRef(false);
   const bluetoothDeviceRef = useRef<any | null>(null);
-  
-  const { addDevice, markDeviceUsed, setActiveDevice, getActiveDevice, updateDevice } =
-    useScannerDeviceStore();
+
+  const {
+    addDevice,
+    markDeviceUsed,
+    setActiveDevice,
+    getActiveDevice,
+    updateDevice,
+  } = useScannerDeviceStore();
   const { user } = useAuthStore();
   const activeDevice = getActiveDevice();
   const isNative = isNativePlatform();
-  const [nativeScanning, setNativeScanning] = useState<'live' | 'snap' | null>(null);
+  const [nativeScanning, setNativeScanning] = useState<"live" | "snap" | null>(
+    null,
+  );
 
-  const selectNativeDevice = useCallback(async (type: 'usb' | 'bluetooth'): Promise<NativeDeviceSummary | null> => {
-    if (typeof window === 'undefined' || !window.__IS_ELECTRON__ || !window.posApp) {
-      return null;
-    }
+  const selectNativeDevice = useCallback(
+    async (type: "usb" | "bluetooth"): Promise<NativeDeviceSummary | null> => {
+      if (
+        typeof window === "undefined" ||
+        !window.__IS_ELECTRON__ ||
+        !window.posApp
+      ) {
+        return null;
+      }
 
-    if (typeof window.posApp.listNativeDevices !== 'function') {
-      toast.error(
-        'Native device bridge unavailable. Reinstall the desktop app and try again.',
+      if (typeof window.posApp.listNativeDevices !== "function") {
+        toast.error(
+          "Native device bridge unavailable. Reinstall the desktop app and try again.",
+        );
+        return null;
+      }
+
+      const devices =
+        type === "bluetooth" &&
+        typeof window.posApp.scanBluetoothDevices === "function"
+          ? await window.posApp.scanBluetoothDevices(10_000)
+          : await window.posApp.listNativeDevices();
+
+      const filtered = devices.filter(
+        (device) =>
+          device.type === type ||
+          (type === "bluetooth" && device.type === "unknown"),
       );
-      return null;
-    }
 
-    const devices =
-      type === 'bluetooth' && typeof window.posApp.scanBluetoothDevices === 'function'
-        ? await window.posApp.scanBluetoothDevices(10_000)
-        : await window.posApp.listNativeDevices();
+      if (filtered.length === 0) {
+        toast.error(
+          type === "usb"
+            ? "No USB scanner detected from Windows. Connect your scanner and try again."
+            : "No Bluetooth scanners detected. Pair the device in Windows settings first.",
+        );
+        return null;
+      }
 
-    const filtered = devices.filter(
-      (device) => device.type === type || (type === 'bluetooth' && device.type === 'unknown'),
-    );
+      if (filtered.length === 1) {
+        return filtered[0];
+      }
 
-    if (filtered.length === 0) {
-      toast.error(
-        type === 'usb'
-          ? 'No USB scanner detected from Windows. Connect your scanner and try again.'
-          : 'No Bluetooth scanners detected. Pair the device in Windows settings first.',
+      const options = filtered
+        .map((device, index) => {
+          const vendor = device.vendorId
+            ? device.vendorId.toString(16).padStart(4, "0")
+            : "----";
+          const product = device.productId
+            ? device.productId.toString(16).padStart(4, "0")
+            : "----";
+          return `${index + 1}. ${device.name} (vendor: ${vendor}, product: ${product})`;
+        })
+        .join("\n");
+
+      const choice = window.prompt(
+        `Multiple devices detected. Enter the number of the ${type} device to use:\n${options}`,
+        "1",
       );
-      return null;
-    }
 
-    if (filtered.length === 1) {
-      return filtered[0];
-    }
+      if (!choice) {
+        toast("Cancelled selection");
+        return null;
+      }
 
-    const options = filtered
-      .map((device, index) => {
-        const vendor = device.vendorId ? device.vendorId.toString(16).padStart(4, '0') : '----';
-        const product = device.productId ? device.productId.toString(16).padStart(4, '0') : '----';
-        return `${index + 1}. ${device.name} (vendor: ${vendor}, product: ${product})`;
-      })
-      .join('\n');
+      const selectedIndex = Number.parseInt(choice, 10) - 1;
+      if (
+        Number.isNaN(selectedIndex) ||
+        selectedIndex < 0 ||
+        selectedIndex >= filtered.length
+      ) {
+        toast.error("Invalid selection");
+        return null;
+      }
 
-    const choice = window.prompt(
-      `Multiple devices detected. Enter the number of the ${type} device to use:\n${options}`,
-      '1',
-    );
-
-    if (!choice) {
-      toast('Cancelled selection');
-      return null;
-    }
-
-    const selectedIndex = Number.parseInt(choice, 10) - 1;
-    if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= filtered.length) {
-      toast.error('Invalid selection');
-      return null;
-    }
-
-    return filtered[selectedIndex];
-  }, []);
+      return filtered[selectedIndex];
+    },
+    [],
+  );
 
   // Handle rapid keyboard input from USB/Bluetooth scanners
   // Scanners typically send characters very quickly without Enter
   useEffect(() => {
-    if (scanMode !== 'keyboard') return;
+    if (scanMode !== "keyboard") return;
 
     const inputEl = inputRef.current;
     if (!inputEl) return;
@@ -131,31 +156,33 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       scanTimeoutRef.current = setTimeout(() => {
         if (value.trim() && value.length >= 4) {
           // Minimum barcode length is typically 4+ characters
-          
+
           // Register USB device on first scan if not already registered
-          if (!usbDeviceRegisteredRef.current && scanMode === 'keyboard') {
+          if (!usbDeviceRegisteredRef.current && scanMode === "keyboard") {
             registerUSBScanner();
           }
-          
+
           // Mark device as used
-          const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
+          const activeDevice = useScannerDeviceStore
+            .getState()
+            .getActiveDevice();
           if (activeDevice) {
             markDeviceUsed(activeDevice.id);
             sendDeviceHeartbeat(activeDevice.id, user?.id).catch((err) =>
-              console.warn('Failed to send heartbeat', err),
+              console.warn("Failed to send heartbeat", err),
             );
           }
-          
+
           onScan(value.trim());
-          setInput('');
+          setInput("");
           inputEl.focus();
         }
       }, 150); // Wait 150ms after last character for scanner completion
     };
 
-    inputEl.addEventListener('input', handleInput);
+    inputEl.addEventListener("input", handleInput);
     return () => {
-      inputEl.removeEventListener('input', handleInput);
+      inputEl.removeEventListener("input", handleInput);
       if (scanTimeoutRef.current) {
         clearTimeout(scanTimeoutRef.current);
       }
@@ -165,40 +192,52 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   // Register USB scanner on mount
   const registerUSBScanner = useCallback(async () => {
     if (usbDeviceRegisteredRef.current) return;
-    
+
     try {
       let nativeDevice: NativeDeviceSummary | undefined;
       const canUseNative =
-        typeof window !== 'undefined' &&
+        typeof window !== "undefined" &&
         Boolean(
           window.__IS_ELECTRON__ &&
             window.posApp &&
-            typeof window.posApp.listNativeDevices === 'function',
+            typeof window.posApp.listNativeDevices === "function",
         );
 
       if (canUseNative) {
-        const selected = await selectNativeDevice('usb');
+        const selected = await selectNativeDevice("usb");
         if (!selected) {
           return;
         }
         nativeDevice = selected;
       }
 
-      const registeredDevice = await registerUSBDevice(user?.locationId, user?.id, nativeDevice);
+      const registeredDevice = await registerUSBDevice(
+        user?.locationId,
+        user?.id,
+        nativeDevice,
+      );
       const deviceId = addDevice(registeredDevice);
       setActiveDevice(deviceId);
       usbDeviceRegisteredRef.current = true;
-      console.log('USB scanner registered:', registeredDevice.name);
+      console.log("USB scanner registered:", registeredDevice.name);
       await sendDeviceHeartbeat(deviceId, user?.id);
     } catch (error) {
-      console.warn('Failed to register USB scanner:', error);
-      toast.error('Unable to register USB scanner. Scans may still work as keyboard input.');
+      console.warn("Failed to register USB scanner:", error);
+      toast.error(
+        "Unable to register USB scanner. Scans may still work as keyboard input.",
+      );
     }
-  }, [user?.locationId, user?.id, addDevice, setActiveDevice, selectNativeDevice]);
+  }, [
+    user?.locationId,
+    user?.id,
+    addDevice,
+    setActiveDevice,
+    selectNativeDevice,
+  ]);
 
   // Auto-focus for keyboard scanners
   useEffect(() => {
-    if (scanMode !== 'keyboard') return;
+    if (scanMode !== "keyboard") return;
 
     const inputEl = inputRef.current;
     if (!inputEl) return;
@@ -207,36 +246,42 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
     const handleBlur = () => {
       // Only auto-focus if we're in keyboard mode
-      if (scanMode === 'keyboard') {
+      if (scanMode === "keyboard") {
         setTimeout(() => {
           inputEl.focus();
         }, 100);
       }
     };
 
-    inputEl.addEventListener('blur', handleBlur);
+    inputEl.addEventListener("blur", handleBlur);
     return () => {
-      inputEl.removeEventListener('blur', handleBlur);
+      inputEl.removeEventListener("blur", handleBlur);
     };
   }, [scanMode]);
 
   // Camera-based QR scanning (live streaming mode)
   const handleNativeScan = useCallback(
-    async (mode: 'live' | 'snap') => {
+    async (mode: "live" | "snap") => {
       if (!isNative) return;
       if (nativeScanning) {
-        debugLog('Native scan request ignored because scan already in progress', {
-          ongoingMode: nativeScanning,
-          requestedMode: mode,
-        });
+        debugLog(
+          "Native scan request ignored because scan already in progress",
+          {
+            ongoingMode: nativeScanning,
+            requestedMode: mode,
+          },
+        );
         return;
       }
 
       setNativeScanning(mode);
-      debugLog('Native scan requested', { mode });
+      debugLog("Native scan requested", { mode });
 
       try {
-        const deviceData = await registerCameraDevice(user?.locationId, user?.id);
+        const deviceData = await registerCameraDevice(
+          user?.locationId,
+          user?.id,
+        );
         const deviceId = addDevice({
           ...deviceData,
           isActive: true,
@@ -248,24 +293,26 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
         if (content) {
           toast.success(`Scanned: ${content}`);
-          debugLog('Native scan success', { content });
+          debugLog("Native scan success", { content });
           markDeviceUsed(deviceId);
           sendDeviceHeartbeat(deviceId, user?.id).catch((err) =>
-            console.warn('Failed to send heartbeat', err),
+            console.warn("Failed to send heartbeat", err),
           );
           onScan(content);
         } else {
-          toast.error('No barcode detected');
-          debugLog('Native scan completed without content');
+          toast.error("No barcode detected");
+          debugLog("Native scan completed without content");
         }
       } catch (error: any) {
-        debugLog('Native scan error', { message: error?.message });
-        toast.error(error?.message || 'Unable to start native scan');
+        debugLog("Native scan error", { message: error?.message });
+        toast.error(error?.message || "Unable to start native scan");
       } finally {
         await stopNativeScan().catch(() => undefined);
         setNativeScanning(null);
-        const currentActive = useScannerDeviceStore.getState().getActiveDevice();
-        if (currentActive?.type === 'camera') {
+        const currentActive = useScannerDeviceStore
+          .getState()
+          .getActiveDevice();
+        if (currentActive?.type === "camera") {
           updateDevice(currentActive.id, { isActive: false });
         }
       }
@@ -286,16 +333,16 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
   const startCameraScan = useCallback(async () => {
     if (isNative) {
-      handleNativeScan('live').catch(() => undefined);
+      handleNativeScan("live").catch(() => undefined);
       return;
     }
 
     try {
       setCameraError(null);
-      setScanMode('camera');
+      setScanMode("camera");
 
       await new Promise<void>((resolve) => {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           window.requestAnimationFrame(() => resolve());
         } else {
           setTimeout(() => resolve(), 0);
@@ -303,12 +350,12 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       });
 
       if (!videoRef.current) {
-        debugLog('Camera live scan aborted: video element not ready');
-        throw new Error('Camera preview not ready. Please try again.');
+        debugLog("Camera live scan aborted: video element not ready");
+        throw new Error("Camera preview not ready. Please try again.");
       }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported in this browser.');
+        throw new Error("Camera access is not supported in this browser.");
       }
 
       await ensureCameraPermission();
@@ -327,22 +374,26 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
       // Get available video devices
       const videoInputDevices = await codeReader.listVideoInputDevices();
-      
+
       if (videoInputDevices.length === 0) {
-        throw new Error('No camera devices found');
+        throw new Error("No camera devices found");
       }
 
       // Prefer rear camera if available (usually better for scanning)
-      const rearCamera = videoInputDevices.find(device => 
-        device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('rear') ||
-        device.label.toLowerCase().includes('environment')
+      const rearCamera = videoInputDevices.find(
+        (device) =>
+          device.label.toLowerCase().includes("back") ||
+          device.label.toLowerCase().includes("rear") ||
+          device.label.toLowerCase().includes("environment"),
       );
-      const selectedDeviceId = rearCamera?.deviceId || videoInputDevices[0].deviceId;
-      debugLog('Camera live scan initialised', {
-        mode: 'live',
+      const selectedDeviceId =
+        rearCamera?.deviceId || videoInputDevices[0].deviceId;
+      debugLog("Camera live scan initialised", {
+        mode: "live",
         selectedDeviceId,
-        deviceLabel: videoInputDevices.find((device) => device.deviceId === selectedDeviceId)?.label,
+        deviceLabel: videoInputDevices.find(
+          (device) => device.deviceId === selectedDeviceId,
+        )?.label,
       });
 
       // Start scanning
@@ -354,38 +405,43 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             const text = result.getText();
             if (text) {
               // Mark camera device as used
-              const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
+              const activeDevice = useScannerDeviceStore
+                .getState()
+                .getActiveDevice();
               if (activeDevice) {
                 markDeviceUsed(activeDevice.id);
                 sendDeviceHeartbeat(activeDevice.id, user?.id).catch((err) =>
-                  console.warn('Failed to send heartbeat', err),
+                  console.warn("Failed to send heartbeat", err),
                 );
               }
-              
+
               toast.success(`Scanned: ${text}`);
-              debugLog('Camera live scan decoded', { text });
+              debugLog("Camera live scan decoded", { text });
               onScan(text);
               stopCameraScan();
             }
           }
-          if (error && error.name !== 'NotFoundException') {
+          if (error && error.name !== "NotFoundException") {
             // NotFoundException is normal when scanning (no code found yet)
-            console.warn('Camera scan error:', error);
-            debugLog('Camera live scan warning', { errorName: error.name, message: error.message });
+            console.warn("Camera scan error:", error);
+            debugLog("Camera live scan warning", {
+              errorName: error.name,
+              message: error.message,
+            });
           }
         },
       );
 
-      console.log('Camera scanning started:', result);
+      console.log("Camera scanning started:", result);
     } catch (error: any) {
-      console.error('Failed to start camera:', error);
-      debugLog('Camera live scan failed', {
+      console.error("Failed to start camera:", error);
+      debugLog("Camera live scan failed", {
         errorName: error?.name,
         message: error?.message,
       });
-      setCameraError(error.message || 'Failed to access camera');
-      setScanMode('keyboard');
-      toast.error(error.message || 'Failed to access camera');
+      setCameraError(error.message || "Failed to access camera");
+      setScanMode("keyboard");
+      toast.error(error.message || "Failed to access camera");
     }
   }, [
     onScan,
@@ -401,16 +457,16 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   // Camera snap & decode mode (better for low light)
   const startCameraSnapMode = useCallback(async () => {
     if (isNative) {
-      handleNativeScan('snap').catch(() => undefined);
+      handleNativeScan("snap").catch(() => undefined);
       return;
     }
 
     try {
       setCameraError(null);
-      setScanMode('camera-snap');
+      setScanMode("camera-snap");
 
       await new Promise<void>((resolve) => {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           window.requestAnimationFrame(() => resolve());
         } else {
           setTimeout(() => resolve(), 0);
@@ -418,12 +474,12 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       });
 
       if (!videoRef.current || !canvasRef.current) {
-        debugLog('Camera snap mode aborted: video or canvas not ready');
-        throw new Error('Camera preview not ready. Please try again.');
+        debugLog("Camera snap mode aborted: video or canvas not ready");
+        throw new Error("Camera preview not ready. Please try again.");
       }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported in this browser.');
+        throw new Error("Camera access is not supported in this browser.");
       }
 
       await ensureCameraPermission();
@@ -432,7 +488,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       const deviceData = await registerCameraDevice(user?.locationId, user?.id);
       const deviceId = addDevice({
         ...deviceData,
-        name: `${deviceData.name || 'Camera Scanner'} (Snap Mode)`,
+        name: `${deviceData.name || "Camera Scanner"} (Snap Mode)`,
         isActive: true,
       });
       setActiveDevice(deviceId);
@@ -441,29 +497,33 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       // Get available video devices
       const codeReader = new BrowserMultiFormatReader();
       const videoInputDevices = await codeReader.listVideoInputDevices();
-      
+
       if (videoInputDevices.length === 0) {
-        throw new Error('No camera devices found');
+        throw new Error("No camera devices found");
       }
 
       // Prefer rear camera if available
-      const rearCamera = videoInputDevices.find(device => 
-        device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('rear') ||
-        device.label.toLowerCase().includes('environment')
+      const rearCamera = videoInputDevices.find(
+        (device) =>
+          device.label.toLowerCase().includes("back") ||
+          device.label.toLowerCase().includes("rear") ||
+          device.label.toLowerCase().includes("environment"),
       );
-      const selectedDeviceId = rearCamera?.deviceId || videoInputDevices[0].deviceId;
-      debugLog('Camera snap mode initialised', {
-        mode: 'snap',
+      const selectedDeviceId =
+        rearCamera?.deviceId || videoInputDevices[0].deviceId;
+      debugLog("Camera snap mode initialised", {
+        mode: "snap",
         selectedDeviceId,
-        deviceLabel: videoInputDevices.find((device) => device.deviceId === selectedDeviceId)?.label,
+        deviceLabel: videoInputDevices.find(
+          (device) => device.deviceId === selectedDeviceId,
+        )?.label,
       });
 
       // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: { exact: selectedDeviceId },
-          facingMode: 'environment', // Prefer rear camera
+          facingMode: "environment", // Prefer rear camera
         },
       });
 
@@ -472,23 +532,23 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       videoRef.current.play();
 
       // Set canvas dimensions to match video
-      videoRef.current.addEventListener('loadedmetadata', () => {
+      videoRef.current.addEventListener("loadedmetadata", () => {
         if (canvasRef.current && videoRef.current) {
           canvasRef.current.width = videoRef.current.videoWidth;
           canvasRef.current.height = videoRef.current.videoHeight;
         }
       });
 
-      console.log('Camera snap mode ready');
+      console.log("Camera snap mode ready");
     } catch (error: any) {
-      console.error('Failed to start camera snap mode:', error);
-      debugLog('Camera snap mode failed', {
+      console.error("Failed to start camera snap mode:", error);
+      debugLog("Camera snap mode failed", {
         errorName: error?.name,
         message: error?.message,
       });
-      setCameraError(error.message || 'Failed to access camera');
-      setScanMode('keyboard');
-      toast.error(error.message || 'Failed to access camera');
+      setCameraError(error.message || "Failed to access camera");
+      setScanMode("keyboard");
+      toast.error(error.message || "Failed to access camera");
     }
   }, [
     user?.locationId,
@@ -502,7 +562,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   // Capture and decode a single frame
   const captureAndDecode = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || !streamRef.current) {
-      toast.error('Camera not ready');
+      toast.error("Camera not ready");
       return;
     }
 
@@ -510,17 +570,17 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     try {
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
 
       if (!ctx) {
-        throw new Error('Could not get canvas context');
+        throw new Error("Could not get canvas context");
       }
 
       // Draw current video frame to canvas
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       // Convert canvas to image data URL and decode
-      const imageDataUrl = canvas.toDataURL('image/png');
+      const imageDataUrl = canvas.toDataURL("image/png");
       const img = new Image();
       img.src = imageDataUrl;
 
@@ -538,27 +598,32 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         const text = result.getText();
         if (text) {
           // Mark camera device as used
-          const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
+          const activeDevice = useScannerDeviceStore
+            .getState()
+            .getActiveDevice();
           if (activeDevice) {
             markDeviceUsed(activeDevice.id);
             sendDeviceHeartbeat(activeDevice.id, user?.id).catch((err) =>
-              console.warn('Failed to send heartbeat', err),
+              console.warn("Failed to send heartbeat", err),
             );
           }
-          
+
           toast.success(`Scanned: ${text}`);
           onScan(text);
-          debugLog('Camera snap capture decoded', { text });
+          debugLog("Camera snap capture decoded", { text });
           stopCameraScan();
         }
       }
     } catch (error: any) {
-      if (error.name !== 'NotFoundException') {
-        console.error('Decode error:', error);
-        toast.error('No barcode/QR code found in image. Try again.');
-        debugLog('Camera snap capture decode error', { errorName: error.name, message: error.message });
+      if (error.name !== "NotFoundException") {
+        console.error("Decode error:", error);
+        toast.error("No barcode/QR code found in image. Try again.");
+        debugLog("Camera snap capture decode error", {
+          errorName: error.name,
+          message: error.message,
+        });
       } else {
-        toast.error('No barcode/QR code found. Try again.');
+        toast.error("No barcode/QR code found. Try again.");
       }
     } finally {
       setIsCapturing(false);
@@ -580,7 +645,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
     // Stop media stream
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
 
@@ -588,22 +653,24 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    
+
     // Deactivate camera device
     const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
-    if (activeDevice && activeDevice.type === 'camera') {
-      useScannerDeviceStore.getState().updateDevice(activeDevice.id, { isActive: false });
-      sendDeviceHeartbeat(activeDevice.id, user?.id, { isActive: false }).catch((err) =>
-        console.warn('Failed to send heartbeat', err),
+    if (activeDevice && activeDevice.type === "camera") {
+      useScannerDeviceStore
+        .getState()
+        .updateDevice(activeDevice.id, { isActive: false });
+      sendDeviceHeartbeat(activeDevice.id, user?.id, { isActive: false }).catch(
+        (err) => console.warn("Failed to send heartbeat", err),
       );
       setActiveDevice(null);
     }
-    
-    setScanMode('keyboard');
+
+    setScanMode("keyboard");
     setCameraError(null);
     setIsCapturing(false);
-    debugLog('Camera scan stopped');
-    
+    debugLog("Camera scan stopped");
+
     // Refocus keyboard input
     setTimeout(() => {
       inputRef.current?.focus();
@@ -626,25 +693,27 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       setCameraError(null);
 
       const nativeBridgeAvailable =
-        typeof window !== 'undefined' &&
+        typeof window !== "undefined" &&
         Boolean(
           window.__IS_ELECTRON__ &&
             window.posApp &&
-            typeof window.posApp.listNativeDevices === 'function',
+            typeof window.posApp.listNativeDevices === "function",
         );
 
       if (nativeBridgeAvailable && window.posApp) {
-        toast.loading('Checking Windows for Bluetooth scanners...', { id: 'bluetooth-connect' });
-        const selected = await selectNativeDevice('bluetooth');
+        toast.loading("Checking Windows for Bluetooth scanners...", {
+          id: "bluetooth-connect",
+        });
+        const selected = await selectNativeDevice("bluetooth");
         if (!selected) {
-          toast.dismiss('bluetooth-connect');
+          toast.dismiss("bluetooth-connect");
           return;
         }
 
         const deviceData = await registerBluetoothDevice(
           {
             ...selected,
-            type: 'bluetooth',
+            type: "bluetooth",
           },
           user?.locationId,
           user?.id,
@@ -657,46 +726,58 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         setActiveDevice(deviceId);
         usbDeviceRegisteredRef.current = true;
         await sendDeviceHeartbeat(deviceId, user?.id);
-        toast.dismiss('bluetooth-connect');
-        toast.success(`Bluetooth scanner "${deviceData.name}" connected through Windows`);
+        toast.dismiss("bluetooth-connect");
+        toast.success(
+          `Bluetooth scanner "${deviceData.name}" connected through Windows`,
+        );
         setCameraError(null);
-        setScanMode('keyboard');
+        setScanMode("keyboard");
         return;
       }
 
       if (!(navigator as any).bluetooth) {
-        throw new Error('Web Bluetooth API not supported. Use Chrome/Edge on desktop or Android.');
+        throw new Error(
+          "Web Bluetooth API not supported. Use Chrome/Edge on desktop or Android.",
+        );
       }
 
       // Check if we're on HTTPS or localhost
-      const isSecure = window.location.protocol === 'https:' || 
-                       window.location.hostname === 'localhost' || 
-                       window.location.hostname === '127.0.0.1';
-      
+      const isSecure =
+        window.location.protocol === "https:" ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+
       if (!isSecure) {
-        throw new Error('Bluetooth requires HTTPS or localhost. Please use a secure connection.');
+        throw new Error(
+          "Bluetooth requires HTTPS or localhost. Please use a secure connection.",
+        );
       }
 
-      toast.loading('Searching for Bluetooth scanners...', { id: 'bluetooth-connect' });
+      toast.loading("Searching for Bluetooth scanners...", {
+        id: "bluetooth-connect",
+      });
 
       const permissionsApi = (navigator as any).permissions;
       if (permissionsApi?.query) {
         try {
           const status: PermissionStatus = await permissionsApi.query({
-            name: 'bluetooth',
+            name: "bluetooth",
           } as unknown as PermissionDescriptor);
 
-          if (status.state === 'denied') {
+          if (status.state === "denied") {
             throw new Error(
-              'Bluetooth access is blocked. Please allow Bluetooth access for this site in your browser settings and try again.',
+              "Bluetooth access is blocked. Please allow Bluetooth access for this site in your browser settings and try again.",
             );
           }
         } catch (permError) {
           const message =
             permError instanceof Error ? permError.message : String(permError);
 
-          if (!message.includes('not a valid enum value')) {
-            console.warn('Unable to query Bluetooth permission state:', permError);
+          if (!message.includes("not a valid enum value")) {
+            console.warn(
+              "Unable to query Bluetooth permission state:",
+              permError,
+            );
           }
         }
       }
@@ -706,48 +787,57 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       const device = await (navigator as any).bluetooth.requestDevice({
         filters: [
           // HID (Human Interface Device) - most barcode scanners act as keyboards
-          { services: ['00001812-0000-1000-8000-00805f9b34fb'] },
+          { services: ["00001812-0000-1000-8000-00805f9b34fb"] },
           // Generic device with name containing "scanner" or "barcode"
-          { namePrefix: 'Scanner' },
-          { namePrefix: 'Barcode' },
-          { namePrefix: 'QR' },
+          { namePrefix: "Scanner" },
+          { namePrefix: "Barcode" },
+          { namePrefix: "QR" },
         ],
         optionalServices: [
-          'battery_service',
-          'device_information',
-          '00001812-0000-1000-8000-00805f9b34fb', // HID Service
+          "battery_service",
+          "device_information",
+          "00001812-0000-1000-8000-00805f9b34fb", // HID Service
         ],
       });
 
-      console.log('Bluetooth device selected:', device.name);
-      toast.dismiss('bluetooth-connect');
-      toast.loading('Connecting to device...', { id: 'bluetooth-connect' });
+      console.log("Bluetooth device selected:", device.name);
+      toast.dismiss("bluetooth-connect");
+      toast.loading("Connecting to device...", { id: "bluetooth-connect" });
 
       // Connect to GATT server if available
       if (device.gatt) {
         try {
           const server = await device.gatt.connect();
-          console.log('GATT server connected:', server);
-          
+          console.log("GATT server connected:", server);
+
           // Try to get battery level if available
           try {
-            const batteryService = await server.getPrimaryService('battery_service');
-            const batteryLevelCharacteristic = await batteryService.getCharacteristic('battery_level');
+            const batteryService =
+              await server.getPrimaryService("battery_service");
+            const batteryLevelCharacteristic =
+              await batteryService.getCharacteristic("battery_level");
             const batteryLevel = await batteryLevelCharacteristic.readValue();
             const level = batteryLevel.getUint8(0);
-            console.log('Battery level:', level + '%');
+            console.log("Battery level:", level + "%");
           } catch (e) {
             // Battery service not available, that's okay
-            console.log('Battery service not available');
+            console.log("Battery service not available");
           }
         } catch (gattError) {
-          console.warn('GATT connection failed (device may be HID-only):', gattError);
+          console.warn(
+            "GATT connection failed (device may be HID-only):",
+            gattError,
+          );
           // HID devices don't need GATT connection, they work as keyboards
         }
       }
-      
+
       // Register Bluetooth device
-      const deviceData = await registerBluetoothDevice(device, user?.locationId, user?.id);
+      const deviceData = await registerBluetoothDevice(
+        device,
+        user?.locationId,
+        user?.id,
+      );
       const deviceId = addDevice({
         ...deviceData,
         isActive: true,
@@ -755,65 +845,79 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       setActiveDevice(deviceId);
       bluetoothDeviceRef.current = device;
       await sendDeviceHeartbeat(deviceId, user?.id);
-      
+
       // For HID devices, the scanner will act as a keyboard
       // The keyboard input handler will catch the scans
-      setScanMode('keyboard');
-      
+      setScanMode("keyboard");
+
       // Monitor connection
-      device.addEventListener('gattserverdisconnected', () => {
-        console.log('Bluetooth scanner disconnected');
+      device.addEventListener("gattserverdisconnected", () => {
+        console.log("Bluetooth scanner disconnected");
         toast.error(`Bluetooth scanner "${device.name}" disconnected`);
         // Update device status
         if (deviceId) {
-          useScannerDeviceStore.getState().updateDevice(deviceId, { isActive: false });
-          sendDeviceHeartbeat(deviceId, user?.id, { isActive: false }).catch((err) =>
-            console.warn('Failed to send heartbeat', err),
+          useScannerDeviceStore
+            .getState()
+            .updateDevice(deviceId, { isActive: false });
+          sendDeviceHeartbeat(deviceId, user?.id, { isActive: false }).catch(
+            (err) => console.warn("Failed to send heartbeat", err),
           );
         }
         bluetoothDeviceRef.current = null;
       });
-      
-      toast.dismiss('bluetooth-connect');
-      toast.success(`Bluetooth scanner "${device.name}" connected! It will work as a keyboard scanner.`);
+
+      toast.dismiss("bluetooth-connect");
+      toast.success(
+        `Bluetooth scanner "${device.name}" connected! It will work as a keyboard scanner.`,
+      );
       setCameraError(null);
     } catch (error: any) {
-      toast.dismiss('bluetooth-connect');
-      
-      if (error.name === 'NotFoundError') {
-        const errorMsg = 'No Bluetooth scanner found nearby. Make sure your scanner is powered on and in pairing mode.';
+      toast.dismiss("bluetooth-connect");
+
+      if (error.name === "NotFoundError") {
+        const errorMsg =
+          "No Bluetooth scanner found nearby. Make sure your scanner is powered on and in pairing mode.";
         setCameraError(errorMsg);
         toast.error(errorMsg);
-      } else if (error.name === 'SecurityError') {
-        const errorMsg = 'Bluetooth access denied. Please allow Bluetooth access in your browser settings.';
+      } else if (error.name === "SecurityError") {
+        const errorMsg =
+          "Bluetooth access denied. Please allow Bluetooth access in your browser settings.";
         setCameraError(errorMsg);
         toast.error(errorMsg);
-      } else if (error.name === 'AbortError') {
+      } else if (error.name === "AbortError") {
         // User cancelled the device chooser - don't show error
-        console.log('User cancelled Bluetooth device selection');
+        console.log("User cancelled Bluetooth device selection");
       } else {
-        const errorMsg = error.message || 'Failed to connect Bluetooth scanner';
+        const errorMsg = error.message || "Failed to connect Bluetooth scanner";
         setCameraError(errorMsg);
         toast.error(errorMsg);
       }
     } finally {
       setIsConnectingBluetooth(false);
     }
-  }, [user?.locationId, user?.id, addDevice, setActiveDevice, isConnectingBluetooth, selectNativeDevice]);
+  }, [
+    user?.locationId,
+    user?.id,
+    addDevice,
+    setActiveDevice,
+    isConnectingBluetooth,
+    selectNativeDevice,
+  ]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // If Enter is pressed and input has value, treat as barcode scan
-    if (e.key === 'Enter' && input.trim()) {
+    if (e.key === "Enter" && input.trim()) {
       e.preventDefault();
       onScan(input.trim());
-      setInput('');
+      setInput("");
       setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
     }
   };
 
-  const isBluetoothSupported = typeof navigator !== 'undefined' && 'bluetooth' in (navigator as any);
+  const isBluetoothSupported =
+    typeof navigator !== "undefined" && "bluetooth" in (navigator as any);
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 shadow-lg">
@@ -825,12 +929,14 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           </label>
           <p className="text-sm text-gray-600">
             {isNative ? (
-              nativeScanning
-                ? 'Native camera active – point at a barcode to scan.'
-                : 'Tap a button below to launch the native camera scanner.'
+              nativeScanning ? (
+                "Native camera active – point at a barcode to scan."
+              ) : (
+                "Tap a button below to launch the native camera scanner."
+              )
             ) : (
               <>
-                {scanMode === 'keyboard' && (
+                {scanMode === "keyboard" && (
                   <>
                     USB/Bluetooth scanner or type barcode
                     {activeDevice && (
@@ -840,9 +946,11 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
                     )}
                   </>
                 )}
-                {scanMode === 'camera' && 'Live camera scanning - point at QR code'}
-                {scanMode === 'camera-snap' && 'Snap mode - click "Capture" to scan'}
-                {scanMode === 'bluetooth' && 'Bluetooth scanner connected'}
+                {scanMode === "camera" &&
+                  "Live camera scanning - point at QR code"}
+                {scanMode === "camera-snap" &&
+                  'Snap mode - click "Capture" to scan'}
+                {scanMode === "bluetooth" && "Bluetooth scanner connected"}
               </>
             )}
           </p>
@@ -851,30 +959,30 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           {isNative ? (
             <>
               <button
-                onClick={() => handleNativeScan('live')}
+                onClick={() => handleNativeScan("live")}
                 disabled={nativeScanning !== null}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-60 sm:w-auto"
               >
                 📷 Live Scan
               </button>
               <button
-                onClick={() => handleNativeScan('snap')}
+                onClick={() => handleNativeScan("snap")}
                 disabled={nativeScanning !== null}
                 className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-60 sm:w-auto"
               >
                 📸 Snap Mode
               </button>
             </>
-          ) : scanMode === 'camera' || scanMode === 'camera-snap' ? (
+          ) : scanMode === "camera" || scanMode === "camera-snap" ? (
             <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
-              {scanMode === 'camera-snap' && (
+              {scanMode === "camera-snap" && (
                 <button
                   onClick={captureAndDecode}
                   disabled={isCapturing}
                   className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium sm:w-auto"
                   title="Capture and decode current frame"
                 >
-                  {isCapturing ? '⏳ Decoding...' : '📸 Capture'}
+                  {isCapturing ? "⏳ Decoding..." : "📸 Capture"}
                 </button>
               )}
               <button
@@ -888,10 +996,15 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             <>
               <button
                 onClick={() => {
-                  debugLog('Live scan button pressed', {
-                    hasMediaDevices: typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices),
+                  debugLog("Live scan button pressed", {
+                    hasMediaDevices:
+                      typeof navigator !== "undefined" &&
+                      Boolean(navigator.mediaDevices),
                     scanMode,
-                    platform: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+                    platform:
+                      typeof navigator !== "undefined"
+                        ? navigator.userAgent
+                        : "unknown",
                   });
                   startCameraScan();
                 }}
@@ -902,10 +1015,15 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
               </button>
               <button
                 onClick={() => {
-                  debugLog('Snap mode button pressed', {
-                    hasMediaDevices: typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices),
+                  debugLog("Snap mode button pressed", {
+                    hasMediaDevices:
+                      typeof navigator !== "undefined" &&
+                      Boolean(navigator.mediaDevices),
                     scanMode,
-                    platform: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+                    platform:
+                      typeof navigator !== "undefined"
+                        ? navigator.userAgent
+                        : "unknown",
                   });
                   startCameraSnapMode();
                 }}
@@ -921,7 +1039,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
                   className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm font-medium sm:w-auto"
                   title="Connect Bluetooth scanner (will prompt for device selection)"
                 >
-                  {isConnectingBluetooth ? '⏳ Connecting...' : '📡 Bluetooth'}
+                  {isConnectingBluetooth ? "⏳ Connecting..." : "📡 Bluetooth"}
                 </button>
               )}
             </>
@@ -939,22 +1057,19 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             </p>
           )}
         </div>
-      ) : scanMode === 'camera' || scanMode === 'camera-snap' ? (
+      ) : scanMode === "camera" || scanMode === "camera-snap" ? (
         <div className="space-y-2">
           <div className="relative">
             <video
               ref={videoRef}
               className="w-full rounded-lg border-2 border-blue-400 bg-black"
-              style={{ maxHeight: '300px', objectFit: 'contain' }}
+              style={{ maxHeight: "300px", objectFit: "contain" }}
               playsInline
               autoPlay
               muted
             />
-            <canvas
-              ref={canvasRef}
-              className="hidden"
-            />
-            {scanMode === 'camera-snap' && (
+            <canvas ref={canvasRef} className="hidden" />
+            {scanMode === "camera-snap" && (
               <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-xs">
                 Snap Mode Active
               </div>
@@ -966,8 +1081,8 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             </p>
           )}
           <p className="text-xs text-gray-600 text-center">
-            {scanMode === 'camera' 
-              ? 'Point your camera at a QR code or barcode (auto-detects)'
+            {scanMode === "camera"
+              ? "Point your camera at a QR code or barcode (auto-detects)"
               : 'Point camera at QR code, then click "Capture" to scan'}
           </p>
         </div>
@@ -985,9 +1100,10 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         />
       )}
 
-      {scanMode === 'keyboard' && input && (
+      {scanMode === "keyboard" && input && (
         <p className="mt-2 text-sm text-gray-600">
-          Press <kbd className="px-2 py-1 bg-gray-200 rounded">Enter</kbd> or wait for auto-scan
+          Press <kbd className="px-2 py-1 bg-gray-200 rounded">Enter</kbd> or
+          wait for auto-scan
         </p>
       )}
 

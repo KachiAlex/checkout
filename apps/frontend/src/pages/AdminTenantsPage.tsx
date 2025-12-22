@@ -1,6 +1,5 @@
-import { SuperAdminPage } from './SuperAdminPage';
+import { SuperAdminPage } from "./SuperAdminPage";
 
 export function AdminTenantsPage() {
   return <SuperAdminPage />;
 }
-

@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
+import { useMemo } from "react";
+import { useAuthStore } from "../stores/authStore";
+import { Industry, IndustryFeatureFlags } from "@pos-checkout/shared";
 
 export function useFeatureFlags() {
   const { tenant } = useAuthStore();
@@ -30,4 +30,3 @@ export function useFeatureFlags() {
     isRetail,
   };
 }
-

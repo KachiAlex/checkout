@@ -13,4 +13,3 @@ import { BatchInventoryRepository } from '../inventory/batch-inventory.repositor
   exports: [GRNService, GRNRepository],
 })
 export class GRNModule {}
-

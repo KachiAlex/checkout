@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { formatCurrency, formatNumber } from '../utils/numberFormat';
+import { useState, useEffect, useRef } from "react";
+import { formatCurrency, formatNumber } from "../utils/numberFormat";
 
 interface Product {
   id: string;
@@ -40,25 +40,25 @@ export function QuantitySelectorModal({
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
     const handleEnter = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && isOpen && product && quantity > 0) {
+      if (e.key === "Enter" && isOpen && product && quantity > 0) {
         handleConfirm();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.addEventListener('keydown', handleEnter);
+      document.addEventListener("keydown", handleEscape);
+      document.addEventListener("keydown", handleEnter);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.removeEventListener('keydown', handleEnter);
+      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleEnter);
     };
   }, [isOpen, product, quantity, onClose]);
 
@@ -80,7 +80,7 @@ export function QuantitySelectorModal({
       } else {
         setQuantity(numValue);
       }
-    } else if (value === '') {
+    } else if (value === "") {
       setQuantity(0);
     }
   };
@@ -113,12 +113,14 @@ export function QuantitySelectorModal({
                 alt={product.name}
                 className="h-full w-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
             </div>
           )}
-          <h2 className="theme-text-primary text-2xl font-semibold">{product.name}</h2>
+          <h2 className="theme-text-primary text-2xl font-semibold">
+            {product.name}
+          </h2>
           <div className="mt-2 flex items-center justify-between">
             <div>
               <p className="theme-text-secondary text-sm">SKU: {product.sku}</p>
@@ -177,7 +179,10 @@ export function QuantitySelectorModal({
             </p>
           )}
           <p className="mt-2 text-sm theme-text-secondary">
-            Total: <span className="font-semibold theme-text-primary">{formatCurrency(product.priceCents * quantity)}</span>
+            Total:{" "}
+            <span className="font-semibold theme-text-primary">
+              {formatCurrency(product.priceCents * quantity)}
+            </span>
           </p>
         </div>
 
@@ -199,11 +204,17 @@ export function QuantitySelectorModal({
         </div>
 
         <p className="mt-4 text-center text-xs theme-text-secondary">
-          Press <kbd className="rounded border border-white/20 bg-white/5 px-2 py-1">Enter</kbd> to confirm,{' '}
-          <kbd className="rounded border border-white/20 bg-white/5 px-2 py-1">Esc</kbd> to cancel
+          Press{" "}
+          <kbd className="rounded border border-white/20 bg-white/5 px-2 py-1">
+            Enter
+          </kbd>{" "}
+          to confirm,{" "}
+          <kbd className="rounded border border-white/20 bg-white/5 px-2 py-1">
+            Esc
+          </kbd>{" "}
+          to cancel
         </p>
       </div>
     </div>
   );
 }
-

@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { API_URL } from '../config';
+import axios from "axios";
+import { API_URL } from "../config";
 
 export interface SubscriptionPricing {
   free: {
@@ -36,7 +36,9 @@ export interface SubscriptionPricing {
 }
 
 export async function getSubscriptionPricing(): Promise<SubscriptionPricing> {
-  const { data } = await axios.get<SubscriptionPricing>(`${API_URL}/api/v1/subscription-pricing`);
+  const { data } = await axios.get<SubscriptionPricing>(
+    `${API_URL}/api/v1/subscription-pricing`,
+  );
   return data;
 }
 
@@ -55,4 +57,3 @@ export async function updateSubscriptionPricing(
   );
   return data;
 }
-

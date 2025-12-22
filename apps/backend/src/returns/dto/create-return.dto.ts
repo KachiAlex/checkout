@@ -62,4 +62,3 @@ export class CreateReturnDto {
   @IsString()
   notes?: string;
 }
-

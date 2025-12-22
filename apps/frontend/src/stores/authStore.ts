@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import axios from 'axios';
-import { API_URL } from '../config';
-import { Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import axios from "axios";
+import { API_URL } from "../config";
+import { Industry, IndustryFeatureFlags } from "@pos-checkout/shared";
 
 interface TenantInfo {
   id: string;
@@ -77,18 +77,26 @@ export const useAuthStore = create<AuthState>()(
           });
 
           // Store token in localStorage for sync service
-          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem("accessToken", accessToken);
 
           // Set default authorization header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          axios.defaults.headers.common["Authorization"] =
+            `Bearer ${accessToken}`;
         } catch (error: any) {
           // Handle timeout errors
-          if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-            error.customMessage = 'Login request timed out. Please check your connection and try again.';
+          if (
+            error.code === "ECONNABORTED" ||
+            error.message?.includes("timeout")
+          ) {
+            error.customMessage =
+              "Login request timed out. Please check your connection and try again.";
             throw error;
           }
-          const message = error.response?.data?.message || error.response?.data?.error || 'Login failed';
-          if (error && typeof error === 'object') {
+          const message =
+            error.response?.data?.message ||
+            error.response?.data?.error ||
+            "Login failed";
+          if (error && typeof error === "object") {
             error.customMessage = message;
           }
           throw error;
@@ -120,12 +128,13 @@ export const useAuthStore = create<AuthState>()(
           });
 
           // Store token in localStorage for sync service
-          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem("accessToken", accessToken);
 
-          axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          axios.defaults.headers.common["Authorization"] =
+            `Bearer ${accessToken}`;
         } catch (error: any) {
-          const message = error.response?.data?.message || 'Login failed';
-          if (error && typeof error === 'object') {
+          const message = error.response?.data?.message || "Login failed";
+          if (error && typeof error === "object") {
             error.customMessage = message;
           }
           throw error;
@@ -141,8 +150,8 @@ export const useAuthStore = create<AuthState>()(
           tenantSlug: null,
           isAuthenticated: false,
         });
-        localStorage.removeItem('accessToken');
-        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem("accessToken");
+        delete axios.defaults.headers.common["Authorization"];
       },
 
       refresh: async () => {
@@ -157,7 +166,12 @@ export const useAuthStore = create<AuthState>()(
             refreshToken,
           });
 
-          const { accessToken, refreshToken: newRefreshToken, user, tenant } = response.data;
+          const {
+            accessToken,
+            refreshToken: newRefreshToken,
+            user,
+            tenant,
+          } = response.data;
 
           set({
             accessToken,
@@ -169,20 +183,22 @@ export const useAuthStore = create<AuthState>()(
           });
 
           // Store token in localStorage for sync service
-          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem("accessToken", accessToken);
 
-          axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          axios.defaults.headers.common["Authorization"] =
+            `Bearer ${accessToken}`;
         } catch (error) {
           get().logout();
         }
       },
     }),
     {
-      name: 'auth-storage',
+      name: "auth-storage",
       onRehydrateStorage: () => (state) => {
         // Set axios default header when store is rehydrated from localStorage
         if (state?.accessToken) {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${state.accessToken}`;
+          axios.defaults.headers.common["Authorization"] =
+            `Bearer ${state.accessToken}`;
         }
       },
     },
@@ -194,8 +210,9 @@ axios.interceptors.request.use(
   (config) => {
     try {
       const { accessToken } = useAuthStore.getState();
-      const isAuthEndpoint = config.url?.includes('/auth/login') || 
-                            config.url?.includes('/auth/superadmin/login');
+      const isAuthEndpoint =
+        config.url?.includes("/auth/login") ||
+        config.url?.includes("/auth/superadmin/login");
 
       // Ensure headers object exists
       if (!config.headers) {
@@ -210,7 +227,7 @@ axios.interceptors.request.use(
         delete (config.headers as any).Authorization;
       }
     } catch (error) {
-      console.warn('Failed to attach auth token to request:', error);
+      console.warn("Failed to attach auth token to request:", error);
     }
 
     return config;
@@ -218,56 +235,57 @@ axios.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Set up axios interceptor to handle 401 errors
-// Retry logic for CORS/401 errors
-const MAX_RETRIES = 2;
-const RETRY_DELAY = 100; // 100ms delay between retries
-
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
     // Don't try to refresh on login/auth endpoints - these are expected to fail if not logged in
-    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
-                          originalRequest?.url?.includes('/auth/superadmin/login') ||
-                          originalRequest?.url?.includes('/auth/refresh');
-
+    const isAuthEndpoint =
+      originalRequest?.url?.includes("/auth/login") ||
+      originalRequest?.url?.includes("/auth/superadmin/login") ||
+      originalRequest?.url?.includes("/auth/refresh");
 
     // If we get a 401 on login endpoint, clear any invalid tokens
     if (error.response?.status === 401 && isAuthEndpoint) {
       const { accessToken } = useAuthStore.getState();
       if (accessToken) {
         // Invalid token detected on login attempt, clear it
-        console.warn('[Auth] Invalid token detected on login endpoint, clearing stored tokens');
+        console.warn(
+          "[Auth] Invalid token detected on login endpoint, clearing stored tokens",
+        );
         useAuthStore.getState().logout();
       }
       return Promise.reject(error);
     }
 
     // If we get a 401 and haven't tried to refresh yet (and it's not an auth endpoint)
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       originalRequest._retry = true;
 
       const { refreshToken, refresh } = useAuthStore.getState();
-      
+
       if (refreshToken) {
         try {
           await refresh();
           // Retry the original request with new token
           const { accessToken } = useAuthStore.getState();
-          originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+          originalRequest.headers["Authorization"] = `Bearer ${accessToken}`;
           return axios(originalRequest);
         } catch (refreshError) {
           // Refresh failed, logout user
           useAuthStore.getState().logout();
-          window.location.href = '/login';
+          window.location.href = "/login";
           return Promise.reject(refreshError);
         }
       } else {
         // No refresh token, logout
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+        window.location.href = "/login";
       }
     }
 

@@ -73,7 +73,11 @@ export class TenantsController {
 
   @Post(':id/reset-admin-pin')
   @ApiOperation({ summary: 'Reset the primary tenant admin PIN' })
-  async resetAdminPin(@Request() req: any, @Param('id') id: string, @Body() dto: ResetTenantAdminPinDto) {
+  async resetAdminPin(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: ResetTenantAdminPinDto,
+  ) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.resetAdminPin(id, dto);
   }
@@ -99,4 +103,3 @@ export class TenantsController {
     return this.tenantsService.deleteTenant(id);
   }
 }
-

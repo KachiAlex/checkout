@@ -76,7 +76,11 @@ export class CreateOrderDto {
   @Min(0)
   discountCents?: number;
 
-  @ApiProperty({ description: 'Cart-level discount percentage (0-100)', required: false, example: 10 })
+  @ApiProperty({
+    description: 'Cart-level discount percentage (0-100)',
+    required: false,
+    example: 10,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -104,7 +108,10 @@ export class CreateOrderDto {
   @IsOptional()
   isHeld?: boolean;
 
-  @ApiProperty({ description: 'Whether this is a credit order (products taken on credit)', default: false })
+  @ApiProperty({
+    description: 'Whether this is a credit order (products taken on credit)',
+    default: false,
+  })
   @IsOptional()
   isCreditOrder?: boolean;
 }

@@ -46,18 +46,25 @@ export class PaymentSettingsService {
       throw new NotFoundException('Tenant not found');
     }
 
-    const paymentSettings = this.ensureSettings(tenant.metadata?.paymentSettings as PaymentSettings | undefined);
+    const paymentSettings = this.ensureSettings(
+      tenant.metadata?.paymentSettings as PaymentSettings | undefined,
+    );
 
     return this.maskSettings(paymentSettings);
   }
 
-  async updatePaymentSettings(tenantId: string, dto: UpdatePaymentSettingsDto): Promise<PaymentSettings> {
+  async updatePaymentSettings(
+    tenantId: string,
+    dto: UpdatePaymentSettingsDto,
+  ): Promise<PaymentSettings> {
     const tenant = await this.tenantsRepository.findById(tenantId);
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
 
-    const currentSettings = this.ensureSettings(tenant.metadata?.paymentSettings as PaymentSettings | undefined);
+    const currentSettings = this.ensureSettings(
+      tenant.metadata?.paymentSettings as PaymentSettings | undefined,
+    );
     const updatedSettings: PaymentSettings = {
       ...currentSettings,
       monnifyEnabled: dto.monnifyEnabled ?? currentSettings.monnifyEnabled ?? false,
@@ -85,7 +92,9 @@ export class PaymentSettingsService {
       },
     });
 
-    const savedSettings = this.ensureSettings(updatedTenant.metadata?.paymentSettings as PaymentSettings | undefined);
+    const savedSettings = this.ensureSettings(
+      updatedTenant.metadata?.paymentSettings as PaymentSettings | undefined,
+    );
 
     // Return with masked keys
     return this.maskSettings(savedSettings);
@@ -100,8 +109,10 @@ export class PaymentSettingsService {
       return null;
     }
 
-    const paymentSettings = this.ensureSettings(tenant.metadata?.paymentSettings as PaymentSettings | undefined);
-    
+    const paymentSettings = this.ensureSettings(
+      tenant.metadata?.paymentSettings as PaymentSettings | undefined,
+    );
+
     // Return null if Monnify is not enabled or credentials are missing
     if (!paymentSettings.monnifyEnabled) {
       return null;
@@ -118,4 +129,3 @@ export class PaymentSettingsService {
     return paymentSettings;
   }
 }
-

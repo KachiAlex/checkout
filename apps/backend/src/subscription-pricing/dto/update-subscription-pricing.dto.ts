@@ -62,4 +62,3 @@ export class UpdateSubscriptionPricingDto {
   @Type(() => SubscriptionPricingTierDto)
   lifetime?: Partial<SubscriptionPricingTierDto>;
 }
-

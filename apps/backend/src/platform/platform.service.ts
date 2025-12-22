@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { TenantsService } from '../tenants/tenants.service';
@@ -75,7 +80,11 @@ export class PlatformService {
     } else {
       // For paid plans, set to 30 days from now (monthly) or 365 days (annual)
       billingCycleEnd = new Date();
-      if (plan === TenantPlan.STARTER || plan === TenantPlan.PROFESSIONAL || plan === TenantPlan.ENTERPRISE) {
+      if (
+        plan === TenantPlan.STARTER ||
+        plan === TenantPlan.PROFESSIONAL ||
+        plan === TenantPlan.ENTERPRISE
+      ) {
         billingCycleEnd.setMonth(billingCycleEnd.getMonth() + 1);
       } else if (plan === TenantPlan.LIFETIME) {
         billingCycleEnd = undefined; // Lifetime has no end date
@@ -108,7 +117,7 @@ export class PlatformService {
     // If plan is paid, initiate payment
     if (plan !== TenantPlan.FREE) {
       const pricing = this.getPlanPricing(plan);
-      
+
       if (pricing.priceCents > 0) {
         // Create payment record
         const paymentId = uuidv4();
@@ -152,7 +161,8 @@ export class PlatformService {
           if (payment.checkoutUrl) {
             return {
               success: true,
-              message: 'Registration successful. Please complete payment to activate your subscription.',
+              message:
+                'Registration successful. Please complete payment to activate your subscription.',
               tenant: {
                 id: result.tenant.id,
                 slug: result.tenant.slug,
@@ -174,9 +184,10 @@ export class PlatformService {
     // For free plan or if payment initiation failed
     return {
       success: true,
-      message: plan === TenantPlan.FREE 
-        ? 'Registration successful! Your 14-day free trial has started.' 
-        : 'Registration successful!',
+      message:
+        plan === TenantPlan.FREE
+          ? 'Registration successful! Your 14-day free trial has started.'
+          : 'Registration successful!',
       tenant: {
         id: result.tenant.id,
         slug: result.tenant.slug,
@@ -189,12 +200,15 @@ export class PlatformService {
   /**
    * Get payment status for a subscription
    */
-  async getPaymentStatus(tenantId: string, paymentId: string): Promise<{
+  async getPaymentStatus(
+    tenantId: string,
+    paymentId: string,
+  ): Promise<{
     status: PaymentStatus;
     tenantSlug?: string;
   }> {
     const payment = subscriptionPayments.get(paymentId);
-    
+
     if (!payment || payment.tenantId !== tenantId) {
       throw new NotFoundException('Payment not found');
     }
@@ -204,7 +218,7 @@ export class PlatformService {
       try {
         const flutterwaveAdapter = this.getFlutterwaveAdapter();
         const status = await flutterwaveAdapter.getStatus(payment.transactionId);
-        
+
         if (status === PaymentStatus.COMPLETED) {
           // Payment completed, activate subscription if not already done
           if (payment.status === PaymentStatus.PROCESSING) {
@@ -236,14 +250,14 @@ export class PlatformService {
     // Verify webhook signature
     const flutterwaveAdapter = this.getFlutterwaveAdapter();
     const webhookSecret = this.configService.get<string>('FLUTTERWAVE_WEBHOOK_SECRET');
-    
+
     if (webhookSecret && verifHash !== webhookSecret) {
       throw new BadRequestException('Invalid webhook signature');
     }
 
     // Process webhook based on event type
     const event = payload.event;
-    
+
     if (event === 'charge.completed') {
       const txRef = payload.data.tx_ref;
       const status = payload.data.status;
@@ -343,4 +357,3 @@ export class PlatformService {
     return pricing[plan] || pricing[TenantPlan.FREE];
   }
 }
-

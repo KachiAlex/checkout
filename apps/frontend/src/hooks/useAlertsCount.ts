@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import axios from 'axios';
-import { API_URL } from '../config';
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../stores/authStore";
+import axios from "axios";
+import { API_URL } from "../config";
 
 export function useAlertsCount() {
   const { accessToken, user } = useAuthStore();
@@ -22,17 +22,19 @@ export function useAlertsCount() {
       try {
         const response = await axios.get(
           `${API_URL}/api/v1/reports/alerts?location_id=${user.locationId}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
+          { headers: { Authorization: `Bearer ${accessToken}` } },
         );
-        
+
         if (mounted) {
           const alerts = response.data?.alerts || [];
-          const critical = alerts.filter((a: any) => a.severity === 'critical').length;
+          const critical = alerts.filter(
+            (a: any) => a.severity === "critical",
+          ).length;
           setAlertCount(alerts.length);
           setCriticalCount(critical);
         }
       } catch (error) {
-        console.error('Failed to fetch alerts count:', error);
+        console.error("Failed to fetch alerts count:", error);
         if (mounted) {
           setAlertCount(0);
           setCriticalCount(0);
@@ -45,7 +47,7 @@ export function useAlertsCount() {
     };
 
     fetchAlerts();
-    
+
     // Refresh every 30 seconds
     const interval = setInterval(fetchAlerts, 30000);
 
@@ -57,4 +59,3 @@ export function useAlertsCount() {
 
   return { alertCount, criticalCount, loading };
 }
-

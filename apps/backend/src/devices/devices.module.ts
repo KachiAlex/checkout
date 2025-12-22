@@ -9,4 +9,3 @@ import { DevicesRepository } from './devices.repository';
   exports: [DevicesService, DevicesRepository],
 })
 export class DevicesModule {}
-

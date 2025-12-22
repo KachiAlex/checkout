@@ -34,4 +34,3 @@ export class CustomizationController {
     return this.customizationService.updateCustomization(req.user.tenantId, body);
   }
 }
-

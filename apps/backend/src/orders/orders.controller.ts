@@ -28,7 +28,12 @@ export class OrdersController {
   @ApiResponse({ status: 201, description: 'Order created' })
   @ApiResponse({ status: 409, description: 'Insufficient inventory' })
   async create(@Body() createOrderDto: CreateOrderDto, @Request() req: any) {
-    return this.ordersService.create(createOrderDto, req.user.sub, req.user.tenantId, req.user.locationId);
+    return this.ordersService.create(
+      createOrderDto,
+      req.user.sub,
+      req.user.tenantId,
+      req.user.locationId,
+    );
   }
 
   @Get()
@@ -45,7 +50,7 @@ export class OrdersController {
     if (locationId) {
       await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
     }
-    
+
     return this.ordersService.findAll(locationId, from, to, status, req.user.tenantId);
   }
 
@@ -58,22 +63,19 @@ export class OrdersController {
     if (locationId) {
       await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
     }
-    
+
     return this.ordersService.findHeldOrders(locationId, req.user.tenantId);
   }
 
   @Get('credit')
   @ApiOperation({ summary: 'Get all credit orders (products taken on credit)' })
   @ApiResponse({ status: 200, description: 'List of credit orders' })
-  async getCreditOrders(
-    @Request() req: any,
-    @Query('location_id') locationId?: string,
-  ) {
+  async getCreditOrders(@Request() req: any, @Query('location_id') locationId?: string) {
     // Ensure location belongs to tenant if provided
     if (locationId) {
       await this.ordersService.verifyLocationAccess(locationId, req.user.tenantId);
     }
-    
+
     return this.ordersService.findCreditOrders(locationId, req.user.tenantId);
   }
 
@@ -84,13 +86,13 @@ export class OrdersController {
   @ApiResponse({ status: 403, description: 'Access denied' })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const order = await this.ordersService.findOne(id);
-    
+
     // Verify order belongs to user's tenant via location
     const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
     if (!hasAccess) {
       throw new ForbiddenException('Access denied to this order');
     }
-    
+
     return order;
   }
 
@@ -104,13 +106,13 @@ export class OrdersController {
     @Request() req: any,
   ) {
     const order = await this.ordersService.findOne(id);
-    
+
     // Verify order belongs to user's tenant
     const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
     if (!hasAccess) {
       throw new ForbiddenException('Access denied to this order');
     }
-    
+
     return this.ordersService.update(id, updateDto);
   }
 
@@ -120,12 +122,12 @@ export class OrdersController {
   @ApiResponse({ status: 403, description: 'Access denied' })
   async holdOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const order = await this.ordersService.findOne(id);
-    
+
     const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
     if (!hasAccess) {
       throw new ForbiddenException('Access denied to this order');
     }
-    
+
     return this.ordersService.holdOrder(id);
   }
 
@@ -135,12 +137,12 @@ export class OrdersController {
   @ApiResponse({ status: 403, description: 'Access denied' })
   async recallOrder(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const order = await this.ordersService.findOne(id);
-    
+
     const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
     if (!hasAccess) {
       throw new ForbiddenException('Access denied to this order');
     }
-    
+
     return this.ordersService.recallOrder(id);
   }
 
@@ -158,12 +160,12 @@ export class OrdersController {
   @ApiResponse({ status: 400, description: 'Order is not a credit order or already paid' })
   async markCreditOrderAsPaid(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const order = await this.ordersService.findOne(id);
-    
+
     const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
     if (!hasAccess) {
       throw new ForbiddenException('Access denied to this order');
     }
-    
+
     return this.ordersService.markCreditOrderAsPaid(id, req.user.sub, req.user.tenantId);
   }
 
@@ -174,12 +176,12 @@ export class OrdersController {
   @ApiResponse({ status: 400, description: 'Order is not a credit order or already returned' })
   async markCreditOrderAsReturned(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const order = await this.ordersService.findOne(id);
-    
+
     const hasAccess = await this.ordersService.verifyTenantAccess(order, req.user.tenantId);
     if (!hasAccess) {
       throw new ForbiddenException('Access denied to this order');
     }
-    
+
     return this.ordersService.markCreditOrderAsReturned(id, req.user.sub, req.user.tenantId);
   }
 }

@@ -23,7 +23,10 @@ export interface TenantRecord {
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type TenantDocument = Omit<TenantRecord, 'id' | 'createdAt' | 'updatedAt' | 'billingCycleStart' | 'billingCycleEnd'> & {
+type TenantDocument = Omit<
+  TenantRecord,
+  'id' | 'createdAt' | 'updatedAt' | 'billingCycleStart' | 'billingCycleEnd'
+> & {
   createdAt?: TimestampField;
   updatedAt?: TimestampField;
   billingCycleStart?: TimestampField;
@@ -198,7 +201,9 @@ export class TenantsRepository {
       featureFlags: data.featureFlags,
       seatLimit: data.seatLimit,
       contactEmail: data.contactEmail,
-      billingCycleStart: data.billingCycleStart ? Timestamp.fromDate(data.billingCycleStart) : undefined,
+      billingCycleStart: data.billingCycleStart
+        ? Timestamp.fromDate(data.billingCycleStart)
+        : undefined,
       billingCycleEnd: data.billingCycleEnd ? Timestamp.fromDate(data.billingCycleEnd) : undefined,
       metadata: data.metadata,
       createdAt: now,
@@ -210,7 +215,10 @@ export class TenantsRepository {
     return this.toRecord(created.id, created.data() as TenantDocument);
   }
 
-  async update(id: string, update: Partial<Omit<TenantRecord, 'id' | 'createdAt' | 'updatedAt'>>): Promise<TenantRecord> {
+  async update(
+    id: string,
+    update: Partial<Omit<TenantRecord, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<TenantRecord> {
     if (this.isPostgresEnabled()) {
       const existing = await this.prismaService.prisma.tenant.findUnique({ where: { id } });
       if (!existing) {
@@ -295,7 +303,9 @@ export class TenantsRepository {
         : null;
     }
     if (update.billingCycleEnd !== undefined) {
-      payload.billingCycleEnd = update.billingCycleEnd ? Timestamp.fromDate(update.billingCycleEnd) : null;
+      payload.billingCycleEnd = update.billingCycleEnd
+        ? Timestamp.fromDate(update.billingCycleEnd)
+        : null;
     }
 
     await docRef.set(payload, { merge: true });
@@ -355,4 +365,3 @@ export class TenantsRepository {
     return new Date();
   }
 }
-

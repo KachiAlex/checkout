@@ -9,7 +9,10 @@ export class CreateUserDto {
   @MaxLength(120)
   name!: string;
 
-  @ApiProperty({ description: 'Email for communication/login notifications', example: 'jane@store.com' })
+  @ApiProperty({
+    description: 'Email for communication/login notifications',
+    example: 'jane@store.com',
+  })
   @IsEmail()
   email!: string;
 
@@ -17,7 +20,10 @@ export class CreateUserDto {
   @IsEnum(UserRole)
   role!: UserRole;
 
-  @ApiProperty({ description: 'Optional PIN or passphrase for initial login (4-64 characters)', required: false })
+  @ApiProperty({
+    description: 'Optional PIN or passphrase for initial login (4-64 characters)',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   @MinLength(4)
@@ -29,8 +35,10 @@ export class CreateUserDto {
   @IsString()
   locationId?: string;
 
-  @ApiProperty({ description: 'Whether the user should have platform-level admin access', required: false })
+  @ApiProperty({
+    description: 'Whether the user should have platform-level admin access',
+    required: false,
+  })
   @IsOptional()
   isPlatformAdmin?: boolean;
 }
-

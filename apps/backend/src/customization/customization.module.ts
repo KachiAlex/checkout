@@ -10,4 +10,3 @@ import { TenantsModule } from '../tenants/tenants.module';
   exports: [CustomizationService],
 })
 export class CustomizationModule {}
-

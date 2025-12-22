@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CustomersRepository, CustomerRecord, CreateCustomerInput } from './customers.repository';
-import { LoyaltyTransactionsRepository, LoyaltyTransactionType } from './loyalty-transactions.repository';
+import {
+  LoyaltyTransactionsRepository,
+  LoyaltyTransactionType,
+} from './loyalty-transactions.repository';
 
 @Injectable()
 export class CustomersService {
@@ -16,7 +19,7 @@ export class CustomersService {
   async findById(id: string, tenantId: string): Promise<CustomerRecord> {
     const customer = await this.customersRepository.findById(id, tenantId);
     if (!customer) {
-      throw new Error(`Customer with ID ${id} not found`);
+      throw new NotFoundException(`Customer with ID ${id} not found`);
     }
     return customer;
   }
@@ -33,7 +36,11 @@ export class CustomersService {
     return this.customersRepository.create(data);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateCustomerInput>): Promise<CustomerRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateCustomerInput>,
+  ): Promise<CustomerRecord> {
     return this.customersRepository.update(id, tenantId, update);
   }
 
@@ -77,7 +84,9 @@ export class CustomersService {
     }
 
     if (customer.loyaltyPoints < points) {
-      throw new Error(`Insufficient loyalty points. Available: ${customer.loyaltyPoints}, Requested: ${points}`);
+      throw new Error(
+        `Insufficient loyalty points. Available: ${customer.loyaltyPoints}, Requested: ${points}`,
+      );
     }
 
     const updated = await this.customersRepository.updateLoyaltyPoints(id, tenantId, -points);
@@ -118,4 +127,3 @@ export class CustomersService {
     return this.loyaltyTransactionsRepository.findByCustomer(customerId, tenantId, limit);
   }
 }
-

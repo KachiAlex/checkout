@@ -6,9 +6,7 @@ import { DevicesRepository, DeviceRecord } from './devices.repository';
 
 @Injectable()
 export class DevicesService {
-  constructor(
-    private readonly devicesRepository: DevicesRepository,
-  ) {}
+  constructor(private readonly devicesRepository: DevicesRepository) {}
 
   private ensureSameTenant(device: DeviceRecord, tenantId: string) {
     if (device.tenantId !== tenantId) {
@@ -16,7 +14,11 @@ export class DevicesService {
     }
   }
 
-  async registerDevice(dto: RegisterDeviceDto, tenantId: string, actorId?: string): Promise<DeviceRecord> {
+  async registerDevice(
+    dto: RegisterDeviceDto,
+    tenantId: string,
+    actorId?: string,
+  ): Promise<DeviceRecord> {
     const normalizedIdentifier = dto.identifier.trim().toLowerCase();
 
     let device = await this.devicesRepository.findByIdentifier(tenantId, normalizedIdentifier);
@@ -86,7 +88,12 @@ export class DevicesService {
     });
   }
 
-  async recordHeartbeat(id: string, tenantId: string, dto: DeviceHeartbeatDto, actorId?: string): Promise<DeviceRecord> {
+  async recordHeartbeat(
+    id: string,
+    tenantId: string,
+    dto: DeviceHeartbeatDto,
+    actorId?: string,
+  ): Promise<DeviceRecord> {
     const device = await this.devicesRepository.findById(id);
     if (!device) {
       throw new NotFoundException(`Device ${id} not found`);
@@ -102,4 +109,3 @@ export class DevicesService {
     });
   }
 }
-

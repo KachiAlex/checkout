@@ -21,8 +21,11 @@ export class SuppliersService {
     return this.suppliersRepository.create(data);
   }
 
-  async update(id: string, tenantId: string, update: Partial<CreateSupplierInput>): Promise<SupplierRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    update: Partial<CreateSupplierInput>,
+  ): Promise<SupplierRecord> {
     return this.suppliersRepository.update(id, tenantId, update);
   }
 }
-

@@ -5,11 +5,13 @@ import { ProductsRepository, ProductRecord } from './products.repository';
 
 @Injectable()
 export class ProductsService {
-  constructor(
-    private readonly productsRepository: ProductsRepository,
-  ) {}
+  constructor(private readonly productsRepository: ProductsRepository) {}
 
-  async findAll(query: string | undefined, locationId: string | undefined, tenantId: string): Promise<ProductRecord[]> {
+  async findAll(
+    query: string | undefined,
+    locationId: string | undefined,
+    tenantId: string,
+  ): Promise<ProductRecord[]> {
     const products = await this.productsRepository.search(query, tenantId);
     if (!locationId) {
       return products;
@@ -71,7 +73,11 @@ export class ProductsService {
     });
   }
 
-  async update(id: string, tenantId: string, updateProductDto: UpdateProductDto): Promise<ProductRecord> {
+  async update(
+    id: string,
+    tenantId: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<ProductRecord> {
     await this.findOne(id, tenantId);
     return this.productsRepository.update(id, tenantId, {
       ...updateProductDto,

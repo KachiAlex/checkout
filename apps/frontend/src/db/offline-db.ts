@@ -1,9 +1,9 @@
 /**
  * Offline Database (IndexedDB) using Dexie
- * 
+ *
  * Stores orders and sync events locally for offline-first operation
  */
-import Dexie, { Table } from 'dexie';
+import Dexie, { Table } from "dexie";
 
 export interface OfflineOrder {
   id?: number; // Auto-increment primary key
@@ -20,7 +20,7 @@ export interface OfflineOrder {
   discountCents: number;
   totalCents: number;
   deviceId?: string;
-  status: 'pending' | 'synced' | 'failed';
+  status: "pending" | "synced" | "failed";
   createdAt: number; // Unix timestamp
   syncedAt?: number; // When successfully synced
   error?: string; // Error message if sync failed
@@ -32,7 +32,7 @@ export interface SyncEvent {
   type: string; // e.g., 'order.created'
   payload: Record<string, unknown>;
   client_ts: number; // Client timestamp
-  status: 'pending' | 'synced' | 'failed';
+  status: "pending" | "synced" | "failed";
   retryCount: number;
   syncedAt?: number;
   error?: string;
@@ -50,12 +50,12 @@ class OfflineDatabase extends Dexie {
   syncState!: Table<SyncState>;
 
   constructor() {
-    super('POSCheckoutOfflineDB');
-    
+    super("POSCheckoutOfflineDB");
+
     this.version(1).stores({
-      orders: '++id, uuid, status, createdAt',
-      syncEvents: '++id, eventId, status, client_ts',
-      syncState: 'id', // Single record with id=1
+      orders: "++id, uuid, status, createdAt",
+      syncEvents: "++id, eventId, status, client_ts",
+      syncState: "id", // Single record with id=1
     });
   }
 }
@@ -68,4 +68,3 @@ db.syncState.get(1).then((state) => {
     db.syncState.add({ id: 1 });
   }
 });
-

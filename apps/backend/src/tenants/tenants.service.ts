@@ -38,10 +38,7 @@ export class TenantsService {
 
     // Get industry and set default feature flags
     const industry = dto.industry || Industry.GENERAL;
-    const featureFlags = this.industryFeaturesService.mergeFeatureFlags(
-      industry,
-      dto.featureFlags,
-    );
+    const featureFlags = this.industryFeaturesService.mergeFeatureFlags(industry, dto.featureFlags);
 
     const initialStatus = dto.plan === TenantPlan.FREE ? TenantStatus.ACTIVE : TenantStatus.PENDING;
 
@@ -134,11 +131,15 @@ export class TenantsService {
     }
 
     if (dto.billingCycleStart !== undefined) {
-      updatePayload.billingCycleStart = dto.billingCycleStart ? new Date(dto.billingCycleStart) : undefined;
+      updatePayload.billingCycleStart = dto.billingCycleStart
+        ? new Date(dto.billingCycleStart)
+        : undefined;
     }
 
     if (dto.billingCycleEnd !== undefined) {
-      updatePayload.billingCycleEnd = dto.billingCycleEnd ? new Date(dto.billingCycleEnd) : undefined;
+      updatePayload.billingCycleEnd = dto.billingCycleEnd
+        ? new Date(dto.billingCycleEnd)
+        : undefined;
     }
 
     return this.tenantsRepository.update(id, updatePayload);
@@ -168,8 +169,8 @@ export class TenantsService {
         nextPlan === TenantPlan.LIFETIME
           ? undefined
           : dto.billingCycleEnd
-          ? new Date(dto.billingCycleEnd)
-          : undefined;
+            ? new Date(dto.billingCycleEnd)
+            : undefined;
     }
 
     return this.tenantsRepository.update(id, updatePayload);
@@ -247,4 +248,3 @@ export class TenantsService {
     };
   }
 }
-

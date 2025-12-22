@@ -20,9 +20,10 @@ function toLowercaseMessage(error: unknown): string {
 
 export function isMissingIndexError(error: unknown): boolean {
   const message = toLowercaseMessage(error);
-  const code = typeof (error as Record<string, unknown>)?.code === 'string'
-    ? ((error as Record<string, unknown>).code as string)
-    : undefined;
+  const code =
+    typeof (error as Record<string, unknown>)?.code === 'string'
+      ? ((error as Record<string, unknown>).code as string)
+      : undefined;
 
   return (
     code === 'failed-precondition' ||
@@ -31,4 +32,3 @@ export function isMissingIndexError(error: unknown): boolean {
     (message.includes('index') && message.includes('missing'))
   );
 }
-

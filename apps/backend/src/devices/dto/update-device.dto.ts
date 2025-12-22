@@ -7,4 +7,3 @@ export class UpdateDeviceDto extends PartialType(RegisterDeviceDto) {
   @IsUUID()
   lastUsedById?: string;
 }
-

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Param, Patch, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -43,7 +53,9 @@ export class PurchaseOrdersController {
       subtotalCents: createDto.subtotalCents,
       taxCents: createDto.taxCents,
       totalCents: createDto.totalCents,
-      expectedDeliveryDate: createDto.expectedDeliveryDate ? new Date(createDto.expectedDeliveryDate) : undefined,
+      expectedDeliveryDate: createDto.expectedDeliveryDate
+        ? new Date(createDto.expectedDeliveryDate)
+        : undefined,
       notes: createDto.notes,
       createdBy: req.user.sub || req.user.id,
     });
@@ -63,4 +75,3 @@ export class PurchaseOrdersController {
     return this.purchaseOrdersService.cancel(id, req.user.tenantId);
   }
 }
-

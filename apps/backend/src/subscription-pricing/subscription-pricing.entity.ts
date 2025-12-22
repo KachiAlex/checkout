@@ -19,4 +19,3 @@ export interface SubscriptionPricingEntity {
   updatedAt?: string;
   updatedBy?: string;
 }
-

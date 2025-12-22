@@ -19,7 +19,10 @@ export interface BatchInventoryRecord {
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type BatchInventoryDocument = Omit<BatchInventoryRecord, 'id' | 'createdAt' | 'updatedAt' | 'expiryDate' | 'receivedDate'> & {
+type BatchInventoryDocument = Omit<
+  BatchInventoryRecord,
+  'id' | 'createdAt' | 'updatedAt' | 'expiryDate' | 'receivedDate'
+> & {
   expiryDate?: TimestampField;
   receivedDate?: TimestampField;
   createdAt?: TimestampField;
@@ -39,7 +42,8 @@ export type CreateBatchInventoryInput = {
 
 @Injectable()
 export class BatchInventoryRepository {
-  private readonly collection = this.firestore.collection<BatchInventoryDocument>('batch_inventory');
+  private readonly collection =
+    this.firestore.collection<BatchInventoryDocument>('batch_inventory');
 
   constructor(private readonly firestore: FirestoreService) {}
 
@@ -55,12 +59,10 @@ export class BatchInventoryRepository {
   async findByLocation(locationId: string): Promise<BatchInventoryRecord[]> {
     try {
       // Query without orderBy first to avoid issues with missing expiryDate fields
-      const snapshot = await this.collection
-        .where('locationId', '==', locationId)
-        .get();
-      
+      const snapshot = await this.collection.where('locationId', '==', locationId).get();
+
       const records = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
-      
+
       // Sort in memory: batches with expiry dates first (sorted by expiry), then batches without expiry dates
       records.sort((a, b) => {
         // If both have expiry dates, sort by expiry date
@@ -73,14 +75,12 @@ export class BatchInventoryRepository {
         // Both don't have expiry dates, maintain original order
         return 0;
       });
-      
+
       return records;
     } catch (error: any) {
       console.error('Error fetching batch inventory by location:', error);
       // If query fails, try without orderBy as fallback
-      const snapshot = await this.collection
-        .where('locationId', '==', locationId)
-        .get();
+      const snapshot = await this.collection.where('locationId', '==', locationId).get();
       return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
     }
   }
@@ -89,7 +89,7 @@ export class BatchInventoryRepository {
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
     const docRef = this.collection.doc(id);
-    
+
     await docRef.set({
       productId: data.productId,
       locationId: data.locationId,
@@ -111,7 +111,7 @@ export class BatchInventoryRepository {
   async updateQuantity(id: string, delta: number): Promise<BatchInventoryRecord> {
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
-    
+
     if (!existing.exists) {
       throw new Error(`Batch inventory ${id} not found`);
     }
@@ -141,10 +141,22 @@ export class BatchInventoryRepository {
       productId: data.productId,
       locationId: data.locationId,
       batchNumber: data.batchNumber,
-      expiryDate: data.expiryDate ? (data.expiryDate instanceof Timestamp ? data.expiryDate.toDate() : (typeof data.expiryDate === 'string' ? new Date(data.expiryDate) : undefined)) : undefined,
+      expiryDate: data.expiryDate
+        ? data.expiryDate instanceof Timestamp
+          ? data.expiryDate.toDate()
+          : typeof data.expiryDate === 'string'
+            ? new Date(data.expiryDate)
+            : undefined
+        : undefined,
       quantity: data.quantity,
       unitCostCents: data.unitCostCents,
-      receivedDate: data.receivedDate ? (data.receivedDate instanceof Timestamp ? data.receivedDate.toDate() : (typeof data.receivedDate === 'string' ? new Date(data.receivedDate) : new Date())) : new Date(),
+      receivedDate: data.receivedDate
+        ? data.receivedDate instanceof Timestamp
+          ? data.receivedDate.toDate()
+          : typeof data.receivedDate === 'string'
+            ? new Date(data.receivedDate)
+            : new Date()
+        : new Date(),
       purchaseOrderId: data.purchaseOrderId,
       grnId: data.grnId,
       createdAt: this.timestampToDate(data.createdAt),
@@ -162,4 +174,3 @@ export class BatchInventoryRepository {
     return new Date();
   }
 }
-

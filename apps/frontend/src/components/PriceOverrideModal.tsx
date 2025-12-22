@@ -1,9 +1,13 @@
-import { useState } from 'react';
-import axios from 'axios';
-import toast from 'react-hot-toast';
-import { API_URL } from '../config';
-import { useAuthStore } from '../stores/authStore';
-import { formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
+import { useState } from "react";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { API_URL } from "../config";
+import { useAuthStore } from "../stores/authStore";
+import {
+  formatCurrency,
+  parseFormattedNumber,
+  handleNumberInputChange,
+} from "../utils/numberFormat";
 
 interface PriceOverrideModalProps {
   isOpen: boolean;
@@ -21,8 +25,8 @@ export function PriceOverrideModal({
   onConfirm,
 }: PriceOverrideModalProps) {
   const { accessToken } = useAuthStore();
-  const [newPrice, setNewPrice] = useState('');
-  const [managerPin, setManagerPin] = useState('');
+  const [newPrice, setNewPrice] = useState("");
+  const [managerPin, setManagerPin] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
 
@@ -30,7 +34,7 @@ export function PriceOverrideModal({
 
   const handleVerifyPin = async () => {
     if (!managerPin) {
-      toast.error('Please enter manager PIN');
+      toast.error("Please enter manager PIN");
       return;
     }
 
@@ -39,19 +43,19 @@ export function PriceOverrideModal({
       const response = await axios.post(
         `${API_URL}/api/v1/auth/verify-manager`,
         { pin: managerPin },
-        { headers: { Authorization: `Bearer ${accessToken || ''}` } },
+        { headers: { Authorization: `Bearer ${accessToken || ""}` } },
       );
-      
+
       if (response.data.authorized) {
         setVerified(true);
-        toast.success('Manager PIN verified');
+        toast.success("Manager PIN verified");
       } else {
-        toast.error(response.data.message || 'Invalid manager PIN');
-        setManagerPin('');
+        toast.error(response.data.message || "Invalid manager PIN");
+        setManagerPin("");
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to verify PIN');
-      setManagerPin('');
+      toast.error(error.response?.data?.message || "Failed to verify PIN");
+      setManagerPin("");
     } finally {
       setVerifying(false);
     }
@@ -59,30 +63,30 @@ export function PriceOverrideModal({
 
   const handleConfirm = async () => {
     if (!verified) {
-      toast.error('Please verify manager PIN first');
+      toast.error("Please verify manager PIN first");
       return;
     }
 
     const price = parseFormattedNumber(newPrice);
     if (isNaN(price) || price < 0) {
-      toast.error('Please enter a valid price');
+      toast.error("Please enter a valid price");
       return;
     }
 
     const newPriceCents = Math.round(price * 100);
     const success = await onConfirm(newPriceCents, managerPin);
-    
+
     if (success) {
-      setNewPrice('');
-      setManagerPin('');
+      setNewPrice("");
+      setManagerPin("");
       setVerified(false);
       onClose();
     }
   };
 
   const handleClose = () => {
-    setNewPrice('');
-    setManagerPin('');
+    setNewPrice("");
+    setManagerPin("");
     setVerified(false);
     onClose();
   };
@@ -90,7 +94,9 @@ export function PriceOverrideModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="theme-card w-full max-w-md rounded-3xl border p-6 shadow-2xl">
-        <h2 className="theme-text-primary text-xl font-semibold mb-4">Price Override</h2>
+        <h2 className="theme-text-primary text-xl font-semibold mb-4">
+          Price Override
+        </h2>
 
         <div className="space-y-4">
           <div>
@@ -100,7 +106,9 @@ export function PriceOverrideModal({
 
           <div>
             <p className="text-sm theme-text-secondary mb-1">Current Price</p>
-            <p className="theme-text-primary text-lg font-semibold">{formatCurrency(currentPriceCents)}</p>
+            <p className="theme-text-primary text-lg font-semibold">
+              {formatCurrency(currentPriceCents)}
+            </p>
           </div>
 
           {!verified ? (
@@ -117,7 +125,7 @@ export function PriceOverrideModal({
                   className="flex-1 theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
                   autoFocus
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       handleVerifyPin();
                     }
                   }}
@@ -127,7 +135,7 @@ export function PriceOverrideModal({
                   disabled={verifying || !managerPin}
                   className="rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-3 text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {verifying ? 'Verifying...' : 'Verify'}
+                  {verifying ? "Verifying..." : "Verify"}
                 </button>
               </div>
               <p className="mt-2 text-xs theme-text-secondary">
@@ -144,7 +152,10 @@ export function PriceOverrideModal({
                   type="text"
                   value={newPrice}
                   onChange={(e) => {
-                    const { displayValue } = handleNumberInputChange(e.target.value, true);
+                    const { displayValue } = handleNumberInputChange(
+                      e.target.value,
+                      true,
+                    );
                     setNewPrice(displayValue);
                   }}
                   placeholder="0.00"
@@ -153,8 +164,16 @@ export function PriceOverrideModal({
                 />
                 {newPrice && !isNaN(parseFormattedNumber(newPrice)) && (
                   <p className="mt-2 text-sm theme-text-secondary">
-                    Change: {parseFormattedNumber(newPrice) * 100 > currentPriceCents ? '+' : ''}
-                    {formatCurrency(Math.abs(parseFormattedNumber(newPrice) * 100 - currentPriceCents))}
+                    Change:{" "}
+                    {parseFormattedNumber(newPrice) * 100 > currentPriceCents
+                      ? "+"
+                      : ""}
+                    {formatCurrency(
+                      Math.abs(
+                        parseFormattedNumber(newPrice) * 100 -
+                          currentPriceCents,
+                      ),
+                    )}
                   </p>
                 )}
               </div>
@@ -177,7 +196,11 @@ export function PriceOverrideModal({
             {verified && (
               <button
                 onClick={handleConfirm}
-                disabled={!newPrice || isNaN(parseFormattedNumber(newPrice)) || parseFormattedNumber(newPrice) < 0}
+                disabled={
+                  !newPrice ||
+                  isNaN(parseFormattedNumber(newPrice)) ||
+                  parseFormattedNumber(newPrice) < 0
+                }
                 className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Confirm Override
@@ -189,4 +212,3 @@ export function PriceOverrideModal({
     </div>
   );
 }
-

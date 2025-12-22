@@ -33,4 +33,3 @@ export class PaymentSettingsController {
     return this.paymentSettingsService.updatePaymentSettings(req.user.tenantId, body);
   }
 }
-

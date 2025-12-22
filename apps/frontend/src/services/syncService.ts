@@ -1,16 +1,16 @@
 /**
  * Offline Sync Service
- * 
+ *
  * Handles offline-first synchronization:
  * - Queues events when offline
  * - Syncs to server when online
  * - Handles conflicts and retries
  */
-import axios from 'axios';
-import { db, OfflineOrder } from '../db/offline-db';
-import { API_URL } from '../config';
-import toast from 'react-hot-toast';
-import { generateUUID } from '../utils/uuid';
+import axios from "axios";
+import { db, OfflineOrder } from "../db/offline-db";
+import { API_URL } from "../config";
+import toast from "react-hot-toast";
+import { generateUUID } from "../utils/uuid";
 
 export interface SyncResult {
   success: boolean;
@@ -26,12 +26,12 @@ class SyncService {
 
   constructor() {
     // Listen to online/offline events
-    window.addEventListener('online', () => {
+    window.addEventListener("online", () => {
       this.isOnline = true;
       this.sync();
     });
 
-    window.addEventListener('offline', () => {
+    window.addEventListener("offline", () => {
       this.isOnline = false;
     });
 
@@ -53,14 +53,14 @@ class SyncService {
         // Only sync if there are pending events to avoid unnecessary API calls
         try {
           const pendingEvents = await db.syncEvents
-            .where('status')
-            .equals('pending')
+            .where("status")
+            .equals("pending")
             .count();
           if (pendingEvents > 0) {
             this.sync();
           }
         } catch (error) {
-          console.error('Error checking pending events:', error);
+          console.error("Error checking pending events:", error);
         }
       }
     }, intervalMs);
@@ -79,7 +79,9 @@ class SyncService {
   /**
    * Queue an order for sync
    */
-  async queueOrder(order: Omit<OfflineOrder, 'id' | 'status' | 'createdAt'>): Promise<string> {
+  async queueOrder(
+    order: Omit<OfflineOrder, "id" | "status" | "createdAt">,
+  ): Promise<string> {
     const orderUuid = order.uuid || generateUUID();
     const now = Date.now();
 
@@ -87,14 +89,14 @@ class SyncService {
     await db.orders.add({
       ...order,
       uuid: orderUuid,
-      status: 'pending',
+      status: "pending",
       createdAt: now,
     });
 
     // Create sync event
     await db.syncEvents.add({
       eventId: generateUUID(),
-      type: 'order.created',
+      type: "order.created",
       payload: {
         uuid: orderUuid,
         locationId: order.locationId,
@@ -106,14 +108,14 @@ class SyncService {
         deviceId: order.deviceId,
       },
       client_ts: now,
-      status: 'pending',
+      status: "pending",
       retryCount: 0,
     });
 
     // Try to sync immediately if online
     if (this.isOnline) {
       this.sync().catch((error) => {
-        console.error('Failed to sync after queueing order:', error);
+        console.error("Failed to sync after queueing order:", error);
       });
     }
 
@@ -125,18 +127,33 @@ class SyncService {
    */
   async sync(accessToken?: string): Promise<SyncResult> {
     if (this.isSyncing) {
-      return { success: false, synced: 0, failed: 0, errors: ['Sync already in progress'] };
+      return {
+        success: false,
+        synced: 0,
+        failed: 0,
+        errors: ["Sync already in progress"],
+      };
     }
 
     if (!this.isOnline) {
-      return { success: false, synced: 0, failed: 0, errors: ['Device is offline'] };
+      return {
+        success: false,
+        synced: 0,
+        failed: 0,
+        errors: ["Device is offline"],
+      };
     }
 
     if (!accessToken) {
       // Try to get token from localStorage or auth store
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
       if (!token) {
-        return { success: false, synced: 0, failed: 0, errors: ['No access token'] };
+        return {
+          success: false,
+          synced: 0,
+          failed: 0,
+          errors: ["No access token"],
+        };
       }
       accessToken = token;
     }
@@ -146,8 +163,8 @@ class SyncService {
     try {
       // Get pending events
       const pendingEvents = await db.syncEvents
-        .where('status')
-        .equals('pending')
+        .where("status")
+        .equals("pending")
         .toArray();
 
       if (pendingEvents.length === 0) {
@@ -156,7 +173,7 @@ class SyncService {
       }
 
       // Get device ID
-      const deviceId = localStorage.getItem('deviceId') || 'unknown';
+      const deviceId = localStorage.getItem("deviceId") || "unknown";
 
       // Prepare events for sync
       const events = pendingEvents.map((event) => ({
@@ -187,7 +204,7 @@ class SyncService {
       for (let i = 0; i < Math.min(processed, events.length); i++) {
         const event = pendingEvents[i];
         await db.syncEvents.update(event.id!, {
-          status: 'synced',
+          status: "synced",
           syncedAt: Date.now(),
         });
         syncedEventIds.add(event.eventId);
@@ -195,8 +212,8 @@ class SyncService {
 
       // Update order status for synced orders
       const syncedOrders = await db.orders
-        .where('status')
-        .equals('pending')
+        .where("status")
+        .equals("pending")
         .toArray();
 
       for (const order of syncedOrders) {
@@ -206,7 +223,7 @@ class SyncService {
         );
         if (event) {
           await db.orders.update(order.id!, {
-            status: 'synced',
+            status: "synced",
             syncedAt: Date.now(),
           });
         }
@@ -217,9 +234,9 @@ class SyncService {
         const failedEvents = pendingEvents.slice(processed);
         for (const event of failedEvents) {
           await db.syncEvents.update(event.id!, {
-            status: 'failed',
+            status: "failed",
             retryCount: event.retryCount + 1,
-            error: 'Server rejected event',
+            error: "Server rejected event",
           });
         }
       }
@@ -232,7 +249,7 @@ class SyncService {
       this.isSyncing = false;
 
       if (processed > 0) {
-        toast.success(`Synced ${processed} event${processed > 1 ? 's' : ''}`);
+        toast.success(`Synced ${processed} event${processed > 1 ? "s" : ""}`);
       }
 
       return {
@@ -243,23 +260,24 @@ class SyncService {
     } catch (error: any) {
       this.isSyncing = false;
 
-      const errorMessage = error.response?.data?.message || error.message || 'Sync failed';
+      const errorMessage =
+        error.response?.data?.message || error.message || "Sync failed";
 
       // Mark events as failed
       const pendingEvents = await db.syncEvents
-        .where('status')
-        .equals('pending')
+        .where("status")
+        .equals("pending")
         .toArray();
 
       for (const event of pendingEvents) {
         await db.syncEvents.update(event.id!, {
-          status: 'failed',
+          status: "failed",
           retryCount: event.retryCount + 1,
           error: errorMessage,
         });
       }
 
-      console.error('Sync failed:', error);
+      console.error("Sync failed:", error);
       return {
         success: false,
         synced: 0,
@@ -273,14 +291,14 @@ class SyncService {
    * Get pending sync count
    */
   async getPendingCount(): Promise<number> {
-    return db.syncEvents.where('status').equals('pending').count();
+    return db.syncEvents.where("status").equals("pending").count();
   }
 
   /**
    * Get failed sync count
    */
   async getFailedCount(): Promise<number> {
-    return db.syncEvents.where('status').equals('failed').count();
+    return db.syncEvents.where("status").equals("failed").count();
   }
 
   /**
@@ -288,13 +306,16 @@ class SyncService {
    */
   async retryFailed(accessToken?: string): Promise<SyncResult> {
     // Reset failed events to pending
-    const failedEvents = await db.syncEvents.where('status').equals('failed').toArray();
+    const failedEvents = await db.syncEvents
+      .where("status")
+      .equals("failed")
+      .toArray();
 
     for (const event of failedEvents) {
       // Only retry if retry count is less than 5
       if (event.retryCount < 5) {
         await db.syncEvents.update(event.id!, {
-          status: 'pending',
+          status: "pending",
           error: undefined,
         });
       }
@@ -307,7 +328,7 @@ class SyncService {
    * Get offline orders
    */
   async getOfflineOrders(): Promise<OfflineOrder[]> {
-    return db.orders.orderBy('createdAt').reverse().toArray();
+    return db.orders.orderBy("createdAt").reverse().toArray();
   }
 
   /**
@@ -339,4 +360,3 @@ class SyncService {
 }
 
 export const syncService = new SyncService();
-

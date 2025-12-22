@@ -1,30 +1,42 @@
-import { CartItem } from '../stores/cartStore';
-import { formatCurrency, formatNumber } from '../utils/numberFormat';
+import { CartItem } from "../stores/cartStore";
+import { formatCurrency, formatNumber } from "../utils/numberFormat";
 
 interface CustomerDisplayProps {
   cart: CartItem[];
   total: number;
   isVisible: boolean;
-  paymentMethod?: 'card' | 'cash' | 'qr' | null;
+  paymentMethod?: "card" | "cash" | "qr" | null;
   change?: number;
 }
 
-export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change }: CustomerDisplayProps) {
+export function CustomerDisplay({
+  cart,
+  total,
+  isVisible,
+  paymentMethod,
+  change,
+}: CustomerDisplayProps) {
   if (!isVisible) return null;
 
-  const subtotal = cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
-  const tax = cart.reduce((sum, item) => sum + item.priceCents * item.quantity * item.taxRate, 0);
+  const subtotal = cart.reduce(
+    (sum, item) => sum + item.priceCents * item.quantity,
+    0,
+  );
+  const tax = cart.reduce(
+    (sum, item) => sum + item.priceCents * item.quantity * item.taxRate,
+    0,
+  );
 
   const getPaymentMethodIcon = () => {
     switch (paymentMethod) {
-      case 'cash':
-        return '💵';
-      case 'card':
-        return '💳';
-      case 'qr':
-        return '📱';
+      case "cash":
+        return "💵";
+      case "card":
+        return "💳";
+      case "qr":
+        return "📱";
       default:
-        return '💰';
+        return "💰";
     }
   };
 
@@ -49,7 +61,8 @@ export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change 
                 <div className="flex-1">
                   <p className="text-2xl font-semibold">{item.name}</p>
                   <p className="text-xl text-slate-300">
-                    {formatNumber(item.quantity)} × {formatCurrency(item.priceCents)}
+                    {formatNumber(item.quantity)} ×{" "}
+                    {formatCurrency(item.priceCents)}
                   </p>
                 </div>
                 <p className="text-2xl font-bold text-emerald-300">
@@ -64,15 +77,21 @@ export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change 
         <div className="w-full max-w-2xl space-y-4">
           <div className="flex items-center justify-between rounded-2xl bg-white/10 p-6 backdrop-blur-xl">
             <span className="text-2xl text-slate-300">Subtotal</span>
-            <span className="text-3xl font-semibold">{formatCurrency(subtotal)}</span>
+            <span className="text-3xl font-semibold">
+              {formatCurrency(subtotal)}
+            </span>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-white/10 p-6 backdrop-blur-xl">
             <span className="text-2xl text-slate-300">Tax</span>
-            <span className="text-3xl font-semibold">{formatCurrency(tax)}</span>
+            <span className="text-3xl font-semibold">
+              {formatCurrency(tax)}
+            </span>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-emerald-500/20 to-blue-500/20 p-8 backdrop-blur-xl">
             <span className="text-3xl font-semibold">Total</span>
-            <span className="text-5xl font-bold text-emerald-300">{formatCurrency(total)}</span>
+            <span className="text-5xl font-bold text-emerald-300">
+              {formatCurrency(total)}
+            </span>
           </div>
         </div>
 
@@ -82,7 +101,9 @@ export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change 
             <span className="text-4xl">{getPaymentMethodIcon()}</span>
             <div>
               <p className="text-xl text-slate-300">Payment Method</p>
-              <p className="text-2xl font-semibold capitalize">{paymentMethod}</p>
+              <p className="text-2xl font-semibold capitalize">
+                {paymentMethod}
+              </p>
             </div>
           </div>
         )}
@@ -91,17 +112,20 @@ export function CustomerDisplay({ cart, total, isVisible, paymentMethod, change 
         {change !== undefined && change > 0 && (
           <div className="rounded-2xl bg-emerald-500/20 p-6 backdrop-blur-xl">
             <p className="text-2xl text-slate-300">Change</p>
-            <p className="text-4xl font-bold text-emerald-300">{formatCurrency(change)}</p>
+            <p className="text-4xl font-bold text-emerald-300">
+              {formatCurrency(change)}
+            </p>
           </div>
         )}
 
         {/* Footer */}
         <div className="text-center">
           <p className="text-xl text-slate-400">Please take your receipt</p>
-          <p className="mt-2 text-lg text-slate-500">Thank you for your purchase!</p>
+          <p className="mt-2 text-lg text-slate-500">
+            Thank you for your purchase!
+          </p>
         </div>
       </div>
     </div>
   );
 }
-

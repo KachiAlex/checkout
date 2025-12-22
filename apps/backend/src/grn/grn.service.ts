@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { GRNRepository, GRNRecord, CreateGRNInput, GRNStatus } from './grn.repository';
-import { PurchaseOrdersRepository, PurchaseOrderStatus } from '../purchase-orders/purchase-orders.repository';
+import {
+  PurchaseOrdersRepository,
+  PurchaseOrderStatus,
+} from '../purchase-orders/purchase-orders.repository';
 import { InventoryRepository } from '../inventory/inventory.repository';
 import { BatchInventoryRepository } from '../inventory/batch-inventory.repository';
 import { InventoryTransactionType } from '@pos-checkout/shared';
@@ -28,14 +31,25 @@ export class GRNService {
     return grn;
   }
 
-  async create(data: CreateGRNInput): Promise<{ grn: GRNRecord; metadata: { newProductsCount: number; restockedProductsCount: number; newProductIds: string[]; restockedProductIds: string[] } }> {
+  async create(data: CreateGRNInput): Promise<{
+    grn: GRNRecord;
+    metadata: {
+      newProductsCount: number;
+      restockedProductsCount: number;
+      newProductIds: string[];
+      restockedProductIds: string[];
+    };
+  }> {
     // Verify purchase order exists and is approved
     const po = await this.purchaseOrdersRepository.findById(data.purchaseOrderId, data.tenantId);
     if (!po) {
       throw new Error(`Purchase order with ID ${data.purchaseOrderId} not found`);
     }
 
-    if (po.status !== PurchaseOrderStatus.APPROVED && po.status !== PurchaseOrderStatus.PARTIALLY_RECEIVED) {
+    if (
+      po.status !== PurchaseOrderStatus.APPROVED &&
+      po.status !== PurchaseOrderStatus.PARTIALLY_RECEIVED
+    ) {
       throw new Error(`Cannot create GRN for purchase order with status ${po.status}`);
     }
 
@@ -53,10 +67,13 @@ export class GRNService {
     for (const item of data.items) {
       if (item.receivedQuantity > 0) {
         // Update main inventory
-        const currentInventory = await this.inventoryRepository.getInventory(item.productId, data.locationId);
+        const currentInventory = await this.inventoryRepository.getInventory(
+          item.productId,
+          data.locationId,
+        );
         const isNewProduct = !currentInventory;
         const newQuantity = (currentInventory?.quantity || 0) + item.receivedQuantity;
-        
+
         // Update inventory with new quantity and cost price from purchase order
         await this.inventoryRepository.upsertInventory({
           productId: item.productId,
@@ -106,7 +123,7 @@ export class GRNService {
     // Update purchase order status
     const totalReceived = data.items.reduce((sum, item) => sum + (item.receivedQuantity || 0), 0);
     const totalOrdered = po.items.reduce((sum, item) => sum + item.quantity, 0);
-    
+
     let newStatus: PurchaseOrderStatus = po.status as PurchaseOrderStatus;
     if (totalReceived >= totalOrdered) {
       newStatus = PurchaseOrderStatus.RECEIVED;
@@ -115,8 +132,8 @@ export class GRNService {
     }
 
     // Update received quantities in PO items
-    const updatedItems = po.items.map(poItem => {
-      const grnItem = data.items.find(item => item.productId === poItem.productId);
+    const updatedItems = po.items.map((poItem) => {
+      const grnItem = data.items.find((item) => item.productId === poItem.productId);
       return {
         ...poItem,
         receivedQuantity: (poItem.receivedQuantity || 0) + (grnItem?.receivedQuantity || 0),
@@ -158,4 +175,3 @@ function parseExpiryDate(value?: ExpiryDateInput): Date | undefined {
   }
   return undefined;
 }
-

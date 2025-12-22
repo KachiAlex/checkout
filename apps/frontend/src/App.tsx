@@ -1,64 +1,108 @@
-import { Capacitor } from '@capacitor/core';
-import { Suspense, lazy, useEffect, useMemo } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, HashRouter } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from './stores/authStore';
-import { useThemeStore } from './stores/themeStore';
-import './App.css';
-import { NativeDebugPanel } from './components/NativeDebugPanel';
-import { FixedNavigation } from './components/FixedNavigation';
+import { Capacitor } from "@capacitor/core";
+import { Suspense, lazy, useEffect, useMemo } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  HashRouter,
+} from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { useAuthStore } from "./stores/authStore";
+import { useThemeStore } from "./stores/themeStore";
+import "./App.css";
+import { NativeDebugPanel } from "./components/NativeDebugPanel";
+import { FixedNavigation } from "./components/FixedNavigation";
 
 const LoginPage = lazy(() =>
-  import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })),
+  import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })),
 );
 const CheckoutPage = lazy(() =>
-  import('./pages/CheckoutPage').then((module) => ({ default: module.CheckoutPage })),
+  import("./pages/CheckoutPage").then((module) => ({
+    default: module.CheckoutPage,
+  })),
 );
 const ReportsPage = lazy(() =>
-  import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })),
+  import("./pages/ReportsPage").then((module) => ({
+    default: module.ReportsPage,
+  })),
 );
 const InventoryManagementPage = lazy(() =>
-  import('./pages/InventoryManagementPage').then((module) => ({ default: module.InventoryManagementPage })),
+  import("./pages/InventoryManagementPage").then((module) => ({
+    default: module.InventoryManagementPage,
+  })),
 );
 const AddInventoryPage = lazy(() =>
-  import('./pages/AddInventoryPage').then((module) => ({ default: module.AddInventoryPage })),
+  import("./pages/AddInventoryPage").then((module) => ({
+    default: module.AddInventoryPage,
+  })),
 );
 const SuppliersPage = lazy(() =>
-  import('./pages/SuppliersPage').then((module) => ({ default: module.SuppliersPage })),
+  import("./pages/SuppliersPage").then((module) => ({
+    default: module.SuppliersPage,
+  })),
 );
 const PurchaseOrdersPage = lazy(() =>
-  import('./pages/PurchaseOrdersPage').then((module) => ({ default: module.PurchaseOrdersPage })),
+  import("./pages/PurchaseOrdersPage").then((module) => ({
+    default: module.PurchaseOrdersPage,
+  })),
 );
 const GRNPage = lazy(() =>
-  import('./pages/GRNPage').then((module) => ({ default: module.GRNPage })),
+  import("./pages/GRNPage").then((module) => ({ default: module.GRNPage })),
 );
 const CustomersPage = lazy(() =>
-  import('./pages/CustomersPage').then((module) => ({ default: module.CustomersPage })),
+  import("./pages/CustomersPage").then((module) => ({
+    default: module.CustomersPage,
+  })),
 );
 const ReturnsPage = lazy(() =>
-  import('./pages/ReturnsPage').then((module) => ({ default: module.ReturnsPage })),
+  import("./pages/ReturnsPage").then((module) => ({
+    default: module.ReturnsPage,
+  })),
 );
 const CreditOrdersPage = lazy(() =>
-  import('./pages/CreditOrdersPage').then((module) => ({ default: module.CreditOrdersPage })),
+  import("./pages/CreditOrdersPage").then((module) => ({
+    default: module.CreditOrdersPage,
+  })),
 );
 const SettingsPage = lazy(() =>
-  import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+  import("./pages/SettingsPage").then((module) => ({
+    default: module.SettingsPage,
+  })),
 );
 const SuperAdminPage = lazy(() =>
-  import('./pages/SuperAdminPage').then((module) => ({ default: module.SuperAdminPage })),
+  import("./pages/SuperAdminPage").then((module) => ({
+    default: module.SuperAdminPage,
+  })),
 );
-const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
-const GetAppPage = lazy(() => import('./pages/GetAppPage').then((module) => ({ default: module.GetAppPage })));
+const HomePage = lazy(() =>
+  import("./pages/HomePage").then((module) => ({ default: module.HomePage })),
+);
+const GetAppPage = lazy(() =>
+  import("./pages/GetAppPage").then((module) => ({
+    default: module.GetAppPage,
+  })),
+);
 const ExecutiveDashboardPage = lazy(() =>
-  import('./pages/ExecutiveDashboardPage').then((module) => ({ default: module.ExecutiveDashboardPage })),
+  import("./pages/ExecutiveDashboardPage").then((module) => ({
+    default: module.ExecutiveDashboardPage,
+  })),
 );
 const BillingPage = lazy(() =>
-  import('./pages/BillingPage').then((module) => ({ default: module.BillingPage })),
+  import("./pages/BillingPage").then((module) => ({
+    default: module.BillingPage,
+  })),
 );
 const SubscriptionPaymentCallbackPage = lazy(() =>
-  import('./pages/SubscriptionPaymentCallbackPage').then((module) => ({ default: module.SubscriptionPaymentCallbackPage })),
+  import("./pages/SubscriptionPaymentCallbackPage").then((module) => ({
+    default: module.SubscriptionPaymentCallbackPage,
+  })),
 );
-const SplashPage = lazy(() => import('./pages/SplashPage').then((module) => ({ default: module.SplashPage })));
+const SplashPage = lazy(() =>
+  import("./pages/SplashPage").then((module) => ({
+    default: module.SplashPage,
+  })),
+);
 
 function LoadingScreen() {
   return (
@@ -74,32 +118,36 @@ function App() {
     user: state.user,
   }));
   const theme = useThemeStore((state) => state.theme);
-  const isAdmin = user?.role === 'admin';
-  const isManager = user?.role === 'manager';
-  const isCashier = user?.role === 'cashier';
+  const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
+  const isCashier = user?.role === "cashier";
   const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
   const isCompanyUser = isAuthenticated && !isPlatformAdmin;
-  
+
   // Determine landing path based on role
-  const authenticatedLandingPath = isPlatformAdmin 
-    ? '/superadmin' 
-    : isAdmin 
-    ? '/dashboard' 
-    : isManager 
-    ? '/checkout' 
-    : '/checkout'; // Cashiers go to checkout
+  const authenticatedLandingPath = isPlatformAdmin
+    ? "/superadmin"
+    : isAdmin
+      ? "/dashboard"
+      : isManager
+        ? "/checkout"
+        : "/checkout"; // Cashiers go to checkout
   const isElectron =
-    typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron');
-  const isNativePlatform = isElectron || Capacitor.getPlatform() !== 'web';
+    typeof navigator !== "undefined" &&
+    navigator.userAgent.toLowerCase().includes("electron");
+  const isNativePlatform = isElectron || Capacitor.getPlatform() !== "web";
 
   useEffect(() => {
-    if (typeof document !== 'undefined') {
+    if (typeof document !== "undefined") {
       document.documentElement.dataset.theme = theme;
     }
   }, [theme]);
 
   const Router = useMemo(() => {
-    if (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')) {
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.userAgent.toLowerCase().includes("electron")
+    ) {
       return HashRouter;
     }
     return BrowserRouter;
@@ -125,16 +173,25 @@ function App() {
             />
             <Route
               path="/login"
-              element={isAuthenticated ? <Navigate to={authenticatedLandingPath} replace /> : <LoginPage />}
+              element={
+                isAuthenticated ? (
+                  <Navigate to={authenticatedLandingPath} replace />
+                ) : (
+                  <LoginPage />
+                )
+              }
             />
             <Route
               path="/:tenantSlug/login"
-              element={isAuthenticated ? <Navigate to={authenticatedLandingPath} replace /> : <LoginPage />}
+              element={
+                isAuthenticated ? (
+                  <Navigate to={authenticatedLandingPath} replace />
+                ) : (
+                  <LoginPage />
+                )
+              }
             />
-            <Route
-              path="/get-app"
-              element={<GetAppPage />}
-            />
+            <Route path="/get-app" element={<GetAppPage />} />
             <Route
               path="/subscription/payment-callback"
               element={<SubscriptionPaymentCallbackPage />}
@@ -308,13 +365,21 @@ function App() {
             <Route
               path="/superadmin/dashboard"
               element={
-                isAuthenticated && isPlatformAdmin ? <SuperAdminPage /> : <Navigate to="/superadmin/login" replace />
+                isAuthenticated && isPlatformAdmin ? (
+                  <SuperAdminPage />
+                ) : (
+                  <Navigate to="/superadmin/login" replace />
+                )
               }
             />
             <Route
               path="/superadmin/billing"
               element={
-                isAuthenticated && isPlatformAdmin ? <BillingPage /> : <Navigate to="/superadmin/login" replace />
+                isAuthenticated && isPlatformAdmin ? (
+                  <BillingPage />
+                ) : (
+                  <Navigate to="/superadmin/login" replace />
+                )
               }
             />
             <Route

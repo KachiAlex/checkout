@@ -121,7 +121,9 @@ describe('AuthService', () => {
       usersRepository.findAll.mockResolvedValue([mockUser]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false as never);
 
-      await expect(service.login({ tenantSlug: 'acme', pin: 'wrong' })).rejects.toThrow('Invalid PIN');
+      await expect(service.login({ tenantSlug: 'acme', pin: 'wrong' })).rejects.toThrow(
+        'Invalid PIN',
+      );
     });
   });
 

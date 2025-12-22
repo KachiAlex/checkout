@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { format, subDays } from 'date-fns';
-import { Link } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { useThemeStore } from '../stores/themeStore';
-import { API_URL } from '../config';
-import { BrandMark } from '../components/BrandMark';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { AlertBanner } from '../components/AlertBanner';
-import { formatCurrency as formatCurrencyCents } from '../utils/numberFormat';
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { format, subDays } from "date-fns";
+import { Link } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
+import { useThemeStore } from "../stores/themeStore";
+import { API_URL } from "../config";
+import { BrandMark } from "../components/BrandMark";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { AlertBanner } from "../components/AlertBanner";
+import { formatCurrency as formatCurrencyCents } from "../utils/numberFormat";
 
 interface SalesSummary {
   totalSales: number;
@@ -58,9 +58,9 @@ export function ExecutiveDashboardPage() {
         const location_id = user.locationId;
 
         const today = new Date();
-        const todayStr = format(today, 'yyyy-MM-dd');
+        const todayStr = format(today, "yyyy-MM-dd");
         const weekAgo = subDays(today, 6);
-        const weekAgoStr = format(weekAgo, 'yyyy-MM-dd');
+        const weekAgoStr = format(weekAgo, "yyyy-MM-dd");
 
         const [
           todaySalesRes,
@@ -82,7 +82,7 @@ export function ExecutiveDashboardPage() {
             params: { location_id },
           }),
           axios.get(`${API_URL}/api/v1/reports/sales-analytics`, {
-            params: { period: 'daily', location_id },
+            params: { period: "daily", location_id },
           }),
         ]);
 
@@ -115,8 +115,10 @@ export function ExecutiveDashboardPage() {
           })),
         );
       } catch (err: any) {
-        console.error('Failed to load executive dashboard:', err);
-        setError(err.response?.data?.message || 'Failed to load dashboard data');
+        console.error("Failed to load executive dashboard:", err);
+        setError(
+          err.response?.data?.message || "Failed to load dashboard data",
+        );
       } finally {
         setLoading(false);
       }
@@ -128,7 +130,7 @@ export function ExecutiveDashboardPage() {
   const formatCurrency = (amount: number) => {
     // Backend sales endpoints already return naira, but formatCurrencyCents expects cents.
     // Wrap safely for display.
-    return `₦${amount.toLocaleString('en-NG', {
+    return `₦${amount.toLocaleString("en-NG", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
@@ -142,19 +144,21 @@ export function ExecutiveDashboardPage() {
   const totalOrdersWeek = weekSales?.totalOrders || 0;
 
   const growthPercent =
-    totalSalesWeek > 0 ? ((totalSalesToday / totalSalesWeek) * 100).toFixed(1) : '0.0';
+    totalSalesWeek > 0
+      ? ((totalSalesToday / totalSalesWeek) * 100).toFixed(1)
+      : "0.0";
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden theme-background page-with-nav">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div
           className={`absolute -top-32 -right-24 h-80 w-80 rounded-full ${
-            theme === 'light' ? 'bg-sky-300/40' : 'bg-cyan-500/30'
+            theme === "light" ? "bg-sky-300/40" : "bg-cyan-500/30"
           } blur-[160px]`}
         />
         <div
           className={`absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full ${
-            theme === 'light' ? 'bg-indigo-200/35' : 'bg-indigo-500/25'
+            theme === "light" ? "bg-indigo-200/35" : "bg-indigo-500/25"
           } blur-[200px]`}
         />
       </div>
@@ -239,8 +243,9 @@ export function ExecutiveDashboardPage() {
               <p className="theme-text-secondary text-xs mt-1">
                 <span className="text-rose-300 font-semibold">
                   {alertsSummary?.criticalCount ?? 0} critical
-                </span>{' '}
-                · <span className="text-amber-300 font-semibold">
+                </span>{" "}
+                ·{" "}
+                <span className="text-amber-300 font-semibold">
                   {alertsSummary?.warningCount ?? 0} warning
                 </span>
               </p>
@@ -252,7 +257,7 @@ export function ExecutiveDashboardPage() {
               <p className="theme-text-primary text-2xl font-bold">
                 {/* Approximated as distinct staff in last 7 days orders */}
                 {/* This can be refined later via staff performance endpoint */}
-                {loading ? '—' : 'Live'}
+                {loading ? "—" : "Live"}
               </p>
               <p className="theme-text-secondary text-xs mt-1">
                 See detailed staff metrics in Reports → Staff tab
@@ -269,7 +274,9 @@ export function ExecutiveDashboardPage() {
                 </h2>
               </div>
               {salesTrend.length === 0 ? (
-                <p className="theme-text-secondary text-sm">No sales data yet.</p>
+                <p className="theme-text-secondary text-sm">
+                  No sales data yet.
+                </p>
               ) : (
                 <div className="mt-2">
                   <div className="flex items-end gap-2 sm:gap-3 h-40 sm:h-48">
@@ -277,7 +284,10 @@ export function ExecutiveDashboardPage() {
                       const max = Math.max(...salesTrend.map((p) => p.sales));
                       const height = max > 0 ? (point.sales / max) * 100 : 0;
                       return (
-                        <div key={point.period} className="flex-1 flex flex-col items-center gap-1">
+                        <div
+                          key={point.period}
+                          className="flex-1 flex flex-col items-center gap-1"
+                        >
                           <div
                             className="w-full rounded-t-full bg-gradient-to-t from-sky-500/40 to-emerald-400/70"
                             style={{ height: `${Math.max(5, height)}%` }}
@@ -338,18 +348,21 @@ export function ExecutiveDashboardPage() {
                 AI Insights (beta)
               </h2>
               <p className="theme-text-secondary text-sm mb-3">
-                This section will surface automated recommendations based on your alerts, sales
-                trends, and inventory health.
+                This section will surface automated recommendations based on
+                your alerts, sales trends, and inventory health.
               </p>
               <ul className="space-y-2 text-sm theme-text-secondary">
-                <li>• Watch products with frequent stock-out alerts in the Reports → Alerts tab.</li>
                 <li>
-                  • Consider promoting slow-moving items that don&apos;t appear in the Top Products
-                  list.
+                  • Watch products with frequent stock-out alerts in the Reports
+                  → Alerts tab.
                 </li>
                 <li>
-                  • Use the Customers tab in Reports to target CHAMPION and AT_RISK segments with
-                  offers.
+                  • Consider promoting slow-moving items that don&apos;t appear
+                  in the Top Products list.
+                </li>
+                <li>
+                  • Use the Customers tab in Reports to target CHAMPION and
+                  AT_RISK segments with offers.
                 </li>
               </ul>
             </div>
@@ -397,5 +410,3 @@ export function ExecutiveDashboardPage() {
     </div>
   );
 }
-
-

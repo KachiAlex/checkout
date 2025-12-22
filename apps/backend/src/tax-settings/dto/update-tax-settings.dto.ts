@@ -19,4 +19,3 @@ export class UpdateTaxSettingsDto {
   @IsBoolean()
   enabled?: boolean;
 }
-

@@ -1,4 +1,4 @@
-export type NativeDeviceType = 'usb' | 'bluetooth' | 'unknown';
+export type NativeDeviceType = "usb" | "bluetooth" | "unknown";
 
 export interface NativeDeviceSummary {
   id: string;
@@ -12,4 +12,3 @@ export interface NativeDeviceSummary {
   transport?: string;
   isPaired?: boolean;
 }
-

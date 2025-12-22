@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
-import { CartItem } from '../stores/cartStore';
-import { PaymentService } from '../services/paymentService';
-import toast from 'react-hot-toast';
-import { formatCurrency, parseFormattedNumber, handleNumberInputChange } from '../utils/numberFormat';
+import { useEffect, useState } from "react";
+import { CartItem } from "../stores/cartStore";
+import { PaymentService } from "../services/paymentService";
+import toast from "react-hot-toast";
+import {
+  formatCurrency,
+  parseFormattedNumber,
+  handleNumberInputChange,
+} from "../utils/numberFormat";
 
 interface PaymentModalProps {
   isOpen: boolean;
-  method: 'card' | 'cash' | 'qr' | 'transfer' | 'credit' | null;
+  method: "card" | "cash" | "qr" | "transfer" | "credit" | null;
   total: number;
   cart: CartItem[];
   orderId?: string; // Order ID if order is already created
@@ -18,48 +22,62 @@ interface PaymentModalProps {
   onOrderCreated?: (orderId: string) => void; // Callback when order is created for payment
 }
 
-export function PaymentModal({ 
-  isOpen, 
-  method, 
-  total, 
-  cart, 
+export function PaymentModal({
+  isOpen,
+  method,
+  total,
+  cart,
   orderId,
   customerName,
   customerEmail,
   customerPhone,
-  onClose, 
+  onClose,
   onComplete,
   onOrderCreated,
 }: PaymentModalProps) {
-  const [cashAmount, setCashAmount] = useState('');
+  const [cashAmount, setCashAmount] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [stage, setStage] = useState<'input' | 'processing' | 'success' | 'error' | 'redirecting'>('input');
+  const [stage, setStage] = useState<
+    "input" | "processing" | "success" | "error" | "redirecting"
+  >("input");
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setStage('input');
-      setCashAmount('');
+      setStage("input");
+      setCashAmount("");
       setProcessing(false);
     }
   }, [isOpen]);
 
   if (!isOpen || !method) return null;
 
-  const subtotal = cart.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
-  const tax = cart.reduce((sum, item) => sum + item.priceCents * item.quantity * item.taxRate, 0);
-  const isCashLike = method === 'cash' || method === 'transfer';
-  const change = isCashLike && cashAmount ? parseFormattedNumber(cashAmount) * 100 - total : 0;
+  const subtotal = cart.reduce(
+    (sum, item) => sum + item.priceCents * item.quantity,
+    0,
+  );
+  const tax = cart.reduce(
+    (sum, item) => sum + item.priceCents * item.quantity * item.taxRate,
+    0,
+  );
+  const isCashLike = method === "cash" || method === "transfer";
+  const change =
+    isCashLike && cashAmount
+      ? parseFormattedNumber(cashAmount) * 100 - total
+      : 0;
 
   const handleConfirm = async () => {
-    if (isCashLike && (!cashAmount || parseFormattedNumber(cashAmount) * 100 < total)) {
-      toast.error('Enter amount received before confirming payment.');
+    if (
+      isCashLike &&
+      (!cashAmount || parseFormattedNumber(cashAmount) * 100 < total)
+    ) {
+      toast.error("Enter amount received before confirming payment.");
       return;
     }
 
     if (isCashLike) {
       setProcessing(true);
-      setStage('processing');
+      setStage("processing");
       onComplete(change);
       return;
     }
@@ -68,28 +86,28 @@ export function PaymentModal({
     if (!orderId && onOrderCreated) {
       // Order needs to be created first - this will be handled by parent
       // For now, just trigger the order creation callback
-      toast.error('Order must be created before payment. Please try again.');
+      toast.error("Order must be created before payment. Please try again.");
       return;
     }
 
     if (!orderId) {
-      toast.error('Order ID is required for payment');
+      toast.error("Order ID is required for payment");
       return;
     }
 
     try {
       setProcessing(true);
-      setStage('processing');
+      setStage("processing");
 
       // Initiate payment with Monnify
-      const paymentMethod = method === 'card' ? 'card' : 'qr';
-      
+      const paymentMethod = method === "card" ? "card" : "qr";
+
       const payment = await PaymentService.initiatePayment(orderId, {
         amount: total,
         method: paymentMethod,
         metadata: {
-          customerName: customerName || 'POS Customer',
-          customerEmail: customerEmail || 'customer@pos.local',
+          customerName: customerName || "POS Customer",
+          customerEmail: customerEmail || "customer@pos.local",
           customerPhone: customerPhone,
           redirectUrl: `${window.location.origin}/checkout/payment-callback`,
         },
@@ -101,11 +119,11 @@ export function PaymentModal({
       if (payment.processorData?.checkoutUrl) {
         const checkoutUrlString = payment.processorData.checkoutUrl as string;
         setCheckoutUrl(checkoutUrlString);
-        setStage('redirecting');
-        
+        setStage("redirecting");
+
         // On mobile, open in same window; on desktop, open in popup
         const isMobile = window.innerWidth < 640;
-        
+
         if (isMobile) {
           // On mobile, redirect in same window
           try {
@@ -113,42 +131,55 @@ export function PaymentModal({
             setTimeout(() => {
               window.location.href = checkoutUrlString;
             }, 100);
-            
+
             // Set a timeout to detect if redirect was blocked or failed
             setTimeout(() => {
               // If we're still on the same page after 2 seconds, redirect likely failed
-              if (window.location.href !== checkoutUrlString && !checkoutUrlString.includes(window.location.href)) {
+              if (
+                window.location.href !== checkoutUrlString &&
+                !checkoutUrlString.includes(window.location.href)
+              ) {
                 // Still on same page - redirect may have been blocked
-                toast.error('Redirect failed. Please click the link below to complete payment.');
+                toast.error(
+                  "Redirect failed. Please click the link below to complete payment.",
+                );
                 setProcessing(false);
                 // Keep stage as 'redirecting' so user can see the manual link
               }
             }, 2000);
           } catch (error) {
-            console.error('Mobile redirect error:', error);
-            toast.error('Failed to redirect. Please click the link below to complete payment.');
-            setStage('redirecting');
+            console.error("Mobile redirect error:", error);
+            toast.error(
+              "Failed to redirect. Please click the link below to complete payment.",
+            );
+            setStage("redirecting");
             setProcessing(false);
           }
         } else {
           // On desktop, open in popup
           const checkoutWindow = window.open(
             checkoutUrlString,
-            'MonnifyCheckout',
-            'width=600,height=700,scrollbars=yes'
+            "MonnifyCheckout",
+            "width=600,height=700,scrollbars=yes",
           );
-          
+
           // Check if popup was blocked
-          if (!checkoutWindow || checkoutWindow.closed || typeof checkoutWindow.closed === 'undefined') {
+          if (
+            !checkoutWindow ||
+            checkoutWindow.closed ||
+            typeof checkoutWindow.closed === "undefined"
+          ) {
             // Popup was blocked or failed to open
-            toast.error('Popup blocked. Please allow popups or click the link below to complete payment.');
-            setStage('redirecting');
+            toast.error(
+              "Popup blocked. Please allow popups or click the link below to complete payment.",
+            );
+            setStage("redirecting");
             setProcessing(false);
             // Don't start polling if window didn't open
           } else {
             // Popup opened successfully, start polling
             pollPaymentStatus(payment.id, checkoutWindow);
-            
+
             // Also set a timeout to detect if window closes unexpectedly
             const windowCheckInterval = setInterval(() => {
               if (checkoutWindow.closed) {
@@ -157,30 +188,42 @@ export function PaymentModal({
                 setTimeout(async () => {
                   try {
                     if (orderId) {
-                      const status = await PaymentService.getOrderPaymentStatus(orderId);
-                      const paymentStatus = status.payments.find(p => p.id === payment.id);
-                      if (paymentStatus?.status === 'completed') {
-                        setStage('success');
+                      const status =
+                        await PaymentService.getOrderPaymentStatus(orderId);
+                      const paymentStatus = status.payments.find(
+                        (p) => p.id === payment.id,
+                      );
+                      if (paymentStatus?.status === "completed") {
+                        setStage("success");
                         setProcessing(false);
                         setTimeout(() => {
                           onComplete();
                         }, 1500);
-                      } else if (paymentStatus?.status === 'failed') {
-                        setStage('error');
+                      } else if (paymentStatus?.status === "failed") {
+                        setStage("error");
                         setProcessing(false);
-                        toast.error(paymentStatus.error || 'Payment failed');
+                        toast.error(paymentStatus.error || "Payment failed");
                       } else {
                         // Still processing or unknown - keep redirecting state with manual link
-                        setStage('redirecting');
+                        setStage("redirecting");
                         setProcessing(false);
-                        toast('Payment window closed. Please check payment status or use the link below.', { icon: 'ℹ️' });
+                        toast(
+                          "Payment window closed. Please check payment status or use the link below.",
+                          { icon: "ℹ️" },
+                        );
                       }
                     }
                   } catch (error) {
-                    console.error('Error checking payment status after window close:', error);
-                    setStage('redirecting');
+                    console.error(
+                      "Error checking payment status after window close:",
+                      error,
+                    );
+                    setStage("redirecting");
                     setProcessing(false);
-                    toast('Payment window closed. Please check payment status or use the link below.', { icon: 'ℹ️' });
+                    toast(
+                      "Payment window closed. Please check payment status or use the link below.",
+                      { icon: "ℹ️" },
+                    );
                   }
                 }, 2000);
               }
@@ -189,19 +232,24 @@ export function PaymentModal({
         }
       } else {
         // No checkout URL - might be a direct payment or error
-        toast.error('Payment initiation failed. Please try again.');
-        setStage('error');
+        toast.error("Payment initiation failed. Please try again.");
+        setStage("error");
         setProcessing(false);
       }
     } catch (error: any) {
-      console.error('Payment initiation error:', error);
-      toast.error(error.response?.data?.message || 'Failed to initiate payment');
-      setStage('error');
+      console.error("Payment initiation error:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to initiate payment",
+      );
+      setStage("error");
       setProcessing(false);
     }
   };
 
-  const pollPaymentStatus = async (paymentId: string, checkoutWindow: Window | null) => {
+  const pollPaymentStatus = async (
+    paymentId: string,
+    checkoutWindow: Window | null,
+  ) => {
     const maxAttempts = 60; // Poll for up to 5 minutes (5 second intervals)
     let attempts = 0;
 
@@ -212,18 +260,18 @@ export function PaymentModal({
         // Check if checkout window was closed (user might have completed payment)
         if (checkoutWindow?.closed) {
           // Give it a moment for webhook to process
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
 
         // Get payment status from order
         if (orderId) {
           const status = await PaymentService.getOrderPaymentStatus(orderId);
-          
+
           // Check if payment is completed
-          const payment = status.payments.find(p => p.id === paymentId);
-          if (payment?.status === 'completed') {
+          const payment = status.payments.find((p) => p.id === paymentId);
+          if (payment?.status === "completed") {
             clearInterval(interval);
-            setStage('success');
+            setStage("success");
             setProcessing(false);
             if (checkoutWindow && !checkoutWindow.closed) {
               checkoutWindow.close();
@@ -235,108 +283,128 @@ export function PaymentModal({
             return;
           }
 
-          if (payment?.status === 'failed') {
+          if (payment?.status === "failed") {
             clearInterval(interval);
-            setStage('error');
+            setStage("error");
             setProcessing(false);
             if (checkoutWindow && !checkoutWindow.closed) {
               checkoutWindow.close();
             }
-            toast.error(payment.error || 'Payment failed');
+            toast.error(payment.error || "Payment failed");
             return;
           }
         }
       } catch (error) {
-        console.error('Error polling payment status:', error);
+        console.error("Error polling payment status:", error);
       }
 
       if (attempts >= maxAttempts) {
         clearInterval(interval);
         // On timeout, keep redirecting state with manual link (don't show error)
-        setStage('redirecting');
+        setStage("redirecting");
         setProcessing(false);
         if (checkoutWindow && !checkoutWindow.closed) {
           checkoutWindow.close();
         }
-        toast.error('Payment timeout. Please check payment status manually or use the link below.');
+        toast.error(
+          "Payment timeout. Please check payment status manually or use the link below.",
+        );
       }
     }, 5000); // Poll every 5 seconds
   };
 
   const getMethodIcon = () => {
     switch (method) {
-      case 'cash':
-        return '💵';
-      case 'card':
-        return '💳';
-      case 'qr':
-        return '📱';
-      case 'transfer':
-        return '🏦';
+      case "cash":
+        return "💵";
+      case "card":
+        return "💳";
+      case "qr":
+        return "📱";
+      case "transfer":
+        return "🏦";
       default:
-        return '💰';
+        return "💰";
     }
   };
 
   const getMethodName = () => {
     switch (method) {
-      case 'cash':
-        return 'Cash Payment';
-      case 'card':
-        return 'Card Payment';
-      case 'qr':
-        return 'QR Payment';
-      case 'transfer':
-        return 'Bank Transfer';
+      case "cash":
+        return "Cash Payment";
+      case "card":
+        return "Card Payment";
+      case "qr":
+        return "QR Payment";
+      case "transfer":
+        return "Bank Transfer";
       default:
-        return 'Payment';
+        return "Payment";
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
       <div className="theme-card w-full max-w-md rounded-2xl sm:rounded-3xl border p-4 sm:p-6 lg:p-8 shadow-2xl my-auto max-h-[95vh] overflow-y-auto">
-        {stage === 'input' && (
+        {stage === "input" && (
           <>
             <div className="mb-4 sm:mb-6 text-center">
-              <div className="mb-3 sm:mb-4 text-4xl sm:text-6xl">{getMethodIcon()}</div>
-              <h2 className="theme-text-primary mb-2 text-xl sm:text-2xl font-bold">{getMethodName()}</h2>
-              <p className="theme-text-secondary text-xs sm:text-sm">Confirm payment details</p>
+              <div className="mb-3 sm:mb-4 text-4xl sm:text-6xl">
+                {getMethodIcon()}
+              </div>
+              <h2 className="theme-text-primary mb-2 text-xl sm:text-2xl font-bold">
+                {getMethodName()}
+              </h2>
+              <p className="theme-text-secondary text-xs sm:text-sm">
+                Confirm payment details
+              </p>
             </div>
 
             <div className="mb-4 sm:mb-6 space-y-3">
               <div className="theme-surface rounded-2xl border p-4">
                 <div className="mb-3 flex justify-between text-sm theme-text-secondary">
                   <span>Subtotal</span>
-                  <span className="theme-text-primary font-semibold">{formatCurrency(subtotal)}</span>
+                  <span className="theme-text-primary font-semibold">
+                    {formatCurrency(subtotal)}
+                  </span>
                 </div>
                 <div className="mb-3 flex justify-between text-sm theme-text-secondary">
                   <span>Tax</span>
-                  <span className="theme-text-primary font-semibold">{formatCurrency(tax)}</span>
+                  <span className="theme-text-primary font-semibold">
+                    {formatCurrency(tax)}
+                  </span>
                 </div>
                 <div className="theme-divider my-3 h-px" />
                 <div className="flex items-center justify-between">
-                  <span className="theme-text-primary text-lg font-semibold">Total</span>
-                  <span className="text-3xl font-bold text-sky-400">{formatCurrency(total)}</span>
+                  <span className="theme-text-primary text-lg font-semibold">
+                    Total
+                  </span>
+                  <span className="text-3xl font-bold text-sky-400">
+                    {formatCurrency(total)}
+                  </span>
                 </div>
               </div>
 
-              {(method === 'cash' || method === 'transfer') && (
+              {(method === "cash" || method === "transfer") && (
                 <div className="theme-surface rounded-xl sm:rounded-2xl border p-3 sm:p-4">
-                  {method === 'transfer' && (
+                  {method === "transfer" && (
                     <div className="mb-3 rounded-lg bg-blue-500/10 border border-blue-400/30 p-2 sm:p-3">
                       <p className="theme-text-secondary text-xs sm:text-sm">
-                        🏦 Share your business account details with the customer and confirm the incoming transfer before completing the sale.
+                        🏦 Share your business account details with the customer
+                        and confirm the incoming transfer before completing the
+                        sale.
                       </p>
                     </div>
                   )}
                   <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <label className="theme-text-secondary block text-xs sm:text-sm font-medium">
-                      {method === 'cash' ? 'Cash Received' : 'Transfer Amount Received'}
+                      {method === "cash"
+                        ? "Cash Received"
+                        : "Transfer Amount Received"}
                     </label>
                     <button
                       onClick={() => {
-                        setCashAmount(formatCurrency(total).replace('₦', ''));
+                        setCashAmount(formatCurrency(total).replace("₦", ""));
                       }}
                       className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25 touch-manipulation whitespace-nowrap"
                     >
@@ -347,27 +415,40 @@ export function PaymentModal({
                     type="text"
                     value={cashAmount}
                     onChange={(e) => {
-                      const { displayValue } = handleNumberInputChange(e.target.value, true);
+                      const { displayValue } = handleNumberInputChange(
+                        e.target.value,
+                        true,
+                      );
                       setCashAmount(displayValue);
                     }}
                     placeholder="0.00"
                     className="theme-text-primary w-full rounded-xl border border-white/20 bg-transparent px-3 sm:px-4 py-2.5 sm:py-3 text-xl sm:text-2xl font-semibold focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20"
                     autoFocus
                   />
-                  {cashAmount && parseFormattedNumber(cashAmount) * 100 >= total && (
-                    <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2">
-                      <span className="text-xs sm:text-sm font-medium text-emerald-200">Change</span>
-                      <span className="text-base sm:text-lg font-bold text-emerald-100">
-                        {change > 0 ? formatCurrency(change) : formatCurrency(0)}
-                      </span>
-                    </div>
-                  )}
-                  {cashAmount && parseFormattedNumber(cashAmount) * 100 < total && (
-                    <p className="mt-2 text-xs sm:text-sm text-rose-400">
-                      Insufficient amount. Need {formatCurrency(total - parseFormattedNumber(cashAmount) * 100)} more.
-                    </p>
-                  )}
-                  {method === 'transfer' && (
+                  {cashAmount &&
+                    parseFormattedNumber(cashAmount) * 100 >= total && (
+                      <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2">
+                        <span className="text-xs sm:text-sm font-medium text-emerald-200">
+                          Change
+                        </span>
+                        <span className="text-base sm:text-lg font-bold text-emerald-100">
+                          {change > 0
+                            ? formatCurrency(change)
+                            : formatCurrency(0)}
+                        </span>
+                      </div>
+                    )}
+                  {cashAmount &&
+                    parseFormattedNumber(cashAmount) * 100 < total && (
+                      <p className="mt-2 text-xs sm:text-sm text-rose-400">
+                        Insufficient amount. Need{" "}
+                        {formatCurrency(
+                          total - parseFormattedNumber(cashAmount) * 100,
+                        )}{" "}
+                        more.
+                      </p>
+                    )}
+                  {method === "transfer" && (
                     <p className="mt-2 text-xs theme-text-secondary">
                       Only confirm once funds are visible in your account.
                     </p>
@@ -375,29 +456,30 @@ export function PaymentModal({
                 </div>
               )}
 
-              {method === 'card' && (
+              {method === "card" && (
                 <div className="theme-surface rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
                   <p className="theme-text-secondary text-center text-sm">
-                    💳 You will be redirected to Monnify checkout to complete your card payment
+                    💳 You will be redirected to Monnify checkout to complete
+                    your card payment
                   </p>
                 </div>
               )}
 
-              {method === 'qr' && (
+              {method === "qr" && (
                 <div className="theme-surface rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4">
                   <p className="theme-text-secondary text-center text-sm">
-                    📱 You will be redirected to Monnify checkout to complete your QR payment
+                    📱 You will be redirected to Monnify checkout to complete
+                    your QR payment
                   </p>
                 </div>
               )}
-
             </div>
 
             <div className="flex flex-col gap-2 sm:gap-3">
-              {method === 'cash' && (
+              {method === "cash" && (
                 <button
                   onClick={() => {
-                    setCashAmount(formatCurrency(total).replace('₦', ''));
+                    setCashAmount(formatCurrency(total).replace("₦", ""));
                     // Auto-confirm after setting exact amount
                     setTimeout(() => {
                       handleConfirm();
@@ -420,30 +502,40 @@ export function PaymentModal({
                 <button
                   onClick={handleConfirm}
                   disabled={
-                    ((method === 'cash' || method === 'transfer') && (!cashAmount || parseFormattedNumber(cashAmount) * 100 < total)) ||
+                    ((method === "cash" || method === "transfer") &&
+                      (!cashAmount ||
+                        parseFormattedNumber(cashAmount) * 100 < total)) ||
                     processing
                   }
                   className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                   aria-label="Confirm payment"
                 >
-                  {method === 'cash' ? 'Confirm with Change' : method === 'transfer' ? 'Confirm Transfer' : 'Confirm Payment'}
+                  {method === "cash"
+                    ? "Confirm with Change"
+                    : method === "transfer"
+                      ? "Confirm Transfer"
+                      : "Confirm Payment"}
                 </button>
               </div>
             </div>
           </>
         )}
 
-        {stage === 'processing' && (
+        {stage === "processing" && (
           <div className="py-8 sm:py-12 text-center">
             <div className="mb-4 sm:mb-6 flex justify-center">
               <div className="h-16 w-16 sm:h-20 sm:w-20 animate-spin rounded-full border-4 border-sky-400 border-t-transparent" />
             </div>
-            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">Processing Payment...</h3>
-            <p className="theme-text-secondary text-xs sm:text-sm">Please wait while we process your payment</p>
+            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">
+              Processing Payment...
+            </h3>
+            <p className="theme-text-secondary text-xs sm:text-sm">
+              Please wait while we process your payment
+            </p>
           </div>
         )}
 
-        {stage === 'redirecting' && (
+        {stage === "redirecting" && (
           <div className="py-8 sm:py-12 text-center">
             {processing && (
               <div className="mb-4 sm:mb-6 flex justify-center">
@@ -451,12 +543,14 @@ export function PaymentModal({
               </div>
             )}
             <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">
-              {processing ? 'Redirecting to Payment...' : 'Complete Your Payment'}
+              {processing
+                ? "Redirecting to Payment..."
+                : "Complete Your Payment"}
             </h3>
             <p className="theme-text-secondary text-xs sm:text-sm mb-4">
-              {processing 
-                ? 'A new window will open for you to complete your payment'
-                : 'Click the button below to open the payment page'}
+              {processing
+                ? "A new window will open for you to complete your payment"
+                : "Click the button below to open the payment page"}
             </p>
             {checkoutUrl && (
               <>
@@ -466,11 +560,13 @@ export function PaymentModal({
                   rel="noopener noreferrer"
                   className="inline-block rounded-full bg-sky-500 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white hover:bg-sky-600 touch-manipulation mb-3"
                 >
-                  {processing ? 'Open Payment Page' : 'Click Here to Complete Payment'}
+                  {processing
+                    ? "Open Payment Page"
+                    : "Click Here to Complete Payment"}
                 </a>
                 <button
                   onClick={() => {
-                    setStage('input');
+                    setStage("input");
                     setProcessing(false);
                     setCheckoutUrl(null);
                   }}
@@ -488,16 +584,20 @@ export function PaymentModal({
           </div>
         )}
 
-        {stage === 'success' && (
+        {stage === "success" && (
           <div className="py-8 sm:py-12 text-center">
             <div className="mb-4 sm:mb-6 flex justify-center">
               <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-emerald-500">
                 <span className="text-3xl sm:text-4xl">✅</span>
               </div>
             </div>
-            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">Payment Successful!</h3>
-            <p className="theme-text-secondary text-xs sm:text-sm">Your order has been processed</p>
-            {method === 'cash' && change > 0 && (
+            <h3 className="theme-text-primary mb-2 text-lg sm:text-xl font-semibold">
+              Payment Successful!
+            </h3>
+            <p className="theme-text-secondary text-xs sm:text-sm">
+              Your order has been processed
+            </p>
+            {method === "cash" && change > 0 && (
               <div className="mt-4 rounded-lg bg-emerald-500/15 px-4 py-2">
                 <p className="text-xs sm:text-sm font-medium text-emerald-200">
                   Change: {formatCurrency(change)}
@@ -510,4 +610,3 @@ export function PaymentModal({
     </div>
   );
 }
-

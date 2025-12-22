@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards, Request } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
@@ -48,7 +59,12 @@ export class UsersController {
   @Patch('me/location')
   @ApiOperation({ summary: 'Update the authenticated user location' })
   async updateMyLocation(@Request() req: any, @Body() body: { locationId?: string }) {
-    await this.usersService.updateUser(req.user.tenantId, req.user.sub, { locationId: body.locationId }, req.user);
+    await this.usersService.updateUser(
+      req.user.tenantId,
+      req.user.sub,
+      { locationId: body.locationId },
+      req.user,
+    );
     return { success: true };
   }
 
@@ -59,4 +75,3 @@ export class UsersController {
     await this.usersService.deleteUser(req.user.tenantId, id, req.user);
   }
 }
-

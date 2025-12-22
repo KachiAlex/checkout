@@ -12,4 +12,3 @@ import { UsersModule } from '../users/users.module';
   exports: [TenantsRepository, TenantsService, IndustryFeaturesService],
 })
 export class TenantsModule {}
-

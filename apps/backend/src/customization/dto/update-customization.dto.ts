@@ -32,7 +32,10 @@ export class UpdateCustomizationDto {
   @IsString()
   website?: string;
 
-  @ApiProperty({ description: 'Additional header information (e.g., registration number, tax ID)', required: false })
+  @ApiProperty({
+    description: 'Additional header information (e.g., registration number, tax ID)',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   headerInfo?: string;
@@ -42,4 +45,3 @@ export class UpdateCustomizationDto {
   @IsString()
   footerMessage?: string;
 }
-

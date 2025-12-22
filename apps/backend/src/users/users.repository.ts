@@ -147,7 +147,7 @@ export class UsersRepository {
 
     const result = new Map<string, UserRecord>();
     const uniqueIds = [...new Set(ids)];
-    
+
     // Firestore getAll() can handle up to 10 document references at once
     const chunkSize = 10;
     const chunks: string[][] = [];
@@ -159,14 +159,14 @@ export class UsersRepository {
     const promises = chunks.map(async (chunk) => {
       const docRefs = chunk.map((id) => this.collection.doc(id));
       const docs = await this.firestore.getAll(...docRefs);
-      
+
       return docs
         .filter((doc) => doc.exists)
         .map((doc) => this.toRecord(doc.id, doc.data() as UserDocument));
     });
 
     const allUsers = (await Promise.all(promises)).flat();
-    
+
     // Convert to Map for O(1) lookup
     allUsers.forEach((user) => {
       result.set(user.id, user);
@@ -521,4 +521,3 @@ export class UsersRepository {
     return new Date();
   }
 }
-
