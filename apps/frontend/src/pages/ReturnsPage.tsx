@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../stores/authStore";
 import axios from "axios";
 import { API_URL } from "../config";
@@ -103,7 +103,7 @@ export function ReturnsPage() {
     | "DAMAGED"
     | "OTHER";
 
-  const loadReturns = async () => {
+  const loadReturns = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -121,11 +121,11 @@ export function ReturnsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, searchQuery]);
 
   useEffect(() => {
     loadReturns();
-  }, [accessToken, searchQuery]);
+  }, [loadReturns]);
 
   const searchOrder = async (orderNumber: string) => {
     if (!accessToken || !orderNumber) return;

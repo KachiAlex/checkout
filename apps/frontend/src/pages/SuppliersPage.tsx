@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -41,7 +41,7 @@ export function SuppliersPage() {
     active: true,
   });
 
-  const loadSuppliers = async () => {
+  const loadSuppliers = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -57,13 +57,11 @@ export function SuppliersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
-    if (accessToken) {
-      loadSuppliers();
-    }
-  }, [accessToken]);
+    loadSuppliers();
+  }, [loadSuppliers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

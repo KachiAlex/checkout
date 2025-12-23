@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   listTenants,
@@ -159,10 +158,6 @@ export function SuperAdminPage() {
     loadTenants();
     loadPricing();
   }, [user?.isPlatformAdmin]);
-
-  if (!user?.isPlatformAdmin) {
-    return <Navigate to="/login" replace />;
-  }
 
   const filteredTenants = useMemo(() => {
     if (!search.trim()) {

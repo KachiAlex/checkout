@@ -145,7 +145,7 @@ export function ReportsPage() {
       if (dateRange.to) params.append("to", dateRange.to);
 
       switch (activeTab) {
-        case "sales":
+        case "sales": {
           // Add pagination parameters for server-side pagination
           params.append("limit", itemsPerPage.toString());
           params.append("offset", ((salesPage - 1) * itemsPerPage).toString());
@@ -155,8 +155,8 @@ export function ReportsPage() {
           );
           setSalesReport(salesRes.data);
           break;
-
-        case "top-sellers":
+        }
+        case "top-sellers": {
           params.append("limit", "20");
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const topRes = await axios.get(
@@ -169,8 +169,8 @@ export function ReportsPage() {
           );
           setStaffPerformance(topSellersStaffRes.data);
           break;
-
-        case "analytics":
+        }
+        case "analytics": {
           params.append("period", salesAnalyticsPeriod);
           // Date range is already in params from above
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
@@ -179,48 +179,48 @@ export function ReportsPage() {
           );
           setSalesAnalytics(analyticsRes.data);
           break;
-
-        case "alerts":
+        }
+        case "alerts": {
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const alertsRes = await axios.get(
             `${API_URL}/api/v1/reports/alerts?${params}`,
           );
           setAlerts(alertsRes.data);
           break;
-
-        case "fraud":
+        }
+        case "fraud": {
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const fraudRes = await axios.get(
             `${API_URL}/api/v1/reports/fraud-detection?${params}`,
           );
           setFraudAlerts(fraudRes.data);
           break;
-
-        case "expiry":
+        }
+        case "expiry": {
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const expiryRes = await axios.get(
             `${API_URL}/api/v1/reports/expiry-analytics?${params}`,
           );
           setExpiryAnalytics(expiryRes.data);
           break;
-
-        case "shrinkage":
+        }
+        case "shrinkage": {
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const shrinkageRes = await axios.get(
             `${API_URL}/api/v1/reports/shrinkage-detection?${params}`,
           );
           setShrinkageAlerts(shrinkageRes.data);
           break;
-
-        case "staff":
+        }
+        case "staff": {
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const staffRes = await axios.get(
             `${API_URL}/api/v1/reports/staff-performance?${params}`,
           );
           setStaffPerformance(staffRes.data);
           break;
-
-        case "inventory":
+        }
+        case "inventory": {
           params.append("period", "daily");
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const invRes = await axios.get(
@@ -228,12 +228,13 @@ export function ReportsPage() {
           );
           setInventoryAnalytics(invRes.data);
           break;
-
-        case "purchase-orders":
+        }
+        case "purchase-orders": {
           // Don't explicitly set headers - let the interceptor handle apikey and Authorization
           const poRes = await axios.get(`${API_URL}/api/v1/purchase-orders`);
           setPurchaseOrders(poRes.data || []);
           break;
+        }
       }
     } catch (error: any) {
       console.error("Failed to load report:", error);
@@ -251,7 +252,6 @@ export function ReportsPage() {
     dateRange.to,
     salesPage,
     itemsPerPage,
-    topSellersPage,
     salesAnalyticsPeriod,
   ]);
 

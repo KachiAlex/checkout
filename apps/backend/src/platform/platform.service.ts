@@ -14,24 +14,10 @@ import { TenantPlan, TenantStatus, PaymentMethod, PaymentStatus } from '@pos-che
 import { FlutterwaveAdapter } from '@pos-checkout/payment-adapters';
 import type { FlutterwaveConfig } from '@pos-checkout/payment-adapters';
 import { v4 as uuidv4 } from 'uuid';
-
-interface SubscriptionPayment {
-  id: string;
-  tenantId: string;
-  tenantSlug: string;
-  plan: TenantPlan;
-  amountCents: number;
-  status: PaymentStatus;
-  transactionId?: string;
-  checkoutUrl?: string;
-  processorData?: Record<string, unknown>;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// In-memory storage for subscription payments
-// In production, consider storing in Firestore or a dedicated payments collection
-const subscriptionPayments = new Map<string, SubscriptionPayment>();
+import {
+  SubscriptionPaymentsRepository,
+  SubscriptionPaymentRecord,
+} from './subscription-payments.repository';
 
 @Injectable()
 export class PlatformService {
@@ -40,6 +26,7 @@ export class PlatformService {
     private readonly tenantsRepository: TenantsRepository,
     private readonly usersRepository: UsersRepository,
     private readonly configService: ConfigService,
+    private readonly subscriptionPaymentsRepository: SubscriptionPaymentsRepository,
   ) {}
 
   /**
@@ -121,16 +108,19 @@ export class PlatformService {
       if (pricing.priceCents > 0) {
         // Create payment record
         const paymentId = uuidv4();
-        const payment: SubscriptionPayment = {
+        await this.subscriptionPaymentsRepository.create({
           id: paymentId,
           tenantId: result.tenant.id,
           tenantSlug: result.tenant.slug,
           plan,
           amountCents: pricing.priceCents,
+          currency: 'NGN',
           status: PaymentStatus.PROCESSING,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+          metadata: {
+            source: 'platform_register',
+            adminEmail: dto.adminEmail,
+          },
+        });
 
         // Initiate payment with Flutterwave
         try {
@@ -150,15 +140,15 @@ export class PlatformService {
             },
           });
 
-          payment.status = paymentResult.status;
-          payment.transactionId = paymentResult.transaction_id;
-          payment.checkoutUrl = (paymentResult.processor_data as any)?.checkout_url;
-          payment.processorData = paymentResult.processor_data;
-          payment.updatedAt = new Date();
+          const checkoutUrl = (paymentResult.processor_data as any)?.checkout_url;
+          await this.subscriptionPaymentsRepository.update(paymentId, {
+            status: paymentResult.status,
+            transactionId: paymentResult.transaction_id,
+            checkoutUrl,
+            processorData: paymentResult.processor_data,
+          });
 
-          subscriptionPayments.set(paymentId, payment);
-
-          if (payment.checkoutUrl) {
+          if (checkoutUrl) {
             return {
               success: true,
               message:
@@ -171,10 +161,13 @@ export class PlatformService {
               },
               requiresPayment: true,
               paymentId,
-              checkoutUrl: payment.checkoutUrl,
+              checkoutUrl,
             };
           }
         } catch (error) {
+          await this.subscriptionPaymentsRepository.update(paymentId, {
+            status: PaymentStatus.FAILED,
+          });
           console.error('Failed to initiate payment:', error);
           throw new InternalServerErrorException('Failed to initiate payment. Please try again.');
         }
@@ -207,7 +200,7 @@ export class PlatformService {
     status: PaymentStatus;
     tenantSlug?: string;
   }> {
-    const payment = subscriptionPayments.get(paymentId);
+    const payment = await this.subscriptionPaymentsRepository.findById(paymentId);
 
     if (!payment || payment.tenantId !== tenantId) {
       throw new NotFoundException('Payment not found');
@@ -223,14 +216,16 @@ export class PlatformService {
           // Payment completed, activate subscription if not already done
           if (payment.status === PaymentStatus.PROCESSING) {
             await this.activateSubscription(payment);
-            payment.status = PaymentStatus.COMPLETED;
-            payment.updatedAt = new Date();
-            subscriptionPayments.set(paymentId, payment);
+            await this.subscriptionPaymentsRepository.update(paymentId, {
+              status: PaymentStatus.COMPLETED,
+              paidAt: new Date(),
+            });
           }
         } else if (status === PaymentStatus.FAILED) {
-          payment.status = PaymentStatus.FAILED;
-          payment.updatedAt = new Date();
-          subscriptionPayments.set(paymentId, payment);
+          await this.subscriptionPaymentsRepository.update(paymentId, {
+            status: PaymentStatus.FAILED,
+            paidAt: null,
+          });
         }
       } catch (error) {
         console.error('Failed to check payment status:', error);
@@ -262,14 +257,7 @@ export class PlatformService {
       const txRef = payload.data.tx_ref;
       const status = payload.data.status;
 
-      // Find payment by transaction reference
-      let payment: SubscriptionPayment | undefined;
-      for (const [id, p] of subscriptionPayments.entries()) {
-        if (p.transactionId === txRef) {
-          payment = p;
-          break;
-        }
-      }
+      const payment = await this.subscriptionPaymentsRepository.findByTransactionId(txRef);
 
       if (!payment) {
         console.warn('Payment not found for webhook:', txRef);
@@ -279,9 +267,10 @@ export class PlatformService {
       if (status === 'successful' && payment.status !== PaymentStatus.COMPLETED) {
         // Activate subscription
         await this.activateSubscription(payment);
-        payment.status = PaymentStatus.COMPLETED;
-        payment.updatedAt = new Date();
-        subscriptionPayments.set(payment.id, payment);
+        await this.subscriptionPaymentsRepository.update(payment.id, {
+          status: PaymentStatus.COMPLETED,
+          paidAt: new Date(),
+        });
       }
     }
 
@@ -291,7 +280,7 @@ export class PlatformService {
   /**
    * Activate tenant subscription after payment
    */
-  private async activateSubscription(payment: SubscriptionPayment): Promise<void> {
+  private async activateSubscription(payment: SubscriptionPaymentRecord): Promise<void> {
     const pricing = this.getPlanPricing(payment.plan);
     const billingCycleStart = new Date();
     let billingCycleEnd: Date | undefined;

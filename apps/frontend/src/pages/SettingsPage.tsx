@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { changePin } from "../services/userService";
 import { useAuthStore } from "../stores/authStore";
@@ -17,6 +17,7 @@ import {
   UpdatePaymentSettingsRequest,
   GatewayKey,
   GatewayConfig,
+  PaymentSettings,
 } from "../services/paymentSettingsService";
 import { receiptService, Printer } from "../services/receiptService";
 import { useScannerDeviceStore } from "../stores/scannerDeviceStore";
@@ -53,11 +54,7 @@ function ReceiptCustomizationSection() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadCustomization();
-  }, [accessToken]);
-
-  const loadCustomization = async () => {
+  const loadCustomization = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -77,7 +74,11 @@ function ReceiptCustomizationSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
+
+  useEffect(() => {
+    loadCustomization();
+  }, [loadCustomization]);
 
   const handleLogoUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -542,11 +543,6 @@ export function SettingsPage() {
       webhookSecret: "",
     },
   });
-  const [taxSettings, setTaxSettings] = useState<{
-    description?: string;
-    percentage?: number;
-    enabled: boolean;
-  } | null>(null);
   const [loadingTaxSettings, setLoadingTaxSettings] = useState(false);
   const [savingTaxSettings, setSavingTaxSettings] = useState(false);
   const [taxForm, setTaxForm] = useState({
@@ -594,8 +590,7 @@ export function SettingsPage() {
     address: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   });
-  const { devices: scannerDevices, removeDevice: removeScannerDevice } =
-    useScannerDeviceStore();
+  const { devices: scannerDevices } = useScannerDeviceStore();
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [registeredDevices, setRegisteredDevices] = useState<
     Array<{
@@ -632,6 +627,111 @@ export function SettingsPage() {
     loadUsers();
   }, [isTenantAdmin]);
 
+  const loadPrinters = useCallback(async () => {
+    if (!isTenantAdmin) {
+      return;
+    }
+    setLoadingPrinters(true);
+    try {
+      const printerList = await receiptService.listPrinters();
+      setPrinters(printerList);
+    } catch (error) {
+      console.error("Failed to load printers:", error);
+    } finally {
+      setLoadingPrinters(false);
+    }
+  }, [isTenantAdmin]);
+
+  useEffect(() => {
+    if (!isTenantAdmin) {
+      setPrinterAvailable(null);
+      return;
+    }
+    const checkPrinterStatus = async () => {
+      try {
+        // Use a timeout to prevent hanging
+        const timeoutPromise = new Promise<boolean>((resolve) => {
+          setTimeout(() => resolve(false), 3000); // 3 second timeout
+        });
+
+        const availablePromise = receiptService
+          .isAvailable()
+          .catch(() => false);
+        const available = await Promise.race([
+          availablePromise,
+          timeoutPromise,
+        ]);
+
+        setPrinterAvailable(available);
+        if (available) {
+          loadPrinters();
+        }
+      } catch {
+        // Silently handle - print proxy may not be running
+        setPrinterAvailable(false);
+      }
+    };
+    checkPrinterStatus();
+  }, [printProxyUrl, isTenantAdmin, loadPrinters]);
+
+  const applyPaymentSettings = useCallback((settings: PaymentSettings) => {
+    const active = (settings.activeGateway as GatewayKey) || "monnify";
+    setActiveGateway(active);
+
+    const gw = settings.gateways || {};
+    setGatewayForms({
+      monnify: {
+        enabled: gw.monnify?.enabled ?? settings.monnifyEnabled ?? false,
+        apiKey: gw.monnify?.apiKey ?? settings.monnifyApiKey ?? "",
+        secretKey: gw.monnify?.secretKey ?? settings.monnifySecretKey ?? "",
+        contractCode:
+          gw.monnify?.contractCode ?? settings.monnifyContractCode ?? "",
+        merchantId: gw.monnify?.merchantId ?? "",
+        terminalId: gw.monnify?.terminalId ?? "",
+        webhookSecret:
+          gw.monnify?.webhookSecret ?? settings.monnifyWebhookSecret ?? "",
+      },
+      opay: {
+        enabled: gw.opay?.enabled ?? false,
+        apiKey: gw.opay?.apiKey ?? "",
+        secretKey: gw.opay?.secretKey ?? "",
+        contractCode: gw.opay?.contractCode ?? "",
+        merchantId: gw.opay?.merchantId ?? "",
+        terminalId: gw.opay?.terminalId ?? "",
+        webhookSecret: gw.opay?.webhookSecret ?? "",
+      },
+      palmpay: {
+        enabled: gw.palmpay?.enabled ?? false,
+        apiKey: gw.palmpay?.apiKey ?? "",
+        secretKey: gw.palmpay?.secretKey ?? "",
+        contractCode: gw.palmpay?.contractCode ?? "",
+        merchantId: gw.palmpay?.merchantId ?? "",
+        terminalId: gw.palmpay?.terminalId ?? "",
+        webhookSecret: gw.palmpay?.webhookSecret ?? "",
+      },
+      firstbank: {
+        enabled: gw.firstbank?.enabled ?? false,
+        apiKey: gw.firstbank?.apiKey ?? "",
+        secretKey: gw.firstbank?.secretKey ?? "",
+        contractCode: gw.firstbank?.contractCode ?? "",
+        merchantId: gw.firstbank?.merchantId ?? "",
+        terminalId: gw.firstbank?.terminalId ?? "",
+        webhookSecret: gw.firstbank?.webhookSecret ?? "",
+      },
+    });
+  }, []);
+
+  const applyTaxSettings = useCallback((settings: any) => {
+    setTaxForm({
+      description: settings?.description || "",
+      percentage:
+        settings?.percentage !== undefined && settings?.percentage !== null
+          ? settings.percentage.toString()
+          : "",
+      enabled: Boolean(settings?.enabled),
+    });
+  }, []);
+
   useEffect(() => {
     const loadPaymentSettings = async () => {
       if (!isTenantAdmin) {
@@ -640,50 +740,7 @@ export function SettingsPage() {
       setLoadingPaymentSettings(true);
       try {
         const settings = await PaymentSettingsService.getPaymentSettings();
-        const active = (settings.activeGateway as GatewayKey) || "monnify";
-        setActiveGateway(active);
-
-        const gw = settings.gateways || {};
-        setGatewayForms((prev) => ({
-          monnify: {
-            enabled: gw.monnify?.enabled ?? settings.monnifyEnabled ?? false,
-            apiKey: gw.monnify?.apiKey ?? settings.monnifyApiKey ?? "",
-            secretKey: gw.monnify?.secretKey ?? settings.monnifySecretKey ?? "",
-            contractCode:
-              gw.monnify?.contractCode ?? settings.monnifyContractCode ?? "",
-            merchantId: gw.monnify?.merchantId ?? "",
-            terminalId: gw.monnify?.terminalId ?? "",
-            webhookSecret:
-              gw.monnify?.webhookSecret ?? settings.monnifyWebhookSecret ?? "",
-          },
-          opay: {
-            enabled: gw.opay?.enabled ?? false,
-            apiKey: gw.opay?.apiKey ?? "",
-            secretKey: gw.opay?.secretKey ?? "",
-            contractCode: gw.opay?.contractCode ?? "",
-            merchantId: gw.opay?.merchantId ?? "",
-            terminalId: gw.opay?.terminalId ?? "",
-            webhookSecret: gw.opay?.webhookSecret ?? "",
-          },
-          palmpay: {
-            enabled: gw.palmpay?.enabled ?? false,
-            apiKey: gw.palmpay?.apiKey ?? "",
-            secretKey: gw.palmpay?.secretKey ?? "",
-            contractCode: gw.palmpay?.contractCode ?? "",
-            merchantId: gw.palmpay?.merchantId ?? "",
-            terminalId: gw.palmpay?.terminalId ?? "",
-            webhookSecret: gw.palmpay?.webhookSecret ?? "",
-          },
-          firstbank: {
-            enabled: gw.firstbank?.enabled ?? false,
-            apiKey: gw.firstbank?.apiKey ?? "",
-            secretKey: gw.firstbank?.secretKey ?? "",
-            contractCode: gw.firstbank?.contractCode ?? "",
-            merchantId: gw.firstbank?.merchantId ?? "",
-            terminalId: gw.firstbank?.terminalId ?? "",
-            webhookSecret: gw.firstbank?.webhookSecret ?? "",
-          },
-        }));
+        applyPaymentSettings(settings);
       } catch (error: any) {
         console.error("Failed to load payment settings:", error);
         // Don't show error toast, just use defaults
@@ -693,7 +750,7 @@ export function SettingsPage() {
     };
 
     loadPaymentSettings();
-  }, [isTenantAdmin]);
+  }, [isTenantAdmin, applyPaymentSettings]);
 
   useEffect(() => {
     const loadTaxSettings = async () => {
@@ -705,23 +762,16 @@ export function SettingsPage() {
         const response = await axios.get(`${API_URL}/api/v1/tax-settings`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        const settings = response.data;
-        setTaxSettings(settings);
-        setTaxForm({
-          description: settings.description || "",
-          percentage: settings.percentage?.toString() || "",
-          enabled: settings.enabled || false,
-        });
+        applyTaxSettings(response.data);
       } catch (error: any) {
         console.error("Failed to load tax settings:", error);
-        setTaxSettings({ enabled: false });
       } finally {
         setLoadingTaxSettings(false);
       }
     };
 
     loadTaxSettings();
-  }, [isTenantAdmin, accessToken]);
+  }, [isTenantAdmin, accessToken, applyTaxSettings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -825,7 +875,7 @@ export function SettingsPage() {
     }
     setCreatingLocation(true);
     try {
-      const response = await axios.post(
+      await axios.post(
         `${API_URL}/api/v1/locations`,
         {
           name: locationForm.name.trim(),
@@ -942,53 +992,6 @@ export function SettingsPage() {
       address: "",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     });
-  };
-
-  useEffect(() => {
-    if (!isTenantAdmin) {
-      setPrinterAvailable(null);
-      return;
-    }
-    const checkPrinterStatus = async () => {
-      try {
-        // Use a timeout to prevent hanging
-        const timeoutPromise = new Promise<boolean>((resolve) => {
-          setTimeout(() => resolve(false), 3000); // 3 second timeout
-        });
-
-        const availablePromise = receiptService
-          .isAvailable()
-          .catch(() => false);
-        const available = await Promise.race([
-          availablePromise,
-          timeoutPromise,
-        ]);
-
-        setPrinterAvailable(available);
-        if (available) {
-          loadPrinters();
-        }
-      } catch {
-        // Silently handle - print proxy may not be running
-        setPrinterAvailable(false);
-      }
-    };
-    checkPrinterStatus();
-  }, [printProxyUrl, isTenantAdmin]);
-
-  const loadPrinters = async () => {
-    if (!isTenantAdmin) {
-      return;
-    }
-    setLoadingPrinters(true);
-    try {
-      const printerList = await receiptService.listPrinters();
-      setPrinters(printerList);
-    } catch (error) {
-      console.error("Failed to load printers:", error);
-    } finally {
-      setLoadingPrinters(false);
-    }
   };
 
   const handleSavePrintProxyUrl = () => {
@@ -1630,7 +1633,7 @@ export function SettingsPage() {
                                     },
                                   );
                                   const updated = response.data;
-                                  setTaxSettings(updated);
+                                  applyTaxSettings(updated);
                                   toast.success(
                                     "Tax settings saved successfully",
                                   );
@@ -1923,7 +1926,7 @@ export function SettingsPage() {
                                       await PaymentSettingsService.updatePaymentSettings(
                                         updateData,
                                       );
-                                    setPaymentSettings(updated);
+                                    applyPaymentSettings(updated);
                                     toast.success(
                                       "Payment settings saved successfully",
                                     );
@@ -2661,7 +2664,7 @@ export function SettingsPage() {
                                           await PaymentSettingsService.updatePaymentSettings(
                                             updateData,
                                           );
-                                        setPaymentSettings(updated);
+                                        applyPaymentSettings(updated);
                                         toast.success(
                                           "Payment settings saved successfully",
                                         );
@@ -2825,7 +2828,13 @@ export function SettingsPage() {
                                       },
                                     },
                                   );
-                                  setTaxSettings(response.data);
+                                  const updated = response.data;
+                                  setTaxForm({
+                                    description: updated.description || "",
+                                    percentage:
+                                      updated.percentage?.toString() || "",
+                                    enabled: updated.enabled || false,
+                                  });
                                   toast.success(
                                     "Tax settings saved successfully",
                                   );

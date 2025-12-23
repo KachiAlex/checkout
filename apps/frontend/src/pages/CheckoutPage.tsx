@@ -96,6 +96,14 @@ export function CheckoutPage() {
     "amount",
   );
 
+  useEffect(() => {
+    if (selectedCustomer?.phone) {
+      setCustomerPhoneInput(selectedCustomer.phone);
+    } else if (!selectedCustomer) {
+      setCustomerPhoneInput("");
+    }
+  }, [selectedCustomer]);
+
   // Product search state
   const [searchQuery, setSearchQuery] = useState("");
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -1265,6 +1273,20 @@ export function CheckoutPage() {
                       )}
                     </div>
                   )}
+                </div>
+
+                {/* Customer phone input */}
+                <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
+                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
+                    Customer phone (required for credit orders)
+                  </label>
+                  <input
+                    type="tel"
+                    value={customerPhoneInput}
+                    onChange={(e) => setCustomerPhoneInput(e.target.value)}
+                    placeholder="Enter phone number"
+                    className="theme-surface w-full rounded-lg border border-white/20 px-3 py-2 text-xs sm:text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
+                  />
                 </div>
 
                 {/* VAT Toggle - Always visible, optional for cashier */}

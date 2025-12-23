@@ -6,6 +6,29 @@ import { UsersRepository, UserRecord } from '../users/users.repository';
 import { EmailService } from '../email/email.service';
 import { CustomizationService } from '../customization/customization.service';
 
+interface ReceiptContext {
+  order: OrderRecord;
+  payment?: PaymentRecord;
+  location?: LocationRecord;
+  user?: UserRecord;
+  customization?: {
+    companyName?: string;
+    logoUrl?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    headerInfo?: string;
+    footerMessage?: string;
+  };
+}
+
+interface ReceiptPayload {
+  text: string;
+  html: string;
+  orderNumber: string;
+}
+
 @Injectable()
 export class ReceiptsService {
   constructor(
@@ -17,7 +40,7 @@ export class ReceiptsService {
     private readonly customizationService: CustomizationService,
   ) {}
 
-  async generateReceipt(orderId: string): Promise<string> {
+  private async buildReceiptContext(orderId: string): Promise<ReceiptContext> {
     const order = await this.ordersRepository.findById(orderId);
 
     if (!order) {
@@ -41,13 +64,44 @@ export class ReceiptsService {
       }
     }
 
-    return this.formatReceipt(
+    return {
       order,
-      payment ?? undefined,
-      location ?? undefined,
-      user ?? undefined,
-      customization ?? undefined,
-    );
+      payment: payment ?? undefined,
+      location: location ?? undefined,
+      user: user ?? undefined,
+      customization: customization ?? undefined,
+    };
+  }
+
+  private async generateReceiptPayload(orderId: string): Promise<ReceiptPayload> {
+    const context = await this.buildReceiptContext(orderId);
+    return {
+      text: this.formatReceipt(
+        context.order,
+        context.payment,
+        context.location,
+        context.user,
+        context.customization,
+      ),
+      html: this.formatReceiptHTML(
+        context.order,
+        context.payment,
+        context.location,
+        context.user,
+        context.customization,
+      ),
+      orderNumber: context.order.orderNumber,
+    };
+  }
+
+  async generateReceipt(orderId: string): Promise<string> {
+    const payload = await this.generateReceiptPayload(orderId);
+    return payload.text;
+  }
+
+  async generateReceiptHtml(orderId: string): Promise<string> {
+    const payload = await this.generateReceiptPayload(orderId);
+    return payload.html;
   }
 
   private formatReceipt(
@@ -153,42 +207,12 @@ export class ReceiptsService {
 
   async sendEmailReceipt(orderId: string, email: string): Promise<boolean> {
     try {
-      const order = await this.ordersRepository.findById(orderId);
-      if (!order) {
-        throw new Error(`Order ${orderId} not found`);
-      }
-
-      const receiptText = await this.generateReceipt(orderId);
-      const [payment] = await this.paymentsRepository.findByOrderId(order.id);
-      const location = order.locationId
-        ? await this.locationsRepository.findById(order.locationId)
-        : null;
-      const user = order.createdBy ? await this.usersRepository.findById(order.createdBy) : null;
-
-      // Get customization settings from location's tenantId
-      let customization = null;
-      if (location?.tenantId) {
-        try {
-          customization = await this.customizationService.getCustomization(location.tenantId);
-        } catch (error) {
-          // If customization not found, use defaults
-          console.warn(`Customization not found for tenant ${location.tenantId}, using defaults`);
-        }
-      }
-
-      const receiptHTML = this.formatReceiptHTML(
-        order,
-        payment ?? undefined,
-        location ?? undefined,
-        user ?? undefined,
-        customization ?? undefined,
-      );
-
+      const payload = await this.generateReceiptPayload(orderId);
       const success = await this.emailService.sendEmail({
         to: email,
-        subject: `Receipt for Order ${order.orderNumber}`,
-        text: receiptText,
-        html: receiptHTML,
+        subject: `Receipt for Order ${payload.orderNumber}`,
+        text: payload.text,
+        html: payload.html,
       });
 
       return success;
@@ -236,6 +260,104 @@ export class ReceiptsService {
       })
       .join('');
 
+    const styles = `
+      body {
+        font-family: 'Courier New', monospace, Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .receipt-container {
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .header {
+        text-align: center;
+        border-bottom: 2px solid #333;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 26px;
+        color: #111;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      .header p {
+        margin: 5px 0;
+        color: #666;
+        font-size: 14px;
+      }
+      .order-info {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+      }
+      .order-info p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+      th {
+        text-align: left;
+        padding: 8px;
+        border-bottom: 2px solid #333;
+        font-weight: bold;
+      }
+      .totals {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 2px solid #333;
+      }
+      .totals-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        font-size: 14px;
+      }
+      .total-row {
+        font-weight: bold;
+        font-size: 18px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+      }
+      .payment-info {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+        font-size: 14px;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        color: #666;
+        font-size: 14px;
+      }
+      .logo {
+        max-width: 200px;
+        max-height: 80px;
+        margin-bottom: 10px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        object-fit: contain;
+      }
+    `;
+
     return `
       <!DOCTYPE html>
       <html>
@@ -243,96 +365,12 @@ export class ReceiptsService {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Receipt - Order ${order.orderNumber}</title>
-          <style>
-            body {
-              font-family: 'Courier New', monospace, Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-              background-color: #f5f5f5;
-            }
-            .receipt-container {
-              background-color: white;
-              border: 1px solid #ddd;
-              border-radius: 8px;
-              padding: 30px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-            .header {
-              text-align: center;
-              border-bottom: 2px solid #333;
-              padding-bottom: 15px;
-              margin-bottom: 20px;
-            }
-            .header h1 {
-              margin: 0;
-              font-size: 24px;
-              color: #333;
-            }
-            .header p {
-              margin: 5px 0;
-              color: #666;
-              font-size: 14px;
-            }
-            .order-info {
-              margin-bottom: 20px;
-              padding-bottom: 15px;
-              border-bottom: 1px solid #eee;
-            }
-            .order-info p {
-              margin: 5px 0;
-              font-size: 14px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 20px;
-            }
-            th {
-              text-align: left;
-              padding: 8px;
-              border-bottom: 2px solid #333;
-              font-weight: bold;
-            }
-            .totals {
-              margin-top: 20px;
-              padding-top: 15px;
-              border-top: 2px solid #333;
-            }
-            .totals-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 8px 0;
-              font-size: 14px;
-            }
-            .total-row {
-              font-weight: bold;
-              font-size: 18px;
-              padding-top: 10px;
-              border-top: 1px solid #eee;
-            }
-            .payment-info {
-              margin-top: 20px;
-              padding-top: 15px;
-              border-top: 1px solid #eee;
-              font-size: 14px;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 30px;
-              padding-top: 20px;
-              border-top: 1px solid #eee;
-              color: #666;
-              font-size: 14px;
-            }
-          </style>
+          <style>${styles}</style>
         </head>
         <body>
           <div class="receipt-container">
             <div class="header">
-              ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />` : ''}
+              ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="logo" />` : ''}
               ${companyName ? `<h1>${companyName}</h1>` : ''}
               <h2 style="margin: 10px 0; font-size: 20px; color: #555;">${location?.name || 'Store'}</h2>
               ${address ? `<p>${address}</p>` : ''}
@@ -407,11 +445,12 @@ export class ReceiptsService {
 
   async getReceiptForPrint(orderId: string): Promise<{
     text: string;
+    html: string;
     escpos: string;
   }> {
-    const text = await this.generateReceipt(orderId);
-    const escpos = this.convertToESCPOS(text);
-    return { text, escpos };
+    const payload = await this.generateReceiptPayload(orderId);
+    const escpos = this.convertToESCPOS(payload.text);
+    return { text: payload.text, html: payload.html, escpos };
   }
 
   private convertToESCPOS(text: string): string {

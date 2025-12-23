@@ -86,6 +86,7 @@ model Tenant {
   suppliers      Supplier[]
   purchaseOrders PurchaseOrder[]
   grns           GRN[]
+  subscriptionPayments SubscriptionPayment[]
 
   @@index([createdAt])
 }
@@ -365,4 +366,28 @@ model SubscriptionPricing {
   lifetime     Json
   updatedAt    DateTime?
   updatedBy    String?
+}
+
+model SubscriptionPayment {
+  id             String         @id @default(uuid())
+  tenantId       String
+  tenantSlug     String
+  plan           TenantPlan
+  amountCents    Int
+  currency       String         @default("NGN")
+  status         PaymentStatus
+  transactionId  String?
+  checkoutUrl    String?
+  processorData  Json?
+  metadata       Json?
+  paidAt         DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([paidAt])
+  @@index([transactionId])
 }

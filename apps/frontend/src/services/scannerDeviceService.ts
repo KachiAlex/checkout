@@ -294,7 +294,6 @@ export async function registerNativeDevice(
   device: NativeDeviceSummary,
   locationId?: string,
   userId?: string,
-  requestAccess: boolean = false,
 ): Promise<ScannerDevice> {
   const payload = buildNativePayload(device, locationId, userId);
   return persistDevice(payload, payload.identifier);
