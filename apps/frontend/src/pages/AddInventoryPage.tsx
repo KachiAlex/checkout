@@ -44,6 +44,36 @@ interface InventoryItem {
   };
 }
 
+type InventoryFormState = {
+  name: string;
+  description: string;
+  quantity: string;
+  costCents: string;
+  priceCents: string;
+  barcode: string;
+  categoryId: string;
+  categoryName: string;
+  brandId: string;
+  brandName: string;
+  batchNumber: string;
+  expiryDate: string;
+};
+
+const createEmptyInventoryForm = (): InventoryFormState => ({
+  name: "",
+  description: "",
+  quantity: "",
+  costCents: "",
+  priceCents: "",
+  barcode: "",
+  categoryId: "",
+  categoryName: "",
+  brandId: "",
+  brandName: "",
+  batchNumber: "",
+  expiryDate: "",
+});
+
 export function AddInventoryPage() {
   const { user, logout, accessToken, tenant } = useAuthStore();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -53,18 +83,18 @@ export function AddInventoryPage() {
   );
 
   // Inventory form state
-  const [inventoryForm, setInventoryForm] = useState({
-    name: "",
-    description: "",
-    quantity: "",
-    costCents: "",
-    priceCents: "",
-    barcode: "",
-    categoryId: "",
-    categoryName: "",
-    brandId: "",
-    brandName: "",
-  });
+  const industry = tenant?.industry as string | undefined;
+  const industryDefaults =
+    industry === "PHARMACEUTICAL" || industry === "GROCERY"
+      ? { expiryTracking: true, batchTracking: true }
+      : {};
+  const featureFlags = tenant?.feature_flags || industryDefaults;
+  const expiryTrackingEnabled = featureFlags?.expiryTracking === true;
+  const batchTrackingEnabled = featureFlags?.batchTracking === true;
+
+  const [inventoryForm, setInventoryForm] = useState<InventoryFormState>(
+    createEmptyInventoryForm(),
+  );
   const [categoryMode, setCategoryMode] = useState<"existing" | "new">(
     "existing",
   );
@@ -214,6 +244,7 @@ export function AddInventoryPage() {
             if (invItem) {
               // Product exists in inventory - fill with existing data
               setInventoryForm({
+                ...createEmptyInventoryForm(),
                 name: product.name,
                 description: product.description || "",
                 quantity: formatNumber(invItem.quantity),
@@ -257,6 +288,7 @@ export function AddInventoryPage() {
             } else {
               // Product exists but not in inventory - fill with product data only
               setInventoryForm({
+                ...createEmptyInventoryForm(),
                 name: product.name,
                 description: product.description || "",
                 quantity: "",
@@ -295,6 +327,7 @@ export function AddInventoryPage() {
           } catch (invError) {
             // If inventory check fails, just fill with product data
             setInventoryForm({
+              ...createEmptyInventoryForm(),
               name: product.name,
               description: product.description || "",
               quantity: "",
@@ -329,6 +362,7 @@ export function AddInventoryPage() {
         } else {
           // No location - just fill with product data
           setInventoryForm({
+            ...createEmptyInventoryForm(),
             name: product.name,
             description: product.description || "",
             quantity: "",
@@ -409,6 +443,7 @@ export function AddInventoryPage() {
 
             // Auto-fill form with external product data
             setInventoryForm({
+              ...createEmptyInventoryForm(),
               name: externalProduct.name,
               description: externalProduct.description || "",
               quantity: "",
@@ -666,8 +701,6 @@ export function AddInventoryPage() {
 
   const handleSubmitInventory = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedCategoryName = inventoryForm.categoryName.trim();
-    const trimmedBrandName = inventoryForm.brandName.trim();
 
     if (
       !inventoryForm.name ||
@@ -680,6 +713,9 @@ export function AddInventoryPage() {
       );
       return;
     }
+
+    const trimmedCategoryName = inventoryForm.categoryName.trim();
+    const trimmedBrandName = inventoryForm.brandName.trim();
 
     if (categoryMode === "new" && !trimmedCategoryName) {
       toast.error(
@@ -695,8 +731,31 @@ export function AddInventoryPage() {
       return;
     }
 
+    if (batchTrackingEnabled && !inventoryForm.batchNumber.trim()) {
+      toast.error("Batch number is required for this tenant");
+      return;
+    }
+
+    let expiryIso: string | undefined;
+    if (inventoryForm.expiryDate) {
+      const parsedExpiry = new Date(inventoryForm.expiryDate);
+      if (Number.isNaN(parsedExpiry.getTime())) {
+        toast.error("Invalid expiry date");
+        return;
+      }
+      expiryIso = parsedExpiry.toISOString();
+    }
+
+    if (expiryTrackingEnabled && !expiryIso) {
+      toast.error("Expiry date is required for this tenant");
+      return;
+    }
+
     if (!accessToken || !user) {
       toast.error("Not authenticated. Please log in again.");
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
       return;
     }
 
@@ -727,24 +786,21 @@ export function AddInventoryPage() {
         return;
       }
 
-      const categoryNamePayload =
-        categoryMode === "new" ? trimmedCategoryName : undefined;
-      const brandNamePayload =
-        brandMode === "new" ? trimmedBrandName : undefined;
-
       const response = await axios.post(
         `${API_URL}/api/v1/inventory/create-item`,
         {
           name: inventoryForm.name,
           description: inventoryForm.description || undefined,
           quantity,
-          costCents,
           priceCents,
-          barcode: inventoryForm.barcode?.trim() || undefined,
+          costCents,
+          barcode: inventoryForm.barcode || undefined,
           categoryId: inventoryForm.categoryId || undefined,
-          categoryName: categoryNamePayload,
+          categoryName: inventoryForm.categoryName || undefined,
           brandId: inventoryForm.brandId || undefined,
-          brandName: brandNamePayload,
+          brandName: inventoryForm.brandName || undefined,
+          batchNumber: inventoryForm.batchNumber || undefined,
+          expiryDate: expiryIso,
         },
         {
           headers: {
@@ -760,18 +816,7 @@ export function AddInventoryPage() {
         );
 
         // Reset form
-        setInventoryForm({
-          name: "",
-          description: "",
-          quantity: "",
-          costCents: "",
-          priceCents: "",
-          barcode: "",
-          categoryId: "",
-          categoryName: "",
-          brandId: "",
-          brandName: "",
-        });
+        setInventoryForm(createEmptyInventoryForm());
         setCategoryMode("existing");
         setBrandMode("existing");
         savedCategoryId.current = "";
@@ -956,7 +1001,6 @@ export function AddInventoryPage() {
                   onChange={(e) => {
                     const { displayValue } = handleNumberInputChange(
                       e.target.value,
-                      true,
                     );
                     setInventoryForm({
                       ...inventoryForm,
@@ -1127,18 +1171,7 @@ export function AddInventoryPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setInventoryForm({
-                    name: "",
-                    description: "",
-                    quantity: "",
-                    costCents: "",
-                    priceCents: "",
-                    barcode: "",
-                    categoryId: "",
-                    categoryName: "",
-                    brandId: "",
-                    brandName: "",
-                  });
+                  setInventoryForm(createEmptyInventoryForm());
                 }}
                 className="theme-chip rounded-full border px-6 py-3 text-sm font-semibold transition hover:bg-white/10"
               >
