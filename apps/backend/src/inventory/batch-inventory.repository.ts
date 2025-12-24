@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { InventoryBatch as PrismaInventoryBatch } from '@prisma/client';
 import { FirestoreService } from '../firestore/firestore.service';
+import { PrismaService } from '../database/prisma.service';
 
 export interface BatchInventoryRecord {
   id: string;
+  tenantId: string;
   productId: string;
   locationId: string;
   batchNumber: string;
@@ -30,6 +33,7 @@ type BatchInventoryDocument = Omit<
 };
 
 export type CreateBatchInventoryInput = {
+  tenantId: string;
   productId: string;
   locationId: string;
   batchNumber: string;
@@ -38,6 +42,7 @@ export type CreateBatchInventoryInput = {
   unitCostCents?: number;
   purchaseOrderId?: string;
   grnId?: string;
+  receivedDate?: Date;
 };
 
 @Injectable()
@@ -45,9 +50,24 @@ export class BatchInventoryRepository {
   private readonly collection =
     this.firestore.collection<BatchInventoryDocument>('batch_inventory');
 
-  constructor(private readonly firestore: FirestoreService) {}
+  constructor(
+    private readonly firestore: FirestoreService,
+    private readonly prismaService: PrismaService,
+  ) {}
+
+  private isPostgresEnabled(): boolean {
+    return (process.env.DB_PROVIDER || '').toLowerCase() === 'postgres';
+  }
 
   async findByProduct(productId: string, locationId: string): Promise<BatchInventoryRecord[]> {
+    if (this.isPostgresEnabled()) {
+      const rows = await this.prismaService.prisma.inventoryBatch.findMany({
+        where: { productId, locationId },
+        orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
+      });
+      return rows.map((row) => this.fromPrismaRecord(row));
+    }
+
     const snapshot = await this.collection
       .where('productId', '==', productId)
       .where('locationId', '==', locationId)
@@ -57,6 +77,14 @@ export class BatchInventoryRepository {
   }
 
   async findByLocation(locationId: string): Promise<BatchInventoryRecord[]> {
+    if (this.isPostgresEnabled()) {
+      const rows = await this.prismaService.prisma.inventoryBatch.findMany({
+        where: { locationId },
+        orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
+      });
+      return rows.map((row) => this.fromPrismaRecord(row));
+    }
+
     try {
       // Query without orderBy first to avoid issues with missing expiryDate fields
       const snapshot = await this.collection.where('locationId', '==', locationId).get();
@@ -86,18 +114,39 @@ export class BatchInventoryRepository {
   }
 
   async create(data: CreateBatchInventoryInput): Promise<BatchInventoryRecord> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.inventoryBatch.create({
+        data: {
+          tenantId: data.tenantId ?? '',
+          productId: data.productId,
+          locationId: data.locationId,
+          batchNumber: data.batchNumber,
+          expiryDate: data.expiryDate ?? null,
+          quantity: data.quantity,
+          unitCostCents: data.unitCostCents ?? null,
+          receivedDate: data.receivedDate ?? undefined,
+          purchaseOrderId: data.purchaseOrderId,
+          grnId: data.grnId,
+        },
+      });
+      return this.fromPrismaRecord(row);
+    }
+
     const now = FieldValue.serverTimestamp();
     const id = this.collection.doc().id;
     const docRef = this.collection.doc(id);
 
     await docRef.set({
+      tenantId: data.tenantId,
       productId: data.productId,
       locationId: data.locationId,
       batchNumber: data.batchNumber,
       expiryDate: data.expiryDate ? Timestamp.fromDate(data.expiryDate) : undefined,
       quantity: data.quantity,
       unitCostCents: data.unitCostCents,
-      receivedDate: now,
+      receivedDate: data.receivedDate
+        ? Timestamp.fromDate(data.receivedDate)
+        : now,
       purchaseOrderId: data.purchaseOrderId,
       grnId: data.grnId,
       createdAt: now,
@@ -109,6 +158,20 @@ export class BatchInventoryRepository {
   }
 
   async updateQuantity(id: string, delta: number): Promise<BatchInventoryRecord> {
+    if (this.isPostgresEnabled()) {
+      const existing = await this.prismaService.prisma.inventoryBatch.findUnique({ where: { id } });
+      if (!existing) {
+        throw new Error(`Batch inventory ${id} not found`);
+      }
+
+      const newQuantity = Math.max(0, existing.quantity + delta);
+      const row = await this.prismaService.prisma.inventoryBatch.update({
+        where: { id },
+        data: { quantity: newQuantity },
+      });
+      return this.fromPrismaRecord(row);
+    }
+
     const docRef = this.collection.doc(id);
     const existing = await docRef.get();
 
@@ -138,6 +201,7 @@ export class BatchInventoryRepository {
 
     return {
       id,
+      tenantId: data.tenantId,
       productId: data.productId,
       locationId: data.locationId,
       batchNumber: data.batchNumber,
@@ -172,5 +236,23 @@ export class BatchInventoryRepository {
       return timestamp.toDate();
     }
     return new Date();
+  }
+
+  private fromPrismaRecord(row: PrismaInventoryBatch): BatchInventoryRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      productId: row.productId,
+      locationId: row.locationId,
+      batchNumber: row.batchNumber,
+      expiryDate: row.expiryDate ?? undefined,
+      quantity: row.quantity,
+      unitCostCents: row.unitCostCents ?? undefined,
+      receivedDate: row.receivedDate,
+      purchaseOrderId: row.purchaseOrderId ?? undefined,
+      grnId: row.grnId ?? undefined,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { GRNRepository, GRNRecord, CreateGRNInput, GRNStatus } from './grn.repository';
 import {
   PurchaseOrdersRepository,
@@ -9,6 +9,7 @@ import { BatchInventoryRepository } from '../inventory/batch-inventory.repositor
 import { InventoryTransactionType } from '@pos-checkout/shared';
 import { Timestamp } from 'firebase-admin/firestore';
 import type { FieldValue } from 'firebase-admin/firestore';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class GRNService {
@@ -17,6 +18,7 @@ export class GRNService {
     private readonly purchaseOrdersRepository: PurchaseOrdersRepository,
     private readonly inventoryRepository: InventoryRepository,
     private readonly batchInventoryRepository: BatchInventoryRepository,
+    private readonly tenantsService: TenantsService,
   ) {}
 
   async findAll(tenantId: string, locationId?: string): Promise<GRNRecord[]> {
@@ -53,9 +55,35 @@ export class GRNService {
       throw new Error(`Cannot create GRN for purchase order with status ${po.status}`);
     }
 
+    const featureFlags = await this.tenantsService.getFeatureFlags(data.tenantId);
+    const batchTrackingEnabled = featureFlags?.batchTracking === true;
+    const expiryTrackingEnabled = featureFlags?.expiryTracking === true;
+
+    const normalizedItems = data.items.map((item, index) => {
+      if (batchTrackingEnabled && !item.batchNumber) {
+        throw new BadRequestException(
+          `Batch number is required for GRN item ${item.productId || index + 1}`,
+        );
+      }
+
+      const parsedExpiry = parseExpiryDate(item.expiryDate);
+
+      if (expiryTrackingEnabled && !parsedExpiry) {
+        throw new BadRequestException(
+          `Expiry date is required for GRN item ${item.productId || index + 1}`,
+        );
+      }
+
+      return {
+        ...item,
+        expiryDate: parsedExpiry ?? undefined,
+      };
+    });
+
     // Create GRN
     const grn = await this.grnRepository.create({
       ...data,
+      items: normalizedItems,
       purchaseOrderNumber: po.orderNumber,
     });
 
@@ -64,7 +92,7 @@ export class GRNService {
     const restockedProducts: string[] = [];
 
     // Update inventory for each item
-    for (const item of data.items) {
+    for (const item of normalizedItems) {
       if (item.receivedQuantity > 0) {
         // Update main inventory
         const currentInventory = await this.inventoryRepository.getInventory(
@@ -95,10 +123,11 @@ export class GRNService {
         // Create batch inventory if batch number provided
         if (item.batchNumber) {
           await this.batchInventoryRepository.create({
+            tenantId: data.tenantId,
             productId: item.productId,
             locationId: data.locationId,
             batchNumber: item.batchNumber,
-            expiryDate: parseExpiryDate(item.expiryDate),
+            expiryDate: item.expiryDate,
             quantity: item.receivedQuantity,
             unitCostCents: item.unitCostCents,
             purchaseOrderId: data.purchaseOrderId,
@@ -121,7 +150,10 @@ export class GRNService {
     }
 
     // Update purchase order status
-    const totalReceived = data.items.reduce((sum, item) => sum + (item.receivedQuantity || 0), 0);
+    const totalReceived = normalizedItems.reduce(
+      (sum, item) => sum + (item.receivedQuantity || 0),
+      0,
+    );
     const totalOrdered = po.items.reduce((sum, item) => sum + item.quantity, 0);
 
     let newStatus: PurchaseOrderStatus = po.status as PurchaseOrderStatus;
@@ -133,7 +165,7 @@ export class GRNService {
 
     // Update received quantities in PO items
     const updatedItems = po.items.map((poItem) => {
-      const grnItem = data.items.find((item) => item.productId === poItem.productId);
+      const grnItem = normalizedItems.find((item) => item.productId === poItem.productId);
       return {
         ...poItem,
         receivedQuantity: (poItem.receivedQuantity || 0) + (grnItem?.receivedQuantity || 0),

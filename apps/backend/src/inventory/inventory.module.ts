@@ -8,9 +8,10 @@ import { CategoriesModule } from '../categories/categories.module';
 import { BrandsModule } from '../brands/brands.module';
 import { BatchInventoryRepository } from './batch-inventory.repository';
 import { UsersModule } from '../users/users.module';
+import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
-  imports: [ProductsModule, CategoriesModule, BrandsModule, UsersModule],
+  imports: [ProductsModule, CategoriesModule, BrandsModule, UsersModule, TenantsModule],
   controllers: [InventoryController],
   providers: [InventoryService, InventoryRepository, LocationsRepository, BatchInventoryRepository],
   exports: [InventoryService, InventoryRepository, BatchInventoryRepository],

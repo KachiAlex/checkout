@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { InventoryTransactionType } from '@pos-checkout/shared';
@@ -8,6 +8,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { BrandsService } from '../brands/brands.service';
 import { BatchInventoryRepository } from './batch-inventory.repository';
 import { UsersRepository } from '../users/users.repository';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class InventoryService {
@@ -18,6 +19,7 @@ export class InventoryService {
     private readonly brandsService: BrandsService,
     private readonly batchInventoryRepository: BatchInventoryRepository,
     private readonly usersRepository: UsersRepository,
+    private readonly tenantsService: TenantsService,
   ) {}
 
   async getStock(locationId: string, tenantId?: string) {
@@ -248,6 +250,23 @@ export class InventoryService {
     tenantId: string,
     userId: string,
   ) {
+    const featureFlags = await this.tenantsService.getFeatureFlags(tenantId);
+    const batchTrackingEnabled = featureFlags?.batchTracking === true;
+    const expiryTrackingEnabled = featureFlags?.expiryTracking === true;
+
+    const parsedExpiryDate = createDto.expiryDate ? new Date(createDto.expiryDate) : undefined;
+    if (createDto.expiryDate && Number.isNaN(parsedExpiryDate.getTime())) {
+      throw new BadRequestException('Invalid expiry date provided');
+    }
+
+    if (batchTrackingEnabled && !createDto.batchNumber) {
+      throw new BadRequestException('Batch number is required for batch-tracking tenants');
+    }
+
+    if (expiryTrackingEnabled && !parsedExpiryDate) {
+      throw new BadRequestException('Expiry date is required for expiry-tracking tenants');
+    }
+
     // Generate SKU if not provided
     const sku = createDto.sku || `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -304,6 +323,19 @@ export class InventoryService {
       notes: `Initial inventory entry - ${createDto.quantity} units`,
       ts: new Date(),
     });
+
+    if (createDto.batchNumber) {
+      await this.batchInventoryRepository.create({
+        tenantId,
+        productId: product.id,
+        locationId,
+        batchNumber: createDto.batchNumber,
+        expiryDate: parsedExpiryDate,
+        quantity: createDto.quantity,
+        unitCostCents: createDto.costCents,
+        receivedDate: new Date(),
+      });
+    }
 
     return {
       product,

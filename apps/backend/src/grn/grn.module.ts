@@ -5,9 +5,11 @@ import { GRNRepository } from './grn.repository';
 import { PurchaseOrdersModule } from '../purchase-orders/purchase-orders.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { BatchInventoryRepository } from '../inventory/batch-inventory.repository';
+import { TenantsModule } from '../tenants/tenants.module';
+import { LocationsModule } from '../locations/locations.module';
 
 @Module({
-  imports: [PurchaseOrdersModule, InventoryModule],
+  imports: [PurchaseOrdersModule, InventoryModule, TenantsModule, LocationsModule],
   controllers: [GRNController],
   providers: [GRNService, GRNRepository, BatchInventoryRepository],
   exports: [GRNService, GRNRepository],

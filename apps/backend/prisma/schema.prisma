@@ -2,6 +2,34 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model InventoryBatch {
+  id              String   @id @default(uuid())
+  tenantId        String
+  productId       String
+  locationId      String
+  batchNumber     String
+  expiryDate      DateTime?
+  quantity        Int
+  unitCostCents   Int?
+  receivedDate    DateTime  @default(now())
+  purchaseOrderId String?
+  grnId           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location      Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  grn           GRN?          @relation(fields: [grnId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([productId])
+  @@index([locationId])
+  @@index([batchNumber])
+  @@index([expiryDate])
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -87,6 +115,7 @@ model Tenant {
   purchaseOrders PurchaseOrder[]
   grns           GRN[]
   subscriptionPayments SubscriptionPayment[]
+  inventoryBatches InventoryBatch[]
 
   @@index([createdAt])
 }
@@ -138,6 +167,7 @@ model PurchaseOrder {
   location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   grns     GRN[]
+  inventoryBatches InventoryBatch[]
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId])
@@ -170,6 +200,7 @@ model GRN {
   location      Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   supplier      Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  inventoryBatches InventoryBatch[]
 
   @@index([tenantId])
   @@index([locationId])
@@ -274,6 +305,7 @@ model Product {
   category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   brand      Brand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
   inventory  Inventory[]
+  inventoryBatches InventoryBatch[]
   orderItems OrderItem[]
 
   @@unique([tenantId, sku])

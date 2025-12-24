@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  Min,
+  IsDateString,
+} from 'class-validator';
 
 export class CreateInventoryItemDto {
   @ApiProperty({ description: 'Product name', example: 'Bottled Water 500ml' })
@@ -63,4 +70,14 @@ export class CreateInventoryItemDto {
   @IsOptional()
   @IsString()
   brandName?: string;
+
+  @ApiProperty({ description: 'Batch number', required: false })
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
+
+  @ApiProperty({ description: 'Expiry date (ISO 8601)', required: false })
+  @IsOptional()
+  @IsDateString()
+  expiryDate?: string;
 }
