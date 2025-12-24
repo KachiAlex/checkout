@@ -7,6 +7,7 @@ import { BrandMark } from "../components/BrandMark";
 import { useThemeStore } from "../stores/themeStore";
 import { debugLog } from "../utils/debugLog";
 import { generateUUID } from "../utils/uuid";
+import { SEO } from "../components/SEO";
 
 type LoginVariant = "tenant" | "superadmin";
 
@@ -167,8 +168,24 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
     }
   };
 
+  const isSuperAdmin = variant === "superadmin";
+  const seoTitle = isSuperAdmin
+    ? "Checkout POS | Super Admin Console Login"
+    : "Checkout POS | Tenant Console Login";
+  const seoDescription = isSuperAdmin
+    ? "Access the Checkout POS platform console to manage tenants, billing, and rollouts."
+    : "Sign in to the Checkout POS console to run sales, manage inventory, and monitor performance.";
+  const seoPath = isSuperAdmin ? "/superadmin/login" : "/login";
+
   return (
-    <div className="theme-background relative flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-10 overflow-x-hidden w-full">
+    <>
+      <SEO
+        title={seoTitle}
+        description={seoDescription}
+        pathname={seoPath}
+        noindex
+      />
+      <div className="theme-background relative flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-10 overflow-x-hidden w-full">
       <div className="pointer-events-none absolute inset-0">
         <div
           className={`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${glowPrimary} blur-[180px]`}
@@ -354,6 +371,7 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

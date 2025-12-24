@@ -77,11 +77,16 @@ export class SuppliersRepository {
       }));
     }
 
-    const snapshot = await this.collection
-      .where('tenantId', '==', tenantId)
-      .orderBy('name', 'asc')
-      .get();
-    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
+    return snapshot.docs
+      .map((doc) => this.toRecord(doc.id, doc.data()))
+      .sort((a, b) => {
+        const nameA = a.name?.toLocaleLowerCase?.() ?? '';
+        const nameB = b.name?.toLocaleLowerCase?.() ?? '';
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+        return 0;
+      });
   }
 
   async findById(id: string, tenantId: string): Promise<SupplierRecord | null> {

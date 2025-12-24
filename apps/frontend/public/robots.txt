@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://checkout-77d99.web.app/sitemap.xml
+Host: checkout-77d99.web.app
