@@ -81,8 +81,8 @@ export class SuppliersRepository {
     return snapshot.docs
       .map((doc) => this.toRecord(doc.id, doc.data()))
       .sort((a, b) => {
-        const nameA = a.name?.toLocaleLowerCase?.() ?? '';
-        const nameB = b.name?.toLocaleLowerCase?.() ?? '';
+        const nameA = (a.name || '').toLocaleLowerCase?.() ?? '';
+        const nameB = (b.name || '').toLocaleLowerCase?.() ?? '';
         if (nameA < nameB) return -1;
         if (nameA > nameB) return 1;
         return 0;
