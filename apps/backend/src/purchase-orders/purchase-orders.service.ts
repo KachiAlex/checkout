@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   PurchaseOrdersRepository,
   PurchaseOrderRecord,
@@ -6,12 +6,14 @@ import {
   PurchaseOrderStatus,
 } from './purchase-orders.repository';
 import { SuppliersRepository } from '../suppliers/suppliers.repository';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class PurchaseOrdersService {
   constructor(
     private readonly purchaseOrdersRepository: PurchaseOrdersRepository,
     private readonly suppliersRepository: SuppliersRepository,
+    private readonly tenantsService: TenantsService,
   ) {}
 
   async findAll(tenantId: string, locationId?: string): Promise<PurchaseOrderRecord[]> {
@@ -33,9 +35,43 @@ export class PurchaseOrdersService {
       throw new Error(`Supplier with ID ${data.supplierId} not found`);
     }
 
+    const featureFlags = await this.tenantsService.getFeatureFlags(data.tenantId);
+    const batchTrackingEnabled = featureFlags?.batchTracking === true;
+    const expiryTrackingEnabled = featureFlags?.expiryTracking === true;
+
+    const normalizedItems = data.items.map((item, index) => {
+      if (batchTrackingEnabled && !item.batchNumber) {
+        throw new BadRequestException(
+          `Batch number is required for item ${item.productId || index + 1}`,
+        );
+      }
+
+      let parsedExpiry: Date | undefined;
+      if (item.expiryDate) {
+        parsedExpiry = item.expiryDate instanceof Date ? item.expiryDate : new Date(item.expiryDate);
+        if (Number.isNaN(parsedExpiry.getTime())) {
+          throw new BadRequestException(
+            `Invalid expiry date provided for item ${item.productId || index + 1}`,
+          );
+        }
+      }
+
+      if (expiryTrackingEnabled && !parsedExpiry) {
+        throw new BadRequestException(
+          `Expiry date is required for item ${item.productId || index + 1}`,
+        );
+      }
+
+      return {
+        ...item,
+        expiryDate: parsedExpiry ?? undefined,
+      };
+    });
+
     return this.purchaseOrdersRepository.create({
       ...data,
       supplierName: supplier.name,
+      items: normalizedItems,
     });
   }
 

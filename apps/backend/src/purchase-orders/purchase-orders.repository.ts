@@ -22,6 +22,8 @@ export interface PurchaseOrderItem {
   unitCostCents: number;
   totalCostCents: number;
   receivedQuantity?: number;
+  batchNumber?: string;
+  expiryDate?: Date | string;
 }
 
 export interface PurchaseOrderRecord {
@@ -114,7 +116,10 @@ export class PurchaseOrdersRepository {
         supplierName: row.supplierName,
         orderNumber: row.orderNumber,
         status: this.fromPrismaStatus(row.status),
-        items: (row.items as any) ?? [],
+        items: ((row.items as any) ?? []).map((item: any) => ({
+          ...item,
+          expiryDate: item?.expiryDate ? new Date(item.expiryDate) : undefined,
+        })),
         subtotalCents: row.subtotalCents,
         taxCents: row.taxCents,
         totalCents: row.totalCents,
@@ -240,7 +245,10 @@ export class PurchaseOrdersRepository {
           supplierName: data.supplierName,
           orderNumber,
           status: PrismaPurchaseOrderStatus.DRAFT,
-          items: data.items as any,
+          items: data.items.map((item) => ({
+            ...item,
+            expiryDate: item.expiryDate ?? undefined,
+          })) as any,
           subtotalCents: data.subtotalCents,
           taxCents: data.taxCents,
           totalCents: data.totalCents,
@@ -284,7 +292,16 @@ export class PurchaseOrdersRepository {
       supplierName: data.supplierName,
       orderNumber,
       status: PurchaseOrderStatus.DRAFT,
-      items: data.items,
+      items: data.items?.map((item) => ({
+        ...item,
+        expiryDate: item.expiryDate
+          ? item.expiryDate instanceof Timestamp
+            ? item.expiryDate.toDate()
+            : typeof item.expiryDate === 'string'
+              ? new Date(item.expiryDate)
+              : undefined
+          : undefined,
+      })),
       subtotalCents: data.subtotalCents,
       taxCents: data.taxCents,
       totalCents: data.totalCents,

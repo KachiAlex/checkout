@@ -18,6 +18,7 @@ import {
   SubscriptionPaymentsRepository,
   SubscriptionPaymentRecord,
 } from './subscription-payments.repository';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class PlatformService {
@@ -27,6 +28,7 @@ export class PlatformService {
     private readonly usersRepository: UsersRepository,
     private readonly configService: ConfigService,
     private readonly subscriptionPaymentsRepository: SubscriptionPaymentsRepository,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -141,12 +143,15 @@ export class PlatformService {
           });
 
           const checkoutUrl = (paymentResult.processor_data as any)?.checkout_url;
-          await this.subscriptionPaymentsRepository.update(paymentId, {
+          const updatedPayment = await this.subscriptionPaymentsRepository.update(paymentId, {
             status: paymentResult.status,
             transactionId: paymentResult.transaction_id,
             checkoutUrl,
             processorData: paymentResult.processor_data,
           });
+          if (updatedPayment.status === PaymentStatus.COMPLETED) {
+            await this.sendSubscriptionReceipt(updatedPayment);
+          }
 
           if (checkoutUrl) {
             return {
@@ -216,10 +221,11 @@ export class PlatformService {
           // Payment completed, activate subscription if not already done
           if (payment.status === PaymentStatus.PROCESSING) {
             await this.activateSubscription(payment);
-            await this.subscriptionPaymentsRepository.update(paymentId, {
+            const updatedPayment = await this.subscriptionPaymentsRepository.update(paymentId, {
               status: PaymentStatus.COMPLETED,
               paidAt: new Date(),
             });
+            await this.sendSubscriptionReceipt(updatedPayment);
           }
         } else if (status === PaymentStatus.FAILED) {
           await this.subscriptionPaymentsRepository.update(paymentId, {
@@ -267,10 +273,11 @@ export class PlatformService {
       if (status === 'successful' && payment.status !== PaymentStatus.COMPLETED) {
         // Activate subscription
         await this.activateSubscription(payment);
-        await this.subscriptionPaymentsRepository.update(payment.id, {
+        const updatedPayment = await this.subscriptionPaymentsRepository.update(payment.id, {
           status: PaymentStatus.COMPLETED,
           paidAt: new Date(),
         });
+        await this.sendSubscriptionReceipt(updatedPayment);
       }
     }
 
@@ -344,5 +351,72 @@ export class PlatformService {
     };
 
     return pricing[plan] || pricing[TenantPlan.FREE];
+  }
+
+  private async sendSubscriptionReceipt(payment: SubscriptionPaymentRecord): Promise<void> {
+    try {
+      const tenant = await this.tenantsRepository.findById(payment.tenantId);
+      const metadataAdminEmail =
+        typeof payment.metadata === 'object' && payment.metadata
+          ? (payment.metadata as Record<string, any>).adminEmail
+          : undefined;
+      const recipient = tenant?.contactEmail || metadataAdminEmail;
+      if (!recipient) {
+        return;
+      }
+
+      const amount = (payment.amountCents / 100).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const paidAt = (payment.paidAt ?? new Date()).toLocaleString();
+      const subject = `Payment receipt - ${tenant?.name ?? 'POS Checkout'} (${payment.plan})`;
+      const bodyLines = [
+        `Hello ${tenant?.name ?? 'there'},`,
+        '',
+        'Thanks for subscribing to Checkout!',
+        '',
+        `Plan: ${payment.plan}`,
+        `Amount: ${payment.currency || 'NGN'} ${amount}`,
+        `Payment ID: ${payment.id}`,
+        `Transaction ID: ${payment.transactionId ?? 'N/A'}`,
+        `Paid at: ${paidAt}`,
+        '',
+        'You now have full access to the selected plan. If you have any questions, please reply to this email.',
+        '',
+        '— Checkout Platform Team',
+      ];
+
+      const html = `
+        <p>Hello ${tenant?.name ?? 'there'},</p>
+        <p>Thanks for subscribing to Checkout!</p>
+        <table style="border-collapse:collapse;">
+          <tr><td style="padding:4px 8px;"><strong>Plan</strong></td><td style="padding:4px 8px;">${payment.plan}</td></tr>
+          <tr><td style="padding:4px 8px;"><strong>Amount</strong></td><td style="padding:4px 8px;">${
+            payment.currency || 'NGN'
+          } ${amount}</td></tr>
+          <tr><td style="padding:4px 8px;"><strong>Payment ID</strong></td><td style="padding:4px 8px;">${
+            payment.id
+          }</td></tr>
+          ${
+            payment.transactionId
+              ? `<tr><td style="padding:4px 8px;"><strong>Transaction ID</strong></td><td style="padding:4px 8px;">${payment.transactionId}</td></tr>`
+              : ''
+          }
+          <tr><td style="padding:4px 8px;"><strong>Paid at</strong></td><td style="padding:4px 8px;">${paidAt}</td></tr>
+        </table>
+        <p>You now have full access to the selected plan. If you have any questions, please reply to this email.</p>
+        <p>— Checkout Platform Team</p>
+      `;
+
+      await this.emailService.sendEmail({
+        to: recipient,
+        subject,
+        text: bodyLines.join('\n'),
+        html,
+      });
+    } catch (error) {
+      console.error('Failed to send subscription receipt email:', error);
+    }
   }
 }

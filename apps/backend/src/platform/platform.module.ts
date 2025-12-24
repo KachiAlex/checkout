@@ -6,9 +6,10 @@ import { UsersModule } from '../users/users.module';
 import { SubscriptionPaymentsRepository } from './subscription-payments.repository';
 import { PlatformAnalyticsService } from './platform-analytics.service';
 import { PlatformAnalyticsController } from './platform-analytics.controller';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [TenantsModule, UsersModule],
+  imports: [TenantsModule, UsersModule, EmailModule],
   controllers: [PlatformController, PlatformAnalyticsController],
   providers: [PlatformService, PlatformAnalyticsService, SubscriptionPaymentsRepository],
   exports: [PlatformService, PlatformAnalyticsService, SubscriptionPaymentsRepository],

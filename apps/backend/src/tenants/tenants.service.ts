@@ -4,7 +4,13 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantsRepository, TenantRecord } from './tenants.repository';
 import { UsersRepository } from '../users/users.repository';
-import { TenantPlan, TenantStatus, UserRole, Industry } from '@pos-checkout/shared';
+import {
+  TenantPlan,
+  TenantStatus,
+  UserRole,
+  Industry,
+  IndustryFeatureFlags,
+} from '@pos-checkout/shared';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { ResetTenantAdminPinDto } from './dto/reset-tenant-admin-pin.dto';
 import { SuspendTenantDto } from './dto/suspend-tenant.dto';
@@ -246,5 +252,11 @@ export class TenantsService {
       tenantId: id,
       removedUsers,
     };
+  }
+
+  async getFeatureFlags(tenantId: string): Promise<IndustryFeatureFlags> {
+    const tenant = await this.findById(tenantId);
+    const industry = (tenant.industry as Industry) ?? Industry.GENERAL;
+    return this.industryFeaturesService.mergeFeatureFlags(industry, tenant.featureFlags);
   }
 }

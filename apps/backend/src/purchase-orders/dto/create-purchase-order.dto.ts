@@ -41,6 +41,16 @@ export class PurchaseOrderItemDto {
   @IsNumber()
   @Min(0)
   totalCostCents: number;
+
+  @ApiProperty({ description: 'Batch number', required: false })
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
+
+  @ApiProperty({ description: 'Expiry date (ISO 8601)', required: false })
+  @IsOptional()
+  @IsDateString()
+  expiryDate?: string;
 }
 
 export class CreatePurchaseOrderDto {
