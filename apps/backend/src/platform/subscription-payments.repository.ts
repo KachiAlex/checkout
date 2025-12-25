@@ -186,9 +186,7 @@ export class SubscriptionPaymentsRepository {
             : filter.tenantId
               ? filter.tenantId
               : undefined,
-          status: filter.status
-            ? (filter.status as Prisma.SubscriptionPaymentUncheckedCreateInput['status'])
-            : undefined,
+          status: filter.status ? this.toPrismaStatus(filter.status) : undefined,
           paidAt:
             filter.from || filter.to
               ? {
@@ -238,11 +236,10 @@ export class SubscriptionPaymentsRepository {
       id: data.id,
       tenantId: data.tenantId,
       tenantSlug: data.tenantSlug,
-      plan: data.plan as Prisma.SubscriptionPaymentUncheckedCreateInput['plan'],
+      plan: this.toPrismaPlan(data.plan),
       amountCents: data.amountCents,
       currency: data.currency ?? 'NGN',
-      status: (data.status ??
-        PaymentStatus.PROCESSING) as Prisma.SubscriptionPaymentUncheckedCreateInput['status'],
+      status: this.toPrismaStatus(data.status ?? PaymentStatus.PROCESSING),
       transactionId: data.transactionId ?? undefined,
       checkoutUrl: data.checkoutUrl ?? undefined,
       processorData: this.toJsonValue(data.processorData),
@@ -257,7 +254,7 @@ export class SubscriptionPaymentsRepository {
     const payload: Prisma.SubscriptionPaymentUncheckedUpdateInput = {};
 
     if (update.status !== undefined) {
-      payload.status = update.status as Prisma.SubscriptionPaymentUncheckedUpdateInput['status'];
+      payload.status = this.toPrismaStatus(update.status);
     }
     if (update.transactionId !== undefined) {
       payload.transactionId = update.transactionId;
@@ -280,6 +277,16 @@ export class SubscriptionPaymentsRepository {
 
   private toJsonValue(value?: Record<string, unknown>): Prisma.JsonValue | undefined {
     return value === undefined ? undefined : (value as Prisma.JsonValue);
+  }
+
+  private toPrismaPlan(plan: TenantPlan): Prisma.SubscriptionPaymentUncheckedCreateInput['plan'] {
+    return String(plan || '').toUpperCase() as Prisma.SubscriptionPaymentUncheckedCreateInput['plan'];
+  }
+
+  private toPrismaStatus(
+    status: PaymentStatus,
+  ): Prisma.SubscriptionPaymentUncheckedCreateInput['status'] {
+    return String(status || '').toUpperCase() as Prisma.SubscriptionPaymentUncheckedCreateInput['status'];
   }
 
   private toRecord(data: any): SubscriptionPaymentRecord {
