@@ -3,6 +3,7 @@ import { FieldValue, Timestamp, Query } from 'firebase-admin/firestore';
 import { PaymentStatus, TenantPlan } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 import { PrismaService } from '../database/prisma.service';
+import { Prisma } from '@prisma/client';
 
 export interface SubscriptionPaymentRecord {
   id: string;
@@ -92,11 +93,7 @@ export class SubscriptionPaymentsRepository {
 
     if (this.isPostgresEnabled()) {
       const row = await this.prismaService.prisma.subscriptionPayment.create({
-        data: {
-          id: data.id,
-          ...payload,
-          paidAt: payload.paidAt ?? undefined,
-        },
+        data: this.toPrismaCreateInput(data),
       });
       return this.toRecord(row);
     }
@@ -120,14 +117,7 @@ export class SubscriptionPaymentsRepository {
     if (this.isPostgresEnabled()) {
       const row = await this.prismaService.prisma.subscriptionPayment.update({
         where: { id },
-        data: {
-          status: update.status,
-          transactionId: update.transactionId ?? undefined,
-          checkoutUrl: update.checkoutUrl ?? undefined,
-          processorData: update.processorData,
-          metadata: update.metadata,
-          paidAt: update.paidAt ?? undefined,
-        },
+        data: this.toPrismaUpdateInput(update),
       });
       return this.toRecord(row);
     }
@@ -196,7 +186,7 @@ export class SubscriptionPaymentsRepository {
             : filter.tenantId
               ? filter.tenantId
               : undefined,
-          status: filter.status,
+          status: filter.status ? (filter.status as Prisma.PaymentStatus) : undefined,
           paidAt:
             filter.from || filter.to
               ? {
@@ -237,6 +227,56 @@ export class SubscriptionPaymentsRepository {
       }
       return true;
     });
+  }
+
+  private toPrismaCreateInput(
+    data: CreateSubscriptionPaymentInput,
+  ): Prisma.SubscriptionPaymentUncheckedCreateInput {
+    return {
+      id: data.id,
+      tenantId: data.tenantId,
+      tenantSlug: data.tenantSlug,
+      plan: data.plan as Prisma.TenantPlan,
+      amountCents: data.amountCents,
+      currency: data.currency ?? 'NGN',
+      status: (data.status ?? PaymentStatus.PROCESSING) as Prisma.PaymentStatus,
+      transactionId: data.transactionId ?? undefined,
+      checkoutUrl: data.checkoutUrl ?? undefined,
+      processorData: this.toJsonValue(data.processorData),
+      metadata: this.toJsonValue(data.metadata),
+      paidAt: data.paidAt ?? undefined,
+    };
+  }
+
+  private toPrismaUpdateInput(
+    update: UpdateSubscriptionPaymentInput,
+  ): Prisma.SubscriptionPaymentUncheckedUpdateInput {
+    const payload: Prisma.SubscriptionPaymentUncheckedUpdateInput = {};
+
+    if (update.status !== undefined) {
+      payload.status = update.status as Prisma.PaymentStatus;
+    }
+    if (update.transactionId !== undefined) {
+      payload.transactionId = update.transactionId;
+    }
+    if (update.checkoutUrl !== undefined) {
+      payload.checkoutUrl = update.checkoutUrl;
+    }
+    if (update.processorData !== undefined) {
+      payload.processorData = this.toJsonValue(update.processorData);
+    }
+    if (update.metadata !== undefined) {
+      payload.metadata = this.toJsonValue(update.metadata);
+    }
+    if (update.paidAt !== undefined) {
+      payload.paidAt = update.paidAt ?? null;
+    }
+
+    return payload;
+  }
+
+  private toJsonValue(value?: Record<string, unknown>): Prisma.JsonValue | undefined {
+    return value === undefined ? undefined : (value as Prisma.JsonValue);
   }
 
   private toRecord(data: any): SubscriptionPaymentRecord {
