@@ -3,7 +3,7 @@ generator client {
 }
 
 model InventoryBatch {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   tenantId        String
   productId       String
   locationId      String
@@ -17,11 +17,11 @@ model InventoryBatch {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  location      Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location      Location       @relation(fields: [locationId], references: [id], onDelete: Cascade)
   purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
-  grn           GRN?          @relation(fields: [grnId], references: [id], onDelete: SetNull)
+  grn           GRN?           @relation(fields: [grnId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([productId])
@@ -105,17 +105,17 @@ model Tenant {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  users          User[]
-  brands         Brand[]
-  categories     Category[]
-  locations      Location[]
-  products       Product[]
-  orders         Order[]
-  suppliers      Supplier[]
-  purchaseOrders PurchaseOrder[]
-  grns           GRN[]
+  users                User[]
+  brands               Brand[]
+  categories           Category[]
+  locations            Location[]
+  products             Product[]
+  orders               Order[]
+  suppliers            Supplier[]
+  purchaseOrders       PurchaseOrder[]
+  grns                 GRN[]
   subscriptionPayments SubscriptionPayment[]
-  inventoryBatches InventoryBatch[]
+  inventoryBatches     InventoryBatch[]
 
   @@index([createdAt])
 }
@@ -163,10 +163,10 @@ model PurchaseOrder {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  grns     GRN[]
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location         Location         @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  supplier         Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  grns             GRN[]
   inventoryBatches InventoryBatch[]
 
   @@unique([tenantId, orderNumber])
@@ -196,10 +196,10 @@ model GRN {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  location      Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  supplier      Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location         Location         @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  purchaseOrder    PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supplier         Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   inventoryBatches InventoryBatch[]
 
   @@index([tenantId])
@@ -272,11 +272,12 @@ model Location {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant         Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
-  inventory      Inventory[]
-  orders         Order[]
-  purchaseOrders PurchaseOrder[]
-  grns           GRN[]
+  tenant           Tenant?          @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  inventory        Inventory[]
+  inventoryBatches InventoryBatch[]
+  orders           Order[]
+  purchaseOrders   PurchaseOrder[]
+  grns             GRN[]
 
   @@index([tenantId])
 }
@@ -301,12 +302,12 @@ model Product {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brand      Brand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  inventory  Inventory[]
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand            Brand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  inventory        Inventory[]
   inventoryBatches InventoryBatch[]
-  orderItems OrderItem[]
+  orderItems       OrderItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -401,20 +402,20 @@ model SubscriptionPricing {
 }
 
 model SubscriptionPayment {
-  id             String         @id @default(uuid())
-  tenantId       String
-  tenantSlug     String
-  plan           TenantPlan
-  amountCents    Int
-  currency       String         @default("NGN")
-  status         PaymentStatus
-  transactionId  String?
-  checkoutUrl    String?
-  processorData  Json?
-  metadata       Json?
-  paidAt         DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id            String        @id @default(uuid())
+  tenantId      String
+  tenantSlug    String
+  plan          TenantPlan
+  amountCents   Int
+  currency      String        @default("NGN")
+  status        PaymentStatus
+  transactionId String?
+  checkoutUrl   String?
+  processorData Json?
+  metadata      Json?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
