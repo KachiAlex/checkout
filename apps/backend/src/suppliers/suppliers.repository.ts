@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { FirestoreService } from '../firestore/firestore.service';
@@ -43,6 +43,7 @@ export type CreateSupplierInput = {
 @Injectable()
 export class SuppliersRepository {
   private readonly collection = this.firestore.collection<SupplierDocument>('suppliers');
+  private readonly logger = new Logger(SuppliersRepository.name);
 
   constructor(
     private readonly firestore: FirestoreService,
@@ -50,43 +51,59 @@ export class SuppliersRepository {
   ) {}
 
   private isPostgresEnabled(): boolean {
-    return (process.env.DB_PROVIDER || '').toLowerCase() === 'postgres';
+    const provider = (process.env.DB_PROVIDER || '').toLowerCase();
+
+    if (provider) {
+      return provider === 'postgres';
+    }
+
+    // Default to Firestore when DB_PROVIDER is not explicitly set.
+    return false;
   }
 
   async findAll(tenantId: string): Promise<SupplierRecord[]> {
-    if (this.isPostgresEnabled()) {
-      const rows = await this.prismaService.prisma.supplier.findMany({
-        where: { tenantId },
-        orderBy: { name: 'asc' },
-      });
+    try {
+      if (this.isPostgresEnabled()) {
+        const rows = await this.prismaService.prisma.supplier.findMany({
+          where: { tenantId },
+          orderBy: { name: 'asc' },
+        });
 
-      return rows.map((row) => ({
-        id: row.id,
-        tenantId: row.tenantId,
-        name: row.name,
-        contactName: row.contactName ?? undefined,
-        email: row.email ?? undefined,
-        phone: row.phone ?? undefined,
-        address: row.address ?? undefined,
-        taxId: row.taxId ?? undefined,
-        paymentTerms: row.paymentTerms ?? undefined,
-        notes: row.notes ?? undefined,
-        active: row.active,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      }));
+        return rows.map((row) => ({
+          id: row.id,
+          tenantId: row.tenantId,
+          name: row.name,
+          contactName: row.contactName ?? undefined,
+          email: row.email ?? undefined,
+          phone: row.phone ?? undefined,
+          address: row.address ?? undefined,
+          taxId: row.taxId ?? undefined,
+          paymentTerms: row.paymentTerms ?? undefined,
+          notes: row.notes ?? undefined,
+          active: row.active,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        }));
+      }
+
+      const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
+      const normalizeName = (value: unknown) => String(value ?? '').toLocaleLowerCase();
+
+      return snapshot.docs
+        .map((doc) => this.toRecord(doc.id, doc.data()))
+        .sort((a, b) => {
+          const nameA = normalizeName(a.name);
+          const nameB = normalizeName(b.name);
+          if (nameA < nameB) return -1;
+          if (nameA > nameB) return 1;
+          return 0;
+        });
+    } catch (error) {
+      this.logger.error(
+        `Failed to load suppliers for tenant ${tenantId}: ${error instanceof Error ? error.message : error}`,
+      );
+      throw error;
     }
-
-    const snapshot = await this.collection.where('tenantId', '==', tenantId).get();
-    return snapshot.docs
-      .map((doc) => this.toRecord(doc.id, doc.data()))
-      .sort((a, b) => {
-        const nameA = (a.name || '').toLocaleLowerCase?.() ?? '';
-        const nameB = (b.name || '').toLocaleLowerCase?.() ?? '';
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        return 0;
-      });
   }
 
   async findById(id: string, tenantId: string): Promise<SupplierRecord | null> {
