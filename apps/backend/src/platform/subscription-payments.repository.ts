@@ -186,7 +186,9 @@ export class SubscriptionPaymentsRepository {
             : filter.tenantId
               ? filter.tenantId
               : undefined,
-          status: filter.status ? (filter.status as Prisma.PaymentStatus) : undefined,
+          status: filter.status
+            ? (filter.status as Prisma.SubscriptionPaymentUncheckedCreateInput['status'])
+            : undefined,
           paidAt:
             filter.from || filter.to
               ? {
@@ -236,10 +238,11 @@ export class SubscriptionPaymentsRepository {
       id: data.id,
       tenantId: data.tenantId,
       tenantSlug: data.tenantSlug,
-      plan: data.plan as Prisma.TenantPlan,
+      plan: data.plan as Prisma.SubscriptionPaymentUncheckedCreateInput['plan'],
       amountCents: data.amountCents,
       currency: data.currency ?? 'NGN',
-      status: (data.status ?? PaymentStatus.PROCESSING) as Prisma.PaymentStatus,
+      status: (data.status ??
+        PaymentStatus.PROCESSING) as Prisma.SubscriptionPaymentUncheckedCreateInput['status'],
       transactionId: data.transactionId ?? undefined,
       checkoutUrl: data.checkoutUrl ?? undefined,
       processorData: this.toJsonValue(data.processorData),
@@ -254,7 +257,7 @@ export class SubscriptionPaymentsRepository {
     const payload: Prisma.SubscriptionPaymentUncheckedUpdateInput = {};
 
     if (update.status !== undefined) {
-      payload.status = update.status as Prisma.PaymentStatus;
+      payload.status = update.status as Prisma.SubscriptionPaymentUncheckedUpdateInput['status'];
     }
     if (update.transactionId !== undefined) {
       payload.transactionId = update.transactionId;
