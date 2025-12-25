@@ -60,6 +60,7 @@ export function PurchaseOrdersPage() {
   const { logout, accessToken, user } = useAuthStore();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [deletingSupplierId, setDeletingSupplierId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -129,6 +130,27 @@ export function PurchaseOrdersPage() {
       setSuppliers(response.data || []);
     } catch (error: any) {
       console.error("Failed to load suppliers:", error);
+    }
+  };
+
+  const handleDeleteSupplier = async (supplierId: string) => {
+    if (!accessToken) return;
+    if (!confirm("Remove this supplier? They will no longer appear in the dropdown.")) return;
+    setDeletingSupplierId(supplierId);
+    try {
+      await axios.delete(`${API_URL}/api/v1/suppliers/${supplierId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      toast.success("Supplier removed");
+      setSuppliers((prev) => prev.filter((supplier) => supplier.id !== supplierId));
+      if (formData.supplierId === supplierId) {
+        setFormData({ ...formData, supplierId: "" });
+      }
+    } catch (error: any) {
+      console.error("Failed to delete supplier:", error);
+      toast.error(error.response?.data?.message || "Failed to remove supplier");
+    } finally {
+      setDeletingSupplierId(null);
     }
   };
 
@@ -514,6 +536,35 @@ export function PurchaseOrdersPage() {
                     >
                       ➕ New
                     </button>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-2">
+                    <span className="text-xs uppercase tracking-wide text-white/60">
+                      Suppliers
+                    </span>
+                    <div className="max-h-32 overflow-y-auto rounded-xl border border-white/10 p-2 space-y-1">
+                      {suppliers.length === 0 ? (
+                        <p className="text-xs text-white/40">No suppliers yet</p>
+                      ) : (
+                        suppliers.map((supplier) => (
+                          <div
+                            key={supplier.id}
+                            className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5 text-sm text-white/80"
+                          >
+                            <span className="truncate">{supplier.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSupplier(supplier.id)}
+                              disabled={deletingSupplierId === supplier.id}
+                              className="ml-3 text-xs text-red-400 hover:text-red-200 disabled:opacity-50"
+                              title="Remove supplier"
+                            >
+                              {deletingSupplierId === supplier.id ? "..." : "✕"}
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
 
                   {/* Inline Supplier Creation Form */}

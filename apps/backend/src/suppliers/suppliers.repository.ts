@@ -65,7 +65,7 @@ export class SuppliersRepository {
     try {
       if (this.isPostgresEnabled()) {
         const rows = await this.prismaService.prisma.supplier.findMany({
-          where: { tenantId },
+          where: { tenantId, active: true },
           orderBy: { name: 'asc' },
         });
 
@@ -91,6 +91,7 @@ export class SuppliersRepository {
 
       return snapshot.docs
         .map((doc) => this.toRecord(doc.id, doc.data()))
+        .filter((supplier) => supplier.active !== false)
         .sort((a, b) => {
           const nameA = normalizeName(a.name);
           const nameB = normalizeName(b.name);
@@ -269,6 +270,33 @@ export class SuppliersRepository {
 
     const updated = await docRef.get();
     return this.toRecord(updated.id, updated.data() as SupplierDocument);
+  }
+
+  async delete(id: string, tenantId: string): Promise<void> {
+    if (this.isPostgresEnabled()) {
+      const existing = await this.prismaService.prisma.supplier.findUnique({ where: { id } });
+      if (!existing || existing.tenantId !== tenantId) {
+        throw new Error(`Supplier ${id} not found for tenant ${tenantId}`);
+      }
+      await this.prismaService.prisma.supplier.update({
+        where: { id },
+        data: { active: false },
+      });
+      return;
+    }
+
+    const docRef = this.collection.doc(id);
+    const existing = await docRef.get();
+    if (!existing.exists || (existing.data()?.tenantId as string) !== tenantId) {
+      throw new Error(`Supplier ${id} not found for tenant ${tenantId}`);
+    }
+    await docRef.set(
+      {
+        active: false,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
   }
 
   private toRecord(id: string, data: SupplierDocument | undefined): SupplierRecord {

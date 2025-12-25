@@ -28,4 +28,8 @@ export class SuppliersService {
   ): Promise<SupplierRecord> {
     return this.suppliersRepository.update(id, tenantId, update);
   }
+
+  async delete(id: string, tenantId: string): Promise<void> {
+    await this.suppliersRepository.delete(id, tenantId);
+  }
 }
