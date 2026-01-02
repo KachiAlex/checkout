@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { OrderStatus, InventoryTransactionType, PaymentStatus } from '@pos-checkout/shared';
 import { OrdersRepository } from '../orders/orders.repository';
 import { InventoryRepository } from '../inventory/inventory.repository';
@@ -12,6 +12,8 @@ import { LocationsRepository } from '../locations/locations.repository';
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly inventoryRepository: InventoryRepository,
@@ -930,28 +932,30 @@ export class ReportsService {
   // ========== PHASE 1: SMART ALERTS SYSTEM ==========
   async getAlerts(locationId?: string, tenantId?: string) {
     const now = new Date();
-    const alerts: Array<{
-      type: 'stockout' | 'low_sales' | 'customer_inactive' | 'staff_performance' | 'low_stock';
-      severity: 'critical' | 'warning' | 'info';
-      title: string;
-      message: string;
-      productId?: string;
-      productName?: string;
-      customerId?: string;
-      customerName?: string;
-      staffId?: string;
-      staffName?: string;
-      daysUntilStockout?: number;
-      currentStock?: number;
-      predictedStockoutDate?: string;
-      salesDropPercent?: number;
-      daysSinceLastPurchase?: number;
-      performanceGap?: number;
-    }> = [];
 
-    if (!locationId) {
-      return { alerts: [], locationId, generatedAt: now.toISOString() };
-    }
+    try {
+      const alerts: Array<{
+        type: 'stockout' | 'low_sales' | 'customer_inactive' | 'staff_performance' | 'low_stock';
+        severity: 'critical' | 'warning' | 'info';
+        title: string;
+        message: string;
+        productId?: string;
+        productName?: string;
+        customerId?: string;
+        customerName?: string;
+        staffId?: string;
+        staffName?: string;
+        daysUntilStockout?: number;
+        currentStock?: number;
+        predictedStockoutDate?: string;
+        salesDropPercent?: number;
+        daysSinceLastPurchase?: number;
+        performanceGap?: number;
+      }> = [];
+
+      if (!locationId) {
+        return { alerts: [], locationId, generatedAt: now.toISOString() };
+      }
 
     // Parallelize independent queries for better performance
     const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -1186,14 +1190,31 @@ export class ReportsService {
     const severityOrder = { critical: 0, warning: 1, info: 2 };
     alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
-    return {
-      alerts,
-      locationId,
-      generatedAt: now.toISOString(),
-      totalAlerts: alerts.length,
-      criticalCount: alerts.filter((a) => a.severity === 'critical').length,
-      warningCount: alerts.filter((a) => a.severity === 'warning').length,
-    };
+      return {
+        alerts,
+        locationId,
+        generatedAt: now.toISOString(),
+        totalAlerts: alerts.length,
+        criticalCount: alerts.filter((a) => a.severity === 'critical').length,
+        warningCount: alerts.filter((a) => a.severity === 'warning').length,
+      };
+    } catch (error) {
+      this.logger.error(
+        `getAlerts failed for locationId=${locationId}, tenantId=${tenantId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      return {
+        alerts: [],
+        locationId,
+        generatedAt: now.toISOString(),
+        totalAlerts: 0,
+        criticalCount: 0,
+        warningCount: 0,
+      };
+    }
   }
 
   // ========== PHASE 1: FRAUD DETECTION MODULE ==========
