@@ -1,3 +1,6 @@
+type AuthenticatedRequest = Request & {
+  user?: JwtPayload & { locationId?: string };
+};
 import {
   Controller,
   Get,
@@ -8,18 +11,21 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
+  Req,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { InventoryService } from './inventory.service';
 import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { UpdateInventoryPricesDto } from './dto/update-inventory-prices.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { LocationsRepository } from '../locations/locations.repository';
 
 @ApiTags('inventory')
@@ -36,12 +42,8 @@ export class InventoryController {
   @ApiOperation({ summary: 'Get inventory stock for a location' })
   @ApiResponse({ status: 200, description: 'Inventory stock list' })
   @ApiResponse({ status: 403, description: 'Access denied to this location' })
-  async getStock(@Param('location_id') locationId: string, @Request() req: any) {
-    if (!req.user || !req.user.tenantId) {
-      throw new BadRequestException('User or tenantId not found in request');
-    }
-
-    const tenantId = req.user.tenantId;
+  async getStock(@Param('location_id') locationId: string, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
 
     // Verify location belongs to tenant
     const location = await this.locationsRepository.findById(locationId);
@@ -63,9 +65,9 @@ export class InventoryController {
   async getBatchInventory(
     @Param('location_id') locationId: string,
     @Param('product_id') productId: string,
-    @Request() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
-    const tenantId = req.user?.tenantId;
+    const tenantId = this.getTenantId(req);
 
     // Verify location belongs to tenant
     const location = await this.locationsRepository.findById(locationId);
@@ -83,13 +85,9 @@ export class InventoryController {
   @Post('adjust')
   @ApiOperation({ summary: 'Adjust inventory quantity' })
   @ApiResponse({ status: 201, description: 'Inventory adjusted' })
-  async adjust(@Body() adjustDto: AdjustInventoryDto, @Request() req: any) {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.sub || req.user?.id;
-
-    if (!tenantId || !userId) {
-      throw new BadRequestException('Missing required user information (tenantId or userId)');
-    }
+  async adjust(@Body() adjustDto: AdjustInventoryDto, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
+    const userId = this.getUserId(req);
 
     // Build clean DTO with only required fields and valid optional fields
     const cleanDto: any = {
@@ -149,11 +147,11 @@ export class InventoryController {
   @ApiResponse({ status: 403, description: 'Access denied to this location' })
   async getTransactions(
     @Param('location_id') locationId: string,
-    @Request() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    const tenantId = req.user?.tenantId;
+    const tenantId = this.getTenantId(req);
 
     // Verify location belongs to tenant
     const location = await this.locationsRepository.findById(locationId);
@@ -171,15 +169,10 @@ export class InventoryController {
   @Post('create-item')
   @ApiOperation({ summary: 'Create product and inventory in one operation' })
   @ApiResponse({ status: 201, description: 'Product and inventory created' })
-  async createInventoryItem(@Body() createDto: CreateInventoryItemDto, @Request() req: any) {
-    // Extract user info from JWT payload (sub is the user ID)
-    const userId = req.user?.sub || req.user?.id;
-    const tenantId = req.user?.tenantId;
+  async createInventoryItem(@Body() createDto: CreateInventoryItemDto, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
+    const userId = this.getUserId(req);
     let locationId = req.user?.locationId;
-
-    if (!tenantId || !userId) {
-      throw new BadRequestException('Missing required user information (tenantId or userId)');
-    }
 
     // For platform admins or users without locationId, get the first location for the tenant
     if (!locationId) {
@@ -220,8 +213,11 @@ export class InventoryController {
   @Put('prices')
   @ApiOperation({ summary: 'Update inventory cost and sales prices' })
   @ApiResponse({ status: 200, description: 'Inventory prices updated' })
-  async updateInventoryPrices(@Body() updateDto: UpdateInventoryPricesDto, @Request() req: any) {
-    const tenantId = req.user?.tenantId;
+  async updateInventoryPrices(
+    @Body() updateDto: UpdateInventoryPricesDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const tenantId = this.getTenantId(req);
     let locationId = updateDto.locationId || req.user?.locationId;
 
     if (!locationId) {
@@ -247,8 +243,11 @@ export class InventoryController {
     summary: 'Update inventory item (quantity, reorder point, cost and sales prices)',
   })
   @ApiResponse({ status: 200, description: 'Inventory item updated' })
-  async updateInventoryItem(@Body() updateDto: UpdateInventoryItemDto, @Request() req: any) {
-    const tenantId = req.user?.tenantId;
+  async updateInventoryItem(
+    @Body() updateDto: UpdateInventoryItemDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const tenantId = this.getTenantId(req);
     let locationId = updateDto.locationId || req.user?.locationId;
 
     if (!locationId) {
@@ -269,5 +268,21 @@ export class InventoryController {
       updateDto.costCents,
       updateDto.salesPriceCents,
     );
+  }
+
+  private getTenantId(req: AuthenticatedRequest): string {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context missing');
+    }
+    return tenantId;
+  }
+
+  private getUserId(req: AuthenticatedRequest): string {
+    const userId = req.user?.sub ?? req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User context missing');
+    }
+    return userId;
   }
 }

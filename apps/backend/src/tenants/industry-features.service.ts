@@ -103,7 +103,10 @@ export class IndustryFeaturesService {
   getIndustryFeatures(industry: Industry): string[] {
     const flags = this.getDefaultFeatureFlags(industry);
     return Object.entries(flags)
-      .filter(([_, enabled]) => enabled === true)
+      .filter(([featureName, enabled]) => {
+        void featureName;
+        return enabled === true;
+      })
       .map(([feature]) => feature);
   }
 }

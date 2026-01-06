@@ -1,13 +1,14 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
+  Req,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
-  BadRequestException,
-  Request,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import {
@@ -20,6 +21,15 @@ import {
 } from '@nestjs/swagger';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+type UploadRequest = Request & {
+  user?: { tenantId?: string };
+  body?: {
+    folder?: string;
+    tenantId?: string;
+    [key: string]: unknown;
+  };
+};
 
 @ApiTags('upload')
 @Controller('upload')
@@ -67,7 +77,7 @@ export class UploadController {
   })
   @ApiResponse({ status: 200, description: 'File uploaded successfully' })
   @ApiResponse({ status: 400, description: 'Invalid file or request' })
-  async uploadFile(@UploadedFile() file: Express.Multer.File, @Request() req: any) {
+  async uploadFile(@UploadedFile() file: Express.Multer.File, @Req() req: UploadRequest) {
     // With multipart/form-data, body fields are parsed by multer and available in req.body
     const folder = req.body?.folder;
     const tenantId = req.body?.tenantId;

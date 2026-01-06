@@ -2,14 +2,15 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
-  Request,
-  ForbiddenException,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -19,6 +20,8 @@ import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { ResetTenantAdminPinDto } from './dto/reset-tenant-admin-pin.dto';
 import { SuspendTenantDto } from './dto/suspend-tenant.dto';
 
+type PlatformAdminRequest = Request & { user?: { isPlatformAdmin?: boolean } };
+
 @ApiTags('tenants')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
@@ -26,7 +29,7 @@ import { SuspendTenantDto } from './dto/suspend-tenant.dto';
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
-  private ensurePlatformAdmin(req: any) {
+  private ensurePlatformAdmin(req: PlatformAdminRequest) {
     if (!req.user?.isPlatformAdmin) {
       throw new ForbiddenException('Only platform administrators can manage tenants');
     }
@@ -34,28 +37,32 @@ export class TenantsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new tenant/company' })
-  async create(@Request() req: any, @Body() dto: CreateTenantDto) {
+  async create(@Req() req: PlatformAdminRequest, @Body() dto: CreateTenantDto) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.create(dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List tenants' })
-  async findAll(@Request() req: any) {
+  async findAll(@Req() req: PlatformAdminRequest) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get tenant by ID' })
-  async findById(@Request() req: any, @Param('id') id: string) {
+  async findById(@Req() req: PlatformAdminRequest, @Param('id') id: string) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.findById(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update tenant details' })
-  async update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateTenantDto) {
+  async update(
+    @Req() req: PlatformAdminRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantDto,
+  ) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.update(id, dto);
   }
@@ -63,7 +70,7 @@ export class TenantsController {
   @Post(':id/subscription')
   @ApiOperation({ summary: 'Adjust tenant subscription metadata' })
   async updateSubscription(
-    @Request() req: any,
+    @Req() req: PlatformAdminRequest,
     @Param('id') id: string,
     @Body() dto: UpdateSubscriptionDto,
   ) {
@@ -74,7 +81,7 @@ export class TenantsController {
   @Post(':id/reset-admin-pin')
   @ApiOperation({ summary: 'Reset the primary tenant admin PIN' })
   async resetAdminPin(
-    @Request() req: any,
+    @Req() req: PlatformAdminRequest,
     @Param('id') id: string,
     @Body() dto: ResetTenantAdminPinDto,
   ) {
@@ -84,21 +91,25 @@ export class TenantsController {
 
   @Post(':id/suspend')
   @ApiOperation({ summary: 'Suspend a tenant' })
-  async suspend(@Request() req: any, @Param('id') id: string, @Body() dto: SuspendTenantDto) {
+  async suspend(
+    @Req() req: PlatformAdminRequest,
+    @Param('id') id: string,
+    @Body() dto: SuspendTenantDto,
+  ) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.suspend(id, dto);
   }
 
   @Post(':id/activate')
   @ApiOperation({ summary: 'Reactivate a suspended tenant' })
-  async activate(@Request() req: any, @Param('id') id: string) {
+  async activate(@Req() req: PlatformAdminRequest, @Param('id') id: string) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.activate(id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a tenant' })
-  async delete(@Request() req: any, @Param('id') id: string) {
+  async delete(@Req() req: PlatformAdminRequest, @Param('id') id: string) {
     this.ensurePlatformAdmin(req);
     return this.tenantsService.deleteTenant(id);
   }

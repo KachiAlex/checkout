@@ -13,6 +13,7 @@ import { CustomersService } from '../customers/customers.service';
 import { LocationsRepository } from '../locations/locations.repository';
 import { UsersRepository } from '../users/users.repository';
 import { ProductsService } from '../products/products.service';
+import { AccountingService } from '../accounting/accounting.service';
 
 @Injectable()
 export class OrdersService {
@@ -23,6 +24,7 @@ export class OrdersService {
     private readonly locationsRepository: LocationsRepository,
     private readonly usersRepository: UsersRepository,
     private readonly productsService: ProductsService,
+    private readonly accountingService: AccountingService,
   ) {}
 
   async create(
@@ -116,6 +118,17 @@ export class OrdersService {
         order.totalCents,
         order.id,
       );
+    }
+
+    if (isCreditOrder) {
+      await this.accountingService.ensureSaleJournalForOrder({
+        order,
+        eventType: 'SALE_CREDIT',
+        metadata: {
+          trigger: 'orders.create',
+          customerId: order.customerId,
+        },
+      });
     }
 
     return order;

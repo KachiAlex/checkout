@@ -30,6 +30,7 @@ import { DatabaseModule } from './database/database.module';
 import { PlatformModule } from './platform/platform.module';
 import { SubscriptionPricingModule } from './subscription-pricing/subscription-pricing.module';
 import { ContactModule } from './contact/contact.module';
+import { AccountingModule } from './accounting/accounting.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ContactModule } from './contact/contact.module';
     UploadModule,
     SubscriptionPricingModule,
     ContactModule,
+    AccountingModule,
   ],
   providers: [],
 })

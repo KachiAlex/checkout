@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { FirestoreService } from '../firestore/firestore.service';
@@ -108,35 +109,13 @@ export class PurchaseOrdersRepository {
         orderBy: { createdAt: 'desc' },
       });
 
-      return rows.map((row) => ({
-        id: row.id,
-        tenantId: row.tenantId,
-        locationId: row.locationId,
-        supplierId: row.supplierId,
-        supplierName: row.supplierName,
-        orderNumber: row.orderNumber,
-        status: this.fromPrismaStatus(row.status),
-        items: ((row.items as any) ?? []).map((item: any) => ({
-          ...item,
-          expiryDate: item?.expiryDate ? new Date(item.expiryDate) : undefined,
-        })),
-        subtotalCents: row.subtotalCents,
-        taxCents: row.taxCents,
-        totalCents: row.totalCents,
-        expectedDeliveryDate: row.expectedDeliveryDate ?? undefined,
-        notes: row.notes ?? undefined,
-        createdBy: row.createdBy,
-        approvedBy: row.approvedBy ?? undefined,
-        approvedAt: row.approvedAt ?? undefined,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      }));
+      return rows.map((row) => this.mapRowToRecord(row));
     }
 
     let query = this.collection.where('tenantId', '==', tenantId);
 
     if (locationId) {
-      query = query.where('locationId', '==', locationId) as any;
+      query = query.where('locationId', '==', locationId);
     }
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
@@ -152,26 +131,7 @@ export class PurchaseOrdersRepository {
         return null;
       }
 
-      return {
-        id: row.id,
-        tenantId: row.tenantId,
-        locationId: row.locationId,
-        supplierId: row.supplierId,
-        supplierName: row.supplierName,
-        orderNumber: row.orderNumber,
-        status: this.fromPrismaStatus(row.status),
-        items: (row.items as any) ?? [],
-        subtotalCents: row.subtotalCents,
-        taxCents: row.taxCents,
-        totalCents: row.totalCents,
-        expectedDeliveryDate: row.expectedDeliveryDate ?? undefined,
-        notes: row.notes ?? undefined,
-        createdBy: row.createdBy,
-        approvedBy: row.approvedBy ?? undefined,
-        approvedAt: row.approvedAt ?? undefined,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      };
+      return this.mapRowToRecord(row);
     }
 
     const doc = await this.collection.doc(id).get();
@@ -197,26 +157,7 @@ export class PurchaseOrdersRepository {
         return null;
       }
 
-      return {
-        id: row.id,
-        tenantId: row.tenantId,
-        locationId: row.locationId,
-        supplierId: row.supplierId,
-        supplierName: row.supplierName,
-        orderNumber: row.orderNumber,
-        status: this.fromPrismaStatus(row.status),
-        items: (row.items as any) ?? [],
-        subtotalCents: row.subtotalCents,
-        taxCents: row.taxCents,
-        totalCents: row.totalCents,
-        expectedDeliveryDate: row.expectedDeliveryDate ?? undefined,
-        notes: row.notes ?? undefined,
-        createdBy: row.createdBy,
-        approvedBy: row.approvedBy ?? undefined,
-        approvedAt: row.approvedAt ?? undefined,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      };
+      return this.mapRowToRecord(row);
     }
 
     const snapshot = await this.collection
@@ -245,10 +186,7 @@ export class PurchaseOrdersRepository {
           supplierName: data.supplierName,
           orderNumber,
           status: PrismaPurchaseOrderStatus.DRAFT,
-          items: data.items.map((item) => ({
-            ...item,
-            expiryDate: item.expiryDate ?? undefined,
-          })) as any,
+          items: this.toPrismaItems(data.items),
           subtotalCents: data.subtotalCents,
           taxCents: data.taxCents,
           totalCents: data.totalCents,
@@ -258,26 +196,7 @@ export class PurchaseOrdersRepository {
         },
       });
 
-      return {
-        id: row.id,
-        tenantId: row.tenantId,
-        locationId: row.locationId,
-        supplierId: row.supplierId,
-        supplierName: row.supplierName,
-        orderNumber: row.orderNumber,
-        status: this.fromPrismaStatus(row.status),
-        items: (row.items as any) ?? [],
-        subtotalCents: row.subtotalCents,
-        taxCents: row.taxCents,
-        totalCents: row.totalCents,
-        expectedDeliveryDate: row.expectedDeliveryDate ?? undefined,
-        notes: row.notes ?? undefined,
-        createdBy: row.createdBy,
-        approvedBy: row.approvedBy ?? undefined,
-        approvedAt: row.approvedAt ?? undefined,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      };
+      return this.mapRowToRecord(row);
     }
 
     const now = FieldValue.serverTimestamp();
@@ -336,7 +255,7 @@ export class PurchaseOrdersRepository {
         where: { id },
         data: {
           status: update.status ? this.toPrismaStatus(update.status) : undefined,
-          items: update.items ? (update.items as any) : undefined,
+          items: update.items ? this.toPrismaItems(update.items) : undefined,
           subtotalCents: update.subtotalCents,
           taxCents: update.taxCents,
           totalCents: update.totalCents,
@@ -348,26 +267,7 @@ export class PurchaseOrdersRepository {
         },
       });
 
-      return {
-        id: row.id,
-        tenantId: row.tenantId,
-        locationId: row.locationId,
-        supplierId: row.supplierId,
-        supplierName: row.supplierName,
-        orderNumber: row.orderNumber,
-        status: this.fromPrismaStatus(row.status),
-        items: (row.items as any) ?? [],
-        subtotalCents: row.subtotalCents,
-        taxCents: row.taxCents,
-        totalCents: row.totalCents,
-        expectedDeliveryDate: row.expectedDeliveryDate ?? undefined,
-        notes: row.notes ?? undefined,
-        createdBy: row.createdBy,
-        approvedBy: row.approvedBy ?? undefined,
-        approvedAt: row.approvedAt ?? undefined,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      };
+      return this.mapRowToRecord(row);
     }
 
     const docRef = this.collection.doc(id);
@@ -401,6 +301,77 @@ export class PurchaseOrdersRepository {
 
     const updated = await docRef.get();
     return this.toRecord(updated.id, updated.data() as PurchaseOrderDocument);
+  }
+
+  private mapRowToRecord(row: Prisma.PurchaseOrderGetPayload<{}>): PurchaseOrderRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      locationId: row.locationId,
+      supplierId: row.supplierId,
+      supplierName: row.supplierName,
+      orderNumber: row.orderNumber,
+      status: this.fromPrismaStatus(row.status),
+      items: this.parsePrismaItems(row.items),
+      subtotalCents: row.subtotalCents,
+      taxCents: row.taxCents,
+      totalCents: row.totalCents,
+      expectedDeliveryDate: row.expectedDeliveryDate ?? undefined,
+      notes: row.notes ?? undefined,
+      createdBy: row.createdBy,
+      approvedBy: row.approvedBy ?? undefined,
+      approvedAt: row.approvedAt ?? undefined,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private parsePrismaItems(value: Prisma.JsonValue | null): PurchaseOrderItem[] {
+    if (!value || !Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object') {
+          return undefined;
+        }
+        const raw = entry as Record<string, unknown>;
+        const expiryValue = raw.expiryDate;
+        const expiryDate =
+          expiryValue instanceof Date
+            ? expiryValue
+            : typeof expiryValue === 'string'
+              ? new Date(expiryValue)
+              : undefined;
+
+        const receivedQuantity =
+          raw.receivedQuantity === undefined ? undefined : Number(raw.receivedQuantity);
+
+        return {
+          productId: String(raw.productId ?? ''),
+          productName: String(raw.productName ?? ''),
+          sku: String(raw.sku ?? ''),
+          quantity: Number(raw.quantity ?? 0),
+          unitCostCents: Number(raw.unitCostCents ?? 0),
+          totalCostCents: Number(raw.totalCostCents ?? 0),
+          receivedQuantity,
+          batchNumber: raw.batchNumber ? String(raw.batchNumber) : undefined,
+          expiryDate,
+        } as PurchaseOrderItem;
+      })
+      .filter((item): item is PurchaseOrderItem => Boolean(item));
+  }
+
+  private toPrismaItems(items: PurchaseOrderItem[]): Prisma.JsonValue {
+    const normalized = items.map((item) => ({
+      ...item,
+      expiryDate:
+        item.expiryDate instanceof Date
+          ? item.expiryDate.toISOString()
+          : item.expiryDate ?? undefined,
+    }));
+    return normalized as unknown as Prisma.JsonValue;
   }
 
   private toRecord(id: string, data: PurchaseOrderDocument | undefined): PurchaseOrderRecord {

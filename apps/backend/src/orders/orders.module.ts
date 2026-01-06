@@ -7,9 +7,17 @@ import { CustomersModule } from '../customers/customers.module';
 import { LocationsModule } from '../locations/locations.module';
 import { UsersModule } from '../users/users.module';
 import { ProductsModule } from '../products/products.module';
+import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
-  imports: [InventoryModule, CustomersModule, LocationsModule, UsersModule, ProductsModule],
+  imports: [
+    InventoryModule,
+    CustomersModule,
+    LocationsModule,
+    UsersModule,
+    ProductsModule,
+    AccountingModule,
+  ],
   controllers: [OrdersController],
   providers: [OrdersService, OrdersRepository],
   exports: [OrdersService, OrdersRepository],

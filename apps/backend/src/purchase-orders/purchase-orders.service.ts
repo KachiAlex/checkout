@@ -48,7 +48,8 @@ export class PurchaseOrdersService {
 
       let parsedExpiry: Date | undefined;
       if (item.expiryDate) {
-        parsedExpiry = item.expiryDate instanceof Date ? item.expiryDate : new Date(item.expiryDate);
+        parsedExpiry =
+          item.expiryDate instanceof Date ? item.expiryDate : new Date(item.expiryDate);
         if (Number.isNaN(parsedExpiry.getTime())) {
           throw new BadRequestException(
             `Invalid expiry date provided for item ${item.productId || index + 1}`,

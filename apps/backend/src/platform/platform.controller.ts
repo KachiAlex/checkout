@@ -1,7 +1,8 @@
-import { Body, Controller, Post, Get, Query, Param, Headers } from '@nestjs/common';
+import { Body, Controller, Post, Get, Param, Headers } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { PlatformService } from './platform.service';
 import { RegisterDto } from './dto/register.dto';
+import { PlatformWebhookDto } from './dto/platform-webhook.dto';
 
 @ApiTags('platform')
 @Controller('platform')
@@ -79,7 +80,10 @@ export class PlatformController {
   @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'Flutterwave webhook handler' })
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
-  async handleFlutterwaveWebhook(@Body() payload: any, @Headers('verif-hash') verifHash: string) {
+  async handleFlutterwaveWebhook(
+    @Body() payload: PlatformWebhookDto,
+    @Headers('verif-hash') verifHash: string,
+  ) {
     return this.platformService.handleFlutterwaveWebhook(payload, verifHash);
   }
 }

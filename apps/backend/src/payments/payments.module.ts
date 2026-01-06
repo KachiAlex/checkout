@@ -5,9 +5,10 @@ import { WebhooksController } from './webhooks.controller';
 import { OrdersModule } from '../orders/orders.module';
 import { PaymentsRepository } from './payments.repository';
 import { UsersModule } from '../users/users.module';
+import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
-  imports: [OrdersModule, UsersModule],
+  imports: [OrdersModule, UsersModule, AccountingModule],
   controllers: [PaymentsController, WebhooksController],
   providers: [PaymentsService, PaymentsRepository],
   exports: [PaymentsService, PaymentsRepository],

@@ -24,7 +24,10 @@ export interface SubscriptionPaymentRecord {
 
 type TimestampField = Timestamp | FieldValue | null | undefined;
 
-type SubscriptionPaymentDocument = Omit<SubscriptionPaymentRecord, 'id' | 'paidAt' | 'createdAt' | 'updatedAt'> & {
+type SubscriptionPaymentDocument = Omit<
+  SubscriptionPaymentRecord,
+  'id' | 'paidAt' | 'createdAt' | 'updatedAt'
+> & {
   paidAt?: TimestampField;
   createdAt?: TimestampField;
   updatedAt?: TimestampField;
@@ -169,7 +172,10 @@ export class SubscriptionPaymentsRepository {
       return row ? this.toRecord(row) : null;
     }
 
-    const snapshot = await this.collection.where('transactionId', '==', transactionId).limit(1).get();
+    const snapshot = await this.collection
+      .where('transactionId', '==', transactionId)
+      .limit(1)
+      .get();
     if (snapshot.empty) {
       return null;
     }
@@ -280,35 +286,65 @@ export class SubscriptionPaymentsRepository {
   }
 
   private toPrismaPlan(plan: TenantPlan): Prisma.SubscriptionPaymentUncheckedCreateInput['plan'] {
-    return String(plan || '').toUpperCase() as Prisma.SubscriptionPaymentUncheckedCreateInput['plan'];
+    return String(
+      plan || '',
+    ).toUpperCase() as Prisma.SubscriptionPaymentUncheckedCreateInput['plan'];
   }
 
   private toPrismaStatus(
     status: PaymentStatus,
   ): Prisma.SubscriptionPaymentUncheckedCreateInput['status'] {
-    return String(status || '').toUpperCase() as Prisma.SubscriptionPaymentUncheckedCreateInput['status'];
+    return String(
+      status || '',
+    ).toUpperCase() as Prisma.SubscriptionPaymentUncheckedCreateInput['status'];
   }
 
-  private toRecord(data: any): SubscriptionPaymentRecord {
+  private toRecord(
+    data: Prisma.SubscriptionPayment | (SubscriptionPaymentDocument & { id: string }),
+  ): SubscriptionPaymentRecord {
     if (!data) {
       throw new NotFoundException('Subscription payment document has no data');
     }
+
+    const plan = this.normalizePlan(data.plan);
+    const status = this.normalizeStatus(data.status);
+
     return {
       id: data.id,
       tenantId: data.tenantId,
       tenantSlug: data.tenantSlug,
-      plan: data.plan,
+      plan,
       amountCents: data.amountCents,
       currency: data.currency ?? 'NGN',
-      status: data.status,
+      status,
       transactionId: data.transactionId ?? undefined,
       checkoutUrl: data.checkoutUrl ?? undefined,
-      processorData: data.processorData ?? undefined,
-      metadata: data.metadata ?? undefined,
+      processorData: this.normalizeRecord(data.processorData),
+      metadata: this.normalizeRecord(data.metadata),
       paidAt: this.timestampToDate(data.paidAt),
       createdAt: this.timestampToDate(data.createdAt) ?? new Date(),
       updatedAt: this.timestampToDate(data.updatedAt) ?? new Date(),
     };
+  }
+
+  private normalizePlan(value: TenantPlan | string | null | undefined): TenantPlan {
+    return (String(value ?? TenantPlan.FREE).trim().toLowerCase() as TenantPlan) || TenantPlan.FREE;
+  }
+
+  private normalizeStatus(value: PaymentStatus | string | null | undefined): PaymentStatus {
+    return (
+      (String(value ?? PaymentStatus.PENDING).trim().toLowerCase() as PaymentStatus) ||
+      PaymentStatus.PENDING
+    );
+  }
+
+  private normalizeRecord(
+    value: Record<string, unknown> | Prisma.JsonValue | null | undefined,
+  ): Record<string, unknown> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+    return value as Record<string, unknown>;
   }
 
   private timestampToDate(value?: TimestampField | Date): Date | null {

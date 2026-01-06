@@ -7,14 +7,18 @@ import {
   Patch,
   Query,
   UseGuards,
-  Request,
+  Req,
   UnauthorizedException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { CustomersService } from './customers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
+
+type AuthenticatedRequest = Request & { user?: JwtPayload };
 
 @ApiTags('customers')
 @Controller('customers')
@@ -26,13 +30,11 @@ export class CustomersController {
   @Get()
   @ApiOperation({ summary: 'Get all customers for tenant' })
   @ApiResponse({ status: 200, description: 'List of customers' })
-  async findAll(@Request() req: any, @Query('search') search?: string) {
+  async findAll(@Req() req: AuthenticatedRequest, @Query('search') search?: string) {
     try {
-      if (!req?.user?.tenantId) {
-        throw new UnauthorizedException('Tenant ID is required');
-      }
+      const tenantId = this.getTenantId(req);
 
-      const customers = await this.customersService.findAll(req.user.tenantId);
+      const customers = await this.customersService.findAll(tenantId);
 
       // Simple search filter with null safety
       if (search) {
@@ -47,13 +49,14 @@ export class CustomersController {
       }
 
       return customers;
-    } catch (error: any) {
+    } catch (error) {
+      const normalizedError = error as Error & { code?: string };
       console.error('Error in customers.findAll:', error);
       console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack,
-        tenantId: req?.user?.tenantId,
+        message: normalizedError.message,
+        code: normalizedError.code,
+        stack: normalizedError.stack,
+        tenantId: req.user?.tenantId,
         search,
       });
 
@@ -64,7 +67,7 @@ export class CustomersController {
 
       // Otherwise, wrap in InternalServerErrorException with helpful message
       throw new InternalServerErrorException(
-        `Failed to fetch customers: ${error.message || 'Unknown error'}. Please check server logs for details.`,
+        `Failed to fetch customers: ${normalizedError.message || 'Unknown error'}. Please check server logs for details.`,
       );
     }
   }
@@ -75,17 +78,15 @@ export class CustomersController {
   async search(
     @Query('phone') phone?: string,
     @Query('loyaltyId') loyaltyId?: string,
-    @Request() req?: any,
+    @Req() req?: AuthenticatedRequest,
   ) {
-    if (!req?.user?.tenantId) {
-      throw new UnauthorizedException('Tenant ID is required');
-    }
+    const tenantId = this.getTenantId(req);
 
     if (phone) {
-      return this.customersService.findByPhone(phone, req.user.tenantId);
+      return this.customersService.findByPhone(phone, tenantId);
     }
     if (loyaltyId) {
-      return this.customersService.findByLoyaltyId(loyaltyId, req.user.tenantId);
+      return this.customersService.findByLoyaltyId(loyaltyId, tenantId);
     }
     return null;
   }
@@ -93,17 +94,19 @@ export class CustomersController {
   @Get(':id')
   @ApiOperation({ summary: 'Get customer by ID' })
   @ApiResponse({ status: 200, description: 'Customer found' })
-  async findOne(@Param('id') id: string, @Request() req: any) {
-    return this.customersService.findById(id, req.user.tenantId);
+  async findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
+    return this.customersService.findById(id, tenantId);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create a new customer' })
   @ApiResponse({ status: 201, description: 'Customer created' })
-  async create(@Body() createDto: CreateCustomerDto, @Request() req: any) {
+  async create(@Body() createDto: CreateCustomerDto, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
     return this.customersService.create({
       ...createDto,
-      tenantId: req.user.tenantId,
+      tenantId,
       dateOfBirth: createDto.dateOfBirth ? new Date(createDto.dateOfBirth) : undefined,
     });
   }
@@ -114,9 +117,10 @@ export class CustomersController {
   async update(
     @Param('id') id: string,
     @Body() updateDto: Partial<CreateCustomerDto>,
-    @Request() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.customersService.update(id, req.user.tenantId, {
+    const tenantId = this.getTenantId(req);
+    return this.customersService.update(id, tenantId, {
       ...updateDto,
       dateOfBirth: updateDto.dateOfBirth ? new Date(updateDto.dateOfBirth) : undefined,
     });
@@ -128,9 +132,10 @@ export class CustomersController {
   async addLoyaltyPoints(
     @Param('id') id: string,
     @Body() body: { points: number },
-    @Request() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.customersService.addLoyaltyPoints(id, req.user.tenantId, body.points);
+    const tenantId = this.getTenantId(req);
+    return this.customersService.addLoyaltyPoints(id, tenantId, body.points);
   }
 
   @Post(':id/loyalty-points/redeem')
@@ -139,9 +144,10 @@ export class CustomersController {
   async redeemLoyaltyPoints(
     @Param('id') id: string,
     @Body() body: { points: number },
-    @Request() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.customersService.redeemLoyaltyPoints(id, req.user.tenantId, body.points);
+    const tenantId = this.getTenantId(req);
+    return this.customersService.redeemLoyaltyPoints(id, tenantId, body.points);
   }
 
   @Post(':id/store-credit')
@@ -150,9 +156,10 @@ export class CustomersController {
   async addStoreCredit(
     @Param('id') id: string,
     @Body() body: { amountCents: number },
-    @Request() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.customersService.addStoreCredit(id, req.user.tenantId, body.amountCents);
+    const tenantId = this.getTenantId(req);
+    return this.customersService.addStoreCredit(id, tenantId, body.amountCents);
   }
 
   @Post(':id/store-credit/use')
@@ -161,9 +168,10 @@ export class CustomersController {
   async useStoreCredit(
     @Param('id') id: string,
     @Body() body: { amountCents: number },
-    @Request() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.customersService.useStoreCredit(id, req.user.tenantId, body.amountCents);
+    const tenantId = this.getTenantId(req);
+    return this.customersService.useStoreCredit(id, tenantId, body.amountCents);
   }
 
   @Get(':id/loyalty-transactions')
@@ -172,9 +180,18 @@ export class CustomersController {
   async getLoyaltyTransactions(
     @Param('id') id: string,
     @Query('limit') limit?: string,
-    @Request() req?: any,
+    @Req() req?: AuthenticatedRequest,
   ) {
+    const tenantId = this.getTenantId(req);
     const limitNum = limit ? parseInt(limit, 10) : 50;
-    return this.customersService.getLoyaltyTransactions(id, req.user.tenantId, limitNum);
+    return this.customersService.getLoyaltyTransactions(id, tenantId, limitNum);
+  }
+
+  private getTenantId(req?: AuthenticatedRequest): string {
+    const tenantId = req?.user?.tenantId;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant ID is required');
+    }
+    return tenantId;
   }
 }

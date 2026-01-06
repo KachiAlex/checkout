@@ -144,9 +144,7 @@ export class BatchInventoryRepository {
       expiryDate: data.expiryDate ? Timestamp.fromDate(data.expiryDate) : undefined,
       quantity: data.quantity,
       unitCostCents: data.unitCostCents,
-      receivedDate: data.receivedDate
-        ? Timestamp.fromDate(data.receivedDate)
-        : now,
+      receivedDate: data.receivedDate ? Timestamp.fromDate(data.receivedDate) : now,
       purchaseOrderId: data.purchaseOrderId,
       grnId: data.grnId,
       createdAt: now,

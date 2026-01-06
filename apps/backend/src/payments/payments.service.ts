@@ -6,6 +6,9 @@ import { MockTerminal, PaymentAdapter } from '@pos-checkout/payment-adapters';
 import { ConfigService } from '@nestjs/config';
 import { PaymentsRepository, PaymentRecord } from './payments.repository';
 import { UsersRepository } from '../users/users.repository';
+import { AccountingService } from '../accounting/accounting.service';
+import { OrderRecord } from '../orders/orders.repository';
+
 @Injectable()
 export class PaymentsService {
   private defaultPaymentAdapter: PaymentAdapter;
@@ -15,6 +18,7 @@ export class PaymentsService {
     private readonly ordersService: OrdersService,
     private readonly configService: ConfigService,
     private readonly usersRepository: UsersRepository,
+    private readonly accountingService: AccountingService,
   ) {
     const approveRate = this.configService.get<number>('PAYMENT_MOCK_APPROVE_RATE', 0.95);
     this.defaultPaymentAdapter = new MockTerminal(approveRate);
@@ -88,6 +92,7 @@ export class PaymentsService {
       }
 
       payment = result;
+      await this.handleSuccessfulPayment(order, tenantId);
       return payment;
     } catch (error) {
       payment = await this.paymentsRepository.update(payment.id, {
@@ -116,12 +121,18 @@ export class PaymentsService {
     const paymentAdapter = await this.getPaymentAdapter();
     const result = await paymentAdapter.capture(paymentId);
 
-    return this.paymentsRepository.update(paymentId, {
+    const updated = await this.paymentsRepository.update(paymentId, {
       status: result.status,
       transactionId: result.transaction_id,
       processorData: result.processor_data,
       processedAt: result.status === PaymentStatus.COMPLETED ? new Date() : undefined,
     });
+
+    if (updated.status === PaymentStatus.COMPLETED) {
+      await this.handleSuccessfulPayment(order, tenantId);
+    }
+
+    return updated;
   }
 
   async refund(paymentId: string, amountCents?: number): Promise<PaymentRecord> {
@@ -143,7 +154,7 @@ export class PaymentsService {
     const paymentAdapter = await this.getPaymentAdapter();
     const result = await paymentAdapter.refund(paymentId, refundAmount);
 
-    return this.paymentsRepository.update(paymentId, {
+    const updated = await this.paymentsRepository.update(paymentId, {
       status: result.status,
       processorData: {
         ...(payment.processorData ?? {}),
@@ -151,6 +162,21 @@ export class PaymentsService {
         refunded_at: new Date().toISOString(),
       },
     });
+
+    if (updated.status === PaymentStatus.REFUNDED) {
+      await this.accountingService.ensureSaleJournalForOrder({
+        order,
+        eventType: 'REFUND',
+        reference: payment.id,
+        metadata: {
+          trigger: 'payments.refund',
+          refundAmount: refundAmount,
+        },
+        taxDirection: 'debit',
+      });
+    }
+
+    return updated;
   }
 
   async getOrderPayments(orderId: string): Promise<PaymentRecord[]> {

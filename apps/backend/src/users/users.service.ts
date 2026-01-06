@@ -31,8 +31,9 @@ export class UsersService {
   }
 
   private toSafeUser(user: UserRecord): SafeUser {
-    const { pinHash, ...rest } = user;
-    return rest;
+    const safeUser = { ...user };
+    delete safeUser.pinHash;
+    return safeUser as SafeUser;
   }
 
   async changePin(userId: string, dto: ChangePinDto): Promise<void> {

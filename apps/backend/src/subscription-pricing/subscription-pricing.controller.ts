@@ -1,4 +1,5 @@
-import { Controller, Get, Put, Body, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import { SubscriptionPricingService } from './subscription-pricing.service';
 import { SubscriptionPricingEntity } from './subscription-pricing.entity';
@@ -25,9 +26,9 @@ export class SubscriptionPricingController {
   @ApiOkResponse({ description: 'Returns updated subscription pricing' })
   async updatePricing(
     @Body() dto: UpdateSubscriptionPricingDto,
-    @Request() req: any,
+    @Req() req: Request & { user?: { userId?: string; id?: string } },
   ): Promise<SubscriptionPricingEntity> {
-    const userId = req.user?.userId || req.user?.id;
+    const userId = req.user?.userId ?? req.user?.id;
     return this.pricingService.updatePricing(dto, userId);
   }
 }

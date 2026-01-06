@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsArray, ValidateNested, IsNumber, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
-class SyncEventDto {
+export class SyncEventDto {
   @ApiProperty({ description: 'Client-generated event ID (UUID)' })
   @IsString()
   id: string;

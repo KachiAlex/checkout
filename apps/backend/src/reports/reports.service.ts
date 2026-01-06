@@ -957,238 +957,238 @@ export class ReportsService {
         return { alerts: [], locationId, generatedAt: now.toISOString() };
       }
 
-    // Parallelize independent queries for better performance
-    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const last120Days = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+      // Parallelize independent queries for better performance
+      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const last120Days = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
 
-    // 1. Stock-out predictions (3 days ahead) - OPTIMIZED with batch product lookup
-    try {
-      const [inventoryRecords, recentOrders] = await Promise.all([
-        this.inventoryRepository.listStock(locationId),
-        this.ordersRepository.list({
-          status: OrderStatus.COMPLETED,
-          locationId,
-          tenantId,
-          from: last30Days,
-          to: now,
-        }),
-      ]);
+      // 1. Stock-out predictions (3 days ahead) - OPTIMIZED with batch product lookup
+      try {
+        const [inventoryRecords, recentOrders] = await Promise.all([
+          this.inventoryRepository.listStock(locationId),
+          this.ordersRepository.list({
+            status: OrderStatus.COMPLETED,
+            locationId,
+            tenantId,
+            from: last30Days,
+            to: now,
+          }),
+        ]);
 
-      // Calculate average daily sales per product
-      const productSalesRate: Record<string, { totalSold: number; days: number }> = {};
-      recentOrders.forEach((order) => {
-        order.items.forEach((item) => {
-          if (!productSalesRate[item.productId]) {
-            productSalesRate[item.productId] = { totalSold: 0, days: 30 };
-          }
-          productSalesRate[item.productId].totalSold += item.quantity;
+        // Calculate average daily sales per product
+        const productSalesRate: Record<string, { totalSold: number; days: number }> = {};
+        recentOrders.forEach((order) => {
+          order.items.forEach((item) => {
+            if (!productSalesRate[item.productId]) {
+              productSalesRate[item.productId] = { totalSold: 0, days: 30 };
+            }
+            productSalesRate[item.productId].totalSold += item.quantity;
+          });
         });
-      });
 
-      // Batch fetch all products at once instead of individual queries
-      const productIdsToFetch = inventoryRecords
-        .filter((inv) => {
-          const salesRate = productSalesRate[inv.productId];
-          if (!salesRate || salesRate.totalSold === 0) return false;
-          const avgDailySales = salesRate.totalSold / salesRate.days;
-          return avgDailySales > 0 && inv.quantity > 0;
-        })
-        .map((inv) => inv.productId);
+        // Batch fetch all products at once instead of individual queries
+        const productIdsToFetch = inventoryRecords
+          .filter((inv) => {
+            const salesRate = productSalesRate[inv.productId];
+            if (!salesRate || salesRate.totalSold === 0) return false;
+            const avgDailySales = salesRate.totalSold / salesRate.days;
+            return avgDailySales > 0 && inv.quantity > 0;
+          })
+          .map((inv) => inv.productId);
 
-      const productsMap =
-        tenantId && productIdsToFetch.length > 0
-          ? await this.productsService.findByIds(productIdsToFetch, tenantId)
-          : new Map<string, any>();
+        const productsMap =
+          tenantId && productIdsToFetch.length > 0
+            ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+            : new Map<string, any>();
 
-      for (const inventory of inventoryRecords) {
-        const salesRate = productSalesRate[inventory.productId];
-        if (salesRate && salesRate.totalSold > 0) {
-          const avgDailySales = salesRate.totalSold / salesRate.days;
-          if (avgDailySales > 0 && inventory.quantity > 0) {
-            const daysUntilStockout = Math.floor(inventory.quantity / avgDailySales);
-            if (daysUntilStockout <= 3 && daysUntilStockout > 0) {
-              const product = productsMap.get(inventory.productId);
-              alerts.push({
-                type: 'stockout',
-                severity: daysUntilStockout <= 1 ? 'critical' : 'warning',
-                title: `Stock-out Alert: ${product?.name || inventory.productId}`,
-                message: `Item will be out of stock in ${daysUntilStockout} day(s) based on current sales rate.`,
-                productId: inventory.productId,
-                productName: product?.name,
-                daysUntilStockout,
-                currentStock: inventory.quantity,
-                predictedStockoutDate: new Date(
-                  now.getTime() + daysUntilStockout * 24 * 60 * 60 * 1000,
-                ).toISOString(),
-              });
+        for (const inventory of inventoryRecords) {
+          const salesRate = productSalesRate[inventory.productId];
+          if (salesRate && salesRate.totalSold > 0) {
+            const avgDailySales = salesRate.totalSold / salesRate.days;
+            if (avgDailySales > 0 && inventory.quantity > 0) {
+              const daysUntilStockout = Math.floor(inventory.quantity / avgDailySales);
+              if (daysUntilStockout <= 3 && daysUntilStockout > 0) {
+                const product = productsMap.get(inventory.productId);
+                alerts.push({
+                  type: 'stockout',
+                  severity: daysUntilStockout <= 1 ? 'critical' : 'warning',
+                  title: `Stock-out Alert: ${product?.name || inventory.productId}`,
+                  message: `Item will be out of stock in ${daysUntilStockout} day(s) based on current sales rate.`,
+                  productId: inventory.productId,
+                  productName: product?.name,
+                  daysUntilStockout,
+                  currentStock: inventory.quantity,
+                  predictedStockoutDate: new Date(
+                    now.getTime() + daysUntilStockout * 24 * 60 * 60 * 1000,
+                  ).toISOString(),
+                });
+              }
             }
           }
         }
+      } catch (error) {
+        console.error('Error calculating stock-out predictions:', error);
       }
-    } catch (error) {
-      console.error('Error calculating stock-out predictions:', error);
-    }
 
-    // 2. Low sales trends (compare last 7 days vs previous 7 days) - OPTIMIZED with parallel queries
-    try {
-      const [recentSales, previousSales] = await Promise.all([
-        this.ordersRepository.list({
-          status: OrderStatus.COMPLETED,
-          locationId,
-          tenantId,
-          from: last7Days,
-          to: now,
-        }),
-        this.ordersRepository.list({
-          status: OrderStatus.COMPLETED,
-          locationId,
-          tenantId,
-          from: previous7Days,
-          to: last7Days,
-        }),
-      ]);
+      // 2. Low sales trends (compare last 7 days vs previous 7 days) - OPTIMIZED with parallel queries
+      try {
+        const [recentSales, previousSales] = await Promise.all([
+          this.ordersRepository.list({
+            status: OrderStatus.COMPLETED,
+            locationId,
+            tenantId,
+            from: last7Days,
+            to: now,
+          }),
+          this.ordersRepository.list({
+            status: OrderStatus.COMPLETED,
+            locationId,
+            tenantId,
+            from: previous7Days,
+            to: last7Days,
+          }),
+        ]);
 
-      const recentTotal = recentSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
-      const previousTotal = previousSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
+        const recentTotal = recentSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
+        const previousTotal = previousSales.reduce((sum, o) => sum + o.totalCents, 0) / 100;
 
-      if (previousTotal > 0) {
-        const dropPercent = ((previousTotal - recentTotal) / previousTotal) * 100;
-        if (dropPercent >= 20) {
-          alerts.push({
-            type: 'low_sales',
-            severity: dropPercent >= 40 ? 'critical' : 'warning',
-            title: 'Low Sales Trend Detected',
-            message: `Sales dropped ${dropPercent.toFixed(1)}% compared to previous week. Current: ₦${recentTotal.toFixed(2)}, Previous: ₦${previousTotal.toFixed(2)}`,
-            salesDropPercent: dropPercent,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error calculating low sales trends:', error);
-    }
-
-    // 3. Customer inactivity (customers who haven't purchased in 60+ days but used to purchase regularly)
-    // OPTIMIZED: Avoid per-customer Firestore queries (can exhaust quota). Fetch orders once and group in-memory.
-    try {
-      if (tenantId && locationId) {
-        const allCustomers = await this.customersRepository.findAll(tenantId);
-        const limitedCustomers = allCustomers.slice(0, 200);
-
-        const ordersLast120Days = await this.ordersRepository.list({
-          status: OrderStatus.COMPLETED,
-          locationId,
-          tenantId,
-          from: last120Days,
-          to: now,
-        });
-
-        const lastPurchaseByCustomerId = new Map<string, Date>();
-        for (const order of ordersLast120Days) {
-          if (!order.customerId) continue;
-          const existing = lastPurchaseByCustomerId.get(order.customerId);
-          if (!existing || order.createdAt > existing) {
-            lastPurchaseByCustomerId.set(order.customerId, order.createdAt);
-          }
-        }
-
-        for (const customer of limitedCustomers) {
-          const lastPurchase = lastPurchaseByCustomerId.get(customer.id);
-          if (!lastPurchase) {
-            continue;
-          }
-
-          const daysSinceLastPurchase = Math.floor(
-            (now.getTime() - lastPurchase.getTime()) / (24 * 60 * 60 * 1000),
-          );
-
-          if (daysSinceLastPurchase >= 60) {
+        if (previousTotal > 0) {
+          const dropPercent = ((previousTotal - recentTotal) / previousTotal) * 100;
+          if (dropPercent >= 20) {
             alerts.push({
-              type: 'customer_inactive',
-              severity: daysSinceLastPurchase >= 90 ? 'warning' : 'info',
-              title: `Customer Inactivity: ${customer.name}`,
-              message: `Customer hasn't purchased in ${daysSinceLastPurchase} days. Consider sending a promotional offer.`,
-              customerId: customer.id,
-              customerName: customer.name,
-              daysSinceLastPurchase,
+              type: 'low_sales',
+              severity: dropPercent >= 40 ? 'critical' : 'warning',
+              title: 'Low Sales Trend Detected',
+              message: `Sales dropped ${dropPercent.toFixed(1)}% compared to previous week. Current: ₦${recentTotal.toFixed(2)}, Previous: ₦${previousTotal.toFixed(2)}`,
+              salesDropPercent: dropPercent,
             });
           }
         }
+      } catch (error) {
+        console.error('Error calculating low sales trends:', error);
       }
-    } catch (error) {
-      console.error('Error calculating customer inactivity:', error);
-    }
 
-    // 4. Staff performance differences (identify significant gaps)
-    try {
-      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const staffPerf = await this.getStaffPerformance(
-        locationId,
-        last30Days.toISOString(),
-        now.toISOString(),
-      );
+      // 3. Customer inactivity (customers who haven't purchased in 60+ days but used to purchase regularly)
+      // OPTIMIZED: Avoid per-customer Firestore queries (can exhaust quota). Fetch orders once and group in-memory.
+      try {
+        if (tenantId && locationId) {
+          const allCustomers = await this.customersRepository.findAll(tenantId);
+          const limitedCustomers = allCustomers.slice(0, 200);
 
-      if (staffPerf.staffPerformance.length > 1) {
-        const salesValues = staffPerf.staffPerformance.map((s) => s.sales.totalSales);
-        const maxSales = Math.max(...salesValues);
-        const avgSales = salesValues.reduce((a, b) => a + b, 0) / salesValues.length;
+          const ordersLast120Days = await this.ordersRepository.list({
+            status: OrderStatus.COMPLETED,
+            locationId,
+            tenantId,
+            from: last120Days,
+            to: now,
+          });
 
-        staffPerf.staffPerformance.forEach((staff) => {
-          if (staff.sales.totalSales < avgSales * 0.5 && maxSales > 0) {
-            const gap = ((maxSales - staff.sales.totalSales) / maxSales) * 100;
-            if (gap >= 50) {
+          const lastPurchaseByCustomerId = new Map<string, Date>();
+          for (const order of ordersLast120Days) {
+            if (!order.customerId) continue;
+            const existing = lastPurchaseByCustomerId.get(order.customerId);
+            if (!existing || order.createdAt > existing) {
+              lastPurchaseByCustomerId.set(order.customerId, order.createdAt);
+            }
+          }
+
+          for (const customer of limitedCustomers) {
+            const lastPurchase = lastPurchaseByCustomerId.get(customer.id);
+            if (!lastPurchase) {
+              continue;
+            }
+
+            const daysSinceLastPurchase = Math.floor(
+              (now.getTime() - lastPurchase.getTime()) / (24 * 60 * 60 * 1000),
+            );
+
+            if (daysSinceLastPurchase >= 60) {
               alerts.push({
-                type: 'staff_performance',
-                severity: gap >= 70 ? 'warning' : 'info',
-                title: `Staff Performance Gap: ${staff.userName}`,
-                message: `${staff.userName} is performing ${gap.toFixed(1)}% below top performer. Consider additional training.`,
-                staffId: staff.userId,
-                staffName: staff.userName,
-                performanceGap: gap,
+                type: 'customer_inactive',
+                severity: daysSinceLastPurchase >= 90 ? 'warning' : 'info',
+                title: `Customer Inactivity: ${customer.name}`,
+                message: `Customer hasn't purchased in ${daysSinceLastPurchase} days. Consider sending a promotional offer.`,
+                customerId: customer.id,
+                customerName: customer.name,
+                daysSinceLastPurchase,
               });
             }
           }
-        });
+        }
+      } catch (error) {
+        console.error('Error calculating customer inactivity:', error);
       }
-    } catch (error) {
-      console.error('Error calculating staff performance gaps:', error);
-    }
 
-    // 5. Low stock alerts (using reorder point) - OPTIMIZED with batch product lookup
-    try {
-      const inventoryRecords = await this.inventoryRepository.listStock(locationId);
-      const lowStockItems = inventoryRecords.filter(
-        (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint,
-      );
+      // 4. Staff performance differences (identify significant gaps)
+      try {
+        const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const staffPerf = await this.getStaffPerformance(
+          locationId,
+          last30Days.toISOString(),
+          now.toISOString(),
+        );
 
-      // Batch fetch all products at once
-      const productIdsToFetch = lowStockItems.map((inv) => inv.productId);
-      const productsMap =
-        tenantId && productIdsToFetch.length > 0
-          ? await this.productsService.findByIds(productIdsToFetch, tenantId)
-          : new Map<string, any>();
+        if (staffPerf.staffPerformance.length > 1) {
+          const salesValues = staffPerf.staffPerformance.map((s) => s.sales.totalSales);
+          const maxSales = Math.max(...salesValues);
+          const avgSales = salesValues.reduce((a, b) => a + b, 0) / salesValues.length;
 
-      for (const inventory of lowStockItems) {
-        const product = productsMap.get(inventory.productId);
-        alerts.push({
-          type: 'low_stock',
-          severity: inventory.quantity === 0 ? 'critical' : 'warning',
-          title: `Low Stock: ${product?.name || inventory.productId}`,
-          message: `Current stock (${inventory.quantity}) is at or below reorder point (${inventory.reorderPoint}).`,
-          productId: inventory.productId,
-          productName: product?.name,
-          currentStock: inventory.quantity,
-        });
+          staffPerf.staffPerformance.forEach((staff) => {
+            if (staff.sales.totalSales < avgSales * 0.5 && maxSales > 0) {
+              const gap = ((maxSales - staff.sales.totalSales) / maxSales) * 100;
+              if (gap >= 50) {
+                alerts.push({
+                  type: 'staff_performance',
+                  severity: gap >= 70 ? 'warning' : 'info',
+                  title: `Staff Performance Gap: ${staff.userName}`,
+                  message: `${staff.userName} is performing ${gap.toFixed(1)}% below top performer. Consider additional training.`,
+                  staffId: staff.userId,
+                  staffName: staff.userName,
+                  performanceGap: gap,
+                });
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error calculating staff performance gaps:', error);
       }
-    } catch (error) {
-      console.error('Error calculating low stock alerts:', error);
-    }
 
-    // Sort alerts by severity (critical first)
-    const severityOrder = { critical: 0, warning: 1, info: 2 };
-    alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+      // 5. Low stock alerts (using reorder point) - OPTIMIZED with batch product lookup
+      try {
+        const inventoryRecords = await this.inventoryRepository.listStock(locationId);
+        const lowStockItems = inventoryRecords.filter(
+          (inv) => inv.reorderPoint && inv.quantity <= inv.reorderPoint,
+        );
+
+        // Batch fetch all products at once
+        const productIdsToFetch = lowStockItems.map((inv) => inv.productId);
+        const productsMap =
+          tenantId && productIdsToFetch.length > 0
+            ? await this.productsService.findByIds(productIdsToFetch, tenantId)
+            : new Map<string, any>();
+
+        for (const inventory of lowStockItems) {
+          const product = productsMap.get(inventory.productId);
+          alerts.push({
+            type: 'low_stock',
+            severity: inventory.quantity === 0 ? 'critical' : 'warning',
+            title: `Low Stock: ${product?.name || inventory.productId}`,
+            message: `Current stock (${inventory.quantity}) is at or below reorder point (${inventory.reorderPoint}).`,
+            productId: inventory.productId,
+            productName: product?.name,
+            currentStock: inventory.quantity,
+          });
+        }
+      } catch (error) {
+        console.error('Error calculating low stock alerts:', error);
+      }
+
+      // Sort alerts by severity (critical first)
+      const severityOrder = { critical: 0, warning: 1, info: 2 };
+      alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
       return {
         alerts,

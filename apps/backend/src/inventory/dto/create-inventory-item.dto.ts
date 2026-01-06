@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  Min,
-  IsDateString,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, IsDateString } from 'class-validator';
 
 export class CreateInventoryItemDto {
   @ApiProperty({ description: 'Product name', example: 'Bottled Water 500ml' })

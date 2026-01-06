@@ -7,15 +7,20 @@ import {
   Patch,
   Query,
   UseGuards,
-  Request,
+  Req,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { LocationsRepository } from '../locations/locations.repository';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
+
+type AuthenticatedUser = JwtPayload & { id?: string };
+type AuthenticatedRequest = Request & { user?: AuthenticatedUser };
 
 @ApiTags('purchase-orders')
 @Controller('purchase-orders')
@@ -30,11 +35,8 @@ export class PurchaseOrdersController {
   @Get()
   @ApiOperation({ summary: 'Get all purchase orders for tenant' })
   @ApiResponse({ status: 200, description: 'List of purchase orders' })
-  async findAll(@Request() req: any, @Query('location_id') locationId?: string) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant context missing from request');
-    }
+  async findAll(@Req() req: AuthenticatedRequest, @Query('location_id') locationId?: string) {
+    const tenantId = this.getTenantId(req);
 
     if (locationId) {
       await this.ensureLocationAccess(locationId, tenantId);
@@ -46,23 +48,17 @@ export class PurchaseOrdersController {
   @Get(':id')
   @ApiOperation({ summary: 'Get purchase order by ID' })
   @ApiResponse({ status: 200, description: 'Purchase order found' })
-  async findOne(@Param('id') id: string, @Request() req: any) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant context missing from request');
-    }
+  async findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
     return this.purchaseOrdersService.findById(id, tenantId);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create a new purchase order' })
   @ApiResponse({ status: 201, description: 'Purchase order created' })
-  async create(@Body() createDto: CreatePurchaseOrderDto, @Request() req: any) {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.sub || req.user?.id;
-    if (!tenantId || !userId) {
-      throw new BadRequestException('Missing tenant or user context');
-    }
+  async create(@Body() createDto: CreatePurchaseOrderDto, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
+    const userId = this.getUserId(req);
 
     let locationId = req.user?.locationId || createDto.locationId;
 
@@ -98,15 +94,18 @@ export class PurchaseOrdersController {
   @Patch(':id/approve')
   @ApiOperation({ summary: 'Approve a purchase order' })
   @ApiResponse({ status: 200, description: 'Purchase order approved' })
-  async approve(@Param('id') id: string, @Request() req: any) {
-    return this.purchaseOrdersService.approve(id, req.user.tenantId, req.user.sub || req.user.id);
+  async approve(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
+    const userId = this.getUserId(req);
+    return this.purchaseOrdersService.approve(id, tenantId, userId);
   }
 
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel a purchase order' })
   @ApiResponse({ status: 200, description: 'Purchase order cancelled' })
-  async cancel(@Param('id') id: string, @Request() req: any) {
-    return this.purchaseOrdersService.cancel(id, req.user.tenantId);
+  async cancel(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const tenantId = this.getTenantId(req);
+    return this.purchaseOrdersService.cancel(id, tenantId);
   }
 
   private async ensureLocationAccess(locationId: string, tenantId: string) {
@@ -117,5 +116,21 @@ export class PurchaseOrdersController {
     if (location.tenantId !== tenantId) {
       throw new ForbiddenException('Access denied to this location');
     }
+  }
+
+  private getTenantId(req: AuthenticatedRequest): string {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context missing from request');
+    }
+    return tenantId;
+  }
+
+  private getUserId(req: AuthenticatedRequest): string {
+    const userId = req.user?.sub ?? req.user?.id;
+    if (!userId) {
+      throw new BadRequestException('User context missing from request');
+    }
+    return userId;
   }
 }

@@ -7,13 +7,19 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
-  Request,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ReturnsService } from './returns.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ReturnStatus } from './returns.repository';
+import { Request } from 'express';
+import { AuthenticatedUser } from '../users/users.controller';
+
+type ReturnsRequest = Request & {
+  user: Pick<AuthenticatedUser, 'sub' | 'locationId' | 'tenantId'>;
+};
 
 @ApiTags('returns')
 @Controller('returns')
@@ -25,7 +31,7 @@ export class ReturnsController {
   @Post()
   @ApiOperation({ summary: 'Create a return/refund request' })
   @ApiResponse({ status: 201, description: 'Return created' })
-  async create(@Body() createReturnDto: CreateReturnDto, @Request() req: any) {
+  async create(@Body() createReturnDto: CreateReturnDto, @Req() req: ReturnsRequest) {
     return this.returnsService.create(
       createReturnDto,
       req.user.sub,
@@ -69,7 +75,7 @@ export class ReturnsController {
   @Post(':id/approve')
   @ApiOperation({ summary: 'Approve a return (restores inventory and processes refund)' })
   @ApiResponse({ status: 200, description: 'Return approved' })
-  async approve(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  async approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: ReturnsRequest) {
     return this.returnsService.approve(id, req.user.sub);
   }
 
@@ -79,7 +85,7 @@ export class ReturnsController {
   async reject(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { reason?: string },
-    @Request() req: any,
+    @Req() req: ReturnsRequest,
   ) {
     return this.returnsService.reject(id, req.user.sub, body.reason);
   }
@@ -87,7 +93,7 @@ export class ReturnsController {
   @Post(':id/complete')
   @ApiOperation({ summary: 'Mark return as completed' })
   @ApiResponse({ status: 200, description: 'Return completed' })
-  async complete(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  async complete(@Param('id', ParseUUIDPipe) id: string, @Req() req: ReturnsRequest) {
     return this.returnsService.complete(id, req.user.sub);
   }
 }

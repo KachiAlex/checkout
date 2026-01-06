@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma, SubscriptionPricing as PrismaSubscriptionPricing } from '@prisma/client';
 import { FirestoreService } from '../firestore/firestore.service';
 import { PrismaService } from '../database/prisma.service';
 import { SubscriptionPricingEntity } from './subscription-pricing.entity';
@@ -31,16 +32,7 @@ export class SubscriptionPricingRepository {
         return this.getDefaultPricing();
       }
 
-      return {
-        id: row.id,
-        free: row.free as any,
-        starter: row.starter as any,
-        professional: row.professional as any,
-        enterprise: row.enterprise as any,
-        lifetime: row.lifetime as any,
-        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
-        updatedBy: row.updatedBy ?? undefined,
-      };
+      return this.mapPrismaRowToEntity(row);
     }
 
     const docRef = this.firestore.collection(COLLECTION).doc(DEFAULT_DOC_ID);
@@ -81,21 +73,21 @@ export class SubscriptionPricingRepository {
       await this.prismaService.prisma.subscriptionPricing.upsert({
         where: { id: DEFAULT_DOC_ID },
         update: {
-          free: updated.free as any,
-          starter: updated.starter as any,
-          professional: updated.professional as any,
-          enterprise: updated.enterprise as any,
-          lifetime: updated.lifetime as any,
+          free: updated.free as Prisma.JsonValue,
+          starter: updated.starter as Prisma.JsonValue,
+          professional: updated.professional as Prisma.JsonValue,
+          enterprise: updated.enterprise as Prisma.JsonValue,
+          lifetime: updated.lifetime as Prisma.JsonValue,
           updatedAt: updated.updatedAt ? new Date(updated.updatedAt) : undefined,
           updatedBy: updated.updatedBy,
         },
         create: {
           id: DEFAULT_DOC_ID,
-          free: updated.free as any,
-          starter: updated.starter as any,
-          professional: updated.professional as any,
-          enterprise: updated.enterprise as any,
-          lifetime: updated.lifetime as any,
+          free: updated.free as Prisma.JsonValue,
+          starter: updated.starter as Prisma.JsonValue,
+          professional: updated.professional as Prisma.JsonValue,
+          enterprise: updated.enterprise as Prisma.JsonValue,
+          lifetime: updated.lifetime as Prisma.JsonValue,
           updatedAt: updated.updatedAt ? new Date(updated.updatedAt) : undefined,
           updatedBy: updated.updatedBy,
         },
@@ -164,6 +156,19 @@ export class SubscriptionPricingRepository {
           'Priority updates',
         ],
       },
+    };
+  }
+
+  private mapPrismaRowToEntity(row: PrismaSubscriptionPricing): SubscriptionPricingEntity {
+    return {
+      id: row.id,
+      free: row.free as SubscriptionPricingEntity['free'],
+      starter: row.starter as SubscriptionPricingEntity['starter'],
+      professional: row.professional as SubscriptionPricingEntity['professional'],
+      enterprise: row.enterprise as SubscriptionPricingEntity['enterprise'],
+      lifetime: row.lifetime as SubscriptionPricingEntity['lifetime'],
+      updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
+      updatedBy: row.updatedBy ?? undefined,
     };
   }
 }

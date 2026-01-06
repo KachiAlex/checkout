@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PushChangesDto } from './dto/push-changes.dto';
+import { PushChangesDto, SyncEventDto } from './dto/push-changes.dto';
 import { OrdersService } from '../orders/orders.service';
 import { OrdersRepository } from '../orders/orders.repository';
 
@@ -42,7 +42,7 @@ export class SyncService {
     return { processed, failed };
   }
 
-  async pullChanges(deviceId: string, since?: string): Promise<any[]> {
+  async pullChanges(deviceId: string, since?: string): Promise<SyncEventDto[]> {
     const sinceDate = since ? new Date(since) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Default: last 7 days
 
     // Get orders created since last sync
@@ -59,7 +59,7 @@ export class SyncService {
     }));
   }
 
-  private async processOrderEvent(event: any): Promise<void> {
+  private async processOrderEvent(event: SyncEventDto): Promise<void> {
     // For MVP: Process order creation events
     // In production, this would handle various event types with proper validation
     if (event.type === 'order.created' && event.payload.uuid) {

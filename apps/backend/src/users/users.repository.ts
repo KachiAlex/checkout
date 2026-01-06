@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { FieldValue, Query, Timestamp } from 'firebase-admin/firestore';
 import { UserRole } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
@@ -40,12 +41,13 @@ export class UsersRepository {
   }
 
   private toRole(value: unknown): UserRole {
-    const normalized = String(value || '').toLowerCase();
-    return normalized as UserRole;
+    const normalized = String(value || '').toLowerCase() as UserRole;
+    return normalized;
   }
 
-  private toPrismaEnum(value: string): string {
-    return value.trim().toUpperCase();
+  private toPrismaRole(value: UserRole | undefined): Prisma.UserRole {
+    const normalized = (value ?? UserRole.CASHIER).toUpperCase();
+    return normalized as Prisma.UserRole;
   }
 
   async findAll(tenantId?: string): Promise<UserRecord[]> {
@@ -214,7 +216,7 @@ export class UsersRepository {
   async findByRole(role: UserRole, tenantId: string): Promise<UserRecord | null> {
     if (this.isPostgresEnabled()) {
       const row = await this.prismaService.prisma.user.findFirst({
-        where: { tenantId, role: this.toPrismaEnum(role) as any },
+        where: { tenantId, role: this.toPrismaRole(role) },
       });
       if (!row) {
         return null;
@@ -292,7 +294,7 @@ export class UsersRepository {
             update: {
               name: record.name,
               email: record.email?.toLowerCase(),
-              role: this.toPrismaEnum(record.role ?? UserRole.CASHIER) as any,
+              role: this.toPrismaRole(record.role),
               pinHash: record.pinHash,
               tenantId: record.tenantId,
               isPlatformAdmin: record.isPlatformAdmin ?? false,
@@ -304,7 +306,7 @@ export class UsersRepository {
               id,
               name: record.name,
               email: record.email?.toLowerCase(),
-              role: this.toPrismaEnum(record.role ?? UserRole.CASHIER) as any,
+              role: this.toPrismaRole(record.role),
               pinHash: record.pinHash,
               tenantId: record.tenantId,
               isPlatformAdmin: record.isPlatformAdmin ?? false,
@@ -317,7 +319,7 @@ export class UsersRepository {
             data: {
               name: record.name,
               email: record.email?.toLowerCase(),
-              role: this.toPrismaEnum(record.role ?? UserRole.CASHIER) as any,
+              role: this.toPrismaRole(record.role),
               pinHash: record.pinHash,
               tenantId: record.tenantId,
               isPlatformAdmin: record.isPlatformAdmin ?? false,
@@ -393,7 +395,7 @@ export class UsersRepository {
         data: {
           name: update.name,
           email: update.email?.toLowerCase(),
-          role: update.role ? (this.toPrismaEnum(update.role) as any) : undefined,
+          role: update.role ? this.toPrismaRole(update.role) : undefined,
           pinHash: update.pinHash,
           tenantId: update.tenantId,
           isPlatformAdmin: update.isPlatformAdmin,

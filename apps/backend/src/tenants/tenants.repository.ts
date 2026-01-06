@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { TenantPlan, TenantStatus, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
@@ -56,8 +57,12 @@ export class TenantsRepository {
     return normalized as TenantStatus;
   }
 
-  private toPrismaEnum(value: string): string {
-    return value.trim().toUpperCase();
+  private toPrismaPlan(value: TenantPlan): Prisma.TenantPlan {
+    return value.toUpperCase() as Prisma.TenantPlan;
+  }
+
+  private toPrismaStatus(value: TenantStatus): Prisma.TenantStatus {
+    return value.toUpperCase() as Prisma.TenantStatus;
   }
 
   async findAll(): Promise<TenantRecord[]> {
@@ -161,15 +166,15 @@ export class TenantsRepository {
         data: {
           name: data.name,
           slug: data.slug,
-          plan: this.toPrismaEnum(data.plan) as any,
-          status: this.toPrismaEnum(data.status) as any,
+          plan: this.toPrismaPlan(data.plan),
+          status: this.toPrismaStatus(data.status),
           industry: data.industry,
-          featureFlags: data.featureFlags as any,
+          featureFlags: data.featureFlags as Prisma.JsonValue | undefined,
           seatLimit: data.seatLimit,
           contactEmail: data.contactEmail,
           billingCycleStart: data.billingCycleStart,
           billingCycleEnd: data.billingCycleEnd,
-          metadata: data.metadata as any,
+          metadata: data.metadata as Prisma.JsonValue | undefined,
         },
       });
 
@@ -230,13 +235,13 @@ export class TenantsRepository {
         data: {
           name: update.name,
           slug: update.slug,
-          plan: update.plan ? (this.toPrismaEnum(update.plan) as any) : undefined,
-          status: update.status ? (this.toPrismaEnum(update.status) as any) : undefined,
+          plan: update.plan ? this.toPrismaPlan(update.plan) : undefined,
+          status: update.status ? this.toPrismaStatus(update.status) : undefined,
           seatLimit: update.seatLimit,
           contactEmail: update.contactEmail,
           industry: update.industry,
-          featureFlags: update.featureFlags as any,
-          metadata: update.metadata as any,
+          featureFlags: update.featureFlags as Prisma.JsonValue | undefined,
+          metadata: update.metadata as Prisma.JsonValue | undefined,
           billingCycleStart: update.billingCycleStart,
           billingCycleEnd: update.billingCycleEnd,
         },

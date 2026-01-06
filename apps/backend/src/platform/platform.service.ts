@@ -10,7 +10,13 @@ import { TenantsService } from '../tenants/tenants.service';
 import { TenantsRepository } from '../tenants/tenants.repository';
 import { UsersRepository } from '../users/users.repository';
 import { RegisterDto } from './dto/register.dto';
-import { TenantPlan, TenantStatus, PaymentMethod, PaymentStatus } from '@pos-checkout/shared';
+import {
+  TenantPlan,
+  TenantStatus,
+  PaymentMethod,
+  PaymentStatus,
+  Industry,
+} from '@pos-checkout/shared';
 import { FlutterwaveAdapter } from '@pos-checkout/payment-adapters';
 import type { FlutterwaveConfig } from '@pos-checkout/payment-adapters';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,6 +25,7 @@ import {
   SubscriptionPaymentRecord,
 } from './subscription-payments.repository';
 import { EmailService } from '../email/email.service';
+import { PlatformWebhookDto } from './dto/platform-webhook.dto';
 
 @Injectable()
 export class PlatformService {
@@ -89,7 +96,7 @@ export class PlatformService {
       plan,
       adminEmail: dto.adminEmail,
       adminName: dto.adminName,
-      industry: dto.industry as any, // Industry type from registration
+      industry: this.normalizeIndustry(dto.industry),
       billingCycleStart: billingCycleStart.toISOString(),
       billingCycleEnd: billingCycleEnd?.toISOString(),
     });
@@ -142,7 +149,7 @@ export class PlatformService {
             },
           });
 
-          const checkoutUrl = (paymentResult.processor_data as any)?.checkout_url;
+          const checkoutUrl = this.getProcessorCheckoutUrl(paymentResult.processor_data);
           const updatedPayment = await this.subscriptionPaymentsRepository.update(paymentId, {
             status: paymentResult.status,
             transactionId: paymentResult.transaction_id,
@@ -247,13 +254,23 @@ export class PlatformService {
   /**
    * Handle Flutterwave webhook for payment confirmation
    */
-  async handleFlutterwaveWebhook(payload: any, verifHash: string): Promise<{ success: boolean }> {
+  async handleFlutterwaveWebhook(
+    payload: PlatformWebhookDto,
+    verifHash: string,
+  ): Promise<{ success: boolean }> {
     // Verify webhook signature
-    const flutterwaveAdapter = this.getFlutterwaveAdapter();
+    const adapter = this.getFlutterwaveAdapter();
     const webhookSecret = this.configService.get<string>('FLUTTERWAVE_WEBHOOK_SECRET');
 
-    if (webhookSecret && verifHash !== webhookSecret) {
-      throw new BadRequestException('Invalid webhook signature');
+    if (webhookSecret) {
+      if (!verifHash) {
+        throw new BadRequestException('Missing webhook signature');
+      }
+      const payloadString = JSON.stringify(payload);
+      const isValid = adapter.verifyWebhookSignature(payloadString, verifHash);
+      if (!isValid) {
+        throw new BadRequestException('Invalid webhook signature');
+      }
     }
 
     // Process webhook based on event type
@@ -311,6 +328,40 @@ export class PlatformService {
   }
 
   /**
+   * Normalize industry string to supported enum.
+   */
+  private normalizeIndustry(value?: string): Industry {
+    if (!value) {
+      return Industry.GENERAL;
+    }
+    const normalized = value.trim().toLowerCase();
+    const match = (Object.values(Industry) as string[]).find((industry) => industry === normalized);
+    return (match as Industry) ?? Industry.GENERAL;
+  }
+
+  /**
+   * Extract Checkout URL from processor data.
+   */
+  private getProcessorCheckoutUrl(processorData?: Record<string, unknown>): string | undefined {
+    if (!processorData) {
+      return undefined;
+    }
+    const checkoutUrl = processorData.checkout_url ?? processorData.link;
+    return typeof checkoutUrl === 'string' ? checkoutUrl : undefined;
+  }
+
+  private getMetadataString(
+    metadata: Record<string, unknown> | undefined,
+    key: string,
+  ): string | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+    const value = metadata[key];
+    return typeof value === 'string' ? value : undefined;
+  }
+
+  /**
    * Get Flutterwave adapter instance
    */
   private getFlutterwaveAdapter(): FlutterwaveAdapter {
@@ -356,10 +407,7 @@ export class PlatformService {
   private async sendSubscriptionReceipt(payment: SubscriptionPaymentRecord): Promise<void> {
     try {
       const tenant = await this.tenantsRepository.findById(payment.tenantId);
-      const metadataAdminEmail =
-        typeof payment.metadata === 'object' && payment.metadata
-          ? (payment.metadata as Record<string, any>).adminEmail
-          : undefined;
+      const metadataAdminEmail = this.getMetadataString(payment.metadata, 'adminEmail');
       const recipient = tenant?.contactEmail || metadataAdminEmail;
       if (!recipient) {
         return;

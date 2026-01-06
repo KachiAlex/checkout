@@ -17,7 +17,9 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "PK_locations_id" PRIMARY KEY ("id")
     )`);
 
-    await queryRunner.query(`CREATE TYPE IF NOT EXISTS "public"."users_role_enum" AS ENUM('cashier','manager','admin')`);
+    await queryRunner.query(
+      `CREATE TYPE IF NOT EXISTS "public"."users_role_enum" AS ENUM('cashier','manager','admin')`,
+    );
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "users" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
       "name" character varying(255) NOT NULL,
@@ -31,7 +33,9 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "PK_users_id" PRIMARY KEY ("id"),
       CONSTRAINT "FK_users_location" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE SET NULL
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_users_location" ON "users" ("location_id")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_users_location" ON "users" ("location_id")',
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "products" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -51,8 +55,12 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "UQ_products_sku" UNIQUE ("sku"),
       CONSTRAINT "UQ_products_barcode" UNIQUE ("barcode")
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_products_sku" ON "products" USING btree ("sku")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_products_barcode" ON "products" USING btree ("barcode")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_products_sku" ON "products" USING btree ("sku")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_products_barcode" ON "products" USING btree ("barcode")',
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "inventory" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -68,10 +76,16 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "FK_inventory_product" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE CASCADE,
       CONSTRAINT "FK_inventory_location" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE CASCADE
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_inventory_product" ON "inventory" ("product_id")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_inventory_location" ON "inventory" ("location_id")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_inventory_product" ON "inventory" ("product_id")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_inventory_location" ON "inventory" ("location_id")',
+    );
 
-    await queryRunner.query(`CREATE TYPE IF NOT EXISTS "public"."inventory_transactions_type_enum" AS ENUM('sale','return','adjust','received')`);
+    await queryRunner.query(
+      `CREATE TYPE IF NOT EXISTS "public"."inventory_transactions_type_enum" AS ENUM('sale','return','adjust','received')`,
+    );
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "inventory_transactions" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
       "product_id" uuid NOT NULL,
@@ -89,10 +103,16 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "FK_inventory_tx_location" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE CASCADE,
       CONSTRAINT "FK_inventory_tx_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_inventory_tx_product_location" ON "inventory_transactions" ("product_id", "location_id")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_inventory_tx_ts" ON "inventory_transactions" ("ts")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_inventory_tx_product_location" ON "inventory_transactions" ("product_id", "location_id")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_inventory_tx_ts" ON "inventory_transactions" ("ts")',
+    );
 
-    await queryRunner.query(`CREATE TYPE IF NOT EXISTS "public"."orders_status_enum" AS ENUM('draft','pending','completed','cancelled')`);
+    await queryRunner.query(
+      `CREATE TYPE IF NOT EXISTS "public"."orders_status_enum" AS ENUM('draft','pending','completed','cancelled')`,
+    );
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "orders" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
       "uuid" uuid NOT NULL,
@@ -116,11 +136,19 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "FK_orders_location" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE CASCADE,
       CONSTRAINT "FK_orders_creator" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE SET NULL
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_orders_location_created" ON "orders" ("location_id", "created_at")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_orders_order_number" ON "orders" ("order_number")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_orders_location_created" ON "orders" ("location_id", "created_at")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_orders_order_number" ON "orders" ("order_number")',
+    );
 
-    await queryRunner.query(`CREATE TYPE IF NOT EXISTS "public"."payments_method_enum" AS ENUM('card','qr','cash')`);
-    await queryRunner.query(`CREATE TYPE IF NOT EXISTS "public"."payments_status_enum" AS ENUM('pending','processing','completed','failed','refunded')`);
+    await queryRunner.query(
+      `CREATE TYPE IF NOT EXISTS "public"."payments_method_enum" AS ENUM('card','qr','cash')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE IF NOT EXISTS "public"."payments_status_enum" AS ENUM('pending','processing','completed','failed','refunded')`,
+    );
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "payments" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
       "order_id" uuid NOT NULL,
@@ -137,8 +165,12 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "PK_payments_id" PRIMARY KEY ("id"),
       CONSTRAINT "FK_payments_order" FOREIGN KEY ("order_id") REFERENCES "orders"("id") ON DELETE CASCADE
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_payments_order" ON "payments" ("order_id")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_payments_status" ON "payments" ("status")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_payments_order" ON "payments" ("order_id")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_payments_status" ON "payments" ("status")',
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "audit_logs" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -154,10 +186,16 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
       CONSTRAINT "PK_audit_logs_id" PRIMARY KEY ("id")
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_audit_logs_entity_entityId" ON "audit_logs" ("entity", "entity_id")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_audit_logs_ts" ON "audit_logs" ("ts")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_audit_logs_entity_entityId" ON "audit_logs" ("entity", "entity_id")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_audit_logs_ts" ON "audit_logs" ("ts")',
+    );
 
-    await queryRunner.query(`CREATE TYPE IF NOT EXISTS "public"."devices_type_enum" AS ENUM('usb','bluetooth','camera')`);
+    await queryRunner.query(
+      `CREATE TYPE IF NOT EXISTS "public"."devices_type_enum" AS ENUM('usb','bluetooth','camera')`,
+    );
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "devices" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
       "identifier" character varying(255) NOT NULL,
@@ -181,7 +219,9 @@ export class InitialSchema1710040000000 implements MigrationInterface {
       CONSTRAINT "FK_devices_registered_by" FOREIGN KEY ("registered_by") REFERENCES "users"("id") ON DELETE SET NULL,
       CONSTRAINT "FK_devices_last_used_by" FOREIGN KEY ("last_used_by") REFERENCES "users"("id") ON DELETE SET NULL
     )`);
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_devices_location" ON "devices" ("location_id")');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "IDX_devices_location" ON "devices" ("location_id")',
+    );
     await queryRunner.query('CREATE INDEX IF NOT EXISTS "IDX_devices_type" ON "devices" ("type")');
   }
 
@@ -226,4 +266,3 @@ export class InitialSchema1710040000000 implements MigrationInterface {
     await queryRunner.query('DROP TABLE IF EXISTS "locations"');
   }
 }
-

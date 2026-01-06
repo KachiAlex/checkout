@@ -3,12 +3,7 @@ import { PaymentStatus, TenantPlan, TenantStatus } from '@pos-checkout/shared';
 import { SubscriptionPaymentsRepository } from './subscription-payments.repository';
 import { TenantsRepository, TenantRecord } from '../tenants/tenants.repository';
 
-export type PlatformAnalyticsPeriod =
-  | 'daily'
-  | 'weekly'
-  | 'monthly'
-  | 'quarterly'
-  | 'yearly';
+export type PlatformAnalyticsPeriod = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 interface DateRangeConfig {
   fromDate: Date;
@@ -33,7 +28,12 @@ export class PlatformAnalyticsService {
 
     const grouped = new Map<
       string,
-      { revenueCents: number; payments: number; tenants: Set<string>; plans: Record<string, number> }
+      {
+        revenueCents: number;
+        payments: number;
+        tenants: Set<string>;
+        plans: Record<string, number>;
+      }
     >();
     let totalRevenueCents = 0;
     let totalPayments = 0;
@@ -41,9 +41,12 @@ export class PlatformAnalyticsService {
     payments.forEach((payment) => {
       const paidAt = payment.paidAt ?? payment.updatedAt ?? payment.createdAt;
       const key = groupBy(paidAt);
-      const bucket =
-        grouped.get(key) ||
-        { revenueCents: 0, payments: 0, tenants: new Set<string>(), plans: {} };
+      const bucket = grouped.get(key) || {
+        revenueCents: 0,
+        payments: 0,
+        tenants: new Set<string>(),
+        plans: {},
+      };
       bucket.revenueCents += payment.amountCents;
       bucket.payments += 1;
       bucket.tenants.add(payment.tenantId);
@@ -77,8 +80,7 @@ export class PlatformAnalyticsService {
       .map(([plan, cents]) => ({
         plan,
         revenue: cents / 100,
-        percent:
-          totalRevenueCents > 0 ? Number(((cents / totalRevenueCents) * 100).toFixed(2)) : 0,
+        percent: totalRevenueCents > 0 ? Number(((cents / totalRevenueCents) * 100).toFixed(2)) : 0,
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
@@ -163,17 +165,16 @@ export class PlatformAnalyticsService {
     };
   }
 
-  private groupPaymentsByTenant(payments: Awaited<
-    ReturnType<SubscriptionPaymentsRepository['list']>
-  >) {
+  private groupPaymentsByTenant(
+    payments: Awaited<ReturnType<SubscriptionPaymentsRepository['list']>>,
+  ) {
     const map = new Map<
       string,
       { revenueCents: number; count: number; lastPayment: Date | null }
     >();
 
     payments.forEach((payment) => {
-      const bucket =
-        map.get(payment.tenantId) || { revenueCents: 0, count: 0, lastPayment: null };
+      const bucket = map.get(payment.tenantId) || { revenueCents: 0, count: 0, lastPayment: null };
       bucket.revenueCents += payment.amountCents;
       bucket.count += 1;
       const paidAt = payment.paidAt ?? payment.updatedAt ?? payment.createdAt;
@@ -286,7 +287,8 @@ export class PlatformAnalyticsService {
         };
         break;
       case 'monthly':
-        groupBy = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        groupBy = (date: Date) =>
+          `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         break;
       case 'quarterly':
         groupBy = (date: Date) => {
