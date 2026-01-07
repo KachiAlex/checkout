@@ -14,6 +14,27 @@ import {
 
 const getTodayDate = () => format(new Date(), "yyyy-MM-dd");
 
+const formatMoney = (cents: number, currency: string) => {
+  const value = (cents || 0) / 100;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(2)}`;
+  }
+};
+
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return "";
+  const ts = Date.parse(value);
+  if (Number.isNaN(ts)) return value;
+  return new Date(ts).toLocaleString();
+};
+
 type Tab = "general-ledger" | "trial-balance" | "profit-loss" | "balance-sheet";
 
 export function AccountingReportsPage() {
@@ -283,17 +304,423 @@ export function AccountingReportsPage() {
           {!data ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">📄</div>
-              <p className="theme-text-primary text-sm font-semibold mb-1">
-                No data yet
-              </p>
-              <p className="theme-text-secondary text-xs">
-                Run a report to see results.
-              </p>
+              <p className="theme-text-primary text-sm font-semibold mb-1">No data yet</p>
+              <p className="theme-text-secondary text-xs">Run a report to see results.</p>
             </div>
           ) : (
-            <pre className="theme-text-secondary text-xs whitespace-pre-wrap overflow-x-auto">
-              {JSON.stringify(data, null, 2)}
-            </pre>
+            (() => {
+              const currency: string = (data as any)?.currency || "NGN";
+
+              if (activeTab === "general-ledger") {
+                const rows = (data as any)?.rows || [];
+                const account = (data as any)?.account;
+                return (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <div className="theme-text-primary text-sm font-semibold">
+                          {account ? `${account.code} — ${account.name}` : "General Ledger"}
+                        </div>
+                        <div className="theme-text-secondary text-xs">
+                          Opening: {formatMoney((data as any)?.openingBalanceCents || 0, currency)} · Closing:{" "}
+                          {formatMoney((data as any)?.closingBalanceCents || 0, currency)}
+                        </div>
+                      </div>
+                      <div className="theme-text-secondary text-xs">
+                        {rows.length} line{rows.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+
+                    {rows.length === 0 ? (
+                      <div className="text-center py-10">
+                        <div className="text-4xl mb-3">🗂️</div>
+                        <p className="theme-text-primary text-sm font-semibold mb-1">No ledger entries found</p>
+                        <p className="theme-text-secondary text-xs">Try a wider date range or another account.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                              <th className="py-2 pr-4">Posted</th>
+                              <th className="py-2 pr-4">Source</th>
+                              <th className="py-2 pr-4">Description</th>
+                              <th className="py-2 pr-4 text-right">Debit</th>
+                              <th className="py-2 pr-4 text-right">Credit</th>
+                              <th className="py-2 text-right">Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((r: any) => (
+                              <tr key={r.journalEntryId + ":" + (r.description || "") + ":" + (r.postedAt || "")} className="border-b border-white/5">
+                                <td className="py-2 pr-4 theme-text-primary whitespace-nowrap">
+                                  {formatDateTime(r.postedAt)}
+                                </td>
+                                <td className="py-2 pr-4 theme-text-secondary whitespace-nowrap">
+                                  {r.source}{r.reference ? ` · ${r.reference}` : ""}
+                                </td>
+                                <td className="py-2 pr-4 theme-text-primary min-w-[240px]">
+                                  {r.description || r.memo || "-"}
+                                </td>
+                                <td className="py-2 pr-4 text-right theme-text-primary whitespace-nowrap">
+                                  {r.debitCents ? formatMoney(r.debitCents, currency) : "-"}
+                                </td>
+                                <td className="py-2 pr-4 text-right theme-text-primary whitespace-nowrap">
+                                  {r.creditCents ? formatMoney(r.creditCents, currency) : "-"}
+                                </td>
+                                <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                  {formatMoney(r.balanceCents || 0, currency)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              if (activeTab === "trial-balance") {
+                const rows = (data as any)?.rows || [];
+                const totals = (data as any)?.totals || { debitCents: 0, creditCents: 0 };
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="theme-text-primary text-sm font-semibold">Trial Balance</div>
+                      <div className="theme-text-secondary text-xs">
+                        Total Debit: {formatMoney(totals.debitCents || 0, currency)} · Total Credit:{" "}
+                        {formatMoney(totals.creditCents || 0, currency)}
+                      </div>
+                    </div>
+
+                    {rows.length === 0 ? (
+                      <div className="text-center py-10">
+                        <div className="text-4xl mb-3">🧮</div>
+                        <p className="theme-text-primary text-sm font-semibold mb-1">No balances found</p>
+                        <p className="theme-text-secondary text-xs">No journal activity in this period.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                              <th className="py-2 pr-4">Account</th>
+                              <th className="py-2 pr-4">Type</th>
+                              <th className="py-2 pr-4 text-right">Debit</th>
+                              <th className="py-2 text-right">Credit</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((r: any) => (
+                              <tr key={r.accountId} className="border-b border-white/5">
+                                <td className="py-2 pr-4 theme-text-primary">
+                                  {r.code} — {r.name}
+                                </td>
+                                <td className="py-2 pr-4 theme-text-secondary">{r.type}</td>
+                                <td className="py-2 pr-4 text-right theme-text-primary whitespace-nowrap">
+                                  {r.debitCents ? formatMoney(r.debitCents, currency) : "-"}
+                                </td>
+                                <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                  {r.creditCents ? formatMoney(r.creditCents, currency) : "-"}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t border-white/10">
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">Totals</td>
+                              <td />
+                              <td className="py-3 pr-4 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                {formatMoney(totals.debitCents || 0, currency)}
+                              </td>
+                              <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                {formatMoney(totals.creditCents || 0, currency)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              if (activeTab === "profit-loss") {
+                const revenue = (data as any)?.revenue;
+                const contraRevenue = (data as any)?.contraRevenue;
+                const expenses = (data as any)?.expenses;
+                const netIncomeCents = (data as any)?.netIncomeCents ?? 0;
+                const revenueRows = revenue?.rows || [];
+                const contraRows = contraRevenue?.rows || [];
+                const expenseRows = expenses?.rows || [];
+
+                const totalRevenueCents = revenue?.totalCents || 0;
+                const totalContraRevenueCents = contraRevenue?.totalCents || 0;
+                const netRevenueCents = totalRevenueCents - totalContraRevenueCents;
+                const totalExpensesCents = expenses?.totalCents || 0;
+
+                const isEmpty = revenueRows.length === 0 && contraRows.length === 0 && expenseRows.length === 0;
+
+                return (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="theme-text-primary text-sm font-semibold">Profit &amp; Loss</div>
+                      <div className="theme-text-secondary text-xs">
+                        Net Income: {formatMoney(netIncomeCents, currency)}
+                      </div>
+                    </div>
+
+                    {isEmpty ? (
+                      <div className="text-center py-10">
+                        <div className="text-4xl mb-3">📈</div>
+                        <p className="theme-text-primary text-sm font-semibold mb-1">No income or expenses found</p>
+                        <p className="theme-text-secondary text-xs">No journal activity in this period.</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4">
+                        <div className="overflow-x-auto">
+                          <div className="theme-text-primary text-sm font-semibold mb-2">Revenue</div>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                                <th className="py-2 pr-4">Account</th>
+                                <th className="py-2 text-right">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {revenueRows.map((r: any) => (
+                                <tr key={r.accountId} className="border-b border-white/5">
+                                  <td className="py-2 pr-4 theme-text-primary">
+                                    {r.code} — {r.name}
+                                  </td>
+                                  <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                    {formatMoney(r.amountCents || 0, currency)}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="border-t border-white/10">
+                                <td className="py-3 pr-4 theme-text-primary font-semibold">Total Revenue</td>
+                                <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                  {formatMoney(totalRevenueCents, currency)}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <div className="theme-text-primary text-sm font-semibold mb-2">Contra Revenue</div>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                                <th className="py-2 pr-4">Account</th>
+                                <th className="py-2 text-right">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {contraRows.map((r: any) => (
+                                <tr key={r.accountId} className="border-b border-white/5">
+                                  <td className="py-2 pr-4 theme-text-primary">
+                                    {r.code} — {r.name}
+                                  </td>
+                                  <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                    {formatMoney(r.amountCents || 0, currency)}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="border-t border-white/10">
+                                <td className="py-3 pr-4 theme-text-primary font-semibold">Total Contra Revenue</td>
+                                <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                  {formatMoney(totalContraRevenueCents, currency)}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <div className="theme-text-primary text-sm font-semibold mb-2">Expenses</div>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                                <th className="py-2 pr-4">Account</th>
+                                <th className="py-2 text-right">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {expenseRows.map((r: any) => (
+                                <tr key={r.accountId} className="border-b border-white/5">
+                                  <td className="py-2 pr-4 theme-text-primary">
+                                    {r.code} — {r.name}
+                                  </td>
+                                  <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                    {formatMoney(r.amountCents || 0, currency)}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="border-t border-white/10">
+                                <td className="py-3 pr-4 theme-text-primary font-semibold">Total Expenses</td>
+                                <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                  {formatMoney(totalExpensesCents, currency)}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          <div className="theme-surface rounded-xl border p-4">
+                            <div className="theme-text-secondary text-xs">Net Revenue</div>
+                            <div className="theme-text-primary text-lg font-semibold">
+                              {formatMoney(netRevenueCents, currency)}
+                            </div>
+                          </div>
+                          <div className="theme-surface rounded-xl border p-4">
+                            <div className="theme-text-secondary text-xs">Net Income</div>
+                            <div className="theme-text-primary text-lg font-semibold">
+                              {formatMoney(netIncomeCents, currency)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const assets = (data as any)?.assets;
+              const liabilities = (data as any)?.liabilities;
+              const equity = (data as any)?.equity;
+              const assetsRows = assets?.rows || [];
+              const liabilityRows = liabilities?.rows || [];
+              const equityRows = equity?.rows || [];
+              const isEmpty =
+                assetsRows.length === 0 && liabilityRows.length === 0 && equityRows.length === 0;
+
+              return (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="theme-text-primary text-sm font-semibold">Balance Sheet</div>
+                    <div className="theme-text-secondary text-xs">
+                      {(data as any)?.isBalanced
+                        ? "Balanced"
+                        : `Difference: ${formatMoney((data as any)?.differenceCents || 0, currency)}`}
+                    </div>
+                  </div>
+
+                  {isEmpty ? (
+                    <div className="text-center py-10">
+                      <div className="text-4xl mb-3">🏦</div>
+                      <p className="theme-text-primary text-sm font-semibold mb-1">No balances found</p>
+                      <p className="theme-text-secondary text-xs">No journal activity as of this date.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-6">
+                      <div className="overflow-x-auto">
+                        <div className="theme-text-primary text-sm font-semibold mb-2">Assets</div>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                              <th className="py-2 pr-4">Account</th>
+                              <th className="py-2 text-right">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {assetsRows.map((r: any) => (
+                              <tr key={r.accountId} className="border-b border-white/5">
+                                <td className="py-2 pr-4 theme-text-primary">
+                                  {r.code} — {r.name}
+                                </td>
+                                <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                  {formatMoney(r.amountCents || 0, currency)}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t border-white/10">
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Assets</td>
+                              <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                {formatMoney(assets?.totalCents || 0, currency)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <div className="theme-text-primary text-sm font-semibold mb-2">Liabilities</div>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                              <th className="py-2 pr-4">Account</th>
+                              <th className="py-2 text-right">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {liabilityRows.map((r: any) => (
+                              <tr key={r.accountId} className="border-b border-white/5">
+                                <td className="py-2 pr-4 theme-text-primary">
+                                  {r.code} — {r.name}
+                                </td>
+                                <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                  {formatMoney(r.amountCents || 0, currency)}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t border-white/10">
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Liabilities</td>
+                              <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                {formatMoney(liabilities?.totalCents || 0, currency)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <div className="theme-text-primary text-sm font-semibold mb-2">Equity</div>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
+                              <th className="py-2 pr-4">Account</th>
+                              <th className="py-2 text-right">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {equityRows.map((r: any) => (
+                              <tr key={r.accountId} className="border-b border-white/5">
+                                <td className="py-2 pr-4 theme-text-primary">
+                                  {r.code} — {r.name}
+                                </td>
+                                <td className="py-2 text-right theme-text-primary whitespace-nowrap">
+                                  {formatMoney(r.amountCents || 0, currency)}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t border-white/10">
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">Net Income</td>
+                              <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                {formatMoney(equity?.netIncomeCents || 0, currency)}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Equity</td>
+                              <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                {formatMoney(equity?.totalCents || 0, currency)}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Equity + Net Income</td>
+                              <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
+                                {formatMoney(equity?.totalWithNetIncomeCents || 0, currency)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
           )}
         </div>
       </div>
