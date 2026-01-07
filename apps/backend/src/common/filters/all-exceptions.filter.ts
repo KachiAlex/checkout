@@ -19,14 +19,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse();
 
+    const maybeHttpException = exception as any;
+    const isHttpExceptionLike =
+      maybeHttpException &&
+      typeof maybeHttpException.getStatus === 'function' &&
+      typeof maybeHttpException.getResponse === 'function';
+
+    const isPassportUnauthorizedError =
+      typeof (exception as any)?.name === 'string' &&
+      (exception as any).name === 'UnauthorizedError';
+
     const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      isHttpExceptionLike
+        ? (maybeHttpException as HttpException).getStatus()
+        : isPassportUnauthorizedError
+          ? HttpStatus.UNAUTHORIZED
+          : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const responseBody =
-      exception instanceof HttpException
-        ? exception.getResponse()
+      isHttpExceptionLike
+        ? (maybeHttpException as HttpException).getResponse()
         : { message: 'Internal server error' };
 
     const message =
