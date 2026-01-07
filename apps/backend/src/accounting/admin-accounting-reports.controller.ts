@@ -35,6 +35,7 @@ export class AdminAccountingReportsController {
   private ensureTenantAdmin(req: AuthenticatedRequest) {
     if (req.user?.isPlatformAdmin) return;
     if (req.user?.role === UserRole.ADMIN) return;
+    if (req.user?.role === UserRole.MANAGER) return;
     throw new ForbiddenException('Only tenant administrators can access accounting reports');
   }
 

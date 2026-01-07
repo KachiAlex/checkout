@@ -27,6 +27,36 @@ const ReportsPage = lazy(() =>
     default: module.ReportsPage,
   })),
 );
+const AccountingLandingPage = lazy(() =>
+  import("./pages/AccountingLandingPage").then((module) => ({
+    default: module.AccountingLandingPage,
+  })),
+);
+const AccountingReportsPage = lazy(() =>
+  import("./pages/AccountingReportsPage").then((module) => ({
+    default: module.AccountingReportsPage,
+  })),
+);
+const AccountingAccountsPage = lazy(() =>
+  import("./pages/AccountingAccountsPage").then((module) => ({
+    default: module.AccountingAccountsPage,
+  })),
+);
+const AccountingMappingsPage = lazy(() =>
+  import("./pages/AccountingMappingsPage").then((module) => ({
+    default: module.AccountingMappingsPage,
+  })),
+);
+const AccountingJournalsPage = lazy(() =>
+  import("./pages/AccountingJournalsPage").then((module) => ({
+    default: module.AccountingJournalsPage,
+  })),
+);
+const AccountingJournalDetailPage = lazy(() =>
+  import("./pages/AccountingJournalDetailPage").then((module) => ({
+    default: module.AccountingJournalDetailPage,
+  })),
+);
 const InventoryManagementPage = lazy(() =>
   import("./pages/InventoryManagementPage").then((module) => ({
     default: module.InventoryManagementPage,
@@ -227,6 +257,81 @@ function App() {
               element={
                 isCompanyUser && (isAdmin || isManager) ? (
                   <ReportsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+
+            <Route
+              path="/accounting"
+              element={
+                isCompanyUser && isAdmin ? (
+                  <AccountingLandingPage />
+                ) : isCompanyUser && isManager ? (
+                  <Navigate to="/accounting/reports" replace />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/accounting/reports"
+              element={
+                isCompanyUser && (isAdmin || isManager) ? (
+                  <AccountingReportsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/accounting/accounts"
+              element={
+                isCompanyUser && isAdmin ? (
+                  <AccountingAccountsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/accounting/mappings"
+              element={
+                isCompanyUser && isAdmin ? (
+                  <AccountingMappingsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/accounting/journals"
+              element={
+                isCompanyUser && isAdmin ? (
+                  <AccountingJournalsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/accounting/journals/:id"
+              element={
+                isCompanyUser && isAdmin ? (
+                  <AccountingJournalDetailPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
                 ) : (

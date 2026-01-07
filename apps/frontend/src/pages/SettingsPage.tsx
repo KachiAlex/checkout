@@ -1218,6 +1218,9 @@ export function SettingsPage() {
     { id: "general", label: "General", icon: "⚙️" },
     { id: "receipts", label: "Receipts", icon: "🧾" },
     ...(isTenantAdmin
+      ? [{ id: "accounting", label: "Accounting", icon: "📒" }]
+      : []),
+    ...(isTenantAdmin
       ? [{ id: "payments", label: "Payments", icon: "💳" }]
       : []),
     ...(isTenantAdmin
@@ -1484,6 +1487,51 @@ export function SettingsPage() {
                     </div>
                   </div>
                 </div>
+              </SectionContainer>
+            </>
+          )}
+
+          {activeTab === "accounting" && isTenantAdmin && (
+            <>
+              <SectionContainer
+                title="Accounting"
+                description="Configure and review accounting (admin only)."
+              >
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Link
+                    to="/accounting"
+                    className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
+                  >
+                    📒 Accounting Home
+                  </Link>
+                  <Link
+                    to="/accounting/reports"
+                    className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
+                  >
+                    📑 Reports
+                  </Link>
+                  <Link
+                    to="/accounting/journals"
+                    className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
+                  >
+                    🧾 Journals
+                  </Link>
+                  <Link
+                    to="/accounting/mappings"
+                    className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
+                  >
+                    🧭 Mappings
+                  </Link>
+                  <Link
+                    to="/accounting/accounts"
+                    className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
+                  >
+                    🧾 Accounts
+                  </Link>
+                </div>
+                <p className="theme-text-secondary mt-4 text-xs">
+                  Managers should use <span className="theme-text-primary">Accounting → Reports</span> from the main navigation.
+                </p>
               </SectionContainer>
             </>
           )}

@@ -46,10 +46,17 @@ export class AdminAccountingController {
     throw new ForbiddenException('Only tenant administrators can access accounting administration');
   }
 
+  private ensureTenantAdminOrManagerReadOnly(req: AuthenticatedRequest) {
+    if (req.user?.isPlatformAdmin) return;
+    if (req.user?.role === UserRole.ADMIN) return;
+    if (req.user?.role === UserRole.MANAGER) return;
+    throw new ForbiddenException('Only tenant administrators can access accounting administration');
+  }
+
   @Get('accounts')
   @ApiOperation({ summary: 'List chart of accounts for the tenant' })
   async listAccounts(@Req() req: AuthenticatedRequest) {
-    this.ensureTenantAdmin(req);
+    this.ensureTenantAdminOrManagerReadOnly(req);
     return this.accountingRepository.listAccounts(req.user.tenantId);
   }
 
