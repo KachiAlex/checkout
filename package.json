@@ -18,7 +18,7 @@
     "build:backend": "npm run build --workspace=packages/shared && npm run build --workspace=packages/payment-adapters && npm run build --workspace=apps/backend",
     "build:desktop": "npm run build --workspace=apps/frontend && npm run build --workspace=apps/desktop && npm run package --workspace=apps/desktop",
     "test": "npm run test --workspaces",
-    "test:e2e": "npm run test:e2e --workspace=apps/backend",
+    "test:e2e": "npm run test:e2e --workspace=apps/backend --",
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "docker:up": "docker-compose up -d",

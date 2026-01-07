@@ -3,6 +3,21 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 
+function toBigIntCents(value: unknown): bigint {
+  if (value === null || value === undefined) return 0n;
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return 0n;
+    return BigInt(Math.trunc(value));
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return 0n;
+    return BigInt(trimmed);
+  }
+  return BigInt(String(value));
+}
+
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -29,7 +44,6 @@ async function main() {
       if (!fs.existsSync(adcPath)) {
         throw new Error(`GOOGLE_APPLICATION_CREDENTIALS points to a missing file: ${adcPath}`);
       }
-
       console.log(`Using GOOGLE_APPLICATION_CREDENTIALS for Firestore auth (${adcPath})`);
 
       const raw = fs.readFileSync(adcPath, 'utf8');
@@ -93,6 +107,11 @@ async function main() {
     let inventoryUpserted = 0;
     let ordersUpserted = 0;
     let orderItemsUpserted = 0;
+
+    let paymentsUpserted = 0;
+    let paymentsSkipped = 0;
+    let returnsUpserted = 0;
+    let returnsSkipped = 0;
 
     let suppliersUpserted = 0;
     let purchaseOrdersUpserted = 0;
@@ -447,6 +466,13 @@ async function main() {
     }
 
     const ordersSnap = await firestore.collection('orders').get();
+    const orderTenantById = new Map<string, string>();
+    const orderLocationById = new Map<string, string>();
+    const orderOrderNumberById = new Map<string, string>();
+    const orderTotalsById = new Map<
+      string,
+      { subtotalCents: number; taxCents: number; totalCents: number; tenantId: string; locationId: string }
+    >();
     for (const doc of ordersSnap.docs) {
       const data = doc.data() as any;
 
@@ -532,6 +558,17 @@ async function main() {
 
       ordersUpserted += 1;
 
+      orderTenantById.set(doc.id, inferredTenantId);
+      orderLocationById.set(doc.id, data.locationId);
+      orderOrderNumberById.set(doc.id, data.orderNumber);
+      orderTotalsById.set(doc.id, {
+        subtotalCents: Number(data.subtotalCents ?? 0),
+        taxCents: Number(data.taxCents ?? 0),
+        totalCents: Number(data.totalCents ?? 0),
+        tenantId: inferredTenantId,
+        locationId: data.locationId,
+      });
+
       const items = Array.isArray(data.items) ? (data.items as any[]) : [];
       for (let i = 0; i < items.length; i += 1) {
         const item = items[i];
@@ -570,6 +607,142 @@ async function main() {
 
         orderItemsUpserted += 1;
       }
+    }
+
+    const paymentsSnap = await firestore.collection('payments').get();
+    for (const doc of paymentsSnap.docs) {
+      const data = doc.data() as any;
+
+      if (!data.orderId) {
+        paymentsSkipped += 1;
+        console.warn(`Skipping payment ${doc.id}: missing orderId`);
+        continue;
+      }
+
+      const inferredTenantId = orderTenantById.get(String(data.orderId));
+      const inferredLocationId = orderLocationById.get(String(data.orderId));
+
+      await ensureTenant(inferredTenantId, `payment ${doc.id}`);
+      if (!inferredTenantId || !tenantIds.has(inferredTenantId)) {
+        paymentsSkipped += 1;
+        console.warn(
+          `Skipping payment ${doc.id}: missing/unknown tenantId (from order ${data.orderId})`,
+        );
+        continue;
+      }
+
+      const status = String(data.status || '').toUpperCase();
+
+      await prisma.payment.upsert({
+        where: { id: doc.id },
+        update: {
+          tenantId: inferredTenantId,
+          orderId: String(data.orderId),
+          locationId: inferredLocationId ?? null,
+          amountCents: Number(data.amountCents ?? 0),
+          currency: data.currency ?? 'NGN',
+          method: String(data.method ?? ''),
+          status: status as any,
+          processorData: data.processorData ?? null,
+          transactionId: data.transactionId ?? null,
+          error: data.error ?? null,
+          processedAt: data.processedAt?.toDate?.() ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+        create: {
+          id: doc.id,
+          tenantId: inferredTenantId,
+          orderId: String(data.orderId),
+          locationId: inferredLocationId ?? null,
+          amountCents: Number(data.amountCents ?? 0),
+          currency: data.currency ?? 'NGN',
+          method: String(data.method ?? ''),
+          status: status as any,
+          processorData: data.processorData ?? null,
+          transactionId: data.transactionId ?? null,
+          error: data.error ?? null,
+          processedAt: data.processedAt?.toDate?.() ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+      });
+
+      paymentsUpserted += 1;
+    }
+
+    const returnsSnap = await firestore.collection('returns').get();
+    for (const doc of returnsSnap.docs) {
+      const data = doc.data() as any;
+
+      if (!data.orderId) {
+        returnsSkipped += 1;
+        console.warn(`Skipping return ${doc.id}: missing orderId`);
+        continue;
+      }
+
+      const orderInfo = orderTotalsById.get(String(data.orderId));
+      const inferredTenantId =
+        data.tenantId ??
+        orderInfo?.tenantId ??
+        (data.locationId ? locationTenantById.get(String(data.locationId)) : null);
+
+      await ensureTenant(inferredTenantId, `return ${doc.id}`);
+      if (!inferredTenantId || !tenantIds.has(inferredTenantId)) {
+        returnsSkipped += 1;
+        console.warn(`Skipping return ${doc.id}: missing/unknown tenantId`);
+        continue;
+      }
+
+      const locationId = String(data.locationId ?? orderInfo?.locationId ?? '').trim();
+      if (!locationId || !locationIds.has(locationId)) {
+        returnsSkipped += 1;
+        console.warn(`Skipping return ${doc.id}: missing/unknown locationId ${locationId || '[missing]'}`);
+        continue;
+      }
+
+      await prisma.return.upsert({
+        where: { id: doc.id },
+        update: {
+          tenantId: inferredTenantId,
+          orderId: String(data.orderId),
+          orderNumber: String(
+            data.orderNumber ?? orderOrderNumberById.get(String(data.orderId)) ?? '',
+          ),
+          locationId,
+          customerId: data.customerId ?? null,
+          items: Array.isArray(data.items) ? data.items : (data.items ?? []),
+          totalRefundCents: Number(data.totalRefundCents ?? 0),
+          status: String(data.status ?? ''),
+          reason: String(data.reason ?? ''),
+          notes: data.notes ?? null,
+          processedBy: data.processedBy ?? null,
+          processedAt: data.processedAt?.toDate?.() ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+        create: {
+          id: doc.id,
+          tenantId: inferredTenantId,
+          orderId: String(data.orderId),
+          orderNumber: String(
+            data.orderNumber ?? orderOrderNumberById.get(String(data.orderId)) ?? '',
+          ),
+          locationId,
+          customerId: data.customerId ?? null,
+          items: Array.isArray(data.items) ? data.items : (data.items ?? []),
+          totalRefundCents: Number(data.totalRefundCents ?? 0),
+          status: String(data.status ?? ''),
+          reason: String(data.reason ?? ''),
+          notes: data.notes ?? null,
+          processedBy: data.processedBy ?? null,
+          processedAt: data.processedAt?.toDate?.() ?? null,
+          createdAt: data.createdAt?.toDate?.() ?? undefined,
+          updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+        },
+      });
+
+      returnsUpserted += 1;
     }
 
     const suppliersSnap = await firestore.collection('suppliers').get();
@@ -740,9 +913,9 @@ async function main() {
           orderNumber: data.orderNumber ?? `PO-${doc.id}`,
           status: status as any,
           items: items as any,
-          subtotalCents: Number(data.subtotalCents ?? 0),
-          taxCents: Number(data.taxCents ?? 0),
-          totalCents: Number(data.totalCents ?? 0),
+          subtotalCents: toBigIntCents(data.subtotalCents),
+          taxCents: toBigIntCents(data.taxCents),
+          totalCents: toBigIntCents(data.totalCents),
           expectedDeliveryDate: data.expectedDeliveryDate?.toDate?.() ?? null,
           notes: data.notes ?? null,
           createdBy: data.createdBy ?? 'system',
@@ -760,9 +933,9 @@ async function main() {
           orderNumber: data.orderNumber ?? `PO-${doc.id}`,
           status: status as any,
           items: items as any,
-          subtotalCents: Number(data.subtotalCents ?? 0),
-          taxCents: Number(data.taxCents ?? 0),
-          totalCents: Number(data.totalCents ?? 0),
+          subtotalCents: toBigIntCents(data.subtotalCents),
+          taxCents: toBigIntCents(data.taxCents),
+          totalCents: toBigIntCents(data.totalCents),
           expectedDeliveryDate: data.expectedDeliveryDate?.toDate?.() ?? null,
           notes: data.notes ?? null,
           createdBy: data.createdBy ?? 'system',
@@ -822,9 +995,9 @@ async function main() {
           grnNumber: data.grnNumber ?? `GRN-${doc.id}`,
           status: status as any,
           items: items as any,
-          subtotalCents: Number(data.subtotalCents ?? 0),
-          taxCents: Number(data.taxCents ?? 0),
-          totalCents: Number(data.totalCents ?? 0),
+          subtotalCents: toBigIntCents(data.subtotalCents),
+          taxCents: toBigIntCents(data.taxCents),
+          totalCents: toBigIntCents(data.totalCents),
           receivedBy: data.receivedBy ?? 'system',
           receivedAt,
           notes: data.notes ?? null,
@@ -842,9 +1015,9 @@ async function main() {
           grnNumber: data.grnNumber ?? `GRN-${doc.id}`,
           status: status as any,
           items: items as any,
-          subtotalCents: Number(data.subtotalCents ?? 0),
-          taxCents: Number(data.taxCents ?? 0),
-          totalCents: Number(data.totalCents ?? 0),
+          subtotalCents: toBigIntCents(data.subtotalCents),
+          taxCents: toBigIntCents(data.taxCents),
+          totalCents: toBigIntCents(data.totalCents),
           receivedBy: data.receivedBy ?? 'system',
           receivedAt,
           notes: data.notes ?? null,
@@ -936,7 +1109,7 @@ async function main() {
     }
 
     console.log(
-      `✅ Migration complete. Tenants: ${tenantsUpserted} (ensured from references: ${tenantsEnsuredFromReferences}). Users: ${usersUpserted} (skipped missing tenantId: ${usersSkippedMissingTenant}, skipped unknown tenantId: ${usersSkippedUnknownTenant}). Brands: ${brandsUpserted} (skipped: ${brandsSkipped}). Categories: ${categoriesUpserted} (skipped: ${categoriesSkipped}). Locations: ${locationsUpserted} (skipped: ${locationsSkipped}). Products: ${productsUpserted} (skipped: ${productsSkipped}). Inventory: ${inventoryUpserted} (skipped: ${inventorySkipped}). Orders: ${ordersUpserted} (skipped: ${ordersSkipped}). OrderItems: ${orderItemsUpserted}. Suppliers: ${suppliersUpserted} (skipped: ${suppliersSkipped}). PurchaseOrders: ${purchaseOrdersUpserted} (skipped: ${purchaseOrdersSkipped}). GRNs: ${grnsUpserted} (skipped: ${grnsSkipped}).`,
+      `✅ Migration complete. Tenants: ${tenantsUpserted} (ensured from references: ${tenantsEnsuredFromReferences}). Users: ${usersUpserted} (skipped missing tenantId: ${usersSkippedMissingTenant}, skipped unknown tenantId: ${usersSkippedUnknownTenant}). Brands: ${brandsUpserted} (skipped: ${brandsSkipped}). Categories: ${categoriesUpserted} (skipped: ${categoriesSkipped}). Locations: ${locationsUpserted} (skipped: ${locationsSkipped}). Products: ${productsUpserted} (skipped: ${productsSkipped}). Inventory: ${inventoryUpserted} (skipped: ${inventorySkipped}). Orders: ${ordersUpserted} (skipped: ${ordersSkipped}). OrderItems: ${orderItemsUpserted}. Payments: ${paymentsUpserted} (skipped: ${paymentsSkipped}). Returns: ${returnsUpserted} (skipped: ${returnsSkipped}). Suppliers: ${suppliersUpserted} (skipped: ${suppliersSkipped}). PurchaseOrders: ${purchaseOrdersUpserted} (skipped: ${purchaseOrdersSkipped}). GRNs: ${grnsUpserted} (skipped: ${grnsSkipped}).`,
     );
   } finally {
     await prisma.$disconnect();

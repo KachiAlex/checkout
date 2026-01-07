@@ -3,7 +3,7 @@ import { FieldValue, Timestamp, Query } from 'firebase-admin/firestore';
 import { PaymentStatus, TenantPlan } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 import { PrismaService } from '../database/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, type SubscriptionPayment } from '@prisma/client';
 
 export interface SubscriptionPaymentRecord {
   id: string;
@@ -300,7 +300,7 @@ export class SubscriptionPaymentsRepository {
   }
 
   private toRecord(
-    data: Prisma.SubscriptionPayment | (SubscriptionPaymentDocument & { id: string }),
+    data: SubscriptionPayment | (SubscriptionPaymentDocument & { id: string }),
   ): SubscriptionPaymentRecord {
     if (!data) {
       throw new NotFoundException('Subscription payment document has no data');

@@ -23,7 +23,7 @@ export class SubscriptionPricingService {
     userId?: string,
   ): Promise<SubscriptionPricingEntity> {
     const updateData: Partial<SubscriptionPricingEntity> = {
-      ...updates,
+      ...(updates as Partial<SubscriptionPricingEntity>),
       updatedBy: userId,
     };
 

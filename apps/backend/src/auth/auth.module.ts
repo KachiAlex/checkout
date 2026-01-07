@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -34,7 +35,7 @@ import { TenantsModule } from '../tenants/tenants.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RolesGuard],
+  providers: [AuthService, JwtStrategy, RolesGuard, Reflector],
   exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}

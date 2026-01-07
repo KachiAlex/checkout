@@ -45,9 +45,9 @@ export class UsersRepository {
     return normalized;
   }
 
-  private toPrismaRole(value: UserRole | undefined): Prisma.UserRole {
+  private toPrismaRole(value: UserRole | undefined): Prisma.UserCreateInput['role'] {
     const normalized = (value ?? UserRole.CASHIER).toUpperCase();
-    return normalized as Prisma.UserRole;
+    return normalized as Prisma.UserCreateInput['role'];
   }
 
   async findAll(tenantId?: string): Promise<UserRecord[]> {

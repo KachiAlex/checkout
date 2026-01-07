@@ -279,7 +279,7 @@ export class InventoryController {
   }
 
   private getUserId(req: AuthenticatedRequest): string {
-    const userId = req.user?.sub ?? req.user?.id;
+    const userId = req.user?.sub;
     if (!userId) {
       throw new UnauthorizedException('User context missing');
     }
