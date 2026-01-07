@@ -35,6 +35,18 @@ const formatDateTime = (value: string | null | undefined) => {
   return new Date(ts).toLocaleString();
 };
 
+const toLocalDayStartIso = (value: string) => {
+  const [y, m, d] = value.split("-").map((p) => parseInt(p, 10));
+  const date = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
+  return date.toISOString();
+};
+
+const toLocalDayEndIso = (value: string) => {
+  const [y, m, d] = value.split("-").map((p) => parseInt(p, 10));
+  const date = new Date(y, (m || 1) - 1, d || 1, 23, 59, 59, 999);
+  return date.toISOString();
+};
+
 type Tab = "general-ledger" | "trial-balance" | "profit-loss" | "balance-sheet";
 
 export function AccountingReportsPage() {
@@ -108,6 +120,10 @@ export function AccountingReportsPage() {
     try {
       const commonLocation = locationId ? { locationId } : {};
 
+      const fromIso = toLocalDayStartIso(dateRange.from);
+      const toIso = toLocalDayEndIso(dateRange.to);
+      const asOfIso = toLocalDayEndIso(asOf);
+
       if (activeTab === "general-ledger") {
         if (!accountId) {
           toast.error("Select an account");
@@ -116,8 +132,8 @@ export function AccountingReportsPage() {
         const res = await accountingService.generalLedger({
           accountId,
           ...commonLocation,
-          from: dateRange.from,
-          to: dateRange.to,
+          from: fromIso,
+          to: toIso,
         });
         setData(res);
         return;
@@ -126,8 +142,8 @@ export function AccountingReportsPage() {
       if (activeTab === "trial-balance") {
         const res = await accountingService.trialBalance({
           ...commonLocation,
-          from: dateRange.from,
-          to: dateRange.to,
+          from: fromIso,
+          to: toIso,
         });
         setData(res);
         return;
@@ -136,8 +152,8 @@ export function AccountingReportsPage() {
       if (activeTab === "profit-loss") {
         const res = await accountingService.profitAndLoss({
           ...commonLocation,
-          from: dateRange.from,
-          to: dateRange.to,
+          from: fromIso,
+          to: toIso,
         });
         setData(res);
         return;
@@ -145,7 +161,7 @@ export function AccountingReportsPage() {
 
       const res = await accountingService.balanceSheet({
         ...commonLocation,
-        asOf,
+        asOf: asOfIso,
       });
       setData(res);
     } catch (error: any) {
