@@ -57,12 +57,12 @@ export class TenantsRepository {
     return normalized as TenantStatus;
   }
 
-  private toPrismaPlan(value: TenantPlan): Prisma.TenantPlan {
-    return value.toUpperCase() as Prisma.TenantPlan;
+  private toPrismaPlan(value: TenantPlan): Prisma.TenantCreateInput['plan'] {
+    return value.toUpperCase() as Prisma.TenantCreateInput['plan'];
   }
 
-  private toPrismaStatus(value: TenantStatus): Prisma.TenantStatus {
-    return value.toUpperCase() as Prisma.TenantStatus;
+  private toPrismaStatus(value: TenantStatus): Prisma.TenantCreateInput['status'] {
+    return value.toUpperCase() as Prisma.TenantCreateInput['status'];
   }
 
   async findAll(): Promise<TenantRecord[]> {

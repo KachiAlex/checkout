@@ -54,8 +54,9 @@ export class SyncService {
     return orders.map((order) => ({
       id: order.uuid,
       type: 'order.created',
-      payload: order,
+      payload: order as unknown as Record<string, unknown>,
       server_ts: order.createdAt.getTime(),
+      client_ts: order.createdAt.getTime(),
     }));
   }
 

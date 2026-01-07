@@ -12,9 +12,10 @@ export interface ComputeOrderTaxInput {
   defaultTaxRate?: number;
 }
 
-export interface PostSaleJournalParams {
+export interface PostJournalParams {
   tenantId: string;
   locationId?: string;
+  source?: JournalSource;
   eventType: string;
   sourceId: string;
   reference?: string;
@@ -36,6 +37,9 @@ export class AccountingService {
   ) {}
 
   async ensureTenantDefaults(tenantId: string): Promise<void> {
+    if (!tenantId) {
+      throw new NotFoundException('Tenant context missing for accounting operation');
+    }
     await this.repository.ensureDefaults({ tenantId });
   }
 
@@ -49,7 +53,7 @@ export class AccountingService {
     });
   }
 
-  async postSaleJournal(params: PostSaleJournalParams) {
+  async postSaleJournal(params: PostJournalParams) {
     await this.ensureTenantDefaults(params.tenantId);
 
     const mapping = await this.repository.getMapping({
@@ -82,18 +86,25 @@ export class AccountingService {
 
     if (params.taxCents > 0 && vatAccount) {
       const direction = params.taxDirection ?? 'credit';
-      lines.push({
-        accountId: vatAccount.id,
-        debitCents: direction === 'debit' ? params.taxCents : 0,
-        creditCents: direction === 'credit' ? params.taxCents : 0,
-        description: direction === 'credit' ? 'VAT payable' : 'VAT reversal',
-      });
+      lines.push(
+        direction === 'debit'
+          ? {
+              accountId: vatAccount.id,
+              debitCents: params.taxCents,
+              description: 'VAT reversal',
+            }
+          : {
+              accountId: vatAccount.id,
+              creditCents: params.taxCents,
+              description: 'VAT payable',
+            },
+      );
     }
 
     return this.repository.createJournalEntry({
       tenantId: params.tenantId,
       locationId: params.locationId,
-      source: JournalSource.SALE,
+      source: params.source ?? JournalSource.SALE,
       sourceId: params.sourceId,
       reference: params.reference,
       memo: `Auto-posted journal for ${params.eventType}`,
@@ -108,14 +119,17 @@ export class AccountingService {
     reference?: string;
     metadata?: Prisma.JsonValue;
     taxDirection?: 'credit' | 'debit';
+    source?: JournalSource;
   }) {
     if (!params.order.tenantId) {
       throw new NotFoundException('Order tenant context missing while posting journal');
     }
 
+    const source = params.source ?? JournalSource.SALE;
+
     const existing = await this.repository.findJournalEntry({
       tenantId: params.order.tenantId,
-      source: JournalSource.SALE,
+      source,
       sourceId: params.order.id,
     });
 
@@ -129,6 +143,7 @@ export class AccountingService {
     return this.postSaleJournal({
       tenantId: params.order.tenantId,
       locationId: params.order.locationId,
+      source,
       eventType: params.eventType,
       sourceId: params.order.id,
       reference: params.reference,

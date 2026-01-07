@@ -8,6 +8,7 @@ import { PaymentsRepository, PaymentRecord } from './payments.repository';
 import { UsersRepository } from '../users/users.repository';
 import { AccountingService } from '../accounting/accounting.service';
 import { OrderRecord } from '../orders/orders.repository';
+import { JournalSource } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -29,6 +30,78 @@ export class PaymentsService {
    */
   private async getPaymentAdapter(): Promise<PaymentAdapter> {
     return this.defaultPaymentAdapter;
+  }
+
+  private getSaleEventType(method: PaymentMethod): string {
+    switch (method) {
+      case PaymentMethod.CASH:
+        return 'SALE_CASH';
+      case PaymentMethod.TRANSFER:
+        return 'SALE_TRANSFER';
+      case PaymentMethod.QR:
+        return 'SALE_QR';
+      case PaymentMethod.CARD:
+      default:
+        return 'SALE_CARD';
+    }
+  }
+
+  private getCreditPaymentEventType(method: PaymentMethod): string {
+    switch (method) {
+      case PaymentMethod.CASH:
+        return 'CREDIT_PAYMENT_CASH';
+      case PaymentMethod.TRANSFER:
+        return 'CREDIT_PAYMENT_TRANSFER';
+      case PaymentMethod.QR:
+        return 'CREDIT_PAYMENT_QR';
+      case PaymentMethod.CARD:
+      default:
+        return 'CREDIT_PAYMENT_CARD';
+    }
+  }
+
+  private getRefundEventType(method: PaymentMethod): string {
+    switch (method) {
+      case PaymentMethod.CASH:
+        return 'REFUND_CASH';
+      case PaymentMethod.TRANSFER:
+        return 'REFUND_TRANSFER';
+      case PaymentMethod.QR:
+        return 'REFUND_QR';
+      case PaymentMethod.CARD:
+      default:
+        return 'REFUND_CARD';
+    }
+  }
+
+  private async handleSuccessfulPayment(
+    order: OrderRecord,
+    tenantId: string,
+    method: PaymentMethod,
+  ): Promise<void> {
+    if (!tenantId) {
+      return;
+    }
+
+    if (order.isCreditOrder) {
+      await this.ordersService.markCreditOrderAsPaid(order.id, order.createdBy, tenantId);
+      await this.accountingService.ensureSaleJournalForOrder({
+        order,
+        eventType: this.getCreditPaymentEventType(method),
+        metadata: {
+          trigger: 'payments.handleSuccessfulPayment',
+        },
+      });
+      return;
+    }
+
+    await this.accountingService.ensureSaleJournalForOrder({
+      order,
+      eventType: this.getSaleEventType(method),
+      metadata: {
+        trigger: 'payments.handleSuccessfulPayment',
+      },
+    });
   }
 
   async initiatePayment(orderId: string, dto: InitiatePaymentDto): Promise<PaymentRecord> {
@@ -92,7 +165,7 @@ export class PaymentsService {
       }
 
       payment = result;
-      await this.handleSuccessfulPayment(order, tenantId);
+      await this.handleSuccessfulPayment(order, tenantId, payment.method);
       return payment;
     } catch (error) {
       payment = await this.paymentsRepository.update(payment.id, {
@@ -129,7 +202,7 @@ export class PaymentsService {
     });
 
     if (updated.status === PaymentStatus.COMPLETED) {
-      await this.handleSuccessfulPayment(order, tenantId);
+      await this.handleSuccessfulPayment(order, tenantId, payment.method);
     }
 
     return updated;
@@ -166,7 +239,8 @@ export class PaymentsService {
     if (updated.status === PaymentStatus.REFUNDED) {
       await this.accountingService.ensureSaleJournalForOrder({
         order,
-        eventType: 'REFUND',
+        source: JournalSource.REFUND,
+        eventType: this.getRefundEventType(payment.method),
         reference: payment.id,
         metadata: {
           trigger: 'payments.refund',

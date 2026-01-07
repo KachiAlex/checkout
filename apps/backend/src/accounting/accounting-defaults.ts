@@ -61,11 +61,42 @@ export const DEFAULT_ACCOUNT_MAPPINGS: DefaultMappingDefinition[] = [
     requiresVatAccount: true,
   },
   {
+    eventType: 'SALE_TRANSFER',
+    debitCode: 'BANK',
+    creditCode: 'SALES_REVENUE',
+    requiresVatAccount: true,
+  },
+  {
+    eventType: 'SALE_QR',
+    debitCode: 'BANK',
+    creditCode: 'SALES_REVENUE',
+    requiresVatAccount: true,
+  },
+  {
+    eventType: 'SALE',
+    debitCode: 'BANK',
+    creditCode: 'SALES_REVENUE',
+    requiresVatAccount: true,
+  },
+  {
     eventType: 'SALE_CREDIT',
     debitCode: 'ACCOUNTS_RECEIVABLE',
     creditCode: 'SALES_REVENUE',
     requiresVatAccount: true,
   },
+  {
+    eventType: 'SALE_CREDIT_PAYMENT',
+    debitCode: 'BANK',
+    creditCode: 'ACCOUNTS_RECEIVABLE',
+  },
+  { eventType: 'CREDIT_PAYMENT_CASH', debitCode: 'CASH', creditCode: 'ACCOUNTS_RECEIVABLE' },
+  { eventType: 'CREDIT_PAYMENT_CARD', debitCode: 'BANK', creditCode: 'ACCOUNTS_RECEIVABLE' },
+  {
+    eventType: 'CREDIT_PAYMENT_TRANSFER',
+    debitCode: 'BANK',
+    creditCode: 'ACCOUNTS_RECEIVABLE',
+  },
+  { eventType: 'CREDIT_PAYMENT_QR', debitCode: 'BANK', creditCode: 'ACCOUNTS_RECEIVABLE' },
   {
     eventType: 'REFUND_CASH',
     debitCode: 'SALES_RETURNS',
@@ -74,6 +105,24 @@ export const DEFAULT_ACCOUNT_MAPPINGS: DefaultMappingDefinition[] = [
   },
   {
     eventType: 'REFUND_CARD',
+    debitCode: 'SALES_RETURNS',
+    creditCode: 'BANK',
+    requiresVatAccount: true,
+  },
+  {
+    eventType: 'REFUND_TRANSFER',
+    debitCode: 'SALES_RETURNS',
+    creditCode: 'BANK',
+    requiresVatAccount: true,
+  },
+  {
+    eventType: 'REFUND_QR',
+    debitCode: 'SALES_RETURNS',
+    creditCode: 'BANK',
+    requiresVatAccount: true,
+  },
+  {
+    eventType: 'REFUND',
     debitCode: 'SALES_RETURNS',
     creditCode: 'BANK',
     requiresVatAccount: true,

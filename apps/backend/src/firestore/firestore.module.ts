@@ -22,6 +22,17 @@ const firestoreSettings: Settings = {
           return existingApp;
         }
 
+        const emulatorHost = configService.get<string>('FIRESTORE_EMULATOR_HOST');
+        if (emulatorHost) {
+          const projectId = configService.get<string>('FIREBASE_PROJECT_ID') || 'demo-pos-checkout';
+          process.env.FIRESTORE_EMULATOR_HOST = emulatorHost;
+          process.env.GCLOUD_PROJECT = projectId;
+          return initializeApp({
+            projectId,
+            storageBucket: configService.get<string>('FIREBASE_STORAGE_BUCKET'),
+          });
+        }
+
         const projectId = configService.get<string>('FIREBASE_PROJECT_ID');
         const clientEmail = configService.get<string>('FIREBASE_CLIENT_EMAIL');
         const privateKey = configService.get<string>('FIREBASE_PRIVATE_KEY');

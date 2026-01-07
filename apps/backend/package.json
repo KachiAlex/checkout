@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "prisma generate && tsc --project tsconfig.build.json && node -e \"const fs=require('fs'); if(!fs.existsSync('dist/src/main.js')){ console.error('❌ Build succeeded but dist/src/main.js not found'); process.exit(1);} console.log('✅ Build OK: dist/src/main.js');\"",
+    "build": "prisma generate && node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc --project tsconfig.build.json && node -e \"const fs=require('fs'); if(!fs.existsSync('dist/src/main.js')){ console.error('❌ Build succeeded but dist/src/main.js not found'); process.exit(1);} console.log('✅ Build OK: dist/src/main.js');\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
@@ -22,7 +22,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "typecheck": "tsc --noEmit --project tsconfig.build.json",
+    "typecheck": "node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc --noEmit --project tsconfig.build.json",
     "migration:generate": "echo \"TypeORM migrations removed after Firestore migration\"",
     "migration:run": "echo \"TypeORM migrations removed after Firestore migration\"",
     "migration:revert": "echo \"TypeORM migrations removed after Firestore migration\"",

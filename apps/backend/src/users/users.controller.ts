@@ -17,12 +17,14 @@ import { UsersService } from './users.service';
 import { ChangePinDto } from './dto/change-pin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserRole } from '@pos-checkout/shared';
 
 interface AuthenticatedUser {
   tenantId: string;
   sub: string;
-  role?: string;
+  role?: UserRole;
   isPlatformAdmin?: boolean;
+  locationId?: string;
 }
 
 type AuthenticatedRequest = Request & {
@@ -36,6 +38,16 @@ type AuthenticatedRequest = Request & {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  private toActor(user: AuthenticatedUser) {
+    return {
+      id: user.sub,
+      tenantId: user.tenantId,
+      role: user.role,
+      isPlatformAdmin: user.isPlatformAdmin,
+      locationId: user.locationId,
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: 'List users in the tenant' })
   async list(@Req() req: AuthenticatedRequest) {
@@ -45,7 +57,7 @@ export class UsersController {
   @Post()
   @ApiOperation({ summary: 'Create a new tenant user' })
   async create(@Req() req: AuthenticatedRequest, @Body() dto: CreateUserDto) {
-    return this.usersService.createUser(req.user.tenantId, dto, req.user);
+    return this.usersService.createUser(req.user.tenantId, dto, this.toActor(req.user));
   }
 
   @Patch(':id')
@@ -55,7 +67,7 @@ export class UsersController {
     @Req() req: AuthenticatedRequest,
     @Body() dto: UpdateUserDto,
   ) {
-    return this.usersService.updateUser(req.user.tenantId, id, dto, req.user);
+    return this.usersService.updateUser(req.user.tenantId, id, dto, this.toActor(req.user));
   }
 
   @Patch(':id/reset-pin')
@@ -65,7 +77,7 @@ export class UsersController {
     @Req() req: AuthenticatedRequest,
     @Body() body: { pin: string },
   ) {
-    await this.usersService.resetPin(req.user.tenantId, id, body.pin, req.user);
+    await this.usersService.resetPin(req.user.tenantId, id, body.pin, this.toActor(req.user));
     return { success: true };
   }
 
@@ -83,7 +95,7 @@ export class UsersController {
       req.user.tenantId,
       req.user.sub,
       { locationId: body.locationId },
-      req.user,
+      this.toActor(req.user),
     );
     return { success: true };
   }
@@ -92,6 +104,6 @@ export class UsersController {
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a user from the tenant' })
   async delete(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    await this.usersService.deleteUser(req.user.tenantId, id, req.user);
+    await this.usersService.deleteUser(req.user.tenantId, id, this.toActor(req.user));
   }
 }

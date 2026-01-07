@@ -149,6 +149,9 @@ model Tenant {
   accounts             Account[]
   accountMappings      AccountMapping[]
   journalEntries       JournalEntry[]
+  expenses             Expense[]
+  payments             Payment[]
+  returns              Return[]
   invoices             Invoice[]
   auditLogs            ComplianceAuditLog[]
 
@@ -315,6 +318,9 @@ model Location {
   grns             GRN[]
   accountMappings  AccountMapping[]
   journalEntries   JournalEntry[]
+  expenses         Expense[]
+  payments         Payment[]
+  returns          Return[]
   invoices         Invoice[]
   taxRules         TaxRule[]
 
@@ -406,6 +412,8 @@ model Order {
   location Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
   items    OrderItem[]
   invoices Invoice[]
+  payments Payment[]
+  returns  Return[]
 
   @@unique([tenantId, orderNumber])
   @@unique([uuid])
@@ -429,6 +437,61 @@ model OrderItem {
 
   @@unique([orderId, lineNumber])
   @@index([productId])
+}
+
+model Payment {
+  id            String        @id
+  tenantId      String
+  orderId       String
+  locationId    String?
+  amountCents   Int
+  currency      String        @default("NGN")
+  method        String
+  status        PaymentStatus
+  processorData Json?
+  transactionId String?
+  error         String?
+  processedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([locationId])
+  @@index([status])
+  @@index([processedAt])
+  @@index([transactionId])
+}
+
+model Return {
+  id              String   @id
+  tenantId         String
+  orderId          String
+  orderNumber      String
+  locationId       String
+  customerId       String?
+  items            Json
+  totalRefundCents Int
+  status           String
+  reason           String
+  notes            String?
+  processedBy      String?
+  processedAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([locationId])
+  @@index([createdAt])
 }
 
 model SubscriptionPricing {
@@ -601,6 +664,29 @@ model JournalLine {
   @@index([journalEntryId])
   @@index([accountId])
   @@index([taxRuleId])
+}
+
+model Expense {
+  id            String   @id @default(uuid())
+  tenantId      String
+  locationId    String?
+  amountCents   Int
+  currency      String   @default("NGN")
+  paymentMethod String
+  description   String
+  vendor        String?
+  occurredAt    DateTime @default(now())
+  createdBy     String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([locationId])
+  @@index([occurredAt])
 }
 
 model Invoice {

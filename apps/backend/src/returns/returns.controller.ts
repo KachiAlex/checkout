@@ -15,10 +15,10 @@ import { CreateReturnDto } from './dto/create-return.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ReturnStatus } from './returns.repository';
 import { Request } from 'express';
-import { AuthenticatedUser } from '../users/users.controller';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 type ReturnsRequest = Request & {
-  user: Pick<AuthenticatedUser, 'sub' | 'locationId' | 'tenantId'>;
+  user: Pick<JwtPayload, 'sub' | 'locationId' | 'tenantId'>;
 };
 
 @ApiTags('returns')

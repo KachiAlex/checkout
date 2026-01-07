@@ -24,6 +24,8 @@ export const FixedNavigation = memo(function FixedNavigation() {
   }
 
   const isActive = (path: string) => location.pathname === path;
+  const isAccountingActive = location.pathname.startsWith("/accounting");
+  const accountingPath = isAdmin ? "/accounting" : "/accounting/reports";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-white/10 bg-slate-950/95 backdrop-blur-xl sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-lg pb-safe sm:pb-0 pt-safe sm:pt-0">
@@ -57,6 +59,21 @@ export const FixedNavigation = memo(function FixedNavigation() {
           >
             <span className="text-base sm:text-lg">📈</span>
             <span>Dashboard</span>
+          </Link>
+        )}
+
+        {/* Accounting - Admin (full) and Manager (reports only) */}
+        {(isAdmin || isManager) && (
+          <Link
+            to={accountingPath}
+            className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
+              isAccountingActive
+                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+            }`}
+          >
+            <span className="text-base sm:text-lg">📒</span>
+            <span>Accounting</span>
           </Link>
         )}
         {/* Checkout - All authenticated users */}

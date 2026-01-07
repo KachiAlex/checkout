@@ -1,11 +1,14 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, Account, AccountMapping, JournalSource, JournalStatus } from '@prisma/client';
+import { Prisma, Account, AccountMapping, JournalSource, JournalStatus, AccountType } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import {
   DEFAULT_ACCOUNT_DEFINITIONS,
   DEFAULT_ACCOUNT_MAPPINGS,
   DefaultMappingDefinition,
 } from './accounting-defaults';
+import { CreateAccountDto } from './dto/create-account.dto';
+import { UpdateAccountDto } from './dto/update-account.dto';
+import { UpsertAccountMappingDto } from './dto/upsert-account-mapping.dto';
 
 interface EnsureOptions {
   tenantId: string;
@@ -33,6 +36,7 @@ export interface CreateJournalEntryInput {
   currency?: string;
   memo?: string;
   status?: JournalStatus;
+  postedAt?: Date;
   lines: Array<{
     accountId: string;
     description?: string;
@@ -95,23 +99,39 @@ export class AccountingRepository {
         return;
       }
 
-      await this.prisma.accountMapping.upsert({
+      // Prisma does not support `upsert` using a composite unique where when a nullable
+      // field in the unique key is `null`. We treat tenant-wide mappings as `branchId = null`.
+      const existing = await this.prisma.accountMapping.findFirst({
         where: {
-          tenantId_eventType_branchId: {
-            tenantId,
-            eventType: definition.eventType,
-            branchId: null,
-          },
+          tenantId,
+          eventType: definition.eventType,
+          branchId: null,
         },
-        create: {
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      if (existing) {
+        await this.prisma.accountMapping.update({
+          where: { id: existing.id },
+          data: {
+            debitAccountId: debit.id,
+            creditAccountId: credit.id,
+            isActive: true,
+          },
+        });
+        return;
+      }
+
+      await this.prisma.accountMapping.create({
+        data: {
           tenantId,
           eventType: definition.eventType,
           debitAccountId: debit.id,
           creditAccountId: credit.id,
-        },
-        update: {
-          debitAccountId: debit.id,
-          creditAccountId: credit.id,
+          branchId: null,
+          isActive: true,
         },
       });
     };
@@ -183,8 +203,7 @@ export class AccountingRepository {
         currency: input.currency ?? 'NGN',
         status: input.status ?? JournalStatus.POSTED,
         memo: input.memo,
-        metadata: input.metadata,
-        postedAt: new Date(),
+        postedAt: input.postedAt ?? new Date(),
         lines: {
           create: input.lines.map((line) => ({
             accountId: line.accountId,
@@ -194,6 +213,233 @@ export class AccountingRepository {
             taxRuleId: line.taxRuleId,
           })),
         },
+      },
+    });
+  }
+
+  async listAccounts(tenantId: string): Promise<Account[]> {
+    return this.prisma.account.findMany({
+      where: { tenantId },
+      orderBy: [{ type: 'asc' }, { code: 'asc' }],
+    });
+  }
+
+  async createAccount(tenantId: string, dto: CreateAccountDto): Promise<Account> {
+    return this.prisma.account.create({
+      data: {
+        tenantId,
+        code: dto.code,
+        name: dto.name,
+        type: dto.type,
+        isActive: dto.isActive ?? true,
+        isSystem: false,
+      },
+    });
+  }
+
+  async updateAccount(tenantId: string, accountId: string, dto: UpdateAccountDto): Promise<Account> {
+    const existing = await this.prisma.account.findFirst({
+      where: { id: accountId, tenantId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Account ${accountId} not found`);
+    }
+
+    return this.prisma.account.update({
+      where: { id: accountId },
+      data: {
+        name: dto.name,
+        type: dto.type,
+        isActive: dto.isActive,
+      },
+    });
+  }
+
+  async listMappings(tenantId: string): Promise<AccountMapping[]> {
+    return this.prisma.accountMapping.findMany({
+      where: { tenantId },
+      orderBy: [{ eventType: 'asc' }, { branchId: 'asc' }],
+    });
+  }
+
+  async upsertMapping(
+    tenantId: string,
+    eventType: string,
+    dto: UpsertAccountMappingDto,
+  ): Promise<AccountMapping> {
+    const branchId = dto.branchId ?? null;
+
+    return this.prisma.accountMapping.upsert({
+      where: {
+        tenantId_eventType_branchId: {
+          tenantId,
+          eventType,
+          branchId,
+        },
+      },
+      create: {
+        tenantId,
+        eventType,
+        branchId,
+        debitAccountId: dto.debitAccountId,
+        creditAccountId: dto.creditAccountId,
+        isActive: dto.isActive ?? true,
+      },
+      update: {
+        debitAccountId: dto.debitAccountId,
+        creditAccountId: dto.creditAccountId,
+        isActive: dto.isActive ?? true,
+      },
+    });
+  }
+
+  async listJournalEntries(
+    tenantId: string,
+    filters: {
+      locationId?: string;
+      source?: string;
+      status?: string;
+      from?: string;
+      to?: string;
+    },
+  ) {
+    const fromDate = filters.from ? new Date(filters.from) : undefined;
+    const toDate = filters.to ? new Date(filters.to) : undefined;
+    const source = filters.source ? (filters.source as JournalSource) : undefined;
+    const status = filters.status ? (filters.status as JournalStatus) : undefined;
+
+    return this.prisma.journalEntry.findMany({
+      where: {
+        tenantId,
+        locationId: filters.locationId ?? undefined,
+        source,
+        status,
+        postedAt:
+          fromDate || toDate
+            ? {
+                gte: fromDate,
+                lte: toDate,
+              }
+            : undefined,
+      },
+      orderBy: [{ postedAt: 'desc' }],
+      include: {
+        lines: true,
+      },
+    });
+  }
+
+  async getJournalEntry(tenantId: string, journalEntryId: string) {
+    const entry = await this.prisma.journalEntry.findFirst({
+      where: {
+        id: journalEntryId,
+        tenantId,
+      },
+      include: {
+        lines: true,
+      },
+    });
+
+    if (!entry) {
+      throw new NotFoundException(`Journal entry ${journalEntryId} not found`);
+    }
+
+    return entry;
+  }
+
+  async voidJournalEntry(tenantId: string, journalEntryId: string) {
+    const existing = await this.prisma.journalEntry.findFirst({
+      where: { id: journalEntryId, tenantId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Journal entry ${journalEntryId} not found`);
+    }
+
+    if (existing.status === JournalStatus.VOIDED) {
+      return existing;
+    }
+
+    return this.prisma.journalEntry.update({
+      where: { id: journalEntryId },
+      data: {
+        status: JournalStatus.VOIDED,
+      },
+      include: {
+        lines: true,
+      },
+    });
+  }
+
+  async listGeneralLedgerLines(
+    tenantId: string,
+    filters: {
+      accountId: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+    },
+  ) {
+    return this.prisma.journalLine.findMany({
+      where: {
+        accountId: filters.accountId,
+        journalEntry: {
+          tenantId,
+          status: JournalStatus.POSTED,
+          locationId: filters.locationId ?? undefined,
+          postedAt:
+            filters.from || filters.to
+              ? {
+                  gte: filters.from,
+                  lte: filters.to,
+                }
+              : undefined,
+        },
+      },
+      orderBy: [{ journalEntry: { postedAt: 'asc' } }, { createdAt: 'asc' }],
+      include: {
+        account: true,
+        journalEntry: true,
+      },
+    });
+  }
+
+  async aggregateAccountBalances(
+    tenantId: string,
+    filters: {
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      asOf?: Date;
+      accountTypes?: AccountType[];
+    },
+  ) {
+    const postedAtFilter =
+      filters.asOf || filters.from || filters.to
+        ? {
+            lte: filters.asOf ?? filters.to,
+            gte: filters.from,
+          }
+        : undefined;
+
+    return this.prisma.journalLine.groupBy({
+      by: ['accountId'],
+      where: {
+        account: {
+          tenantId,
+          type: filters.accountTypes ? { in: filters.accountTypes } : undefined,
+        },
+        journalEntry: {
+          tenantId,
+          status: JournalStatus.POSTED,
+          locationId: filters.locationId ?? undefined,
+          postedAt: postedAtFilter,
+        },
+      },
+      _sum: {
+        debitCents: true,
+        creditCents: true,
       },
     });
   }

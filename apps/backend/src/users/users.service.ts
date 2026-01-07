@@ -17,6 +17,8 @@ const generatePin = () => Math.floor(Math.random() * 900000 + 100000).toString()
 
 export type SafeUser = Omit<UserRecord, 'pinHash'>;
 
+type ActorContext = Pick<UserRecord, 'id' | 'tenantId' | 'role' | 'isPlatformAdmin' | 'locationId'>;
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -61,7 +63,7 @@ export class UsersService {
   async createUser(
     tenantId: string,
     dto: CreateUserDto,
-    actor: UserRecord,
+    actor: ActorContext,
   ): Promise<{ user: SafeUser; temporaryPin?: string }> {
     if (dto.isPlatformAdmin && !actor.isPlatformAdmin) {
       throw new ForbiddenException('Only platform admins can grant platform permissions');
@@ -96,7 +98,7 @@ export class UsersService {
     tenantId: string,
     userId: string,
     dto: UpdateUserDto,
-    actor: UserRecord,
+    actor: ActorContext,
   ): Promise<SafeUser> {
     const user = await this.usersRepository.findById(userId);
     this.ensureTenant(user, tenantId);
@@ -131,7 +133,7 @@ export class UsersService {
   private async determineLocationIdForCreation(
     tenantId: string,
     requested?: string,
-    actor?: UserRecord,
+    actor?: ActorContext,
   ): Promise<string | undefined> {
     const normalized = await this.validateLocationOwnership(tenantId, requested);
     if (normalized) {
@@ -165,7 +167,7 @@ export class UsersService {
     return location.id;
   }
 
-  async deleteUser(tenantId: string, userId: string, actor: UserRecord): Promise<void> {
+  async deleteUser(tenantId: string, userId: string, actor: ActorContext): Promise<void> {
     const isActorAdmin = actor.role === UserRole.ADMIN || actor.isPlatformAdmin;
     if (!isActorAdmin) {
       throw new ForbiddenException('Only administrators can delete users');
@@ -185,7 +187,7 @@ export class UsersService {
     tenantId: string,
     userId: string,
     newPin: string,
-    actor: UserRecord,
+    actor: ActorContext,
   ): Promise<void> {
     if (actor.role !== UserRole.ADMIN && !actor.isPlatformAdmin) {
       throw new ForbiddenException('Only admins can reset PINs');

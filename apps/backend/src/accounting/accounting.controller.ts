@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AccountingService } from './accounting.service';
@@ -20,6 +20,9 @@ export class AccountingController {
     @Req() req: Request & { user?: { tenantId?: string } },
   ) {
     const tenantId: string | undefined = req.user?.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context missing');
+    }
     return this.accountingService.computeOrderTaxes({
       tenantId,
       locationId: dto.locationId,
