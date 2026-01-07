@@ -1,11 +1,16 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { configureApp } from './app.bootstrap';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
+
+    const httpAdapterHost = app.get(HttpAdapterHost);
+    app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 
     const { configService } = await configureApp(app, { enableSwagger: true });
     // Render requires PORT to be read from process.env.PORT or set to 10000
