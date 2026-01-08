@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { PaymentMethod, PaymentStatus, OrderStatus } from '@pos-checkout/shared';
 import { OrdersService } from '../orders/orders.service';
@@ -12,6 +12,7 @@ import { JournalSource } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
   private defaultPaymentAdapter: PaymentAdapter;
 
   constructor(
@@ -85,30 +86,48 @@ export class PaymentsService {
 
     if (order.isCreditOrder) {
       await this.ordersService.markCreditOrderAsPaid(order.id, order.createdBy, tenantId);
+      try {
+        await this.accountingService.ensureSaleJournalForOrder({
+          order,
+          eventType: this.getCreditPaymentEventType(method),
+          metadata: {
+            trigger: 'payments.handleSuccessfulPayment',
+          },
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to post accounting journal for credit payment (order ${order.id}). Continuing without journal.`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+      return;
+    }
+
+    try {
       await this.accountingService.ensureSaleJournalForOrder({
         order,
-        eventType: this.getCreditPaymentEventType(method),
+        eventType: this.getSaleEventType(method),
         metadata: {
           trigger: 'payments.handleSuccessfulPayment',
         },
       });
-      return;
+    } catch (error) {
+      this.logger.error(
+        `Failed to post accounting journal for payment (order ${order.id}). Continuing without journal.`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
-
-    await this.accountingService.ensureSaleJournalForOrder({
-      order,
-      eventType: this.getSaleEventType(method),
-      metadata: {
-        trigger: 'payments.handleSuccessfulPayment',
-      },
-    });
   }
 
   async initiatePayment(orderId: string, dto: InitiatePaymentDto): Promise<PaymentRecord> {
     const order = await this.ordersService.findOne(orderId);
 
     if (order.status === OrderStatus.COMPLETED) {
-      throw new ConflictException('Order already completed');
+      const existingPayments = await this.paymentsRepository.findByOrderId(order.id);
+      const hasCompletedPayment = existingPayments.some((payment) => payment.status === PaymentStatus.COMPLETED);
+      if (hasCompletedPayment) {
+        throw new ConflictException('Order already paid');
+      }
     }
 
     // Get tenant ID from the user who created the order
