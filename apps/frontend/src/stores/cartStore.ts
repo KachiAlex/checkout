@@ -10,6 +10,13 @@ export interface CartItem {
   discountCents?: number;
 }
 
+export interface SelectedTaxRule {
+  id: string;
+  name: string;
+  taxCode: string;
+  rate: number;
+}
+
 interface CartSession {
   id: string;
   label: string;
@@ -19,6 +26,8 @@ interface CartSession {
   cartDiscountPercent: number;
   discountReason: string;
   taxEnabled: boolean;
+  selectedTaxRule: SelectedTaxRule | null;
+  taxRateOverridePercent: number | null;
 }
 
 interface CartState {
@@ -29,6 +38,8 @@ interface CartState {
   cartDiscountPercent: number;
   discountReason: string;
   taxEnabled: boolean;
+  selectedTaxRule: SelectedTaxRule | null;
+  taxRateOverridePercent: number | null;
 
   // Multiple cart sessions on a single device
   sessions: CartSession[];
@@ -45,6 +56,9 @@ interface CartState {
     reason?: string,
   ) => void;
   setTaxEnabled: (enabled: boolean) => void;
+  setSelectedTaxRule: (rule: SelectedTaxRule | null) => void;
+  setTaxRateOverridePercent: (value: number | null) => void;
+  getTaxRate: () => number;
   clearCart: () => void;
   getTotal: () => number;
   undoLastRemove: () => void;
@@ -82,6 +96,8 @@ export const useCartStore = create<CartState>()(
         cartDiscountPercent: 0,
         discountReason: "",
         taxEnabled: false, // Tax disabled by default
+        selectedTaxRule: null,
+        taxRateOverridePercent: null,
       });
 
       return {
@@ -92,6 +108,8 @@ export const useCartStore = create<CartState>()(
         cartDiscountPercent: 0,
         discountReason: "",
         taxEnabled: false, // Tax disabled by default
+        selectedTaxRule: null,
+        taxRateOverridePercent: null,
         sessions: [createEmptySession(1)],
         activeSessionId: "cart-1",
 
@@ -317,6 +335,64 @@ export const useCartStore = create<CartState>()(
           });
         },
 
+        setSelectedTaxRule: (rule) => {
+          set((state) => {
+            const sessions = [...state.sessions];
+            const idx = sessions.findIndex(
+              (s) => s.id === state.activeSessionId,
+            );
+            if (idx === -1) return state;
+
+            const session = sessions[idx];
+            const updatedSession: CartSession = {
+              ...session,
+              selectedTaxRule: rule,
+            };
+            sessions[idx] = updatedSession;
+
+            return {
+              ...state,
+              sessions,
+              selectedTaxRule: updatedSession.selectedTaxRule,
+            };
+          });
+        },
+
+        setTaxRateOverridePercent: (value) => {
+          set((state) => {
+            const sessions = [...state.sessions];
+            const idx = sessions.findIndex(
+              (s) => s.id === state.activeSessionId,
+            );
+            if (idx === -1) return state;
+
+            const session = sessions[idx];
+            const updatedSession: CartSession = {
+              ...session,
+              taxRateOverridePercent: value,
+            };
+            sessions[idx] = updatedSession;
+
+            return {
+              ...state,
+              sessions,
+              taxRateOverridePercent: updatedSession.taxRateOverridePercent,
+            };
+          });
+        },
+
+        getTaxRate: () => {
+          const state = get();
+          const override = state.taxRateOverridePercent;
+          if (override !== null && !Number.isNaN(override) && override >= 0) {
+            return override / 100;
+          }
+          if (state.selectedTaxRule) {
+            return state.selectedTaxRule.rate;
+          }
+          return 0;
+        },
+
         clearCart: () => {
           set((state) => {
             const sessions = [...state.sessions];
@@ -334,6 +410,8 @@ export const useCartStore = create<CartState>()(
               cartDiscountPercent: 0,
               discountReason: "",
               taxEnabled: false,
+              selectedTaxRule: null,
+              taxRateOverridePercent: null,
             };
             sessions[idx] = updatedSession;
 
@@ -346,6 +424,8 @@ export const useCartStore = create<CartState>()(
               cartDiscountPercent: 0,
               discountReason: "",
               taxEnabled: false,
+              selectedTaxRule: null,
+              taxRateOverridePercent: null,
             };
           });
         },
@@ -353,6 +433,8 @@ export const useCartStore = create<CartState>()(
         getTotal: () => {
           const state = get();
           const cart = state.cart;
+
+          const taxRate = state.taxEnabled ? state.getTaxRate() : 0;
 
           // Calculate subtotal with item discounts
           const subtotal = cart.reduce((sum, item) => {
@@ -362,12 +444,12 @@ export const useCartStore = create<CartState>()(
           }, 0);
 
           // Calculate tax on discounted subtotal (only if tax is enabled)
-          const tax = state.taxEnabled
+          const tax = taxRate
             ? cart.reduce((sum, item) => {
                 const itemSubtotal = item.priceCents * item.quantity;
                 const itemDiscount = item.discountCents || 0;
                 const discountedSubtotal = itemSubtotal - itemDiscount;
-                return sum + discountedSubtotal * item.taxRate;
+                return sum + discountedSubtotal * taxRate;
               }, 0)
             : 0;
 
@@ -398,6 +480,8 @@ export const useCartStore = create<CartState>()(
               cartDiscountPercent: newSession.cartDiscountPercent,
               discountReason: newSession.discountReason,
               taxEnabled: newSession.taxEnabled,
+              selectedTaxRule: newSession.selectedTaxRule,
+              taxRateOverridePercent: newSession.taxRateOverridePercent,
             };
           });
         },
@@ -416,6 +500,8 @@ export const useCartStore = create<CartState>()(
               cartDiscountPercent: session.cartDiscountPercent,
               discountReason: session.discountReason,
               taxEnabled: session.taxEnabled,
+              selectedTaxRule: session.selectedTaxRule,
+              taxRateOverridePercent: session.taxRateOverridePercent,
             };
           });
         },
@@ -432,6 +518,9 @@ export const useCartStore = create<CartState>()(
                 cartDiscountCents: 0,
                 cartDiscountPercent: 0,
                 discountReason: "",
+                taxEnabled: false,
+                selectedTaxRule: null,
+                taxRateOverridePercent: null,
               };
 
               return {
@@ -443,6 +532,9 @@ export const useCartStore = create<CartState>()(
                 cartDiscountCents: 0,
                 cartDiscountPercent: 0,
                 discountReason: "",
+                taxEnabled: false,
+                selectedTaxRule: null,
+                taxRateOverridePercent: null,
               };
             }
 
@@ -467,6 +559,9 @@ export const useCartStore = create<CartState>()(
               cartDiscountCents: activeSession.cartDiscountCents,
               cartDiscountPercent: activeSession.cartDiscountPercent,
               discountReason: activeSession.discountReason,
+              taxEnabled: activeSession.taxEnabled,
+              selectedTaxRule: activeSession.selectedTaxRule,
+              taxRateOverridePercent: activeSession.taxRateOverridePercent,
             };
           });
         },

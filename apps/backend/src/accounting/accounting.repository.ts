@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, Account, AccountMapping, JournalSource, JournalStatus, AccountType } from '@prisma/client';
+import { Prisma, Account, AccountMapping, JournalSource, JournalStatus, AccountType, TaxRule, TaxMode, TaxPeriod, TaxPeriodStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import {
   DEFAULT_ACCOUNT_DEFINITIONS,
@@ -9,6 +9,9 @@ import {
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { UpsertAccountMappingDto } from './dto/upsert-account-mapping.dto';
+import { CreateTaxRuleDto } from './dto/create-tax-rule.dto';
+import { UpdateTaxRuleDto } from './dto/update-tax-rule.dto';
+import { UpsertTaxPeriodDto } from './dto/upsert-tax-period.dto';
 
 interface EnsureOptions {
   tenantId: string;
@@ -55,6 +58,185 @@ export class AccountingRepository {
 
   private get prisma() {
     return this.prismaService.prisma;
+  }
+
+  async listActiveTaxRules(
+    tenantId: string,
+    filters?: {
+      locationId?: string;
+      taxCode?: string;
+    },
+  ): Promise<TaxRule[]> {
+    return this.prisma.taxRule.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        taxCode: filters?.taxCode ?? undefined,
+        OR: filters?.locationId ? [{ locationId: filters.locationId }, { locationId: null }] : undefined,
+      },
+      orderBy: [{ locationId: 'desc' }, { effectiveFrom: 'desc' }],
+    });
+  }
+
+  async listTaxRules(
+    tenantId: string,
+    filters?: {
+      locationId?: string;
+      taxCode?: string;
+      includeInactive?: boolean;
+    },
+  ): Promise<TaxRule[]> {
+    return this.prisma.taxRule.findMany({
+      where: {
+        tenantId,
+        isActive: filters?.includeInactive ? undefined : true,
+        taxCode: filters?.taxCode ?? undefined,
+        locationId: filters?.locationId ?? undefined,
+      },
+      orderBy: [{ taxCode: 'asc' }, { locationId: 'desc' }, { effectiveFrom: 'desc' }],
+    });
+  }
+
+  async listTaxRulesByIds(tenantId: string, ids: string[]): Promise<TaxRule[]> {
+    if (!ids.length) return [];
+    return this.prisma.taxRule.findMany({
+      where: {
+        tenantId,
+        id: { in: ids },
+      },
+    });
+  }
+
+  async upsertTaxPeriod(tenantId: string, dto: UpsertTaxPeriodDto, createdBy?: string): Promise<TaxPeriod> {
+    const periodStart = new Date(dto.periodStart);
+    const periodEnd = new Date(dto.periodEnd);
+    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
+      throw new NotFoundException('Invalid period start/end');
+    }
+
+    return this.prisma.taxPeriod.upsert({
+      where: {
+        tenantId_locationId_taxCode_periodStart_periodEnd: {
+          tenantId,
+          locationId: dto.locationId ?? null,
+          taxCode: dto.taxCode,
+          periodStart,
+          periodEnd,
+        },
+      },
+      create: {
+        tenantId,
+        locationId: dto.locationId ?? null,
+        taxCode: dto.taxCode,
+        periodStart,
+        periodEnd,
+        status: dto.status ?? TaxPeriodStatus.OPEN,
+        filedAt: dto.filedAt ? new Date(dto.filedAt) : null,
+        paidAt: dto.paidAt ? new Date(dto.paidAt) : null,
+        paymentReference: dto.paymentReference ?? null,
+        paymentAmountCents: dto.paymentAmountCents ?? null,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+        currency: dto.currency ?? 'NGN',
+        createdBy: createdBy ?? null,
+      },
+      update: {
+        status: dto.status,
+        filedAt: dto.filedAt ? new Date(dto.filedAt) : undefined,
+        paidAt: dto.paidAt ? new Date(dto.paidAt) : undefined,
+        paymentReference: dto.paymentReference ?? undefined,
+        paymentAmountCents: dto.paymentAmountCents ?? undefined,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        currency: dto.currency ?? undefined,
+      },
+    });
+  }
+
+  async listTaxPeriods(
+    tenantId: string,
+    filters?: {
+      locationId?: string;
+      taxCode?: string;
+      from?: Date;
+      to?: Date;
+    },
+  ): Promise<TaxPeriod[]> {
+    return this.prisma.taxPeriod.findMany({
+      where: {
+        tenantId,
+        locationId: filters?.locationId ?? undefined,
+        taxCode: filters?.taxCode ?? undefined,
+        periodStart: filters?.from || filters?.to ? { gte: filters?.from, lte: filters?.to } : undefined,
+      },
+      orderBy: [{ periodStart: 'desc' }],
+    });
+  }
+
+  async findTaxPeriodCoveringRange(
+    tenantId: string,
+    params: {
+      locationId?: string;
+      taxCode: string;
+      from: Date;
+      to: Date;
+    },
+  ): Promise<TaxPeriod | null> {
+    return this.prisma.taxPeriod.findFirst({
+      where: {
+        tenantId,
+        locationId: params.locationId ?? null,
+        taxCode: params.taxCode,
+        periodStart: { lte: params.from },
+        periodEnd: { gte: params.to },
+      },
+      orderBy: [{ periodStart: 'desc' }],
+    });
+  }
+
+  async createTaxRule(tenantId: string, dto: CreateTaxRuleDto, createdBy?: string): Promise<TaxRule> {
+    return this.prisma.taxRule.create({
+      data: {
+        tenantId,
+        locationId: dto.locationId ?? null,
+        name: dto.name,
+        authority: dto.authority,
+        taxCode: dto.taxCode,
+        rate: new Prisma.Decimal(dto.rate),
+        mode: dto.mode ?? TaxMode.EXCLUSIVE,
+        effectiveFrom: new Date(dto.effectiveFrom),
+        effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : null,
+        isActive: dto.isActive ?? true,
+        createdBy: createdBy ?? null,
+      },
+    });
+  }
+
+  async updateTaxRule(
+    tenantId: string,
+    taxRuleId: string,
+    dto: UpdateTaxRuleDto,
+  ): Promise<TaxRule> {
+    const existing = await this.prisma.taxRule.findFirst({
+      where: { id: taxRuleId, tenantId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Tax rule ${taxRuleId} not found`);
+    }
+
+    return this.prisma.taxRule.update({
+      where: { id: existing.id },
+      data: {
+        name: dto.name,
+        authority: dto.authority,
+        taxCode: dto.taxCode,
+        rate: dto.rate !== undefined ? new Prisma.Decimal(dto.rate) : undefined,
+        mode: dto.mode,
+        effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : undefined,
+        effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : undefined,
+        locationId: dto.locationId !== undefined ? dto.locationId : undefined,
+        isActive: dto.isActive,
+      },
+    });
   }
 
   async ensureDefaults(options: EnsureOptions): Promise<void> {
@@ -435,6 +617,80 @@ export class AccountingRepository {
           status: JournalStatus.POSTED,
           locationId: filters.locationId ?? undefined,
           postedAt: postedAtFilter,
+        },
+      },
+      _sum: {
+        debitCents: true,
+        creditCents: true,
+      },
+    });
+  }
+
+  async listVatPayableLines(
+    tenantId: string,
+    filters: {
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+    },
+  ) {
+    const vatAccount = await this.getAccountByCode(tenantId, 'VAT_PAYABLE');
+    if (!vatAccount) {
+      throw new NotFoundException('VAT account not configured for this tenant.');
+    }
+
+    return this.prisma.journalLine.findMany({
+      where: {
+        accountId: vatAccount.id,
+        journalEntry: {
+          tenantId,
+          status: JournalStatus.POSTED,
+          locationId: filters.locationId ?? undefined,
+          postedAt:
+            filters.from || filters.to
+              ? {
+                  gte: filters.from,
+                  lte: filters.to,
+                }
+              : undefined,
+        },
+      },
+      include: {
+        journalEntry: true,
+        taxRule: true,
+      },
+      orderBy: [{ journalEntry: { postedAt: 'asc' } }, { createdAt: 'asc' }],
+    });
+  }
+
+  async aggregateVatPayableByTaxRule(
+    tenantId: string,
+    filters: {
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+    },
+  ) {
+    const vatAccount = await this.getAccountByCode(tenantId, 'VAT_PAYABLE');
+    if (!vatAccount) {
+      throw new NotFoundException('VAT account not configured for this tenant.');
+    }
+
+    return this.prisma.journalLine.groupBy({
+      by: ['taxRuleId'],
+      where: {
+        accountId: vatAccount.id,
+        journalEntry: {
+          tenantId,
+          status: JournalStatus.POSTED,
+          locationId: filters.locationId ?? undefined,
+          postedAt:
+            filters.from || filters.to
+              ? {
+                  gte: filters.from,
+                  lte: filters.to,
+                }
+              : undefined,
         },
       },
       _sum: {

@@ -25,6 +25,8 @@ export interface PostJournalParams {
   metadata?: Prisma.JsonValue;
   branchId?: string;
   taxDirection?: 'credit' | 'debit';
+  taxRuleIdUsed?: string;
+  taxRateBpsUsed?: number;
 }
 
 @Injectable()
@@ -71,7 +73,13 @@ export class AccountingService {
       throw new NotFoundException('VAT account not configured for this tenant.');
     }
 
-    const lines = [
+    const lines: Array<{
+      accountId: string;
+      description?: string;
+      debitCents?: number;
+      creditCents?: number;
+      taxRuleId?: string;
+    }> = [
       {
         accountId: mapping.debitAccountId,
         debitCents: Math.max(params.totalCents, 0),
@@ -92,11 +100,13 @@ export class AccountingService {
               accountId: vatAccount.id,
               debitCents: params.taxCents,
               description: 'VAT reversal',
+              taxRuleId: params.taxRuleIdUsed,
             }
           : {
               accountId: vatAccount.id,
               creditCents: params.taxCents,
               description: 'VAT payable',
+              taxRuleId: params.taxRuleIdUsed,
             },
       );
     }
@@ -140,6 +150,14 @@ export class AccountingService {
       return existing;
     }
 
+    const metadata = {
+      ...(typeof params.metadata === 'object' && params.metadata !== null
+        ? (params.metadata as Record<string, unknown>)
+        : {}),
+      taxRuleIdUsed: (params.order as any).taxRuleIdUsed,
+      taxRateBpsUsed: (params.order as any).taxRateBpsUsed,
+    };
+
     return this.postSaleJournal({
       tenantId: params.order.tenantId,
       locationId: params.order.locationId,
@@ -150,8 +168,10 @@ export class AccountingService {
       subtotalCents: params.order.subtotalCents,
       taxCents: params.order.taxCents,
       totalCents: params.order.totalCents,
-      metadata: params.metadata,
+      metadata,
       taxDirection: params.taxDirection,
+      taxRuleIdUsed: (params.order as any).taxRuleIdUsed,
+      taxRateBpsUsed: (params.order as any).taxRateBpsUsed,
     });
   }
 }

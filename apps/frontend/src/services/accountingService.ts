@@ -131,4 +131,46 @@ export const accountingService = {
     );
     return res.data;
   },
+
+  async vatPayable(params: {
+    locationId?: string;
+    from?: string;
+    to?: string;
+    taxCode?: string;
+  }): Promise<any> {
+    const res = await axios.get(
+      `${API_URL}/api/v1/admin/accounting/reports/vat-payable`,
+      { params },
+    );
+    return res.data;
+  },
+
+  async listTaxPeriods(params: {
+    locationId?: string;
+    taxCode?: string;
+    from?: string;
+    to?: string;
+  }): Promise<any[]> {
+    const res = await axios.get(`${API_URL}/api/v1/admin/accounting/tax-periods`, {
+      params,
+    });
+    return res.data || [];
+  },
+
+  async upsertTaxPeriod(input: {
+    locationId?: string;
+    taxCode: string;
+    periodStart: string;
+    periodEnd: string;
+    status?: "OPEN" | "FILED" | "PAID";
+    filedAt?: string;
+    paidAt?: string;
+    paymentReference?: string;
+    paymentAmountCents?: number;
+    dueDate?: string;
+    currency?: string;
+  }): Promise<any> {
+    const res = await axios.post(`${API_URL}/api/v1/admin/accounting/tax-periods`, input);
+    return res.data;
+  },
 };

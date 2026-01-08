@@ -15,6 +15,7 @@ import { API_URL } from "../config";
 import { generateUUID } from "../utils/uuid";
 import { receiptService } from "../services/receiptService";
 import { formatCurrency, formatNumber } from "../utils/numberFormat";
+import { TaxRulesService, TaxRule } from "../services/taxRulesService";
 
 interface Product {
   id: string;
@@ -56,6 +57,11 @@ export function CheckoutPage() {
     discountReason,
     taxEnabled,
     setTaxEnabled,
+    selectedTaxRule,
+    taxRateOverridePercent,
+    setSelectedTaxRule,
+    setTaxRateOverridePercent,
+    getTaxRate,
     setCartDiscount,
   } = useCartStore();
 
@@ -91,6 +97,8 @@ export function CheckoutPage() {
     percentage?: number;
     enabled: boolean;
   } | null>(null);
+  const [taxRules, setTaxRules] = useState<TaxRule[]>([]);
+  const [isLoadingTaxRules, setIsLoadingTaxRules] = useState(false);
   const [discountInput, setDiscountInput] = useState("");
   const [discountType, setDiscountType] = useState<"percent" | "amount">(
     "amount",
@@ -303,18 +311,16 @@ export function CheckoutPage() {
     setShowResults(true);
   }, [searchQuery, allProducts]);
 
-  // Fetch tax settings (all users need this to see if tax can be applied)
+  // Legacy tax settings (kept for backwards compatibility / fallback)
   useEffect(() => {
     const loadTaxSettings = async () => {
       if (!accessToken) return;
       try {
-        // Try to get tax settings - if user is not admin, they'll get 403 but that's okay
         const response = await axios.get(`${API_URL}/api/v1/tax-settings`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         setTaxSettings(response.data);
       } catch (error: any) {
-        // Tax settings might not exist yet, or user might not have permission - that's okay
         if (error.response?.status !== 404 && error.response?.status !== 403) {
           console.error("Failed to load tax settings:", error);
         }
@@ -322,6 +328,44 @@ export function CheckoutPage() {
     };
     loadTaxSettings();
   }, [accessToken]);
+
+  // Load active VAT rules for checkout
+  useEffect(() => {
+    const loadTaxRules = async () => {
+      if (!accessToken) return;
+      setIsLoadingTaxRules(true);
+      try {
+        const locationId = user?.locationId;
+        const rules = await TaxRulesService.listActive({
+          locationId: locationId || undefined,
+          taxCode: "VAT",
+        });
+        setTaxRules(rules);
+
+        if (!selectedTaxRule) {
+          const first = rules[0];
+          if (first) {
+            const parsedRate =
+              typeof first.rate === "string" ? parseFloat(first.rate) : first.rate;
+            if (!Number.isNaN(parsedRate)) {
+              setSelectedTaxRule({
+                id: first.id,
+                name: first.name,
+                taxCode: first.taxCode,
+                rate: parsedRate,
+              });
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error("Failed to load tax rules:", error);
+      } finally {
+        setIsLoadingTaxRules(false);
+      }
+    };
+
+    loadTaxRules();
+  }, [accessToken, user?.locationId, selectedTaxRule, setSelectedTaxRule]);
 
   // Handle barcode scan
   const handleBarcodeScan = async (barcode: string) => {
@@ -451,10 +495,9 @@ export function CheckoutPage() {
   // Helper to map cart items to order items
   const mapCartToOrderItems = useCallback(
     (cartItems: typeof cart) => {
-      // Calculate tax per item using tenant tax settings or default 7.5% VAT (if enabled)
       const defaultVATPercentage = 7.5;
       const taxPercentage = taxEnabled
-        ? (taxSettings?.percentage || defaultVATPercentage) / 100
+        ? getTaxRate() || (taxSettings?.percentage || defaultVATPercentage) / 100
         : 0;
 
       return cartItems
@@ -485,7 +528,7 @@ export function CheckoutPage() {
           };
         });
     },
-    [taxEnabled, taxSettings],
+    [taxEnabled, taxSettings, getTaxRate],
   );
 
   // Helper to calculate totals from cart
@@ -504,10 +547,10 @@ export function CheckoutPage() {
       finalSubtotal = Math.max(0, subtotal - cartDiscountCents);
     }
 
-    // Calculate tax on discounted subtotal using tenant tax settings or default 7.5% VAT (if enabled)
+    // Calculate tax on discounted subtotal using selected VAT rule (fallback to legacy)
     const defaultVATPercentage = 7.5;
     const taxPercentage = taxEnabled
-      ? (taxSettings?.percentage || defaultVATPercentage) / 100
+      ? getTaxRate() || (taxSettings?.percentage || defaultVATPercentage) / 100
       : 0;
     const tax = finalSubtotal * taxPercentage;
 
@@ -515,7 +558,7 @@ export function CheckoutPage() {
     const totalDiscountCents = subtotal - finalSubtotal;
 
     return { subtotal, tax, finalSubtotal, totalAmount, totalDiscountCents };
-  }, [cart, cartDiscountPercent, cartDiscountCents, taxEnabled, taxSettings]);
+  }, [cart, cartDiscountPercent, cartDiscountCents, taxEnabled, taxSettings, getTaxRate]);
 
   // Extract receipt printing logic
   const handleReceiptPrint = useCallback(async (orderId: string) => {
@@ -649,31 +692,42 @@ export function CheckoutPage() {
       const orderUuid = generateUUID();
       const deviceId = localStorage.getItem("deviceId") || undefined;
 
-      const orderPayload = {
+      const effectiveTaxRate = taxEnabled
+        ? getTaxRate() || (taxSettings?.percentage || 7.5) / 100
+        : 0;
+      const taxRateBpsUsed = Math.round(effectiveTaxRate * 10000);
+
+      const orderData: any = {
         uuid: orderUuid,
         locationId: user.locationId || undefined,
         customerId: customerId || undefined,
         items: mapCartToOrderItems(cart),
         subtotalCents: subtotal,
-        taxCents: tax,
+        taxCents: Math.round(tax),
         discountCents: totalDiscountCents,
         discountPercent:
           cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
         discountReason: discountReason || undefined,
         totalCents: totalAmount,
         deviceId,
-        isCreditOrder: true,
       };
 
+      if (taxEnabled) {
+        orderData.taxRateBpsUsed = taxRateBpsUsed;
+        orderData.taxRuleIdUsed = selectedTaxRule?.id;
+      }
+
+      orderData.isCreditOrder = true;
+
       console.log("📤 Sending credit order with payload:", {
-        ...orderPayload,
-        items: `${orderPayload.items.length} items`,
-        customerId: orderPayload.customerId,
+        ...orderData,
+        items: `${orderData.items.length} items`,
+        customerId: orderData.customerId,
       });
 
       const orderResponse = await axios.post(
         `${API_URL}/api/v1/orders`,
-        orderPayload,
+        orderData,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
@@ -740,6 +794,11 @@ export function CheckoutPage() {
       const orderUuid = generateUUID();
       const deviceId = localStorage.getItem("deviceId") || undefined;
 
+      const effectiveTaxRate = taxEnabled
+        ? getTaxRate() || (taxSettings?.percentage || 7.5) / 100
+        : 0;
+      const taxRateBpsUsed = Math.round(effectiveTaxRate * 10000);
+
       const orderResponse = await axios.post(
         `${API_URL}/api/v1/orders`,
         {
@@ -748,13 +807,15 @@ export function CheckoutPage() {
           customerId: customerId,
           items: mapCartToOrderItems(cart),
           subtotalCents: subtotal,
-          taxCents: tax,
+          taxCents: Math.round(tax),
           discountCents: totalDiscountCents,
           discountPercent:
             cartDiscountPercent > 0 ? cartDiscountPercent : undefined,
           discountReason: discountReason || undefined,
           totalCents: totalAmount,
           deviceId,
+          taxRateBpsUsed: taxEnabled ? taxRateBpsUsed : undefined,
+          taxRuleIdUsed: taxEnabled ? selectedTaxRule?.id : undefined,
         },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
@@ -786,6 +847,15 @@ export function CheckoutPage() {
   const { subtotal, tax, finalSubtotal, totalDiscountCents } =
     calculateOrderTotals();
   const totalDiscount = totalDiscountCents;
+
+  const effectiveVatPercent = taxEnabled
+    ? Math.round(((getTaxRate() || 0) * 100 + Number.EPSILON) * 100) / 100
+    : 0;
+
+  const fallbackVatPercent = taxSettings?.percentage ?? 7.5;
+  const displayVatPercent = taxEnabled
+    ? effectiveVatPercent || fallbackVatPercent
+    : 0;
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden theme-background page-with-nav">
@@ -1302,9 +1372,81 @@ export function CheckoutPage() {
                     htmlFor="vat-toggle"
                     className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer"
                   >
-                    Apply VAT ({taxSettings?.percentage || 7.5}%)
+                    Apply VAT ({displayVatPercent}%)
                   </label>
                 </div>
+
+                {taxEnabled && (
+                  <div className="mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
+                    <div>
+                      <div className="theme-text-secondary text-[11px] sm:text-xs mb-1">
+                        VAT rule
+                      </div>
+                      <select
+                        value={selectedTaxRule?.id || ""}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          const found = taxRules.find((r) => r.id === id);
+                          if (!found) {
+                            setSelectedTaxRule(null);
+                            return;
+                          }
+                          const parsedRate =
+                            typeof found.rate === "string"
+                              ? parseFloat(found.rate)
+                              : found.rate;
+                          if (Number.isNaN(parsedRate)) {
+                            setSelectedTaxRule(null);
+                            return;
+                          }
+                          setSelectedTaxRule({
+                            id: found.id,
+                            name: found.name,
+                            taxCode: found.taxCode,
+                            rate: parsedRate,
+                          });
+                        }}
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm theme-text-primary"
+                        disabled={isLoadingTaxRules}
+                      >
+                        <option value="">Select VAT rule</option>
+                        {taxRules.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <div className="theme-text-secondary text-[11px] sm:text-xs mb-1">
+                        Override rate (%)
+                      </div>
+                      <input
+                        value={
+                          taxRateOverridePercent === null
+                            ? ""
+                            : String(taxRateOverridePercent)
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (!raw.trim()) {
+                            setTaxRateOverridePercent(null);
+                            return;
+                          }
+                          const parsed = parseFloat(raw);
+                          if (Number.isNaN(parsed) || parsed < 0) {
+                            return;
+                          }
+                          setTaxRateOverridePercent(parsed);
+                        }}
+                        inputMode="decimal"
+                        placeholder="e.g. 7.5"
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm theme-text-primary"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Discount Input */}
                 <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">

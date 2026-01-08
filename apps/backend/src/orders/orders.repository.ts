@@ -11,6 +11,8 @@ export interface OrderRecord {
   locationId: string; // Always set (derived if not provided)
   tenantId?: string; // Added for better data organization and filtering
   customerId?: string;
+  taxRuleIdUsed?: string;
+  taxRateBpsUsed?: number;
   items: Array<{
     productId: string;
     quantity: number;
@@ -269,6 +271,8 @@ export class OrdersRepository {
       ...data,
       tenantId: data.tenantId,
       customerId: data.customerId || undefined, // Explicitly set to undefined if not provided (Firestore will omit undefined fields)
+      taxRuleIdUsed: data.taxRuleIdUsed,
+      taxRateBpsUsed: data.taxRateBpsUsed,
       items: serializedItems,
       isHeld: data.isHeld ?? false,
       isCreditOrder: data.isCreditOrder ?? false,
@@ -386,6 +390,8 @@ export class OrdersRepository {
       locationId: data.locationId,
       tenantId: data.tenantId,
       customerId: data.customerId,
+      taxRuleIdUsed: data.taxRuleIdUsed,
+      taxRateBpsUsed: data.taxRateBpsUsed,
       items: data.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,

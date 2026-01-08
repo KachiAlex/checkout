@@ -6,11 +6,21 @@ import { AccountingController } from './accounting.controller';
 import { AdminAccountingController } from './admin-accounting.controller';
 import { AccountingReportsService } from './accounting-reports.service';
 import { AdminAccountingReportsController } from './admin-accounting-reports.controller';
+import { TaxRulesController } from './tax-rules.controller';
+import { AdminTaxRulesController } from './admin-tax-rules.controller';
+import { AdminTaxPeriodsController } from './admin-tax-periods.controller';
 import { DatabaseModule } from '../database/database.module';
 
 @Module({
   imports: [DatabaseModule],
-  controllers: [AccountingController, AdminAccountingController, AdminAccountingReportsController],
+  controllers: [
+    AccountingController,
+    AdminAccountingController,
+    AdminAccountingReportsController,
+    TaxRulesController,
+    AdminTaxRulesController,
+    AdminTaxPeriodsController,
+  ],
   providers: [AccountingService, AccountingRepository, TaxEngineService, AccountingReportsService],
   exports: [AccountingService, AccountingRepository, TaxEngineService, AccountingReportsService],
 })

@@ -1528,6 +1528,12 @@ export function SettingsPage() {
                   >
                     🧾 Accounts
                   </Link>
+                  <Link
+                    to="/accounting/tax-periods"
+                    className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
+                  >
+                    🗓️ Tax Periods
+                  </Link>
                 </div>
                 <p className="theme-text-secondary mt-4 text-xs">
                   Managers should use <span className="theme-text-primary">Accounting → Reports</span> from the main navigation.

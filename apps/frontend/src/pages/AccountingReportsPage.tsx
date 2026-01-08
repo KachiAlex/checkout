@@ -3,14 +3,11 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
+import { accountingService, AccountingAccount } from "../services/accountingService";
+import { API_URL } from "../config";
 import { BrandMark } from "../components/BrandMark";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { API_URL } from "../config";
-import { useAuthStore } from "../stores/authStore";
-import {
-  accountingService,
-  AccountingAccount,
-} from "../services/accountingService";
 
 const getTodayDate = () => format(new Date(), "yyyy-MM-dd");
 
@@ -47,7 +44,12 @@ const toLocalDayEndIso = (value: string) => {
   return date.toISOString();
 };
 
-type Tab = "general-ledger" | "trial-balance" | "profit-loss" | "balance-sheet";
+type Tab =
+  | "general-ledger"
+  | "trial-balance"
+  | "profit-loss"
+  | "balance-sheet"
+  | "vat-payable";
 
 export function AccountingReportsPage() {
   const { accessToken, user } = useAuthStore();
@@ -80,6 +82,7 @@ export function AccountingReportsPage() {
       { id: "trial-balance" as const, label: "Trial Balance", icon: "🧮" },
       { id: "profit-loss" as const, label: "Profit & Loss", icon: "📈" },
       { id: "balance-sheet" as const, label: "Balance Sheet", icon: "🏦" },
+      { id: "vat-payable" as const, label: "VAT Payable", icon: "🧾" },
     ],
     [],
   );
@@ -154,6 +157,17 @@ export function AccountingReportsPage() {
           ...commonLocation,
           from: fromIso,
           to: toIso,
+        });
+        setData(res);
+        return;
+      }
+
+      if (activeTab === "vat-payable") {
+        const res = await accountingService.vatPayable({
+          ...commonLocation,
+          from: fromIso,
+          to: toIso,
+          taxCode: "VAT",
         });
         setData(res);
         return;
@@ -393,6 +407,127 @@ export function AccountingReportsPage() {
                         </table>
                       </div>
                     )}
+                  </div>
+                );
+              }
+
+              if (activeTab === "vat-payable") {
+                const totals = (data as any)?.totals || {
+                  collectedCents: 0,
+                  reversedCents: 0,
+                  netPayableCents: 0,
+                };
+                const breakdown = (data as any)?.breakdown || [];
+                const dueDate = (data as any)?.dueDate;
+                const period = (data as any)?.period;
+
+                const taxCode = (data as any)?.taxCode || "VAT";
+                const from = (data as any)?.from;
+                const to = (data as any)?.to;
+                const managePeriodHref = `/accounting/tax-periods?taxCode=${encodeURIComponent(
+                  taxCode,
+                )}${locationId ? `&locationId=${encodeURIComponent(locationId)}` : ""}${
+                  from ? `&from=${encodeURIComponent(from)}` : ""
+                }${to ? `&to=${encodeURIComponent(to)}` : ""}`;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div>
+                        <div className="theme-text-primary text-sm font-semibold">
+                          VAT Payable Report
+                        </div>
+                        <div className="theme-text-secondary text-xs">
+                          Amount payable to government
+                          {dueDate ? ` · Due: ${formatDateTime(dueDate)}` : ""}
+                        </div>
+                        {period ? (
+                          <div className="theme-text-secondary text-xs">
+                            Status: <span className="theme-text-primary">{period.status}</span>
+                            {period.paymentReference
+                              ? ` · Payment ref: ${period.paymentReference}`
+                              : ""}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={managePeriodHref}
+                          className="theme-chip rounded-full border px-4 py-2 text-xs font-semibold transition hover:border-sky-400"
+                        >
+                          Manage Tax Period
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="theme-chip rounded-xl border p-3">
+                        <div className="theme-text-secondary text-xs">VAT collected</div>
+                        <div className="theme-text-primary text-base font-semibold">
+                          {formatMoney(totals.collectedCents || 0, currency)}
+                        </div>
+                      </div>
+                      <div className="theme-chip rounded-xl border p-3">
+                        <div className="theme-text-secondary text-xs">VAT reversed (refunds)</div>
+                        <div className="theme-text-primary text-base font-semibold">
+                          {formatMoney(totals.reversedCents || 0, currency)}
+                        </div>
+                      </div>
+                      <div className="theme-chip rounded-xl border p-3">
+                        <div className="theme-text-secondary text-xs">Net VAT payable</div>
+                        <div className="theme-text-primary text-base font-semibold">
+                          {formatMoney(totals.netPayableCents || 0, currency)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs sm:text-sm">
+                        <thead>
+                          <tr className="border-b border-white/10">
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Rule</th>
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Collected</th>
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Reversed</th>
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Net</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {breakdown.length === 0 ? (
+                            <tr>
+                              <td className="py-4 theme-text-secondary" colSpan={4}>
+                                No VAT activity for the selected period.
+                              </td>
+                            </tr>
+                          ) : (
+                            breakdown.map((r: any) => (
+                              <tr
+                                key={r.taxRuleId || r.name}
+                                className="border-b border-white/5"
+                              >
+                                <td className="py-2 pr-4 theme-text-primary">
+                                  {r.name}
+                                  {r.authority ? (
+                                    <div className="theme-text-secondary text-[11px]">
+                                      {r.authority}
+                                    </div>
+                                  ) : null}
+                                </td>
+                                <td className="py-2 pr-4 theme-text-primary whitespace-nowrap">
+                                  {formatMoney(r.collectedCents || 0, currency)}
+                                </td>
+                                <td className="py-2 pr-4 theme-text-primary whitespace-nowrap">
+                                  {formatMoney(r.reversedCents || 0, currency)}
+                                </td>
+                                <td className="py-2 pr-4 theme-text-primary whitespace-nowrap">
+                                  {formatMoney(r.netPayableCents || 0, currency)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 );
               }

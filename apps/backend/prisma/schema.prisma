@@ -94,6 +94,12 @@ enum TaxMode {
   EXCLUSIVE
 }
 
+enum TaxPeriodStatus {
+  OPEN
+  FILED
+  PAID
+}
+
 enum AccountType {
   ASSET
   LIABILITY
@@ -154,6 +160,7 @@ model Tenant {
   returns              Return[]
   invoices             Invoice[]
   auditLogs            ComplianceAuditLog[]
+  taxPeriods           TaxPeriod[]
 
   @@index([createdAt])
 }
@@ -323,6 +330,7 @@ model Location {
   returns          Return[]
   invoices         Invoice[]
   taxRules         TaxRule[]
+  taxPeriods       TaxPeriod[]
 
   @@index([tenantId])
 }
@@ -763,4 +771,32 @@ model ComplianceAuditLog {
   @@index([tenantId])
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+model TaxPeriod {
+  id                String          @id @default(uuid())
+  tenantId          String
+  locationId        String?
+  taxCode           String
+  periodStart       DateTime
+  periodEnd         DateTime
+  status            TaxPeriodStatus @default(OPEN)
+  filedAt           DateTime?
+  paidAt            DateTime?
+  paymentReference  String?
+  paymentAmountCents Int?
+  currency          String          @default("NGN")
+  dueDate           DateTime?
+  metadata          Json?
+  createdBy         String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, locationId, taxCode, periodStart, periodEnd])
+  @@index([tenantId, taxCode, status])
+  @@index([tenantId, locationId])
+  @@index([periodStart, periodEnd])
 }

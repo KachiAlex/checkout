@@ -348,4 +348,105 @@ export class AccountingReportsService {
       differenceCents: totalAssetsCents - (totalLiabilitiesCents + equityWithIncomeCents),
     };
   }
+
+  async vatPayableReport(params: {
+    tenantId: string;
+    locationId?: string;
+    from?: string;
+    to?: string;
+    taxCode?: string;
+  }) {
+    const fromDate = this.parseDate(params.from, 'from');
+    const toDate = this.parseDate(params.to, 'to');
+
+    if (!fromDate || !toDate) {
+      throw new BadRequestException('from and to are required');
+    }
+
+    const taxCode = params.taxCode ?? 'VAT';
+
+    const lines = await this.accountingRepository.listVatPayableLines(params.tenantId, {
+      locationId: params.locationId,
+      from: fromDate,
+      to: toDate,
+    });
+
+    const collectedCents = lines.reduce((sum, l) => sum + (l.creditCents ?? 0), 0);
+    const reversedCents = lines.reduce((sum, l) => sum + (l.debitCents ?? 0), 0);
+    const netPayableCents = collectedCents - reversedCents;
+
+    const byRule = await this.accountingRepository.aggregateVatPayableByTaxRule(params.tenantId, {
+      locationId: params.locationId,
+      from: fromDate,
+      to: toDate,
+    });
+
+    const taxRuleIds = byRule
+      .map((r) => r.taxRuleId)
+      .filter((id): id is string => Boolean(id));
+
+    const taxRules = await this.accountingRepository.listTaxRulesByIds(
+      params.tenantId,
+      taxRuleIds,
+    );
+    const ruleById = new Map(taxRules.map((r) => [r.id, r] as const));
+
+    const breakdown = byRule
+      .map((r) => {
+        const debit = r._sum.debitCents ?? 0;
+        const credit = r._sum.creditCents ?? 0;
+        const rule = r.taxRuleId ? ruleById.get(r.taxRuleId) : null;
+        return {
+          taxRuleId: r.taxRuleId,
+          taxCode: rule?.taxCode ?? taxCode,
+          name: rule?.name ?? (r.taxRuleId ? 'Unknown rule' : 'Unspecified'),
+          authority: rule?.authority ?? null,
+          collectedCents: credit,
+          reversedCents: debit,
+          netPayableCents: credit - debit,
+        };
+      })
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const dueDate = new Date(toDate);
+    dueDate.setMonth(dueDate.getMonth() + 1);
+    dueDate.setDate(21);
+    dueDate.setHours(0, 0, 0, 0);
+
+    const period = await this.accountingRepository.findTaxPeriodCoveringRange(
+      params.tenantId,
+      {
+        locationId: params.locationId,
+        taxCode,
+        from: fromDate,
+        to: toDate,
+      },
+    );
+
+    return {
+      taxCode,
+      from: fromDate.toISOString(),
+      to: toDate.toISOString(),
+      locationId: params.locationId,
+      currency: 'NGN',
+      totals: {
+        collectedCents,
+        reversedCents,
+        netPayableCents,
+      },
+      dueDate: dueDate.toISOString(),
+      period: period
+        ? {
+            id: period.id,
+            status: period.status,
+            filedAt: period.filedAt?.toISOString() ?? null,
+            paidAt: period.paidAt?.toISOString() ?? null,
+            paymentReference: period.paymentReference,
+            paymentAmountCents: period.paymentAmountCents,
+            dueDate: period.dueDate?.toISOString() ?? null,
+          }
+        : null,
+      breakdown,
+    };
+  }
 }

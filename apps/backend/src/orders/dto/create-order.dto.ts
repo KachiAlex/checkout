@@ -70,6 +70,17 @@ export class CreateOrderDto {
   @Min(0)
   taxCents: number;
 
+  @ApiProperty({ description: 'Tax rule ID used (VAT rule)', required: false })
+  @IsOptional()
+  @IsUUID()
+  taxRuleIdUsed?: string;
+
+  @ApiProperty({ description: 'Tax rate used in basis points (e.g. 750 = 7.5%)', required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  taxRateBpsUsed?: number;
+
   @ApiProperty({ description: 'Cart-level discount in cents', default: 0, example: 0 })
   @IsOptional()
   @IsNumber()

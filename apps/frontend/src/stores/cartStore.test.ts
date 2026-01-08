@@ -26,6 +26,8 @@ describe("CartStore", () => {
           cartDiscountPercent: 0,
           discountReason: "",
           taxEnabled: false,
+          selectedTaxRule: null,
+          taxRateOverridePercent: null,
         },
       ],
       activeSessionId: "cart-1",

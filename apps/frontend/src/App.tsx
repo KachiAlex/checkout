@@ -52,6 +52,11 @@ const AccountingJournalsPage = lazy(() =>
     default: module.AccountingJournalsPage,
   })),
 );
+const AccountingTaxPeriodsPage = lazy(() =>
+  import("./pages/AccountingTaxPeriodsPage").then((module) => ({
+    default: module.AccountingTaxPeriodsPage,
+  })),
+);
 const AccountingJournalDetailPage = lazy(() =>
   import("./pages/AccountingJournalDetailPage").then((module) => ({
     default: module.AccountingJournalDetailPage,
@@ -332,6 +337,18 @@ function App() {
               element={
                 isCompanyUser && isAdmin ? (
                   <AccountingJournalDetailPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/accounting/tax-periods"
+              element={
+                isCompanyUser && isAdmin ? (
+                  <AccountingTaxPeriodsPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
                 ) : (

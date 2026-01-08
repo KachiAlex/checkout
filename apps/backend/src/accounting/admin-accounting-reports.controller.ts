@@ -127,4 +127,26 @@ export class AdminAccountingReportsController {
       asOf,
     });
   }
+
+  @Get('vat-payable')
+  @ApiOperation({ summary: 'VAT payable report (collected, reversed, net payable)' })
+  async vatPayable(
+    @Req() req: AuthenticatedRequest,
+    @Query('locationId') locationId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('taxCode') taxCode?: string,
+  ) {
+    this.ensureTenantAdmin(req);
+    this.ensureValidDate(from, 'from');
+    this.ensureValidDate(to, 'to');
+
+    return this.reportsService.vatPayableReport({
+      tenantId: req.user.tenantId,
+      locationId,
+      from,
+      to,
+      taxCode,
+    });
+  }
 }

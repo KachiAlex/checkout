@@ -88,6 +88,17 @@ export function AccountingLandingPage() {
               Chart of Accounts (read-only for now).
             </div>
           </Link>
+
+          <Link
+            to="/accounting/tax-periods"
+            className="theme-card rounded-2xl border p-4 sm:p-5 hover:border-sky-400/50 transition"
+          >
+            <div className="text-2xl mb-2">🗓️</div>
+            <div className="theme-text-primary text-sm font-semibold">Tax Periods</div>
+            <div className="theme-text-secondary text-xs mt-1">
+              Track VAT filing & payments by period.
+            </div>
+          </Link>
         </div>
 
         <div>
