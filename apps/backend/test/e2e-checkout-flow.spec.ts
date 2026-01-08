@@ -22,6 +22,7 @@ import { configureApp } from '../src/app.bootstrap';
 import { setupFirestoreEmulator } from './setup-e2e';
 import { FirestoreService } from '../src/firestore/firestore.service';
 import { v4 as uuidv4 } from 'uuid';
+import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 
 describe('E2E: Complete Checkout Flow', () => {
   jest.setTimeout(120000);
@@ -46,6 +47,7 @@ describe('E2E: Complete Checkout Flow', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication() as unknown as INestApplication;
+    app.useGlobalFilters(new AllExceptionsFilter({ httpAdapter: app.getHttpAdapter() } as any));
     await configureApp(app, { enableSwagger: false });
     await app.init();
 
@@ -269,11 +271,18 @@ describe('E2E: Complete Checkout Flow', () => {
       const response = await request(app.getHttpServer())
         .post(`/api/v1/orders/${serverOrderId}/payments/initiate`)
         .set('Authorization', `Bearer ${accessToken}`)
+        .set('x-e2e-debug', '1')
         .send({
           method: 'card',
           amount: 2200,
         })
-        .expect(201);
+        .expect((res) => {
+          if (res.status !== 201) {
+            throw new Error(
+              `Expected status 201, got ${res.status}. Response body: ${JSON.stringify(res.body)}`,
+            );
+          }
+        });
 
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('status');

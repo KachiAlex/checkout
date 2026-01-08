@@ -54,6 +54,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? responseBody
         : (responseBody as any)?.message || (exception as any)?.message || 'Internal server error';
 
+    const debugHeader = (request as any)?.headers?.['x-e2e-debug'];
+    const includeErrorDetails = debugHeader === '1';
+
     if (status >= 500) {
       // Keep response generic for clients, but log details for diagnostics.
       // eslint-disable-next-line no-console
@@ -70,6 +73,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       {
         statusCode: status,
         message,
+        ...(status >= 500 && includeErrorDetails
+          ? {
+              error: {
+                name: (exception as any)?.name,
+                message: (exception as any)?.message,
+                stack: (exception as any)?.stack,
+              },
+            }
+          : {}),
         timestamp: new Date().toISOString(),
         path: (request as any)?.url,
       },
