@@ -106,7 +106,7 @@ export class AdminAccountingController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    this.ensureTenantAdmin(req);
+    this.ensureTenantAdminOrManagerReadOnly(req);
 
     if (from && Number.isNaN(Date.parse(from))) {
       throw new BadRequestException('Invalid from date');
@@ -127,7 +127,7 @@ export class AdminAccountingController {
   @Get('journals/:id')
   @ApiOperation({ summary: 'Get journal entry detail' })
   async getJournal(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
-    this.ensureTenantAdmin(req);
+    this.ensureTenantAdminOrManagerReadOnly(req);
     return this.accountingRepository.getJournalEntry(req.user.tenantId, id);
   }
 

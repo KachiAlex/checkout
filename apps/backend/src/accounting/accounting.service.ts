@@ -64,6 +64,8 @@ export class AccountingService {
       branchId: params.branchId ?? params.locationId,
     });
 
+    const direction = params.taxDirection ?? 'credit';
+
     const vatAccount =
       params.taxCents > 0
         ? await this.repository.getAccountByCode(params.tenantId, 'VAT_PAYABLE')
@@ -72,6 +74,11 @@ export class AccountingService {
     if (params.taxCents > 0 && !vatAccount) {
       throw new NotFoundException('VAT account not configured for this tenant.');
     }
+
+    const baseDebitCents =
+      direction === 'debit' ? Math.max(params.subtotalCents, 0) : Math.max(params.totalCents, 0);
+    const baseCreditCents =
+      direction === 'debit' ? Math.max(params.totalCents, 0) : Math.max(params.subtotalCents, 0);
 
     const lines: Array<{
       accountId: string;
@@ -82,18 +89,17 @@ export class AccountingService {
     }> = [
       {
         accountId: mapping.debitAccountId,
-        debitCents: Math.max(params.totalCents, 0),
+        debitCents: baseDebitCents,
         description: `Debit for ${params.eventType}`,
       },
       {
         accountId: mapping.creditAccountId,
-        creditCents: Math.max(params.subtotalCents, 0),
+        creditCents: baseCreditCents,
         description: `Credit for ${params.eventType}`,
       },
     ];
 
     if (params.taxCents > 0 && vatAccount) {
-      const direction = params.taxDirection ?? 'credit';
       lines.push(
         direction === 'debit'
           ? {
@@ -130,6 +136,10 @@ export class AccountingService {
     metadata?: Prisma.JsonValue;
     taxDirection?: 'credit' | 'debit';
     source?: JournalSource;
+    sourceIdOverride?: string;
+    subtotalCentsOverride?: number;
+    taxCentsOverride?: number;
+    totalCentsOverride?: number;
   }) {
     if (!params.order.tenantId) {
       throw new NotFoundException('Order tenant context missing while posting journal');
@@ -137,10 +147,12 @@ export class AccountingService {
 
     const source = params.source ?? JournalSource.SALE;
 
+    const sourceId = params.sourceIdOverride ?? params.order.id;
+
     const existing = await this.repository.findJournalEntry({
       tenantId: params.order.tenantId,
       source,
-      sourceId: params.order.id,
+      sourceId,
     });
 
     if (existing) {
@@ -163,11 +175,11 @@ export class AccountingService {
       locationId: params.order.locationId,
       source,
       eventType: params.eventType,
-      sourceId: params.order.id,
+      sourceId,
       reference: params.reference,
-      subtotalCents: params.order.subtotalCents,
-      taxCents: params.order.taxCents,
-      totalCents: params.order.totalCents,
+      subtotalCents: params.subtotalCentsOverride ?? params.order.subtotalCents,
+      taxCents: params.taxCentsOverride ?? params.order.taxCents,
+      totalCents: params.totalCentsOverride ?? params.order.totalCents,
       metadata,
       taxDirection: params.taxDirection,
       taxRuleIdUsed: (params.order as any).taxRuleIdUsed,

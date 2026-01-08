@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma, Account, AccountMapping, JournalSource, JournalStatus, AccountType, TaxRule, TaxMode, TaxPeriod, TaxPeriodStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import {
@@ -342,12 +342,17 @@ export class AccountingRepository {
   }
 
   async getMapping(options: MappingLookupOptions): Promise<AccountMapping> {
+    const branchClause =
+      options.branchId !== undefined && options.branchId !== null && options.branchId !== ''
+        ? { OR: [{ branchId: options.branchId }, { branchId: null }] }
+        : { branchId: null };
+
     const mapping = await this.prisma.accountMapping.findFirst({
       where: {
         tenantId: options.tenantId,
         eventType: options.eventType,
         isActive: true,
-        OR: [{ branchId: options.branchId ?? undefined }, { branchId: null }],
+        ...branchClause,
       },
       orderBy: {
         branchId: 'desc',
@@ -355,8 +360,10 @@ export class AccountingRepository {
     });
 
     if (!mapping) {
-      throw new NotFoundException(
-        `No account mapping found for event ${options.eventType} (tenant ${options.tenantId}).`,
+      throw new BadRequestException(
+        `Accounting not configured: missing mapping for event '${options.eventType}'` +
+          (options.branchId ? ` (location/branch ${options.branchId})` : '') +
+          `. Set this in Accounting → Mappings.`,
       );
     }
 

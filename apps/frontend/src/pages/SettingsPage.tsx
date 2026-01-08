@@ -1529,6 +1529,12 @@ export function SettingsPage() {
                     🧾 Accounts
                   </Link>
                   <Link
+                    to="/accounting/tax-rules"
+                    className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
+                  >
+                    🧾 Tax Rules
+                  </Link>
+                  <Link
                     to="/accounting/tax-periods"
                     className="theme-chip rounded-full border px-4 py-3 text-xs font-semibold transition hover:border-sky-400"
                   >

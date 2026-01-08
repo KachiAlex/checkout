@@ -805,6 +805,7 @@ export function CheckoutPage() {
           uuid: orderUuid,
           locationId: user.locationId || undefined,
           customerId: customerId,
+          paymentMethod: method,
           items: mapCartToOrderItems(cart),
           subtotalCents: subtotal,
           taxCents: Math.round(tax),

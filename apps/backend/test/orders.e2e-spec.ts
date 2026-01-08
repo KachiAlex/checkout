@@ -15,7 +15,7 @@ describe('Orders E2E', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication() as unknown as INestApplication;
     await configureApp(app, { enableSwagger: false });
     await app.init();
   });

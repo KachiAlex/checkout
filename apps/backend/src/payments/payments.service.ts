@@ -256,11 +256,19 @@ export class PaymentsService {
     });
 
     if (updated.status === PaymentStatus.REFUNDED) {
+      const ratio = order.totalCents > 0 ? Math.min(1, Math.max(0, refundAmount / order.totalCents)) : 0;
+      const subtotalRefundCents = Math.round(order.subtotalCents * ratio);
+      const taxRefundCents = Math.round(order.taxCents * ratio);
+
       await this.accountingService.ensureSaleJournalForOrder({
         order,
         source: JournalSource.REFUND,
         eventType: this.getRefundEventType(payment.method),
         reference: payment.id,
+        sourceIdOverride: payment.id,
+        subtotalCentsOverride: subtotalRefundCents,
+        taxCentsOverride: taxRefundCents,
+        totalCentsOverride: refundAmount,
         metadata: {
           trigger: 'payments.refund',
           refundAmount: refundAmount,

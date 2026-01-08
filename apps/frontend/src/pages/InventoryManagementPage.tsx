@@ -60,12 +60,26 @@ interface BatchInventory {
   receivedDate: string;
 }
 
+interface PurchaseOrderItem {
+  productId: string;
+  quantity: number;
+  receivedQuantity?: number;
+}
+
+interface PurchaseOrder {
+  id: string;
+  status: "draft" | "pending" | "approved" | "partially_received" | "received" | "cancelled";
+  locationId?: string;
+  items: PurchaseOrderItem[];
+}
+
 export function InventoryManagementPage() {
   const { user, logout, accessToken } = useAuthStore();
   const [inventoryStock, setInventoryStock] = useState<InventoryStock[]>([]);
   const [inventoryTransactions, setInventoryTransactions] = useState<
     InventoryTransaction[]
   >([]);
+  const [incomingByProductId, setIncomingByProductId] = useState<Record<string, number>>({});
   const [batchInventory, setBatchInventory] = useState<
     Record<string, BatchInventory[]>
   >({});
@@ -164,6 +178,39 @@ export function InventoryManagementPage() {
     }
   };
 
+  const loadIncomingPurchaseOrders = async () => {
+    if (!accessToken || !user?.locationId) return;
+
+    try {
+      const response = await axios.get<PurchaseOrder[]>(`${API_URL}/api/v1/purchase-orders`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      const list = response.data || [];
+      const forLocation = list.filter(
+        (po) => !po.locationId || po.locationId === user.locationId,
+      );
+
+      const incoming: Record<string, number> = {};
+      forLocation
+        .filter((po) => po.status === "approved" || po.status === "partially_received")
+        .forEach((po) => {
+          (po.items || []).forEach((it) => {
+            const ordered = Number(it.quantity || 0);
+            const received = Number(it.receivedQuantity || 0);
+            const remaining = Math.max(0, ordered - received);
+            if (remaining <= 0) return;
+            incoming[it.productId] = (incoming[it.productId] || 0) + remaining;
+          });
+        });
+
+      setIncomingByProductId(incoming);
+    } catch (error: any) {
+      console.error("Failed to load incoming purchase orders:", error);
+      setIncomingByProductId({});
+    }
+  };
+
   const loadCategories = async () => {
     if (!accessToken) return;
     try {
@@ -213,6 +260,7 @@ export function InventoryManagementPage() {
     if (user && user.locationId && accessToken) {
       loadInventoryStock();
       loadInventoryTransactions();
+      loadIncomingPurchaseOrders();
       loadCategories();
       loadBrands();
       loadSuppliers();
@@ -768,7 +816,10 @@ export function InventoryManagementPage() {
               Current Inventory
             </h2>
             <button
-              onClick={loadInventoryStock}
+              onClick={async () => {
+                await loadInventoryStock();
+                await loadIncomingPurchaseOrders();
+              }}
               className="theme-chip rounded-full border px-4 py-2 text-sm font-semibold transition"
             >
               🔄 Refresh
@@ -792,6 +843,7 @@ export function InventoryManagementPage() {
           ) : (
             <div className="space-y-3">
               {inventoryStock.map((item) => {
+                const incomingQty = incomingByProductId[item.productId] || 0;
                 const stockStatus =
                   item.quantity === 0
                     ? {
@@ -912,6 +964,11 @@ export function InventoryManagementPage() {
                           {item.quantity}
                         </p>
                         <p className="theme-text-secondary text-xs">units</p>
+                        {incomingQty > 0 && (
+                          <p className="mt-1 text-xs font-semibold text-sky-400">
+                            Incoming: +{incomingQty}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

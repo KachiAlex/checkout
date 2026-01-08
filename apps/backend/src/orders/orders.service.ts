@@ -4,9 +4,15 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderStatus, PaymentStatus, InventoryTransactionType } from '@pos-checkout/shared';
+import {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  InventoryTransactionType,
+} from '@pos-checkout/shared';
 import { InventoryService } from '../inventory/inventory.service';
 import { OrdersRepository, OrderRecord } from './orders.repository';
 import { CustomersService } from '../customers/customers.service';
@@ -17,6 +23,7 @@ import { AccountingService } from '../accounting/accounting.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly inventoryService: InventoryService,
@@ -120,15 +127,46 @@ export class OrdersService {
       );
     }
 
-    if (isCreditOrder) {
-      await this.accountingService.ensureSaleJournalForOrder({
-        order,
-        eventType: 'SALE_CREDIT',
-        metadata: {
-          trigger: 'orders.create',
-          customerId: order.customerId,
-        },
-      });
+    if (!createOrderDto.isHeld && order.status === OrderStatus.COMPLETED) {
+      if (isCreditOrder) {
+        try {
+          await this.accountingService.ensureSaleJournalForOrder({
+            order,
+            eventType: 'SALE_CREDIT',
+            metadata: {
+              trigger: 'orders.create',
+              customerId: order.customerId,
+            },
+          });
+        } catch (error) {
+          this.logger.error(
+            `Failed to post accounting journal for credit sale (order ${order.id}). Continuing without journal.`,
+            error instanceof Error ? error.stack : undefined,
+          );
+        }
+      } else {
+        const method = createOrderDto.paymentMethod;
+        const eventType = this.saleEventTypeFromMethod(method);
+
+        try {
+          await this.accountingService.ensureSaleJournalForOrder({
+            order: {
+              ...order,
+              paymentMethod: method,
+            },
+            eventType,
+            metadata: {
+              trigger: 'orders.create',
+              paymentMethod: method,
+            },
+          });
+        } catch (error) {
+          this.logger.error(
+            `Failed to post accounting journal for sale (order ${order.id}). Continuing without journal.`,
+            error instanceof Error ? error.stack : undefined,
+          );
+        }
+      }
     }
 
     return order;
@@ -380,6 +418,42 @@ export class OrdersService {
       completedAt: new Date(),
     });
 
+    // Post accounting journal immediately for held orders once completed
+    if (!(completedOrder.isCreditOrder ?? false)) {
+      const eventType = this.saleEventTypeFromMethod(completedOrder.paymentMethod);
+      try {
+        await this.accountingService.ensureSaleJournalForOrder({
+          order: completedOrder,
+          eventType,
+          metadata: {
+            trigger: 'orders.completeHeldOrder',
+            paymentMethod: completedOrder.paymentMethod,
+          },
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to post accounting journal for completed held order sale (order ${completedOrder.id}). Continuing without journal.`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    } else {
+      try {
+        await this.accountingService.ensureSaleJournalForOrder({
+          order: completedOrder,
+          eventType: 'SALE_CREDIT',
+          metadata: {
+            trigger: 'orders.completeHeldOrder',
+            customerId: completedOrder.customerId,
+          },
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to post accounting journal for completed held order credit sale (order ${completedOrder.id}). Continuing without journal.`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    }
+
     // Award loyalty points if order has a customer
     if (completedOrder.customerId) {
       await this.awardLoyaltyPoints(
@@ -391,6 +465,21 @@ export class OrdersService {
     }
 
     return completedOrder;
+  }
+
+  private saleEventTypeFromMethod(method?: PaymentMethod): string {
+    switch (method) {
+      case PaymentMethod.CASH:
+        return 'SALE_CASH';
+      case PaymentMethod.TRANSFER:
+        return 'SALE_TRANSFER';
+      case PaymentMethod.QR:
+        return 'SALE_QR';
+      case PaymentMethod.CARD:
+        return 'SALE_CARD';
+      default:
+        return 'SALE';
+    }
   }
 
   /**

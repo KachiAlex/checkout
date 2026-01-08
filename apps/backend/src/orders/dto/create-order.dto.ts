@@ -10,7 +10,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { OrderStatus } from '@pos-checkout/shared';
+import { PaymentMethod } from '@pos-checkout/shared';
 
 class OrderItemDto {
   @ApiProperty({ description: 'Product ID' })
@@ -125,4 +125,13 @@ export class CreateOrderDto {
   })
   @IsOptional()
   isCreditOrder?: boolean;
+
+  @ApiProperty({
+    description: 'Payment method for immediate (non-credit) orders',
+    required: false,
+    enum: PaymentMethod,
+  })
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 }

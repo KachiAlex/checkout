@@ -99,6 +99,17 @@ export function AccountingLandingPage() {
               Track VAT filing & payments by period.
             </div>
           </Link>
+
+          <Link
+            to="/accounting/tax-rules"
+            className="theme-card rounded-2xl border p-4 sm:p-5 hover:border-sky-400/50 transition"
+          >
+            <div className="text-2xl mb-2">🧾</div>
+            <div className="theme-text-primary text-sm font-semibold">Tax Rules</div>
+            <div className="theme-text-secondary text-xs mt-1">
+              Create & manage VAT rules used at checkout.
+            </div>
+          </Link>
         </div>
 
         <div>

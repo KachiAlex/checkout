@@ -1,7 +1,7 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { FieldValue, Timestamp, Query, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { v4 as uuid } from 'uuid';
-import { OrderStatus, PaymentStatus } from '@pos-checkout/shared';
+import { OrderStatus, PaymentStatus, PaymentMethod } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 
 export interface OrderRecord {
@@ -11,6 +11,7 @@ export interface OrderRecord {
   locationId: string; // Always set (derived if not provided)
   tenantId?: string; // Added for better data organization and filtering
   customerId?: string;
+  paymentMethod?: PaymentMethod;
   taxRuleIdUsed?: string;
   taxRateBpsUsed?: number;
   items: Array<{
@@ -271,6 +272,7 @@ export class OrdersRepository {
       ...data,
       tenantId: data.tenantId,
       customerId: data.customerId || undefined, // Explicitly set to undefined if not provided (Firestore will omit undefined fields)
+      paymentMethod: data.paymentMethod,
       taxRuleIdUsed: data.taxRuleIdUsed,
       taxRateBpsUsed: data.taxRateBpsUsed,
       items: serializedItems,
@@ -390,6 +392,7 @@ export class OrdersRepository {
       locationId: data.locationId,
       tenantId: data.tenantId,
       customerId: data.customerId,
+      paymentMethod: data.paymentMethod,
       taxRuleIdUsed: data.taxRuleIdUsed,
       taxRateBpsUsed: data.taxRateBpsUsed,
       items: data.items.map((item) => ({
