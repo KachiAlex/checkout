@@ -138,6 +138,11 @@ const AuditLogsPage = lazy(() =>
     default: module.AuditLogsPage,
   })),
 );
+const HelpSupportPage = lazy(() =>
+  import("./pages/HelpSupportPage").then((module) => ({
+    default: module.HelpSupportPage,
+  })),
+);
 const SubscriptionPaymentCallbackPage = lazy(() =>
   import("./pages/SubscriptionPaymentCallbackPage").then((module) => ({
     default: module.SubscriptionPaymentCallbackPage,
@@ -222,6 +227,19 @@ function App() {
               element={
                 isCompanyUser && (isAdmin || isManager) ? (
                   <AuditLogsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+
+            <Route
+              path="/help"
+              element={
+                isCompanyUser ? (
+                  <HelpSupportPage />
                 ) : isPlatformAdmin ? (
                   <Navigate to="/admin" replace />
                 ) : (

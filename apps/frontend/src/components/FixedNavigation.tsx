@@ -88,6 +88,19 @@ export const FixedNavigation = memo(function FixedNavigation() {
           <span className="text-base sm:text-lg">🛒</span>
           <span>Checkout</span>
         </Link>
+
+        {/* Help - All authenticated users */}
+        <Link
+          to="/help"
+          className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm ${
+            isActive("/help")
+              ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+              : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+          }`}
+        >
+          <span className="text-base sm:text-lg">🆘</span>
+          <span>Help</span>
+        </Link>
         {/* Reports - Admin and Manager only */}
         {(isAdmin || isManager) && (
           <Link
