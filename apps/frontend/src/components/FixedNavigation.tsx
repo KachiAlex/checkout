@@ -127,6 +127,21 @@ export const FixedNavigation = memo(function FixedNavigation() {
             <span>Credit</span>
           </Link>
         )}
+
+        {/* Audit Logs - Admin and Manager only */}
+        {(isAdmin || isManager) && (
+          <Link
+            to="/audit-logs"
+            className={`flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl px-2 sm:px-4 py-2 text-xs font-semibold transition-all sm:flex-row sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm touch-manipulation min-h-[48px] sm:min-h-[44px] ${
+              isActive("/audit-logs")
+                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+            }`}
+          >
+            <span className="text-base sm:text-lg">🕵️</span>
+            <span>Audit</span>
+          </Link>
+        )}
         {/* Inventory - Admin only */}
         {isAdmin && (
           <Link

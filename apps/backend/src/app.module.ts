@@ -32,6 +32,7 @@ import { SubscriptionPricingModule } from './subscription-pricing/subscription-p
 import { ContactModule } from './contact/contact.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { ExpensesModule } from './expenses/expenses.module';
     ContactModule,
     AccountingModule,
     ExpensesModule,
+    AuditModule,
   ],
   providers: [],
 })

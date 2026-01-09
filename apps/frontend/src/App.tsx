@@ -133,6 +133,11 @@ const BillingPage = lazy(() =>
     default: module.BillingPage,
   })),
 );
+const AuditLogsPage = lazy(() =>
+  import("./pages/AuditLogsPage").then((module) => ({
+    default: module.AuditLogsPage,
+  })),
+);
 const SubscriptionPaymentCallbackPage = lazy(() =>
   import("./pages/SubscriptionPaymentCallbackPage").then((module) => ({
     default: module.SubscriptionPaymentCallbackPage,
@@ -208,6 +213,19 @@ function App() {
                   <SplashPage />
                 ) : (
                   <HomePage />
+                )
+              }
+            />
+
+            <Route
+              path="/audit-logs"
+              element={
+                isCompanyUser && (isAdmin || isManager) ? (
+                  <AuditLogsPage />
+                ) : isPlatformAdmin ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/login" replace />
                 )
               }
             />
