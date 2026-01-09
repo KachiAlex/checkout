@@ -1,5 +1,16 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, Account, AccountMapping, JournalSource, JournalStatus, AccountType, TaxRule, TaxMode, TaxPeriod, TaxPeriodStatus } from '@prisma/client';
+import {
+  Account,
+  AccountMapping,
+  AccountType,
+  JournalSource,
+  JournalStatus,
+  Prisma,
+  TaxMode,
+  TaxPeriod,
+  TaxPeriodStatus,
+  TaxRule,
+} from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import {
   DEFAULT_ACCOUNT_DEFINITIONS,
@@ -193,21 +204,44 @@ export class AccountingRepository {
   }
 
   async createTaxRule(tenantId: string, dto: CreateTaxRuleDto, createdBy?: string): Promise<TaxRule> {
-    return this.prisma.taxRule.create({
-      data: {
-        tenantId,
-        locationId: dto.locationId ?? null,
-        name: dto.name,
-        authority: dto.authority,
-        taxCode: dto.taxCode,
-        rate: new Prisma.Decimal(dto.rate),
-        mode: dto.mode ?? TaxMode.EXCLUSIVE,
-        effectiveFrom: new Date(dto.effectiveFrom),
-        effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : null,
-        isActive: dto.isActive ?? true,
-        createdBy: createdBy ?? null,
-      },
-    });
+    const effectiveFrom = new Date(dto.effectiveFrom);
+    const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
+    const rate = Number(dto.rate);
+
+    if (Number.isNaN(effectiveFrom.getTime())) {
+      throw new BadRequestException('Invalid effectiveFrom date');
+    }
+    if (effectiveTo && Number.isNaN(effectiveTo.getTime())) {
+      throw new BadRequestException('Invalid effectiveTo date');
+    }
+    if (!Number.isFinite(rate) || rate < 0) {
+      throw new BadRequestException('Invalid tax rate');
+    }
+
+    try {
+      return await this.prisma.taxRule.create({
+        data: {
+          tenantId,
+          locationId: dto.locationId ?? null,
+          name: dto.name,
+          authority: dto.authority,
+          taxCode: dto.taxCode,
+          rate: new Prisma.Decimal(rate),
+          mode: dto.mode ?? TaxMode.EXCLUSIVE,
+          effectiveFrom,
+          effectiveTo,
+          isActive: dto.isActive ?? true,
+          createdBy: createdBy ?? null,
+        },
+      });
+    } catch (error: any) {
+      const code = error?.code;
+      const message = error?.message ?? 'Failed to create tax rule';
+      if (error?.name === 'PrismaClientKnownRequestError') {
+        throw new BadRequestException(`${message}${code ? ` (code: ${code})` : ''}`);
+      }
+      throw error;
+    }
   }
 
   async updateTaxRule(
@@ -223,20 +257,45 @@ export class AccountingRepository {
       throw new NotFoundException(`Tax rule ${taxRuleId} not found`);
     }
 
-    return this.prisma.taxRule.update({
-      where: { id: existing.id },
-      data: {
-        name: dto.name,
-        authority: dto.authority,
-        taxCode: dto.taxCode,
-        rate: dto.rate !== undefined ? new Prisma.Decimal(dto.rate) : undefined,
-        mode: dto.mode,
-        effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : undefined,
-        effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : undefined,
-        locationId: dto.locationId !== undefined ? dto.locationId : undefined,
-        isActive: dto.isActive,
-      },
-    });
+    const effectiveFrom = dto.effectiveFrom ? new Date(dto.effectiveFrom) : undefined;
+    const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : undefined;
+
+    if (effectiveFrom && Number.isNaN(effectiveFrom.getTime())) {
+      throw new BadRequestException('Invalid effectiveFrom date');
+    }
+    if (effectiveTo && Number.isNaN(effectiveTo.getTime())) {
+      throw new BadRequestException('Invalid effectiveTo date');
+    }
+    if (dto.rate !== undefined) {
+      const rate = Number(dto.rate);
+      if (!Number.isFinite(rate) || rate < 0) {
+        throw new BadRequestException('Invalid tax rate');
+      }
+    }
+
+    try {
+      return await this.prisma.taxRule.update({
+        where: { id: existing.id },
+        data: {
+          name: dto.name,
+          authority: dto.authority,
+          taxCode: dto.taxCode,
+          rate: dto.rate !== undefined ? new Prisma.Decimal(Number(dto.rate)) : undefined,
+          mode: dto.mode,
+          effectiveFrom,
+          effectiveTo,
+          locationId: dto.locationId !== undefined ? dto.locationId : undefined,
+          isActive: dto.isActive,
+        },
+      });
+    } catch (error: any) {
+      const code = error?.code;
+      const message = error?.message ?? 'Failed to update tax rule';
+      if (error?.name === 'PrismaClientKnownRequestError') {
+        throw new BadRequestException(`${message}${code ? ` (code: ${code})` : ''}`);
+      }
+      throw error;
+    }
   }
 
   async ensureDefaults(options: EnsureOptions): Promise<void> {

@@ -104,6 +104,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
       'Authorization',
       'Accept',
       'X-Requested-With',
+      'x-tenant-slug',
       'Origin',
       'Access-Control-Request-Method',
       'Access-Control-Request-Headers',
@@ -164,7 +165,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD');
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type,Authorization,Accept,X-Requested-With,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,Cache-Control,Pragma,Expires',
+      'Content-Type,Authorization,Accept,X-Requested-With,x-tenant-slug,Origin,Access-Control-Request-Method,Access-Control-Request-Headers,Cache-Control,Pragma,Expires',
     );
     res.setHeader('Access-Control-Expose-Headers', 'Authorization,Content-Length,X-Requested-With');
     res.setHeader('Access-Control-Max-Age', '86400');
