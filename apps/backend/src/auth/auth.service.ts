@@ -14,13 +14,21 @@ import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
 export class AuthService {
   // Simple in-memory cache per function instance to reduce Firestore reads
   private readonly userCache = new Map<string, { users: UserRecord[]; fetchedAt: number }>();
+  private readonly pinCompareConcurrency: number;
 
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly tenantsRepository: TenantsRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    const configuredConcurrency = Number(
+      this.configService.get<string>('LOGIN_PIN_COMPARE_CONCURRENCY') ?? '6',
+    );
+    this.pinCompareConcurrency = Number.isFinite(configuredConcurrency)
+      ? Math.min(Math.max(Math.floor(configuredConcurrency), 1), 24)
+      : 6;
+  }
 
   private async getTenantUsers(tenantId: string, limit?: number): Promise<UserRecord[]> {
     const CACHE_TTL_MS = 60_000; // 60 seconds
@@ -70,40 +78,66 @@ export class AuthService {
       );
     }
 
-    // Sequential validation with early exit
-    for (const user of users) {
-      try {
-        const isValid = await bcrypt.compare(pin, user.pinHash);
-        if (isValid) {
-          const validationTime = Date.now() - startTime;
-          console.log(`[AuthService] PIN validated in ${validationTime}ms (user: ${user.id})`);
-          // Update device ID if provided
-          if (deviceId && user.deviceId !== deviceId) {
-            try {
-              const updated = await this.usersRepository.update(user.id, { deviceId });
-              user.deviceId = updated.deviceId;
-            } catch (error) {
-              // Log error but don't fail login if device ID save fails
-              console.warn('[AuthService] Failed to save device ID:', (error as any)?.message);
-            }
-          }
-          return user;
+    const validationStart = Date.now();
+    const matchedUser = await this.comparePinsWithConcurrency(pin, users);
+    const validationTime = Date.now() - validationStart;
+
+    if (matchedUser) {
+      console.log(
+        `[AuthService] PIN validated in ${validationTime}ms (user: ${matchedUser.id}, concurrency: ${this.pinCompareConcurrency})`,
+      );
+      if (deviceId && matchedUser.deviceId !== deviceId) {
+        try {
+          const updated = await this.usersRepository.update(matchedUser.id, { deviceId });
+          matchedUser.deviceId = updated.deviceId;
+        } catch (error) {
+          console.warn('[AuthService] Failed to save device ID:', (error as any)?.message);
         }
-      } catch (error) {
-        console.error(
-          '[AuthService] Error comparing PIN for user',
-          user.id,
-          (error as any)?.message,
-        );
       }
+      return matchedUser;
     }
 
     const totalTime = Date.now() - startTime;
     console.log(
-      `[AuthService] PIN validation failed after checking ${users.length} users in ${totalTime}ms`,
+      `[AuthService] PIN validation failed after checking ${users.length} users in ${totalTime}ms (concurrency: ${this.pinCompareConcurrency})`,
     );
 
     return null;
+  }
+
+  private async comparePinsWithConcurrency(
+    pin: string,
+    users: UserRecord[],
+  ): Promise<UserRecord | null> {
+    if (!users.length) {
+      return null;
+    }
+
+    let currentIndex = 0;
+    let matchedUser: UserRecord | null = null;
+    const workerCount = Math.min(this.pinCompareConcurrency, users.length);
+
+    const worker = async () => {
+      while (!matchedUser && currentIndex < users.length) {
+        const user = users[currentIndex++];
+        try {
+          const isValid = await bcrypt.compare(pin, user.pinHash);
+          if (isValid) {
+            matchedUser = user;
+            return;
+          }
+        } catch (error) {
+          console.error(
+            '[AuthService] Error comparing PIN for user',
+            user.id,
+            (error as any)?.message,
+          );
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    return matchedUser;
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
