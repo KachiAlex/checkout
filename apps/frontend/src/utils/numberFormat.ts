@@ -116,13 +116,6 @@ export function handleNumberInputChange(
     if (parts.length === 2 && parts[1].length > 2) {
       cleaned = parts[0] + "." + parts[1].substring(0, 2);
     }
-    // If there's a trailing decimal point, format with 2 decimal places
-    if (cleaned.endsWith(".")) {
-      const num = parseFormattedNumber(cleaned.slice(0, -1));
-      if (!isNaN(num) && num > 0) {
-        return { displayValue: formatNumber(num, 2), numericValue: num };
-      }
-    }
   } else {
     // Remove decimal point if decimals not allowed
     cleaned = cleaned.replace(/\./g, "");
@@ -138,15 +131,27 @@ export function handleNumberInputChange(
 
   // Format the display value with commas
   if (allowDecimals) {
+    const hasTrailingDot = cleaned.endsWith(".");
     const parts = cleaned.split(".");
     const integerPart = parts[0];
     const decimalPart = parts[1] || "";
     const formattedInteger = formatNumber(parseFloat(integerPart) || 0, 0);
-    // If there's a decimal part, include it; otherwise format with 2 decimal places if it was a complete number
-    const displayValue = decimalPart
-      ? `${formattedInteger}.${decimalPart}`
-      : formatNumber(numericValue, 2);
-    return { displayValue, numericValue };
+
+    // Key behavior change:
+    // - Do NOT auto-append ".00" while typing an integer.
+    // - Only show decimals if the user typed a decimal point.
+    if (hasTrailingDot) {
+      return { displayValue: `${formattedInteger}.`, numericValue };
+    }
+
+    if (cleaned.includes(".")) {
+      return {
+        displayValue: decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger,
+        numericValue,
+      };
+    }
+
+    return { displayValue: formattedInteger, numericValue };
   } else {
     return { displayValue: formatNumber(numericValue, 0), numericValue };
   }
