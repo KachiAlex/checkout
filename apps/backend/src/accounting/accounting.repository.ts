@@ -71,6 +71,39 @@ export class AccountingRepository {
     return this.prismaService.prisma;
   }
 
+  private async ensureTenantExists(tenantId: string): Promise<void> {
+    const existing = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (existing) return;
+
+    try {
+      await this.prisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: 'Tenant',
+          slug: `tenant-${tenantId}`,
+          plan: 'FREE',
+          status: 'ACTIVE',
+        },
+      });
+    } catch (error: any) {
+      const code = error?.code;
+      if (error?.name === 'PrismaClientKnownRequestError' && code === 'P2002') {
+        this.logger.warn(`Tenant slug collision while creating placeholder tenant for ${tenantId}`);
+        await this.prisma.tenant.create({
+          data: {
+            id: tenantId,
+            name: 'Tenant',
+            slug: `tenant-${tenantId}-${Date.now()}`,
+            plan: 'FREE',
+            status: 'ACTIVE',
+          },
+        });
+        return;
+      }
+      throw error;
+    }
+  }
+
   async listActiveTaxRules(
     tenantId: string,
     filters?: {
@@ -204,6 +237,8 @@ export class AccountingRepository {
   }
 
   async createTaxRule(tenantId: string, dto: CreateTaxRuleDto, createdBy?: string): Promise<TaxRule> {
+    await this.ensureTenantExists(tenantId);
+
     const effectiveFrom = new Date(dto.effectiveFrom);
     const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
     const rate = Number(dto.rate);
