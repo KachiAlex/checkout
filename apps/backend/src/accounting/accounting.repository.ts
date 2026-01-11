@@ -224,16 +224,28 @@ export class AccountingRepository {
       to: Date;
     },
   ): Promise<TaxPeriod | null> {
-    return this.prisma.taxPeriod.findFirst({
-      where: {
-        tenantId,
-        locationId: params.locationId ?? null,
-        taxCode: params.taxCode,
-        periodStart: { lte: params.from },
-        periodEnd: { gte: params.to },
-      },
-      orderBy: [{ periodStart: 'desc' }],
-    });
+    try {
+      return await this.prisma.taxPeriod.findFirst({
+        where: {
+          tenantId,
+          locationId: params.locationId ?? null,
+          taxCode: params.taxCode,
+          periodStart: { lte: params.from },
+          periodEnd: { gte: params.to },
+        },
+        orderBy: [{ periodStart: 'desc' }],
+      });
+    } catch (error: any) {
+      // If migrations haven't been applied yet, the TaxPeriod table may not exist.
+      // Prisma reports this as P2021 (table does not exist). Treat as "no period".
+      if (error?.name === 'PrismaClientKnownRequestError' && error?.code === 'P2021') {
+        this.logger.warn(
+          `TaxPeriod table missing while querying tax period for tenant ${tenantId}. Returning null period.`,
+        );
+        return null;
+      }
+      throw error;
+    }
   }
 
   async createTaxRule(tenantId: string, dto: CreateTaxRuleDto, createdBy?: string): Promise<TaxRule> {
