@@ -365,6 +365,10 @@ export class AccountingReportsService {
 
     const taxCode = params.taxCode ?? 'VAT';
 
+    // Ensure the tenant has the system accounts needed for VAT reporting.
+    // Without this, tenants that haven't touched accounting setup yet can hit runtime errors.
+    await this.accountingRepository.ensureDefaults({ tenantId: params.tenantId });
+
     const lines = await this.accountingRepository.listVatPayableLines(params.tenantId, {
       locationId: params.locationId,
       from: fromDate,
