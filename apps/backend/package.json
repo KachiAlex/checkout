@@ -11,6 +11,8 @@
     "start": "nest start",
     "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
+    "backfill:order-journals": "node -r ts-node/register/transpile-only src/scripts/backfill-order-journals.ts",
+    "backfill:refund-journals": "node -r ts-node/register/transpile-only src/scripts/backfill-refund-journals.ts",
     "prestart:prod": "prisma migrate deploy",
     "start:prod": "node dist/src/main.js",
     "prisma:generate": "prisma generate",

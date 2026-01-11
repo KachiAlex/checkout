@@ -204,15 +204,27 @@ export class AccountingRepository {
       to?: Date;
     },
   ): Promise<TaxPeriod[]> {
-    return this.prisma.taxPeriod.findMany({
-      where: {
-        tenantId,
-        locationId: filters?.locationId ?? undefined,
-        taxCode: filters?.taxCode ?? undefined,
-        periodStart: filters?.from || filters?.to ? { gte: filters?.from, lte: filters?.to } : undefined,
-      },
-      orderBy: [{ periodStart: 'desc' }],
-    });
+    try {
+      return await this.prisma.taxPeriod.findMany({
+        where: {
+          tenantId,
+          locationId: filters?.locationId ?? undefined,
+          taxCode: filters?.taxCode ?? undefined,
+          periodStart: filters?.from || filters?.to ? { gte: filters?.from, lte: filters?.to } : undefined,
+        },
+        orderBy: [{ periodStart: 'desc' }],
+      });
+    } catch (error: any) {
+      // If migrations haven't been applied yet, the TaxPeriod table may not exist.
+      // Prisma reports this as P2021 (table does not exist). Treat as "no periods".
+      if (error?.name === 'PrismaClientKnownRequestError' && error?.code === 'P2021') {
+        this.logger.warn(
+          `TaxPeriod table missing while listing tax periods for tenant ${tenantId}. Returning empty list.`,
+        );
+        return [];
+      }
+      throw error;
+    }
   }
 
   async findTaxPeriodCoveringRange(

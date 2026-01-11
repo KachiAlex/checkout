@@ -12,6 +12,12 @@ type BackfillResult = {
   failures: number;
 };
 
+function parseOptionalDate(value: string | undefined): Date | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
 async function connectWithRetry(prisma: PrismaClient, attempts = 6): Promise<void> {
   let lastError: unknown;
 
@@ -39,6 +45,11 @@ async function main() {
   const dryRun = process.env.DRY_RUN === 'true';
   const limit = process.env.LIMIT ? Number(process.env.LIMIT) : undefined;
 
+  const from = parseOptionalDate(process.env.FROM);
+  const to = parseOptionalDate(process.env.TO);
+  const tenantIdFilter = process.env.TENANT_ID || undefined;
+  const locationIdFilter = process.env.LOCATION_ID || undefined;
+
   await connectWithRetry(prisma);
 
   const result: BackfillResult = {
@@ -51,9 +62,24 @@ async function main() {
     failures: 0,
   };
 
+  // eslint-disable-next-line no-console
+  console.log('Backfill filters:', {
+    dryRun,
+    limit,
+    from: from?.toISOString() ?? null,
+    to: to?.toISOString() ?? null,
+    tenantId: tenantIdFilter ?? null,
+    locationId: locationIdFilter ?? null,
+  });
+
   const orders = await prisma.order.findMany({
-    where: {},
-    orderBy: { createdAt: 'asc' },
+    where: {
+      tenantId: tenantIdFilter,
+      locationId: locationIdFilter,
+      status: OrderStatus.COMPLETED,
+      completedAt: from || to ? { gte: from, lte: to } : undefined,
+    },
+    orderBy: { completedAt: 'asc' },
     take: limit,
   });
 
@@ -62,12 +88,6 @@ async function main() {
 
     if (!order.tenantId) {
       result.skippedNoTenant += 1;
-      continue;
-    }
-
-    // Only backfill completed orders (avoids draft/held orders and keeps reports sane)
-    if (order.status !== OrderStatus.COMPLETED) {
-      result.skippedNotCompleted += 1;
       continue;
     }
 
@@ -107,6 +127,7 @@ async function main() {
         description?: string;
         debitCents?: number;
         creditCents?: number;
+        taxRuleId?: string;
       }> = [
         {
           accountId: mapping.debitAccountId,
@@ -127,6 +148,7 @@ async function main() {
             accountId: vatAccount.id,
             creditCents: order.taxCents,
             description: 'VAT payable (backfill)',
+            taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
           });
         }
       }
@@ -146,6 +168,8 @@ async function main() {
           orderId: order.id,
           orderNumber: order.orderNumber,
           isCreditOrder: order.isCreditOrder,
+          taxRuleIdUsed: (order as any).taxRuleIdUsed ?? null,
+          taxRateBpsUsed: (order as any).taxRateBpsUsed ?? null,
         },
         lines,
       });
