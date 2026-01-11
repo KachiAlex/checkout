@@ -12,6 +12,12 @@ function prorate(numerator: number, denominator: number, value: number): number 
   return clampInt(Math.round((numerator / denominator) * value));
 }
 
+function parseOptionalDate(value: string | undefined): Date | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
 async function connectWithRetry(prisma: PrismaClient, attempts = 6): Promise<void> {
   let lastError: unknown;
 
@@ -54,10 +60,30 @@ async function main() {
   const dryRun = process.env.DRY_RUN === 'true';
   const limit = process.env.LIMIT ? Number(process.env.LIMIT) : undefined;
 
+  const from = parseOptionalDate(process.env.FROM);
+  const to = parseOptionalDate(process.env.TO);
+  const tenantIdFilter = process.env.TENANT_ID || undefined;
+  const locationIdFilter = process.env.LOCATION_ID || undefined;
+
   await connectWithRetry(prisma);
 
+  // eslint-disable-next-line no-console
+  console.log('Refund backfill filters:', {
+    dryRun,
+    limit,
+    from: from?.toISOString() ?? null,
+    to: to?.toISOString() ?? null,
+    tenantId: tenantIdFilter ?? null,
+    locationId: locationIdFilter ?? null,
+  });
+
   const payments = await prisma.payment.findMany({
-    where: { status: PaymentStatus.REFUNDED },
+    where: {
+      status: PaymentStatus.REFUNDED,
+      tenantId: tenantIdFilter,
+      processedAt: from || to ? { gte: from, lte: to } : undefined,
+      order: locationIdFilter ? { locationId: locationIdFilter } : undefined,
+    },
     include: {
       order: true,
     },
@@ -142,6 +168,7 @@ async function main() {
             description?: string;
             debitCents?: number;
             creditCents?: number;
+            taxRuleId?: string;
           }> = [
             {
               accountId: mapping.debitAccountId,
@@ -163,6 +190,7 @@ async function main() {
                 accountId: vatAccount.id,
                 debitCents: refundTax,
                 description: 'VAT reversal (backfill)',
+                taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
               });
             }
           }
