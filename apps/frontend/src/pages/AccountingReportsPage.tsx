@@ -179,7 +179,25 @@ export function AccountingReportsPage() {
       });
       setData(res);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to run report");
+      const status = error?.response?.status;
+      const responseData = error?.response?.data;
+      const message =
+        responseData?.message ||
+        error?.message ||
+        "Failed to run report";
+
+      // The backend can include extra error details when x-e2e-debug=1 is sent.
+      // We log those details for diagnostics, but keep the user-facing toast concise.
+      console.error("[AccountingReports] Report request failed", {
+        tab: activeTab,
+        status,
+        message,
+        path: responseData?.path,
+        timestamp: responseData?.timestamp,
+        error: responseData?.error,
+      });
+
+      toast.error(status ? `${message} (${status})` : message);
     } finally {
       setLoading(false);
     }

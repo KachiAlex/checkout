@@ -214,6 +214,16 @@ axios.interceptors.request.use(
         config.url?.includes("/auth/login") ||
         config.url?.includes("/auth/superadmin/login");
 
+      const debugAccounting =
+        typeof window !== "undefined" &&
+        window.localStorage?.getItem("debugAccountingApi") === "1";
+
+      const url = config.url ?? "";
+      const shouldDebugThisRequest =
+        debugAccounting &&
+        (url.includes("/admin/accounting") ||
+          url.includes("/api/v1/admin/accounting"));
+
       // Ensure headers object exists
       if (!config.headers) {
         config.headers = {} as any;
@@ -225,6 +235,10 @@ axios.interceptors.request.use(
       } else if (isAuthEndpoint) {
         // Clear any stale Authorization header for login endpoints
         delete (config.headers as any).Authorization;
+      }
+
+      if (shouldDebugThisRequest) {
+        (config.headers as any)["x-e2e-debug"] = "1";
       }
     } catch (error) {
       console.warn("Failed to attach auth token to request:", error);
