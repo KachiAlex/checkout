@@ -330,11 +330,36 @@ export class TenantsRepository {
 
   async delete(id: string): Promise<void> {
     if (this.isPostgresEnabled()) {
-      const existing = await this.prismaService.prisma.tenant.findUnique({ where: { id } });
+      const prisma = this.prismaService.prisma;
+      const existing = await prisma.tenant.findUnique({ where: { id } });
       if (!existing) {
         throw new NotFoundException(`Tenant ${id} not found`);
       }
-      await this.prismaService.prisma.tenant.delete({ where: { id } });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.journalLine.deleteMany({
+          where: {
+            OR: [
+              { journalEntry: { tenantId: id } },
+              { account: { tenantId: id } },
+            ],
+          },
+        });
+
+        await tx.journalEntry.deleteMany({
+          where: { tenantId: id },
+        });
+
+        await tx.accountMapping.deleteMany({
+          where: { tenantId: id },
+        });
+
+        await tx.account.deleteMany({
+          where: { tenantId: id },
+        });
+
+        await tx.tenant.delete({ where: { id } });
+      });
       return;
     }
 
