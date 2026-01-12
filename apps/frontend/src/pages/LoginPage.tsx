@@ -15,30 +15,12 @@ interface LoginPageProps {
   variant?: LoginVariant;
 }
 
-interface DebugInfo {
-  timestamp: string;
-  message: string;
-  status?: number;
-  statusText?: string;
-  responseData?: unknown;
-  tenantSlug?: string;
-  deviceId?: string;
-  email?: string;
-  code?: string;
-  requestUrl?: string;
-  method?: string;
-  isNetworkError?: boolean;
-  headers?: Record<string, unknown>;
-  requestData?: unknown;
-}
-
 export function LoginPage({ variant = "tenant" }: LoginPageProps) {
   const [tenantSlug, setTenantSlug] = useState("");
   const [pin, setPin] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const { login, loginSuperAdmin } = useAuthStore((state) => ({
     login: state.login,
     loginSuperAdmin: state.loginSuperAdmin,
@@ -147,22 +129,6 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
           requestData,
         });
       }
-      setDebugInfo({
-        timestamp: new Date().toISOString(),
-        message,
-        status,
-        statusText,
-        responseData,
-        tenantSlug: attemptedTenantSlug || undefined,
-        deviceId: attemptedDeviceId || undefined,
-        email: attemptedEmail || undefined,
-        code,
-        requestUrl,
-        method,
-        isNetworkError,
-        headers,
-        requestData,
-      });
     } finally {
       setLoading(false);
     }
@@ -321,23 +287,6 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
-          {debugInfo && (
-            <div className="mt-6 space-y-2 rounded-3xl border border-red-400/40 bg-red-500/10 p-4 text-left text-[11px] text-red-100">
-              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
-                <span>Debug Info (temporary)</span>
-                <button
-                  type="button"
-                  className="rounded-full border border-red-300/40 px-3 py-1 text-[10px] font-semibold text-red-200 transition hover:bg-red-400/10"
-                  onClick={() => setDebugInfo(null)}
-                >
-                  Clear
-                </button>
-              </div>
-              <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words">
-                {JSON.stringify(debugInfo, null, 2)}
-              </pre>
-            </div>
-          )}
           <div className="theme-text-secondary mt-6 text-center text-xs space-y-2">
             {variant === "tenant" ? (
               <>

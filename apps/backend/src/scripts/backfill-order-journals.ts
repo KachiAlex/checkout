@@ -76,6 +76,8 @@ async function main() {
     failures: 0,
   };
 
+  const ensuredTenants = new Set<string>();
+
   // eslint-disable-next-line no-console
   console.log('Backfill filters:', {
     dryRun,
@@ -137,208 +139,226 @@ async function main() {
 
       result.eligible += 1;
 
-      try {
-        // Ensure accounts/mappings exist
-        await accountingRepository.ensureDefaults({ tenantId: order.tenantId });
+      const maxAttempts = 3;
+      let attempt = 0;
+      while (attempt < maxAttempts) {
+        attempt += 1;
 
-        const existing = await accountingRepository.findJournalEntry({
-          tenantId: order.tenantId,
-          source: JournalSource.SALE,
-          sourceId: order.id,
-        });
+        try {
+          // Ensure accounts/mappings exist (once per tenant to reduce DB churn during backfill)
+          if (!ensuredTenants.has(order.tenantId)) {
+            await accountingRepository.ensureDefaults({ tenantId: order.tenantId });
+            ensuredTenants.add(order.tenantId);
+          }
 
-        const eventType = order.isCreditOrder ? 'SALE_CREDIT' : 'SALE';
+          const existing = await accountingRepository.findJournalEntry({
+            tenantId: order.tenantId,
+            source: JournalSource.SALE,
+            sourceId: order.id,
+          });
 
-        const vatAccount =
-          order.taxCents > 0
-            ? await accountingRepository.getAccountByCode(order.tenantId, 'VAT_PAYABLE')
-            : null;
+          const eventType = order.isCreditOrder ? 'SALE_CREDIT' : 'SALE';
 
-        if (existing) {
-          result.skippedExisting += 1;
+          const vatAccount =
+            order.taxCents > 0
+              ? await accountingRepository.getAccountByCode(order.tenantId, 'VAT_PAYABLE')
+              : null;
 
-          if (order.taxCents > 0 && vatAccount) {
-            const mapping = await accountingRepository.getMapping({
-              tenantId: order.tenantId,
-              eventType,
-              branchId: order.locationId,
-            });
+          if (existing) {
+            result.skippedExisting += 1;
 
-            // Only create an adjustment if we can safely reclassify VAT out of the revenue credit.
-            // If the existing journal already credits revenue as SUBTOTAL only, reclassing VAT would understate revenue.
-            const existingRevenueCredit = await prisma.journalLine.aggregate({
-              where: {
-                accountId: mapping.creditAccountId,
-                journalEntry: {
-                  tenantId: order.tenantId,
-                  source: JournalSource.SALE,
-                  sourceId: order.id,
-                },
-              },
-              _sum: { creditCents: true },
-            });
+            if (order.taxCents > 0 && vatAccount) {
+              const mapping = await accountingRepository.getMapping({
+                tenantId: order.tenantId,
+                eventType,
+                branchId: order.locationId,
+              });
 
-            const revenueCreditCents = existingRevenueCredit._sum.creditCents ?? 0;
-            if (revenueCreditCents < Math.max(order.taxCents, 0)) {
-              result.skippedVatAdjustmentNotApplicable += 1;
-              // eslint-disable-next-line no-console
-              console.warn(
-                `Skipping VAT adjustment for order ${order.id}: revenue credit ${revenueCreditCents} is less than taxCents ${order.taxCents}.`,
-              );
-              continue;
-            }
-
-            const existingVatLine = await prisma.journalLine.findFirst({
-              where: {
-                accountId: vatAccount.id,
-                journalEntry: {
-                  tenantId: order.tenantId,
-                  source: JournalSource.SALE,
-                  sourceId: order.id,
-                },
-              },
-              select: { id: true },
-            });
-
-            if (!existingVatLine) {
-              const existingAdjustment = await prisma.journalEntry.findFirst({
+              // Only create an adjustment if we can safely reclassify VAT out of the revenue credit.
+              // If the existing journal already credits revenue as SUBTOTAL only, reclassing VAT would understate revenue.
+              const existingRevenueCredit = await prisma.journalLine.aggregate({
                 where: {
-                  tenantId: order.tenantId,
-                  source: JournalSource.MANUAL,
-                  sourceId: order.id,
-                  reference: 'VAT_BACKFILL',
+                  accountId: mapping.creditAccountId,
+                  journalEntry: {
+                    tenantId: order.tenantId,
+                    source: JournalSource.SALE,
+                    sourceId: order.id,
+                  },
+                },
+                _sum: { creditCents: true },
+              });
+
+              const revenueCreditCents = existingRevenueCredit._sum.creditCents ?? 0;
+              if (revenueCreditCents < Math.max(order.taxCents, 0)) {
+                result.skippedVatAdjustmentNotApplicable += 1;
+                // eslint-disable-next-line no-console
+                console.warn(
+                  `Skipping VAT adjustment for order ${order.id}: revenue credit ${revenueCreditCents} is less than taxCents ${order.taxCents}.`,
+                );
+                break;
+              }
+
+              const existingVatLine = await prisma.journalLine.findFirst({
+                where: {
+                  accountId: vatAccount.id,
+                  journalEntry: {
+                    tenantId: order.tenantId,
+                    source: JournalSource.SALE,
+                    sourceId: order.id,
+                  },
                 },
                 select: { id: true },
               });
 
-              if (existingAdjustment) {
-                result.skippedExistingVatAdjustment += 1;
-                continue;
-              }
-
-              if (dryRun) {
-                // eslint-disable-next-line no-console
-                console.log(`[DRY_RUN] Would create VAT adjustment journal for order ${order.id} (${eventType})`);
-                continue;
-              }
-
-              await accountingRepository.createJournalEntry({
-                tenantId: order.tenantId,
-                locationId: order.locationId,
-                source: JournalSource.MANUAL,
-                sourceId: order.id,
-                reference: 'VAT_BACKFILL',
-                memo: `VAT backfill adjustment for ${eventType}`,
-                status: JournalStatus.POSTED,
-                postedAt: order.completedAt ?? order.createdAt,
-                metadata: {
-                  backfill: true,
-                  trigger: 'scripts.backfill-order-journals',
-                  kind: 'VAT_BACKFILL',
-                  orderId: order.id,
-                  orderNumber: order.orderNumber,
-                  taxCents: order.taxCents,
-                  taxRuleIdUsed: (order as any).taxRuleIdUsed ?? null,
-                  taxRateBpsUsed: (order as any).taxRateBpsUsed ?? null,
-                },
-                lines: [
-                  {
-                    accountId: mapping.creditAccountId,
-                    debitCents: Math.max(order.taxCents, 0),
-                    description: 'VAT reclass (backfill)',
-                    taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
+              if (!existingVatLine) {
+                const existingAdjustment = await prisma.journalEntry.findFirst({
+                  where: {
+                    tenantId: order.tenantId,
+                    source: JournalSource.MANUAL,
+                    sourceId: order.id,
+                    reference: 'VAT_BACKFILL',
                   },
-                  {
-                    accountId: vatAccount.id,
-                    creditCents: Math.max(order.taxCents, 0),
-                    description: 'VAT payable (backfill)',
-                    taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
-                  },
-                ],
-              });
+                  select: { id: true },
+                });
 
-              result.createdVatAdjustments += 1;
+                if (existingAdjustment) {
+                  result.skippedExistingVatAdjustment += 1;
+                  break;
+                }
+
+                if (dryRun) {
+                  // eslint-disable-next-line no-console
+                  console.log(
+                    `[DRY_RUN] Would create VAT adjustment journal for order ${order.id} (${eventType})`,
+                  );
+                  break;
+                }
+
+                await accountingRepository.createJournalEntry({
+                  tenantId: order.tenantId,
+                  locationId: order.locationId,
+                  source: JournalSource.MANUAL,
+                  sourceId: order.id,
+                  reference: 'VAT_BACKFILL',
+                  memo: `VAT backfill adjustment for ${eventType}`,
+                  status: JournalStatus.POSTED,
+                  postedAt: order.completedAt ?? order.createdAt,
+                  metadata: {
+                    backfill: true,
+                    trigger: 'scripts.backfill-order-journals',
+                    kind: 'VAT_BACKFILL',
+                    orderId: order.id,
+                    orderNumber: order.orderNumber,
+                    taxCents: order.taxCents,
+                    taxRuleIdUsed: (order as any).taxRuleIdUsed ?? null,
+                    taxRateBpsUsed: (order as any).taxRateBpsUsed ?? null,
+                  },
+                  lines: [
+                    {
+                      accountId: mapping.creditAccountId,
+                      debitCents: Math.max(order.taxCents, 0),
+                      description: 'VAT reclass (backfill)',
+                      taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
+                    },
+                    {
+                      accountId: vatAccount.id,
+                      creditCents: Math.max(order.taxCents, 0),
+                      description: 'VAT payable (backfill)',
+                      taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
+                    },
+                  ],
+                });
+
+                result.createdVatAdjustments += 1;
+              }
             }
+
+            break;
           }
 
-          continue;
-        }
+          if (dryRun) {
+            // eslint-disable-next-line no-console
+            console.log(`[DRY_RUN] Would create journal for order ${order.id} (${eventType})`);
+            break;
+          }
 
-        if (dryRun) {
-          // eslint-disable-next-line no-console
-          console.log(`[DRY_RUN] Would create journal for order ${order.id} (${eventType})`);
-          continue;
-        }
-
-        const mapping = await accountingRepository.getMapping({
-          tenantId: order.tenantId,
-          eventType,
-          branchId: order.locationId,
-        });
-
-        const lines: Array<{
-          accountId: string;
-          description?: string;
-          debitCents?: number;
-          creditCents?: number;
-          taxRuleId?: string;
-        }> = [
-          {
-            accountId: mapping.debitAccountId,
-            debitCents: Math.max(order.totalCents, 0),
-            description: `Debit for ${eventType} (backfill)`,
-          },
-          {
-            accountId: mapping.creditAccountId,
-            creditCents: Math.max(order.subtotalCents, 0),
-            description: `Credit for ${eventType} (backfill)`,
-          },
-        ];
-
-        if (order.taxCents > 0 && vatAccount) {
-          lines.push({
-            accountId: vatAccount.id,
-            creditCents: order.taxCents,
-            description: 'VAT payable (backfill)',
-            taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
+          const mapping = await accountingRepository.getMapping({
+            tenantId: order.tenantId,
+            eventType,
+            branchId: order.locationId,
           });
-        }
 
-        await accountingRepository.createJournalEntry({
-          tenantId: order.tenantId,
-          locationId: order.locationId,
-          source: JournalSource.SALE,
-          sourceId: order.id,
-          reference: order.orderNumber,
-          memo: `Backfilled journal for ${eventType}`,
-          status: JournalStatus.POSTED,
-          postedAt: order.completedAt ?? order.createdAt,
-          metadata: {
-            backfill: true,
-            trigger: 'scripts.backfill-order-journals',
-            orderId: order.id,
-            orderNumber: order.orderNumber,
-            isCreditOrder: order.isCreditOrder,
-            taxRuleIdUsed: (order as any).taxRuleIdUsed ?? null,
-            taxRateBpsUsed: (order as any).taxRateBpsUsed ?? null,
-          },
-          lines,
-        });
+          const lines: Array<{
+            accountId: string;
+            description?: string;
+            debitCents?: number;
+            creditCents?: number;
+            taxRuleId?: string;
+          }> = [
+            {
+              accountId: mapping.debitAccountId,
+              debitCents: Math.max(order.totalCents, 0),
+              description: `Debit for ${eventType} (backfill)`,
+            },
+            {
+              accountId: mapping.creditAccountId,
+              creditCents: Math.max(order.subtotalCents, 0),
+              description: `Credit for ${eventType} (backfill)`,
+            },
+          ];
 
-        result.created += 1;
-      } catch (err) {
-        result.failures += 1;
-        // eslint-disable-next-line no-console
-        console.error(`Failed to backfill journal for order ${order.id}:`, err);
+          if (order.taxCents > 0 && vatAccount) {
+            lines.push({
+              accountId: vatAccount.id,
+              creditCents: order.taxCents,
+              description: 'VAT payable (backfill)',
+              taxRuleId: (order as any).taxRuleIdUsed ?? undefined,
+            });
+          }
 
-        // If Neon drops the connection mid-run, try a reconnect and continue.
-        if (isRetryableDbError(err)) {
+          await accountingRepository.createJournalEntry({
+            tenantId: order.tenantId,
+            locationId: order.locationId,
+            source: JournalSource.SALE,
+            sourceId: order.id,
+            reference: order.orderNumber,
+            memo: `Backfilled journal for ${eventType}`,
+            status: JournalStatus.POSTED,
+            postedAt: order.completedAt ?? order.createdAt,
+            metadata: {
+              backfill: true,
+              trigger: 'scripts.backfill-order-journals',
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              isCreditOrder: order.isCreditOrder,
+              taxRuleIdUsed: (order as any).taxRuleIdUsed ?? null,
+              taxRateBpsUsed: (order as any).taxRateBpsUsed ?? null,
+            },
+            lines,
+          });
+
+          result.created += 1;
+          break;
+        } catch (err) {
+          const retryable = isRetryableDbError(err);
+          if (!retryable || attempt >= maxAttempts) {
+            result.failures += 1;
+            // eslint-disable-next-line no-console
+            console.error(`Failed to backfill journal for order ${order.id}:`, err);
+            break;
+          }
+
+          // eslint-disable-next-line no-console
+          console.warn(
+            `Retryable DB error while processing order ${order.id} (attempt ${attempt}/${maxAttempts}). Reconnecting...`,
+          );
           try {
             await prisma.$disconnect();
           } catch {
             // ignore
           }
           await connectWithRetry(prisma);
+          // retry same order
         }
       }
     }

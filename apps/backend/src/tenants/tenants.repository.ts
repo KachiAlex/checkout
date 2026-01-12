@@ -4,6 +4,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { TenantPlan, TenantStatus, Industry, IndustryFeatureFlags } from '@pos-checkout/shared';
 import { FirestoreService } from '../firestore/firestore.service';
 import { PrismaService } from '../database/prisma.service';
+import { EmailService } from '../email/email.service';
 
 export interface TenantRecord {
   id: string;
@@ -41,6 +42,7 @@ export class TenantsRepository {
   constructor(
     private readonly firestore: FirestoreService,
     private readonly prismaService: PrismaService,
+    private readonly emailService: EmailService,
   ) {}
 
   private isPostgresEnabled(): boolean {
@@ -71,7 +73,7 @@ export class TenantsRepository {
         orderBy: { createdAt: 'desc' },
       });
 
-      return rows.map((row) => ({
+      const tenants = rows.map((row) => ({
         id: row.id,
         name: row.name,
         slug: row.slug,
@@ -87,10 +89,13 @@ export class TenantsRepository {
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       }));
+
+      return Promise.all(tenants.map((tenant) => this.applyFreeTrialGuard(tenant)));
     }
 
     const snapshot = await this.collection.orderBy('createdAt', 'desc').get();
-    return snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    const tenants = snapshot.docs.map((doc) => this.toRecord(doc.id, doc.data()));
+    return Promise.all(tenants.map((tenant) => this.applyFreeTrialGuard(tenant)));
   }
 
   async findById(id: string): Promise<TenantRecord | null> {
@@ -99,7 +104,7 @@ export class TenantsRepository {
       if (!row) {
         return null;
       }
-      return {
+      const tenant = {
         id: row.id,
         name: row.name,
         slug: row.slug,
@@ -115,13 +120,15 @@ export class TenantsRepository {
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       };
+      return this.applyFreeTrialGuard(tenant);
     }
 
     const doc = await this.collection.doc(id).get();
     if (!doc.exists) {
       return null;
     }
-    return this.toRecord(doc.id, doc.data() as TenantDocument);
+    const tenant = this.toRecord(doc.id, doc.data() as TenantDocument);
+    return this.applyFreeTrialGuard(tenant);
   }
 
   async findBySlug(slug: string): Promise<TenantRecord | null> {
@@ -130,7 +137,7 @@ export class TenantsRepository {
       if (!row) {
         return null;
       }
-      return {
+      const tenant = {
         id: row.id,
         name: row.name,
         slug: row.slug,
@@ -146,6 +153,7 @@ export class TenantsRepository {
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       };
+      return this.applyFreeTrialGuard(tenant);
     }
 
     const snapshot = await this.collection.where('slug', '==', slug).limit(1).get();
@@ -153,7 +161,8 @@ export class TenantsRepository {
       return null;
     }
     const doc = snapshot.docs[0];
-    return this.toRecord(doc.id, doc.data() as TenantDocument);
+    const tenant = this.toRecord(doc.id, doc.data() as TenantDocument);
+    return this.applyFreeTrialGuard(tenant);
   }
 
   async create(data: Omit<TenantRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<TenantRecord> {
@@ -358,6 +367,80 @@ export class TenantsRepository {
       createdAt: this.timestampToDate(data.createdAt),
       updatedAt: this.timestampToDate(data.updatedAt),
     };
+  }
+
+  private async applyFreeTrialGuard(record: TenantRecord): Promise<TenantRecord> {
+    const now = Date.now();
+    const hasTrialEnded =
+      record.billingCycleEnd && record.billingCycleEnd.getTime() < now;
+    const shouldSuspend =
+      record.plan === TenantPlan.FREE &&
+      record.status === TenantStatus.ACTIVE &&
+      hasTrialEnded;
+
+    if (!shouldSuspend) {
+      return record;
+    }
+
+    const metadata = {
+      ...(record.metadata ?? {}),
+      suspensionReason: 'Free trial expired. Please upgrade to reactivate your account.',
+      suspendedAt: new Date().toISOString(),
+    };
+
+    const updatedRecord = await this.update(record.id, {
+      status: TenantStatus.SUSPENDED,
+      metadata,
+    });
+
+    await this.sendTrialExpiryNotification(updatedRecord);
+    return updatedRecord;
+  }
+
+  private async sendTrialExpiryNotification(tenant: TenantRecord): Promise<void> {
+    try {
+      const recipient = tenant.contactEmail;
+      if (!recipient) {
+        return;
+      }
+
+      const subject = 'Your Checkout trial has ended';
+      const textLines = [
+        `Hello ${tenant.name},`,
+        '',
+        'Your 14-day free trial has ended, so your Checkout account has been temporarily suspended.',
+        'Upgrade to any paid plan to regain access immediately.',
+        '',
+        `Tenant: ${tenant.name} (${tenant.slug})`,
+        `Trial ended on: ${tenant.billingCycleEnd?.toISOString() ?? 'N/A'}`,
+        '',
+        'Need help? Reply to this email and our team will assist you.',
+        '',
+        '— Checkout Platform Team',
+      ];
+
+      const text = textLines.join('\n');
+      const html = `
+        <p>Hello ${tenant.name},</p>
+        <p>Your 14-day free trial has ended, so your Checkout account has been temporarily suspended.</p>
+        <p>Upgrade to any paid plan to regain access immediately.</p>
+        <table style="border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:4px 8px;font-weight:600;">Tenant</td><td style="padding:4px 8px;">${tenant.name} (${tenant.slug})</td></tr>
+          <tr><td style="padding:4px 8px;font-weight:600;">Trial ended on</td><td style="padding:4px 8px;">${tenant.billingCycleEnd?.toISOString() ?? 'N/A'}</td></tr>
+        </table>
+        <p>Need help? Reply to this email and our team will assist you.</p>
+        <p>— Checkout Platform Team</p>
+      `;
+
+      await this.emailService.sendEmail({
+        to: recipient,
+        subject,
+        text,
+        html,
+      });
+    } catch (error) {
+      console.error('[TenantsRepository] Failed to send trial expiry email:', (error as Error).message);
+    }
   }
 
   private timestampToDate(timestamp?: TimestampField): Date {
