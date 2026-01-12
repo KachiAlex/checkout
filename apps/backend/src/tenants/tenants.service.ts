@@ -189,11 +189,9 @@ export class TenantsService {
     const tenant = await this.findById(id);
 
     let adminUser =
-      dto.adminEmail !== undefined ? await this.usersRepository.findByEmail(dto.adminEmail) : null;
-
-    if (adminUser && adminUser.tenantId !== tenant.id) {
-      throw new BadRequestException('Provided admin email does not belong to this tenant');
-    }
+      dto.adminEmail !== undefined
+        ? await this.usersRepository.findByEmailForTenant(dto.adminEmail, tenant.id)
+        : null;
 
     if (!adminUser) {
       adminUser = await this.usersRepository.findByRole(UserRole.ADMIN, tenant.id);

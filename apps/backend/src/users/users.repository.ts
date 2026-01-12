@@ -213,6 +213,45 @@ export class UsersRepository {
     return this.toRecord(doc.id, doc.data());
   }
 
+  async findByEmailForTenant(email: string, tenantId: string): Promise<UserRecord | null> {
+    if (this.isPostgresEnabled()) {
+      const row = await this.prismaService.prisma.user.findFirst({
+        where: {
+          tenantId,
+          email: email.toLowerCase(),
+        },
+      });
+      if (!row) {
+        return null;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        role: this.toRole(row.role),
+        pinHash: row.pinHash,
+        tenantId: row.tenantId,
+        isPlatformAdmin: row.isPlatformAdmin,
+        deviceId: row.deviceId ?? undefined,
+        locationId: row.locationId ?? undefined,
+        publicKey: row.publicKey ?? undefined,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }
+
+    const snapshot = await this.collection
+      .where('tenantId', '==', tenantId)
+      .where('email', '==', email.toLowerCase())
+      .limit(1)
+      .get();
+    if (snapshot.empty) {
+      return null;
+    }
+    const doc = snapshot.docs[0];
+    return this.toRecord(doc.id, doc.data());
+  }
+
   async findByRole(role: UserRole, tenantId: string): Promise<UserRecord | null> {
     if (this.isPostgresEnabled()) {
       const row = await this.prismaService.prisma.user.findFirst({
