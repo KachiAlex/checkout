@@ -4,6 +4,71 @@ import axios from "axios";
 import { API_URL } from "../config";
 import { Industry, IndustryFeatureFlags } from "@pos-checkout/shared";
 
+const HEALTH_ENDPOINT = `${API_URL || ""}/api/v1/health`;
+const LOGIN_TIMEOUT_MS = 30_000;
+const LOGIN_RETRY_TIMEOUT_MS = 45_000;
+const LOGIN_MAX_ATTEMPTS = 2;
+const BACKEND_WAKE_TIMEOUT_MS = 60_000;
+const BACKEND_WAKE_POLL_INTERVAL_MS = 3_000;
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const isTimeoutError = (error: any) =>
+  Boolean(error?.code === "ECONNABORTED" || error?.message?.includes("timeout"));
+
+let backendWarmupPromise: Promise<void> | null = null;
+
+const ensureBackendAwake = async () => {
+  if (backendWarmupPromise) {
+    return backendWarmupPromise;
+  }
+
+  backendWarmupPromise = (async () => {
+    const start = Date.now();
+    while (Date.now() - start < BACKEND_WAKE_TIMEOUT_MS) {
+      try {
+        await axios.get(HEALTH_ENDPOINT, {
+          timeout: 5_000,
+          headers: {
+            "cache-control": "no-cache",
+          },
+        });
+        return;
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+          // If the backend responded (even with 4xx/5xx), it's awake
+          return;
+        }
+        await delay(BACKEND_WAKE_POLL_INTERVAL_MS);
+      }
+    }
+    console.warn("[Auth] Backend health check timed out while waiting for service wake-up");
+  })().finally(() => {
+    backendWarmupPromise = null;
+  });
+
+  return backendWarmupPromise;
+};
+
+const buildLoginError = (error: any, timeoutMessage?: string) => {
+  if (isTimeoutError(error)) {
+    error.customMessage =
+      timeoutMessage ??
+      "Login request timed out. Please check your connection and try again.";
+    return error;
+  }
+
+  const message =
+    error.response?.data?.message ||
+    error.response?.data?.error ||
+    "Login failed";
+
+  if (error && typeof error === "object") {
+    error.customMessage = message;
+  }
+
+  return error;
+};
+
 interface TenantInfo {
   id: string;
   name: string;
@@ -52,55 +117,56 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       login: async (tenantSlug: string, pin: string, deviceId?: string) => {
-        try {
-          const response = await axios.post(
-            `${API_URL}/api/v1/auth/login`,
-            {
-              tenantSlug,
-              pin,
-              deviceId,
-            },
-            {
-              timeout: 30000, // 30 second timeout
-            },
-          );
+        await ensureBackendAwake();
 
-          const { accessToken, refreshToken, user, tenant } = response.data;
-
-          set({
-            accessToken,
-            refreshToken,
-            user,
-            tenant,
-            tenantSlug,
-            isAuthenticated: true,
-          });
-
-          // Store token in localStorage for sync service
-          localStorage.setItem("accessToken", accessToken);
-
-          // Set default authorization header
-          axios.defaults.headers.common["Authorization"] =
-            `Bearer ${accessToken}`;
-        } catch (error: any) {
-          // Handle timeout errors
-          if (
-            error.code === "ECONNABORTED" ||
-            error.message?.includes("timeout")
-          ) {
-            error.customMessage =
-              "Login request timed out. Please check your connection and try again.";
-            throw error;
+        let response;
+        for (let attempt = 1; attempt <= LOGIN_MAX_ATTEMPTS; attempt++) {
+          try {
+            response = await axios.post(
+              `${API_URL}/api/v1/auth/login`,
+              {
+                tenantSlug,
+                pin,
+                deviceId,
+              },
+              {
+                timeout:
+                  attempt === 1 ? LOGIN_TIMEOUT_MS : LOGIN_RETRY_TIMEOUT_MS,
+              },
+            );
+            break;
+          } catch (error: any) {
+            if (isTimeoutError(error) && attempt < LOGIN_MAX_ATTEMPTS) {
+              console.warn(
+                `[Auth] Login attempt ${attempt} timed out. Retrying automatically...`,
+              );
+              await ensureBackendAwake();
+              continue;
+            }
+            throw buildLoginError(error);
           }
-          const message =
-            error.response?.data?.message ||
-            error.response?.data?.error ||
-            "Login failed";
-          if (error && typeof error === "object") {
-            error.customMessage = message;
-          }
-          throw error;
         }
+
+        if (!response) {
+          throw buildLoginError(new Error("Login failed after retries"));
+        }
+
+        const { accessToken, refreshToken, user, tenant } = response.data;
+
+        set({
+          accessToken,
+          refreshToken,
+          user,
+          tenant,
+          tenantSlug,
+          isAuthenticated: true,
+        });
+
+        // Store token in localStorage for sync service
+        localStorage.setItem("accessToken", accessToken);
+
+        // Set default authorization header
+        axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
       },
 
       loginSuperAdmin: async (email: string, password: string) => {
