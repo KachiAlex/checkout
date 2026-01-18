@@ -84,6 +84,7 @@ export function CheckoutPage() {
     id: string;
     name: string;
     phone?: string;
+    email?: string;
   } | null>(null);
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [customerPhoneInput, setCustomerPhoneInput] = useState("");
@@ -869,341 +870,344 @@ export function CheckoutPage() {
         />
       </div>
 
-      <div className="relative z-10 flex min-h-screen flex-col overflow-x-hidden w-full">
+      <div className="relative z-10 flex min-h-screen flex-col">
         {/* Header */}
-        <header className="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-8 pt-3 sm:pt-6 sticky top-0 z-20 bg-slate-950/80 backdrop-blur-sm">
-          <div className="theme-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-xl sm:rounded-2xl border p-3 sm:p-4 backdrop-blur-xl">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-              <BrandMark
-                size={32}
-                backgroundClassName="bg-white/90 dark:bg-white/10"
-                className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0"
-              />
-              <div className="min-w-0">
-                <h1 className="theme-text-primary text-lg sm:text-xl font-semibold truncate">
-                  Checkout
-                </h1>
-                <p className="theme-text-secondary text-xs truncate">
-                  {tenant?.name || "POS System"}
-                </p>
+        <header className="sticky nav-top-offset z-20 bg-slate-950/80 backdrop-blur-sm">
+          <div className="page-shell">
+            <div className="theme-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-xl sm:rounded-2xl border p-3 sm:p-4 backdrop-blur-xl">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                <BrandMark
+                  size={32}
+                  backgroundClassName="bg-white/90 dark:bg-white/10"
+                  className="ring-1 ring-slate-200/40 dark:ring-white/10 flex-shrink-0"
+                />
+                <div className="min-w-0">
+                  <h1 className="theme-text-primary text-lg sm:text-xl font-semibold truncate">
+                    Checkout
+                  </h1>
+                  <p className="theme-text-secondary text-xs truncate">
+                    {tenant?.name || "POS System"}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-              <Link
-                to="/inventory"
-                className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-emerald-300/60 hover:text-emerald-100"
-              >
-                📦 <span className="hidden sm:inline">Inventory</span>
-              </Link>
-              <Link
-                to="/reports"
-                className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-sky-300/60 hover:text-sky-100"
-              >
-                📊 <span className="hidden sm:inline">Reports</span>
-              </Link>
-              {isAdmin && (
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
                 <Link
-                  to="/settings"
-                  className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition"
+                  to="/inventory"
+                  className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-emerald-300/60 hover:text-emerald-100"
                 >
-                  ⚙️ <span className="hidden sm:inline">Settings</span>
+                  📦 <span className="hidden sm:inline">Inventory</span>
                 </Link>
-              )}
-              <button
-                onClick={logout}
-                className="rounded-full bg-gradient-to-r from-rose-400 to-pink-500 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition hover:shadow-xl"
-              >
-                <span className="hidden sm:inline">Logout</span>
-                <span className="sm:hidden">Out</span>
-              </button>
-              <ThemeToggle />
+                <Link
+                  to="/reports"
+                  className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition hover:border-sky-300/60 hover:text-sky-100"
+                >
+                  📊 <span className="hidden sm:inline">Reports</span>
+                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/settings"
+                    className="theme-chip rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition"
+                  >
+                    ⚙️ <span className="hidden sm:inline">Settings</span>
+                  </Link>
+                )}
+                <button
+                  onClick={logout}
+                  className="rounded-full bg-gradient-to-r from-rose-400 to-pink-500 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition hover:shadow-xl"
+                >
+                  <span className="hidden sm:inline">Logout</span>
+                  <span className="sm:hidden">Out</span>
+                </button>
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <div className="mx-auto mt-4 w-full max-w-7xl flex-1 px-2 sm:px-4 lg:px-8 pb-4 sm:pb-12 overflow-y-auto">
-          <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row">
-            {/* Left: Product Search & Cart Table */}
-            <div className="flex-1 space-y-4 sm:space-y-6 min-w-0">
-              {/* Product Search */}
-              <div className="theme-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
-                  Search Products
-                </h2>
-                <div className="relative">
-                  <ScannerInput
-                    onScan={handleBarcodeScan}
-                    placeholder="Scan barcode/QR or type product name, SKU..."
-                    autoFocus={false}
-                  />
-
-                  {/* Text Search Input (for manual typing) */}
-                  <div className="mt-3">
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => {
-                        // Load products on first focus, then always show dropdown
-                        loadAllProducts();
-                        setShowResults(true);
-                      }}
-                      placeholder="Or type product name, SKU..."
-                      className="theme-surface w-full rounded-xl border px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
+        <main className="flex-1">
+          <div className="page-shell page-section">
+            <div className="page-content-grid">
+              {/* Left: Product Search & Cart Table */}
+              <section className="page-stack min-w-0 space-y-4 sm:space-y-6">
+                {/* Product Search */}
+                <div className="theme-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
+                  <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+                    Search Products
+                  </h2>
+                  <div className="relative">
+                    <ScannerInput
+                      onScan={handleBarcodeScan}
+                      placeholder="Scan barcode/QR or type product name, SKU..."
+                      autoFocus={false}
                     />
-                    {isSearching && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+
+                    {/* Text Search Input (for manual typing) */}
+                    <div className="mt-3">
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => {
+                          // Load products on first focus, then always show dropdown
+                          loadAllProducts();
+                          setShowResults(true);
+                        }}
+                        placeholder="Or type product name, SKU..."
+                        className="theme-surface w-full rounded-xl border px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
+                      />
+                      {isSearching && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Search Results Dropdown */}
+                    {showResults && searchResults.length > 0 && (
+                      <div className="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-white/20 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
+                        {searchResults.map((product) => (
+                          <button
+                            key={product.id}
+                            onClick={() => handleProductSelect(product)}
+                            className="w-full border-b border-white/10 px-4 py-3 text-left transition hover:bg-white/10 first:rounded-t-xl last:rounded-b-xl last:border-b-0"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="theme-text-primary font-medium truncate">
+                                  {product.name}
+                                </p>
+                                <p className="theme-text-secondary text-xs sm:text-sm">
+                                  SKU: {product.sku || "N/A"}
+                                </p>
+                              </div>
+                              <p className="theme-text-primary font-semibold text-sm sm:text-base whitespace-nowrap">
+                                {formatCurrency(product.priceCents)}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
-
-                  {/* Search Results Dropdown */}
-                  {showResults && searchResults.length > 0 && (
-                    <div className="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-white/20 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
-                      {searchResults.map((product) => (
-                        <button
-                          key={product.id}
-                          onClick={() => handleProductSelect(product)}
-                          className="w-full border-b border-white/10 px-4 py-3 text-left transition hover:bg-white/10 first:rounded-t-xl last:rounded-b-xl last:border-b-0"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <p className="theme-text-primary font-medium truncate">
-                                {product.name}
-                              </p>
-                              <p className="theme-text-secondary text-xs sm:text-sm">
-                                SKU: {product.sku || "N/A"}
-                              </p>
-                            </div>
-                            <p className="theme-text-primary font-semibold text-sm sm:text-base whitespace-nowrap">
-                              {formatCurrency(product.priceCents)}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </div>
 
-              {/* Cart Tabs */}
-              <div className="theme-card rounded-xl sm:rounded-2xl border backdrop-blur-xl">
-                <div className="border-b border-white/10 p-3 sm:p-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <h2 className="theme-text-primary text-base sm:text-lg font-semibold">
-                      Cart
-                    </h2>
-                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                      {sessions.map((session) => (
+                {/* Cart Tabs */}
+                <div className="theme-card rounded-xl sm:rounded-2xl border backdrop-blur-xl">
+                  <div className="border-b border-white/10 p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <h2 className="theme-text-primary text-base sm:text-lg font-semibold">
+                        Cart
+                      </h2>
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        {sessions.map((session) => (
+                          <button
+                            key={session.id}
+                            onClick={() => switchSession(session.id)}
+                            className={`rounded-lg border px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition ${
+                              activeSessionId === session.id
+                                ? "border-sky-400 bg-sky-500/20 text-sky-200"
+                                : "border-white/20 bg-white/5 text-white/70 hover:border-white/30 hover:text-white"
+                            }`}
+                          >
+                            {session.label}
+                            {session.cart.length > 0 && (
+                              <span className="ml-1 sm:ml-2 rounded-full bg-white/20 px-1 sm:px-1.5 text-xs">
+                                {session.cart.length}
+                              </span>
+                            )}
+                          </button>
+                        ))}
                         <button
-                          key={session.id}
-                          onClick={() => switchSession(session.id)}
-                          className={`rounded-lg border px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition ${
-                            activeSessionId === session.id
-                              ? "border-sky-400 bg-sky-500/20 text-sky-200"
-                              : "border-white/20 bg-white/5 text-white/70 hover:border-white/30 hover:text-white"
-                          }`}
+                          onClick={createSession}
+                          className="rounded-lg border border-white/20 bg-white/5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+                          title="New cart"
                         >
-                          {session.label}
-                          {session.cart.length > 0 && (
-                            <span className="ml-1 sm:ml-2 rounded-full bg-white/20 px-1 sm:px-1.5 text-xs">
-                              {session.cart.length}
-                            </span>
-                          )}
+                          + New
                         </button>
-                      ))}
-                      <button
-                        onClick={createSession}
-                        className="rounded-lg border border-white/20 bg-white/5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-white/70 transition hover:border-white/30 hover:text-white"
-                        title="New cart"
-                      >
-                        + New
-                      </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Cart Table */}
-                <div className="p-3 sm:p-6">
-                  {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
-                      <div className="text-3xl sm:text-4xl">🛒</div>
-                      <p className="theme-text-primary mt-3 text-base sm:text-lg font-semibold">
-                        Cart is empty
-                      </p>
-                      <p className="theme-text-secondary mt-1 text-xs sm:text-sm">
-                        Search for products to add them here.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Mobile Card View */}
-                      <div className="block sm:hidden space-y-3">
-                        {cart.map((item) => (
-                          <div
-                            key={item.productId}
-                            className="theme-surface rounded-xl border p-3 space-y-2"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <p className="theme-text-primary font-medium text-sm truncate">
-                                  {item.name}
-                                </p>
-                                <p className="theme-text-secondary text-xs mt-1">
-                                  {formatCurrency(item.priceCents)} each
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => removeItem(item.productId)}
-                                className="rounded border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 flex-shrink-0 ml-2"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() =>
-                                    updateQuantity(
-                                      item.productId,
-                                      item.quantity - 1,
-                                    )
-                                  }
-                                  className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
-                                  disabled={item.quantity <= 1}
-                                >
-                                  −
-                                </button>
-                                <span className="theme-text-primary w-10 text-center font-semibold text-sm">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    updateQuantity(
-                                      item.productId,
-                                      item.quantity + 1,
-                                    )
-                                  }
-                                  className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
-                                >
-                                  +
-                                </button>
-                              </div>
-                              <p className="theme-text-primary font-semibold text-sm">
-                                {formatCurrency(
-                                  item.priceCents * item.quantity,
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                  {/* Cart Table */}
+                  <div className="p-3 sm:p-6">
+                    {cart.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+                        <div className="text-3xl sm:text-4xl">🛒</div>
+                        <p className="theme-text-primary mt-3 text-base sm:text-lg font-semibold">
+                          Cart is empty
+                        </p>
+                        <p className="theme-text-secondary mt-1 text-xs sm:text-sm">
+                          Search for products to add them here.
+                        </p>
                       </div>
-                      {/* Desktop Table View */}
-                      <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-white/10">
-                              <th className="theme-text-secondary px-4 py-3 text-left text-sm font-semibold">
-                                Product
-                              </th>
-                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
-                                Price
-                              </th>
-                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
-                                Quantity
-                              </th>
-                              <th className="theme-text-secondary px-4 py-3 text-right text-sm font-semibold">
-                                Total
-                              </th>
-                              <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
-                                Action
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {cart.map((item) => (
-                              <tr
-                                key={item.productId}
-                                className="border-b border-white/5"
-                              >
-                                <td className="px-4 py-3">
-                                  <p className="theme-text-primary font-medium">
+                    ) : (
+                      <>
+                        {/* Mobile Card View */}
+                        <div className="block sm:hidden space-y-3">
+                          {cart.map((item) => (
+                            <div
+                              key={item.productId}
+                              className="theme-surface rounded-xl border p-3 space-y-2"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className="theme-text-primary font-medium text-sm truncate">
                                     {item.name}
                                   </p>
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  <p className="theme-text-primary">
-                                    {formatCurrency(item.priceCents)}
+                                  <p className="theme-text-secondary text-xs mt-1">
+                                    {formatCurrency(item.priceCents)} each
                                   </p>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      onClick={() =>
-                                        updateQuantity(
-                                          item.productId,
-                                          item.quantity - 1,
-                                        )
-                                      }
-                                      className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
-                                      disabled={item.quantity <= 1}
-                                    >
-                                      −
-                                    </button>
-                                    <span className="theme-text-primary w-12 text-center font-semibold">
-                                      {item.quantity}
-                                    </span>
-                                    <button
-                                      onClick={() =>
-                                        updateQuantity(
-                                          item.productId,
-                                          item.quantity + 1,
-                                        )
-                                      }
-                                      className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 text-right">
-                                  <p className="theme-text-primary font-semibold">
-                                    {formatCurrency(
-                                      item.priceCents * item.quantity,
-                                    )}
-                                  </p>
-                                </td>
-                                <td className="px-4 py-3 text-center">
+                                </div>
+                                <button
+                                  onClick={() => removeItem(item.productId)}
+                                  className="rounded border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 flex-shrink-0 ml-2"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => removeItem(item.productId)}
-                                    className="rounded border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                                    onClick={() =>
+                                      updateQuantity(
+                                        item.productId,
+                                        item.quantity - 1,
+                                      )
+                                    }
+                                    className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
+                                    disabled={item.quantity <= 1}
                                   >
-                                    Remove
+                                    −
                                   </button>
-                                </td>
+                                  <span className="theme-text-primary w-10 text-center font-semibold text-sm">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      updateQuantity(
+                                        item.productId,
+                                        item.quantity + 1,
+                                      )
+                                    }
+                                    className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                <p className="theme-text-primary font-semibold text-sm">
+                                  {formatCurrency(
+                                    item.priceCents * item.quantity,
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Desktop Table View */}
+                        <div className="hidden sm:block overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-white/10">
+                                <th className="theme-text-secondary px-4 py-3 text-left text-sm font-semibold">
+                                  Product
+                                </th>
+                                <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
+                                  Price
+                                </th>
+                                <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
+                                  Quantity
+                                </th>
+                                <th className="theme-text-secondary px-4 py-3 text-right text-sm font-semibold">
+                                  Total
+                                </th>
+                                <th className="theme-text-secondary px-4 py-3 text-center text-sm font-semibold">
+                                  Action
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
+                            </thead>
+                            <tbody>
+                              {cart.map((item) => (
+                                <tr
+                                  key={item.productId}
+                                  className="border-b border-white/5"
+                                >
+                                  <td className="px-4 py-3">
+                                    <p className="theme-text-primary font-medium">
+                                      {item.name}
+                                    </p>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <p className="theme-text-primary">
+                                      {formatCurrency(item.priceCents)}
+                                    </p>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <button
+                                        onClick={() =>
+                                          updateQuantity(
+                                            item.productId,
+                                            item.quantity - 1,
+                                          )
+                                        }
+                                        className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10 disabled:opacity-40"
+                                        disabled={item.quantity <= 1}
+                                      >
+                                        −
+                                      </button>
+                                      <span className="theme-text-primary w-12 text-center font-semibold">
+                                        {item.quantity}
+                                      </span>
+                                      <button
+                                        onClick={() =>
+                                          updateQuantity(
+                                            item.productId,
+                                            item.quantity + 1,
+                                          )
+                                        }
+                                        className="flex h-8 w-8 items-center justify-center rounded border border-white/20 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <p className="theme-text-primary font-semibold">
+                                      {formatCurrency(
+                                        item.priceCents * item.quantity,
+                                      )}
+                                    </p>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <button
+                                      onClick={() => removeItem(item.productId)}
+                                      className="rounded border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                                    >
+                                      Remove
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </section>
 
-            {/* Right: Summary & Checkout */}
-            <div className="w-full lg:w-80">
-              <div className="theme-card sticky top-20 sm:top-6 rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
-                <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
-                  Summary
-                </h2>
+              {/* Right: Summary & Checkout */}
+              <aside className="summary-sticky lg:sticky lg:self-start">
+                <div className="theme-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 backdrop-blur-xl">
+                  <h2 className="theme-text-primary mb-3 sm:mb-4 text-base sm:text-lg font-semibold">
+                    Summary
+                  </h2>
 
-                {/* Customer Selector */}
-                <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10 customer-search-container">
+                  {/* Customer Selector */}
+                  <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10 customer-search-container">
                   <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
                     Customer (Optional)
                   </label>
@@ -1346,8 +1350,8 @@ export function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Customer phone input */}
-                <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
+                  {/* Customer phone input */}
+                  <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
                   <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
                     Customer phone (required for credit orders)
                   </label>
@@ -1360,8 +1364,8 @@ export function CheckoutPage() {
                   />
                 </div>
 
-                {/* VAT Toggle - Always visible, optional for cashier */}
-                <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
+                  {/* VAT Toggle - Always visible, optional for cashier */}
+                  <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
                   <input
                     type="checkbox"
                     id="vat-toggle"
@@ -1377,8 +1381,8 @@ export function CheckoutPage() {
                   </label>
                 </div>
 
-                {taxEnabled && (
-                  <div className="mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
+                  {taxEnabled && (
+                    <div className="mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
                     <div>
                       <div className="theme-text-secondary text-[11px] sm:text-xs mb-1">
                         VAT rule
@@ -1449,8 +1453,8 @@ export function CheckoutPage() {
                   </div>
                 )}
 
-                {/* Discount Input */}
-                <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
+                  {/* Discount Input */}
+                  <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
                   <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
                     Discount
                   </label>
@@ -1492,7 +1496,7 @@ export function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 sm:space-y-3 border-b border-white/10 pb-3 sm:pb-4">
+                  <div className="space-y-2 sm:space-y-3 border-b border-white/10 pb-3 sm:pb-4">
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="theme-text-secondary">Subtotal</span>
                     <span className="theme-text-primary">
@@ -1517,7 +1521,7 @@ export function CheckoutPage() {
                   )}
                 </div>
 
-                <div className="mt-3 sm:mt-4 mb-4 sm:mb-6 flex justify-between border-t border-white/10 pt-3 sm:pt-4">
+                  <div className="mt-3 sm:mt-4 mb-4 sm:mb-6 flex justify-between border-t border-white/10 pt-3 sm:pt-4">
                   <span className="theme-text-primary text-base sm:text-lg font-semibold">
                     Total
                   </span>
@@ -1526,7 +1530,7 @@ export function CheckoutPage() {
                   </span>
                 </div>
 
-                <div className="space-y-2">
+                  <div className="space-y-2">
                   <button
                     onClick={() => handlePaymentClick("cash")}
                     disabled={cart.length === 0 || isProcessing}
@@ -1574,31 +1578,37 @@ export function CheckoutPage() {
                     Clear Cart
                   </button>
                 )}
-              </div>
+                </div>
+              </aside>
             </div>
           </div>
-        </div>
-      </div>
+        </main>
 
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={paymentModalOpen}
-        method={selectedPaymentMethod}
-        total={total}
-        cart={cart}
-        onClose={() => {
-          setPaymentModalOpen(false);
-          setSelectedPaymentMethod(null);
-        }}
-        onComplete={async (change) => {
-          if (change !== undefined) {
-            setCashChange(change);
+        </div>
+
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          method={selectedPaymentMethod}
+          total={total}
+          cart={cart}
+          customerName={selectedCustomer?.name || customerSearchQuery}
+          customerEmail={selectedCustomer?.email}
+          customerPhone={
+            customerPhoneInput || selectedCustomer?.phone || undefined
           }
-          if (selectedPaymentMethod && selectedPaymentMethod !== "credit") {
-            await handlePayment(selectedPaymentMethod);
-          }
-        }}
-      />
+          onClose={() => {
+            setPaymentModalOpen(false);
+            setSelectedPaymentMethod(null);
+          }}
+          onComplete={async (change) => {
+            if (change !== undefined) {
+              setCashChange(change);
+            }
+            if (selectedPaymentMethod && selectedPaymentMethod !== "credit") {
+              await handlePayment(selectedPaymentMethod);
+            }
+          }}
+        />
 
       {/* Receipt Options Modal */}
       {lastCompletedOrderId && (
