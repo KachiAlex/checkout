@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -59,7 +59,7 @@ export function CreditOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<CreditOrder | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
-  const loadCreditOrders = async () => {
+  const loadCreditOrders = useCallback(async () => {
     if (!accessToken) {
       console.warn("Missing accessToken");
       return;
@@ -90,7 +90,7 @@ export function CreditOrdersPage() {
       console.log("📋 Orders with customerIds:", orderCustomerIds);
 
       // Fetch all users once for lookup
-      let usersMap = new Map();
+      const usersMap = new Map<string, any>();
       try {
         const usersResponse = await axios.get(`${API_URL}/api/v1/users`, {
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -230,11 +230,11 @@ export function CreditOrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
     loadCreditOrders();
-  }, [accessToken]);
+  }, [loadCreditOrders]);
 
   const handleMarkAsPaid = async (orderId: string) => {
     if (!accessToken) return;
@@ -412,7 +412,16 @@ export function CreditOrdersPage() {
                 const isPending =
                   order.paymentStatus === "pending" || !order.paymentStatus;
                 const isPaid = order.paymentStatus === "completed";
-                const isReturned = order.paymentStatus === "refunded";
+                const statusLabel = isPending
+                  ? "Pending"
+                  : isPaid
+                    ? "Paid"
+                    : "Returned";
+                const statusClass = isPending
+                  ? "bg-yellow-500/20 text-yellow-400"
+                  : isPaid
+                    ? "bg-green-500/20 text-green-400"
+                    : "bg-red-500/20 text-red-400";
 
                 return (
                   <div
@@ -427,27 +436,9 @@ export function CreditOrdersPage() {
                             {order.orderNumber}
                           </p>
                           <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              isPending
-                                ? "bg-yellow-500/20 text-yellow-400"
-                                : isPaid
-                                  ? "bg-green-500/20 text-green-400"
-                                  : "bg-red-500/20 text-red-400"
-                            }`}
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}
                           >
-                            {isPending
-                              ? "Pending"
-                              : isPaid
-                                ? "Paid"
-                                : "Returned"}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-3 mt-1 text-sm text-slate-400">
-                          {order.customer && (
-                            <span>Customer: {order.customer.name}</span>
-                          )}
-                          <span>
-                            Total: ₦{(order.totalCents / 100).toFixed(2)}
+                            {statusLabel}
                           </span>
                           <span>Items: {order.items.length}</span>
                           <span>

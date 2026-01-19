@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { BarcodeScanner } from "../components/BarcodeScanner";
 import { ScannerDeviceList } from "../components/ScannerDeviceList";
@@ -8,12 +8,6 @@ import { Link } from "react-router-dom";
 import { API_URL } from "../config";
 import { BrandMark } from "../components/BrandMark";
 import { ThemeToggle } from "../components/ThemeToggle";
-import {
-  formatNumber,
-  formatCurrency,
-  parseFormattedNumber,
-  handleNumberInputChange,
-} from "../utils/numberFormat";
 
 interface InventoryItem {
   id: string;
@@ -33,7 +27,7 @@ interface InventoryItem {
 }
 
 export function InventoryPage() {
-  const { user, logout, accessToken, tenant } = useAuthStore();
+  const { user, logout, accessToken } = useAuthStore();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -52,15 +46,15 @@ export function InventoryPage() {
   const hasMissingProducts = inventory.some((item) => item.isProductMissing);
 
   // Get the effective locationId (user's locationId or first location for tenant)
-  const getEffectiveLocationId = async (): Promise<string | null> => {
+  const getEffectiveLocationId = useCallback(async (): Promise<
+    string | null
+  > => {
     if (!accessToken || !user) return null;
 
-    // If user has locationId, use it
     if (user.locationId) {
       return user.locationId;
     }
 
-    // Otherwise, get first location for tenant
     try {
       const response = await axios.get(`${API_URL}/api/v1/locations`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -74,9 +68,9 @@ export function InventoryPage() {
     }
 
     return null;
-  };
+  }, [accessToken, user]);
 
-  const loadInventory = async () => {
+  const loadInventory = useCallback(async () => {
     if (!accessToken || !user) return;
 
     setLoading(true);
@@ -108,7 +102,7 @@ export function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, user, getEffectiveLocationId]);
 
   const handleScan = async (barcode: string) => {
     if (!accessToken) {
@@ -280,7 +274,7 @@ export function InventoryPage() {
     if (user && accessToken) {
       loadInventory();
     }
-  }, [user?.id, accessToken]);
+  }, [user, accessToken, loadInventory]);
 
   // Auto-refresh when page comes into focus (e.g., after creating inventory elsewhere)
   useEffect(() => {
@@ -303,7 +297,7 @@ export function InventoryPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [user?.id, accessToken]);
+  }, [user, accessToken, loadInventory]);
 
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden">
