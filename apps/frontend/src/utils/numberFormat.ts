@@ -135,7 +135,10 @@ export function handleNumberInputChange(
     const parts = cleaned.split(".");
     const integerPart = parts[0];
     const decimalPart = parts[1] || "";
-    const formattedInteger = formatNumber(parseFormattedNumber(integerPart) || 0, 0);
+    const formattedInteger = formatNumber(
+      parseFormattedNumber(integerPart) || 0,
+      0,
+    );
 
     // Key behavior change:
     // - Do NOT auto-append ".00" while typing an integer.
@@ -146,7 +149,9 @@ export function handleNumberInputChange(
 
     if (cleaned.includes(".")) {
       return {
-        displayValue: decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger,
+        displayValue: decimalPart
+          ? `${formattedInteger}.${decimalPart}`
+          : formattedInteger,
         numericValue,
       };
     }

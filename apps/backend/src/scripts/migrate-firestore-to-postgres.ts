@@ -471,7 +471,13 @@ async function main() {
     const orderOrderNumberById = new Map<string, string>();
     const orderTotalsById = new Map<
       string,
-      { subtotalCents: number; taxCents: number; totalCents: number; tenantId: string; locationId: string }
+      {
+        subtotalCents: number;
+        taxCents: number;
+        totalCents: number;
+        tenantId: string;
+        locationId: string;
+      }
     >();
     for (const doc of ordersSnap.docs) {
       const data = doc.data() as any;
@@ -697,7 +703,9 @@ async function main() {
       const locationId = String(data.locationId ?? orderInfo?.locationId ?? '').trim();
       if (!locationId || !locationIds.has(locationId)) {
         returnsSkipped += 1;
-        console.warn(`Skipping return ${doc.id}: missing/unknown locationId ${locationId || '[missing]'}`);
+        console.warn(
+          `Skipping return ${doc.id}: missing/unknown locationId ${locationId || '[missing]'}`,
+        );
         continue;
       }
 

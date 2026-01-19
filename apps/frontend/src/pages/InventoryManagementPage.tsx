@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { ScannerInput } from "../components/ScannerInput";
 import axios from "axios";
@@ -68,7 +68,13 @@ interface PurchaseOrderItem {
 
 interface PurchaseOrder {
   id: string;
-  status: "draft" | "pending" | "approved" | "partially_received" | "received" | "cancelled";
+  status:
+    | "draft"
+    | "pending"
+    | "approved"
+    | "partially_received"
+    | "received"
+    | "cancelled";
   locationId?: string;
   items: PurchaseOrderItem[];
 }
@@ -79,7 +85,9 @@ export function InventoryManagementPage() {
   const [inventoryTransactions, setInventoryTransactions] = useState<
     InventoryTransaction[]
   >([]);
-  const [incomingByProductId, setIncomingByProductId] = useState<Record<string, number>>({});
+  const [incomingByProductId, setIncomingByProductId] = useState<
+    Record<string, number>
+  >({});
   const [batchInventory, setBatchInventory] = useState<
     Record<string, BatchInventory[]>
   >({});
@@ -119,7 +127,7 @@ export function InventoryManagementPage() {
     Array<{ id: string; name: string }>
   >([]);
 
-  const loadInventoryStock = async () => {
+  const loadInventoryStock = useCallback(async () => {
     if (!accessToken || !user) return;
 
     const locationId = user.locationId;
@@ -162,9 +170,9 @@ export function InventoryManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, user]);
 
-  const loadInventoryTransactions = async () => {
+  const loadInventoryTransactions = useCallback(async () => {
     if (!accessToken || !user?.locationId) return;
 
     try {
@@ -176,15 +184,18 @@ export function InventoryManagementPage() {
     } catch (error: any) {
       console.error("Failed to load transactions:", error);
     }
-  };
+  }, [accessToken, user?.locationId]);
 
-  const loadIncomingPurchaseOrders = async () => {
+  const loadIncomingPurchaseOrders = useCallback(async () => {
     if (!accessToken || !user?.locationId) return;
 
     try {
-      const response = await axios.get<PurchaseOrder[]>(`${API_URL}/api/v1/purchase-orders`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const response = await axios.get<PurchaseOrder[]>(
+        `${API_URL}/api/v1/purchase-orders`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
 
       const list = response.data || [];
       const forLocation = list.filter(
@@ -193,7 +204,10 @@ export function InventoryManagementPage() {
 
       const incoming: Record<string, number> = {};
       forLocation
-        .filter((po) => po.status === "approved" || po.status === "partially_received")
+        .filter(
+          (po) =>
+            po.status === "approved" || po.status === "partially_received",
+        )
         .forEach((po) => {
           (po.items || []).forEach((it) => {
             const ordered = Number(it.quantity || 0);
@@ -209,9 +223,9 @@ export function InventoryManagementPage() {
       console.error("Failed to load incoming purchase orders:", error);
       setIncomingByProductId({});
     }
-  };
+  }, [accessToken, user?.locationId]);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/categories`, {
@@ -224,9 +238,9 @@ export function InventoryManagementPage() {
         toast.error("Failed to load categories");
       }
     }
-  };
+  }, [accessToken]);
 
-  const loadBrands = async () => {
+  const loadBrands = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/brands`, {
@@ -239,9 +253,9 @@ export function InventoryManagementPage() {
         toast.error("Failed to load brands");
       }
     }
-  };
+  }, [accessToken]);
 
-  const loadSuppliers = async () => {
+  const loadSuppliers = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/suppliers`, {
@@ -254,7 +268,7 @@ export function InventoryManagementPage() {
         toast.error("Failed to load suppliers");
       }
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
     if (user && user.locationId && accessToken) {
@@ -265,7 +279,16 @@ export function InventoryManagementPage() {
       loadBrands();
       loadSuppliers();
     }
-  }, [user, accessToken]);
+  }, [
+    user,
+    accessToken,
+    loadInventoryStock,
+    loadInventoryTransactions,
+    loadIncomingPurchaseOrders,
+    loadCategories,
+    loadBrands,
+    loadSuppliers,
+  ]);
 
   const handleScan = async (barcode: string) => {
     // Pre-fill barcode in form

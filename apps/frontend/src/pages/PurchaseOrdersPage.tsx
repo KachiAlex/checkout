@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -60,7 +60,9 @@ export function PurchaseOrdersPage() {
   const { logout, accessToken, user } = useAuthStore();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [deletingSupplierId, setDeletingSupplierId] = useState<string | null>(null);
+  const [deletingSupplierId, setDeletingSupplierId] = useState<string | null>(
+    null,
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -103,7 +105,7 @@ export function PurchaseOrdersPage() {
     priceCents: 0,
   });
 
-  const loadPurchaseOrders = async () => {
+  const loadPurchaseOrders = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -119,9 +121,9 @@ export function PurchaseOrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
 
-  const loadSuppliers = async () => {
+  const loadSuppliers = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/suppliers`, {
@@ -131,18 +133,25 @@ export function PurchaseOrdersPage() {
     } catch (error: any) {
       console.error("Failed to load suppliers:", error);
     }
-  };
+  }, [accessToken]);
 
   const handleDeleteSupplier = async (supplierId: string) => {
     if (!accessToken) return;
-    if (!confirm("Remove this supplier? They will no longer appear in the dropdown.")) return;
+    if (
+      !confirm(
+        "Remove this supplier? They will no longer appear in the dropdown.",
+      )
+    )
+      return;
     setDeletingSupplierId(supplierId);
     try {
       await axios.delete(`${API_URL}/api/v1/suppliers/${supplierId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       toast.success("Supplier removed");
-      setSuppliers((prev) => prev.filter((supplier) => supplier.id !== supplierId));
+      setSuppliers((prev) =>
+        prev.filter((supplier) => supplier.id !== supplierId),
+      );
       if (formData.supplierId === supplierId) {
         setFormData({ ...formData, supplierId: "" });
       }
@@ -154,7 +163,7 @@ export function PurchaseOrdersPage() {
     }
   };
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/products`, {
@@ -164,7 +173,7 @@ export function PurchaseOrdersPage() {
     } catch (error: any) {
       console.error("Failed to load products:", error);
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
     if (accessToken) {
@@ -172,7 +181,7 @@ export function PurchaseOrdersPage() {
       loadSuppliers();
       loadProducts();
     }
-  }, [accessToken]);
+  }, [accessToken, loadPurchaseOrders, loadSuppliers, loadProducts]);
 
   const calculateTotals = (items: typeof formData.items) => {
     const subtotal = items.reduce((sum, item) => sum + item.totalCostCents, 0);
@@ -544,7 +553,9 @@ export function PurchaseOrdersPage() {
                     </span>
                     <div className="max-h-32 overflow-y-auto rounded-xl border border-white/10 p-2 space-y-1">
                       {suppliers.length === 0 ? (
-                        <p className="text-xs text-white/40">No suppliers yet</p>
+                        <p className="text-xs text-white/40">
+                          No suppliers yet
+                        </p>
                       ) : (
                         suppliers.map((supplier) => (
                           <div

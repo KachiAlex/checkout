@@ -5,20 +5,24 @@ This POS system supports multiple types of barcode and QR code scanners:
 ## Supported Scanner Types
 
 ### 1. USB HID Keyboard Scanners (Most Common)
+
 **How it works:** Scanners that act as USB keyboards - they type the barcode when scanned.
 
 **Setup:**
+
 - Simply plug in the USB scanner
 - Make sure the scanner is in "HID Keyboard" mode (most default)
 - The scanner input field will automatically detect rapid input
 - No additional configuration needed!
 
 **Features:**
+
 - Auto-detects rapid input (scanner vs manual typing)
 - Automatically processes barcode after 150ms of no input
 - Works immediately after connection
 
 **Common Brands:**
+
 - Symbol/Zebra scanners
 - Honeywell scanners
 - Generic USB barcode scanners
@@ -27,15 +31,18 @@ This POS system supports multiple types of barcode and QR code scanners:
 ---
 
 ### 2. Bluetooth HID Scanners
+
 **How it works:** Wireless scanners that also act as keyboards via Bluetooth.
 
 **Setup:**
+
 1. Make sure your scanner is in pairing mode
 2. In the POS app, click the **"📡 Bluetooth"** button
 3. Select your scanner from the Bluetooth device list
 4. Once paired, it works just like a USB scanner
 
 **Requirements:**
+
 - Chrome/Edge browser (desktop or Android)
 - Web Bluetooth API support
 - Scanner must support HID profile
@@ -45,20 +52,24 @@ This POS system supports multiple types of barcode and QR code scanners:
 ---
 
 ### 3. Camera-Based QR Code Scanning
+
 **How it works:** Uses your device's camera to scan QR codes and barcodes.
 
 **Setup:**
+
 1. Click the **"📷 Camera"** button in the scanner interface
 2. Allow camera access when prompted
 3. Point the camera at a QR code or barcode
 4. The code will be automatically detected and processed
 
 **Features:**
+
 - Works with any device that has a camera
 - Supports QR codes and many barcode formats
 - Real-time scanning with visual feedback
 
 **Best For:**
+
 - QR code payments
 - Customer mobile QR codes
 - Quick inventory checks with phone camera
@@ -70,18 +81,21 @@ This POS system supports multiple types of barcode and QR code scanners:
 The scanner component has three modes:
 
 ### Keyboard Mode (Default)
+
 - **For:** USB and Bluetooth HID scanners
 - **Input:** Scanners type characters automatically
 - **Auto-detect:** Detects rapid input and processes automatically
 - **Manual:** Can also type barcode and press Enter
 
 ### Camera Mode
+
 - **For:** QR codes and barcodes via camera
 - **Activation:** Click "Camera" button
 - **Usage:** Point camera at code
 - **Stop:** Click "Stop Camera" button
 
 ### Bluetooth Mode
+
 - **For:** Pairing Bluetooth scanners
 - **Activation:** Click "Bluetooth" button
 - **Once paired:** Works in keyboard mode
@@ -149,10 +163,12 @@ The scanner component has three modes:
 ## Scanner Configuration
 
 The scanner auto-detects input speed:
+
 - **Fast input** (< 100ms between characters) = Scanner input
 - **Slow input** (> 100ms between characters) = Manual typing
 
 Auto-scan triggers after 150ms of no input when:
+
 - Input length >= 4 characters
 - Input is not empty
 
@@ -210,9 +226,9 @@ Auto-scan triggers after 150ms of no input when:
 ## Need Help?
 
 If your scanner isn't working:
+
 1. Check this guide first
 2. Verify scanner is in HID mode
 3. Test scanner in a text editor
 4. Check browser console for errors
 5. Contact support with scanner model and browser details
-

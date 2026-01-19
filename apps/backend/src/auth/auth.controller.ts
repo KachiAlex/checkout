@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
+import { EmailLoginDto } from './dto/email-login.dto';
 import { VerifyManagerDto } from './dto/verify-manager.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UserRole } from '@pos-checkout/shared';
@@ -46,6 +47,30 @@ export class AuthController {
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async superAdminLogin(@Body() loginDto: SuperAdminLoginDto) {
     return this.authService.loginSuperAdmin(loginDto);
+  }
+
+  @Post('login/email')
+  @ApiOperation({ summary: 'Login with email and PIN (tenant users)' })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  async loginWithEmail(@Body() loginDto: EmailLoginDto) {
+    console.log('[Auth Controller] Email login request received:', {
+      email: loginDto.email,
+      hasPin: !!loginDto.pin,
+      deviceId: loginDto.deviceId,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      return await this.authService.loginByEmail(loginDto);
+    } catch (error) {
+      console.error('[Auth Controller] Email login failed:', {
+        email: loginDto.email,
+        error: (error as any)?.message,
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
   }
 
   @Post('verify-manager')

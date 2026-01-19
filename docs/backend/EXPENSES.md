@@ -37,12 +37,14 @@ Base route: `POST/GET /admin/expenses`
 ## Core logic (ExpensesService)
 
 ### createExpense
+
 1. Rejects `PaymentMethod.CREDIT`; expenses must be paid with immediate methods (cash/bank).@apps/backend/src/expenses/expenses.service.ts#19-27
 2. Validates `occurredAt` ISO string.
 3. Persists via `expensesRepository.create`, storing metadata about source + creator.
 4. Determines accounting event type (`EXPENSE_CASH` vs `EXPENSE_BANK`) based on payment method and calls `AccountingService.postSaleJournal` with `JournalSource.EXPENSE`.@apps/backend/src/expenses/expenses.service.ts#33-67
 
 ### listExpenses
+
 - Parses optional `from`/`to` dates and calls repository `list`, which filters by tenant, location, and occurredAt interval (ordered desc).@apps/backend/src/expenses/expenses.service.ts#69-90
 
 ## Persistence (ExpensesRepository)

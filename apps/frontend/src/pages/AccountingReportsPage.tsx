@@ -4,7 +4,10 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
-import { accountingService, AccountingAccount } from "../services/accountingService";
+import {
+  accountingService,
+  AccountingAccount,
+} from "../services/accountingService";
 import { API_URL } from "../config";
 import { BrandMark } from "../components/BrandMark";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -59,9 +62,9 @@ export function AccountingReportsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("trial-balance");
   const [loading, setLoading] = useState(false);
 
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>(
-    [],
-  );
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [locationId, setLocationId] = useState<string | "">(
     user?.locationId || "",
   );
@@ -69,7 +72,10 @@ export function AccountingReportsPage() {
   const [accounts, setAccounts] = useState<AccountingAccount[]>([]);
   const [accountId, setAccountId] = useState<string>("");
 
-  const [dateRange, setDateRange] = useState({ from: getTodayDate(), to: getTodayDate() });
+  const [dateRange, setDateRange] = useState({
+    from: getTodayDate(),
+    to: getTodayDate(),
+  });
   const [asOf, setAsOf] = useState(getTodayDate());
 
   const [data, setData] = useState<any>(null);
@@ -182,9 +188,7 @@ export function AccountingReportsPage() {
       const status = error?.response?.status;
       const responseData = error?.response?.data;
       const message =
-        responseData?.message ||
-        error?.message ||
-        "Failed to run report";
+        responseData?.message || error?.message || "Failed to run report";
 
       // The backend can include extra error details when x-e2e-debug=1 is sent.
       // We log those details for diagnostics, but keep the user-facing toast concise.
@@ -201,7 +205,15 @@ export function AccountingReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [canView, activeTab, locationId, accountId, dateRange.from, dateRange.to, asOf]);
+  }, [
+    canView,
+    activeTab,
+    locationId,
+    accountId,
+    dateRange.from,
+    dateRange.to,
+    asOf,
+  ]);
 
   useEffect(() => {
     if (!canView) return;
@@ -269,7 +281,9 @@ export function AccountingReportsPage() {
               </select>
             </div>
 
-            {(activeTab === "general-ledger" || activeTab === "trial-balance" || activeTab === "profit-loss") && (
+            {(activeTab === "general-ledger" ||
+              activeTab === "trial-balance" ||
+              activeTab === "profit-loss") && (
               <>
                 <div>
                   <label className="theme-text-secondary mb-2 block text-sm font-medium">
@@ -278,7 +292,9 @@ export function AccountingReportsPage() {
                   <input
                     type="date"
                     value={dateRange.from}
-                    onChange={(e) => setDateRange((s) => ({ ...s, from: e.target.value }))}
+                    onChange={(e) =>
+                      setDateRange((s) => ({ ...s, from: e.target.value }))
+                    }
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
                 </div>
@@ -289,7 +305,9 @@ export function AccountingReportsPage() {
                   <input
                     type="date"
                     value={dateRange.to}
-                    onChange={(e) => setDateRange((s) => ({ ...s, to: e.target.value }))}
+                    onChange={(e) =>
+                      setDateRange((s) => ({ ...s, to: e.target.value }))
+                    }
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
                 </div>
@@ -352,8 +370,12 @@ export function AccountingReportsPage() {
           {!data ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">📄</div>
-              <p className="theme-text-primary text-sm font-semibold mb-1">No data yet</p>
-              <p className="theme-text-secondary text-xs">Run a report to see results.</p>
+              <p className="theme-text-primary text-sm font-semibold mb-1">
+                No data yet
+              </p>
+              <p className="theme-text-secondary text-xs">
+                Run a report to see results.
+              </p>
             </div>
           ) : (
             (() => {
@@ -367,11 +389,21 @@ export function AccountingReportsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <div className="theme-text-primary text-sm font-semibold">
-                          {account ? `${account.code} — ${account.name}` : "General Ledger"}
+                          {account
+                            ? `${account.code} — ${account.name}`
+                            : "General Ledger"}
                         </div>
                         <div className="theme-text-secondary text-xs">
-                          Opening: {formatMoney((data as any)?.openingBalanceCents || 0, currency)} · Closing:{" "}
-                          {formatMoney((data as any)?.closingBalanceCents || 0, currency)}
+                          Opening:{" "}
+                          {formatMoney(
+                            (data as any)?.openingBalanceCents || 0,
+                            currency,
+                          )}{" "}
+                          · Closing:{" "}
+                          {formatMoney(
+                            (data as any)?.closingBalanceCents || 0,
+                            currency,
+                          )}
                         </div>
                       </div>
                       <div className="theme-text-secondary text-xs">
@@ -382,8 +414,12 @@ export function AccountingReportsPage() {
                     {rows.length === 0 ? (
                       <div className="text-center py-10">
                         <div className="text-4xl mb-3">🗂️</div>
-                        <p className="theme-text-primary text-sm font-semibold mb-1">No ledger entries found</p>
-                        <p className="theme-text-secondary text-xs">Try a wider date range or another account.</p>
+                        <p className="theme-text-primary text-sm font-semibold mb-1">
+                          No ledger entries found
+                        </p>
+                        <p className="theme-text-secondary text-xs">
+                          Try a wider date range or another account.
+                        </p>
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -400,21 +436,35 @@ export function AccountingReportsPage() {
                           </thead>
                           <tbody>
                             {rows.map((r: any) => (
-                              <tr key={r.journalEntryId + ":" + (r.description || "") + ":" + (r.postedAt || "")} className="border-b border-white/5">
+                              <tr
+                                key={
+                                  r.journalEntryId +
+                                  ":" +
+                                  (r.description || "") +
+                                  ":" +
+                                  (r.postedAt || "")
+                                }
+                                className="border-b border-white/5"
+                              >
                                 <td className="py-2 pr-4 theme-text-primary whitespace-nowrap">
                                   {formatDateTime(r.postedAt)}
                                 </td>
                                 <td className="py-2 pr-4 theme-text-secondary whitespace-nowrap">
-                                  {r.source}{r.reference ? ` · ${r.reference}` : ""}
+                                  {r.source}
+                                  {r.reference ? ` · ${r.reference}` : ""}
                                 </td>
                                 <td className="py-2 pr-4 theme-text-primary min-w-[240px]">
                                   {r.description || r.memo || "-"}
                                 </td>
                                 <td className="py-2 pr-4 text-right theme-text-primary whitespace-nowrap">
-                                  {r.debitCents ? formatMoney(r.debitCents, currency) : "-"}
+                                  {r.debitCents
+                                    ? formatMoney(r.debitCents, currency)
+                                    : "-"}
                                 </td>
                                 <td className="py-2 pr-4 text-right theme-text-primary whitespace-nowrap">
-                                  {r.creditCents ? formatMoney(r.creditCents, currency) : "-"}
+                                  {r.creditCents
+                                    ? formatMoney(r.creditCents, currency)
+                                    : "-"}
                                 </td>
                                 <td className="py-2 text-right theme-text-primary whitespace-nowrap">
                                   {formatMoney(r.balanceCents || 0, currency)}
@@ -461,7 +511,10 @@ export function AccountingReportsPage() {
                         </div>
                         {period ? (
                           <div className="theme-text-secondary text-xs">
-                            Status: <span className="theme-text-primary">{period.status}</span>
+                            Status:{" "}
+                            <span className="theme-text-primary">
+                              {period.status}
+                            </span>
                             {period.paymentReference
                               ? ` · Payment ref: ${period.paymentReference}`
                               : ""}
@@ -481,19 +534,25 @@ export function AccountingReportsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="theme-chip rounded-xl border p-3">
-                        <div className="theme-text-secondary text-xs">VAT collected</div>
+                        <div className="theme-text-secondary text-xs">
+                          VAT collected
+                        </div>
                         <div className="theme-text-primary text-base font-semibold">
                           {formatMoney(totals.collectedCents || 0, currency)}
                         </div>
                       </div>
                       <div className="theme-chip rounded-xl border p-3">
-                        <div className="theme-text-secondary text-xs">VAT reversed (refunds)</div>
+                        <div className="theme-text-secondary text-xs">
+                          VAT reversed (refunds)
+                        </div>
                         <div className="theme-text-primary text-base font-semibold">
                           {formatMoney(totals.reversedCents || 0, currency)}
                         </div>
                       </div>
                       <div className="theme-chip rounded-xl border p-3">
-                        <div className="theme-text-secondary text-xs">Net VAT payable</div>
+                        <div className="theme-text-secondary text-xs">
+                          Net VAT payable
+                        </div>
                         <div className="theme-text-primary text-base font-semibold">
                           {formatMoney(totals.netPayableCents || 0, currency)}
                         </div>
@@ -504,16 +563,27 @@ export function AccountingReportsPage() {
                       <table className="w-full text-left text-xs sm:text-sm">
                         <thead>
                           <tr className="border-b border-white/10">
-                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Rule</th>
-                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Collected</th>
-                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Reversed</th>
-                            <th className="py-2 pr-4 theme-text-secondary font-semibold">Net</th>
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">
+                              Rule
+                            </th>
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">
+                              Collected
+                            </th>
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">
+                              Reversed
+                            </th>
+                            <th className="py-2 pr-4 theme-text-secondary font-semibold">
+                              Net
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {breakdown.length === 0 ? (
                             <tr>
-                              <td className="py-4 theme-text-secondary" colSpan={4}>
+                              <td
+                                className="py-4 theme-text-secondary"
+                                colSpan={4}
+                              >
                                 No VAT activity for the selected period.
                               </td>
                             </tr>
@@ -538,7 +608,10 @@ export function AccountingReportsPage() {
                                   {formatMoney(r.reversedCents || 0, currency)}
                                 </td>
                                 <td className="py-2 pr-4 theme-text-primary whitespace-nowrap">
-                                  {formatMoney(r.netPayableCents || 0, currency)}
+                                  {formatMoney(
+                                    r.netPayableCents || 0,
+                                    currency,
+                                  )}
                                 </td>
                               </tr>
                             ))
@@ -552,22 +625,32 @@ export function AccountingReportsPage() {
 
               if (activeTab === "trial-balance") {
                 const rows = (data as any)?.rows || [];
-                const totals = (data as any)?.totals || { debitCents: 0, creditCents: 0 };
+                const totals = (data as any)?.totals || {
+                  debitCents: 0,
+                  creditCents: 0,
+                };
                 return (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="theme-text-primary text-sm font-semibold">Trial Balance</div>
+                      <div className="theme-text-primary text-sm font-semibold">
+                        Trial Balance
+                      </div>
                       <div className="theme-text-secondary text-xs">
-                        Total Debit: {formatMoney(totals.debitCents || 0, currency)} · Total Credit:{" "}
-                        {formatMoney(totals.creditCents || 0, currency)}
+                        Total Debit:{" "}
+                        {formatMoney(totals.debitCents || 0, currency)} · Total
+                        Credit: {formatMoney(totals.creditCents || 0, currency)}
                       </div>
                     </div>
 
                     {rows.length === 0 ? (
                       <div className="text-center py-10">
                         <div className="text-4xl mb-3">🧮</div>
-                        <p className="theme-text-primary text-sm font-semibold mb-1">No balances found</p>
-                        <p className="theme-text-secondary text-xs">No journal activity in this period.</p>
+                        <p className="theme-text-primary text-sm font-semibold mb-1">
+                          No balances found
+                        </p>
+                        <p className="theme-text-secondary text-xs">
+                          No journal activity in this period.
+                        </p>
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -582,21 +665,32 @@ export function AccountingReportsPage() {
                           </thead>
                           <tbody>
                             {rows.map((r: any) => (
-                              <tr key={r.accountId} className="border-b border-white/5">
+                              <tr
+                                key={r.accountId}
+                                className="border-b border-white/5"
+                              >
                                 <td className="py-2 pr-4 theme-text-primary">
                                   {r.code} — {r.name}
                                 </td>
-                                <td className="py-2 pr-4 theme-text-secondary">{r.type}</td>
+                                <td className="py-2 pr-4 theme-text-secondary">
+                                  {r.type}
+                                </td>
                                 <td className="py-2 pr-4 text-right theme-text-primary whitespace-nowrap">
-                                  {r.debitCents ? formatMoney(r.debitCents, currency) : "-"}
+                                  {r.debitCents
+                                    ? formatMoney(r.debitCents, currency)
+                                    : "-"}
                                 </td>
                                 <td className="py-2 text-right theme-text-primary whitespace-nowrap">
-                                  {r.creditCents ? formatMoney(r.creditCents, currency) : "-"}
+                                  {r.creditCents
+                                    ? formatMoney(r.creditCents, currency)
+                                    : "-"}
                                 </td>
                               </tr>
                             ))}
                             <tr className="border-t border-white/10">
-                              <td className="py-3 pr-4 theme-text-primary font-semibold">Totals</td>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                Totals
+                              </td>
                               <td />
                               <td className="py-3 pr-4 text-right theme-text-primary font-semibold whitespace-nowrap">
                                 {formatMoney(totals.debitCents || 0, currency)}
@@ -624,15 +718,21 @@ export function AccountingReportsPage() {
 
                 const totalRevenueCents = revenue?.totalCents || 0;
                 const totalContraRevenueCents = contraRevenue?.totalCents || 0;
-                const netRevenueCents = totalRevenueCents - totalContraRevenueCents;
+                const netRevenueCents =
+                  totalRevenueCents - totalContraRevenueCents;
                 const totalExpensesCents = expenses?.totalCents || 0;
 
-                const isEmpty = revenueRows.length === 0 && contraRows.length === 0 && expenseRows.length === 0;
+                const isEmpty =
+                  revenueRows.length === 0 &&
+                  contraRows.length === 0 &&
+                  expenseRows.length === 0;
 
                 return (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <div className="theme-text-primary text-sm font-semibold">Profit &amp; Loss</div>
+                      <div className="theme-text-primary text-sm font-semibold">
+                        Profit &amp; Loss
+                      </div>
                       <div className="theme-text-secondary text-xs">
                         Net Income: {formatMoney(netIncomeCents, currency)}
                       </div>
@@ -641,13 +741,19 @@ export function AccountingReportsPage() {
                     {isEmpty ? (
                       <div className="text-center py-10">
                         <div className="text-4xl mb-3">📈</div>
-                        <p className="theme-text-primary text-sm font-semibold mb-1">No income or expenses found</p>
-                        <p className="theme-text-secondary text-xs">No journal activity in this period.</p>
+                        <p className="theme-text-primary text-sm font-semibold mb-1">
+                          No income or expenses found
+                        </p>
+                        <p className="theme-text-secondary text-xs">
+                          No journal activity in this period.
+                        </p>
                       </div>
                     ) : (
                       <div className="grid gap-4">
                         <div className="overflow-x-auto">
-                          <div className="theme-text-primary text-sm font-semibold mb-2">Revenue</div>
+                          <div className="theme-text-primary text-sm font-semibold mb-2">
+                            Revenue
+                          </div>
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
@@ -657,7 +763,10 @@ export function AccountingReportsPage() {
                             </thead>
                             <tbody>
                               {revenueRows.map((r: any) => (
-                                <tr key={r.accountId} className="border-b border-white/5">
+                                <tr
+                                  key={r.accountId}
+                                  className="border-b border-white/5"
+                                >
                                   <td className="py-2 pr-4 theme-text-primary">
                                     {r.code} — {r.name}
                                   </td>
@@ -667,7 +776,9 @@ export function AccountingReportsPage() {
                                 </tr>
                               ))}
                               <tr className="border-t border-white/10">
-                                <td className="py-3 pr-4 theme-text-primary font-semibold">Total Revenue</td>
+                                <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                  Total Revenue
+                                </td>
                                 <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
                                   {formatMoney(totalRevenueCents, currency)}
                                 </td>
@@ -677,7 +788,9 @@ export function AccountingReportsPage() {
                         </div>
 
                         <div className="overflow-x-auto">
-                          <div className="theme-text-primary text-sm font-semibold mb-2">Contra Revenue</div>
+                          <div className="theme-text-primary text-sm font-semibold mb-2">
+                            Contra Revenue
+                          </div>
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
@@ -687,7 +800,10 @@ export function AccountingReportsPage() {
                             </thead>
                             <tbody>
                               {contraRows.map((r: any) => (
-                                <tr key={r.accountId} className="border-b border-white/5">
+                                <tr
+                                  key={r.accountId}
+                                  className="border-b border-white/5"
+                                >
                                   <td className="py-2 pr-4 theme-text-primary">
                                     {r.code} — {r.name}
                                   </td>
@@ -697,9 +813,14 @@ export function AccountingReportsPage() {
                                 </tr>
                               ))}
                               <tr className="border-t border-white/10">
-                                <td className="py-3 pr-4 theme-text-primary font-semibold">Total Contra Revenue</td>
+                                <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                  Total Contra Revenue
+                                </td>
                                 <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
-                                  {formatMoney(totalContraRevenueCents, currency)}
+                                  {formatMoney(
+                                    totalContraRevenueCents,
+                                    currency,
+                                  )}
                                 </td>
                               </tr>
                             </tbody>
@@ -707,7 +828,9 @@ export function AccountingReportsPage() {
                         </div>
 
                         <div className="overflow-x-auto">
-                          <div className="theme-text-primary text-sm font-semibold mb-2">Expenses</div>
+                          <div className="theme-text-primary text-sm font-semibold mb-2">
+                            Expenses
+                          </div>
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
@@ -717,7 +840,10 @@ export function AccountingReportsPage() {
                             </thead>
                             <tbody>
                               {expenseRows.map((r: any) => (
-                                <tr key={r.accountId} className="border-b border-white/5">
+                                <tr
+                                  key={r.accountId}
+                                  className="border-b border-white/5"
+                                >
                                   <td className="py-2 pr-4 theme-text-primary">
                                     {r.code} — {r.name}
                                   </td>
@@ -727,7 +853,9 @@ export function AccountingReportsPage() {
                                 </tr>
                               ))}
                               <tr className="border-t border-white/10">
-                                <td className="py-3 pr-4 theme-text-primary font-semibold">Total Expenses</td>
+                                <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                  Total Expenses
+                                </td>
                                 <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
                                   {formatMoney(totalExpensesCents, currency)}
                                 </td>
@@ -738,13 +866,17 @@ export function AccountingReportsPage() {
 
                         <div className="grid sm:grid-cols-2 gap-3">
                           <div className="theme-surface rounded-xl border p-4">
-                            <div className="theme-text-secondary text-xs">Net Revenue</div>
+                            <div className="theme-text-secondary text-xs">
+                              Net Revenue
+                            </div>
                             <div className="theme-text-primary text-lg font-semibold">
                               {formatMoney(netRevenueCents, currency)}
                             </div>
                           </div>
                           <div className="theme-surface rounded-xl border p-4">
-                            <div className="theme-text-secondary text-xs">Net Income</div>
+                            <div className="theme-text-secondary text-xs">
+                              Net Income
+                            </div>
                             <div className="theme-text-primary text-lg font-semibold">
                               {formatMoney(netIncomeCents, currency)}
                             </div>
@@ -763,12 +895,16 @@ export function AccountingReportsPage() {
               const liabilityRows = liabilities?.rows || [];
               const equityRows = equity?.rows || [];
               const isEmpty =
-                assetsRows.length === 0 && liabilityRows.length === 0 && equityRows.length === 0;
+                assetsRows.length === 0 &&
+                liabilityRows.length === 0 &&
+                equityRows.length === 0;
 
               return (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="theme-text-primary text-sm font-semibold">Balance Sheet</div>
+                    <div className="theme-text-primary text-sm font-semibold">
+                      Balance Sheet
+                    </div>
                     <div className="theme-text-secondary text-xs">
                       {(data as any)?.isBalanced
                         ? "Balanced"
@@ -779,13 +915,19 @@ export function AccountingReportsPage() {
                   {isEmpty ? (
                     <div className="text-center py-10">
                       <div className="text-4xl mb-3">🏦</div>
-                      <p className="theme-text-primary text-sm font-semibold mb-1">No balances found</p>
-                      <p className="theme-text-secondary text-xs">No journal activity as of this date.</p>
+                      <p className="theme-text-primary text-sm font-semibold mb-1">
+                        No balances found
+                      </p>
+                      <p className="theme-text-secondary text-xs">
+                        No journal activity as of this date.
+                      </p>
                     </div>
                   ) : (
                     <div className="grid gap-6">
                       <div className="overflow-x-auto">
-                        <div className="theme-text-primary text-sm font-semibold mb-2">Assets</div>
+                        <div className="theme-text-primary text-sm font-semibold mb-2">
+                          Assets
+                        </div>
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
@@ -795,7 +937,10 @@ export function AccountingReportsPage() {
                           </thead>
                           <tbody>
                             {assetsRows.map((r: any) => (
-                              <tr key={r.accountId} className="border-b border-white/5">
+                              <tr
+                                key={r.accountId}
+                                className="border-b border-white/5"
+                              >
                                 <td className="py-2 pr-4 theme-text-primary">
                                   {r.code} — {r.name}
                                 </td>
@@ -805,7 +950,9 @@ export function AccountingReportsPage() {
                               </tr>
                             ))}
                             <tr className="border-t border-white/10">
-                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Assets</td>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                Total Assets
+                              </td>
                               <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
                                 {formatMoney(assets?.totalCents || 0, currency)}
                               </td>
@@ -815,7 +962,9 @@ export function AccountingReportsPage() {
                       </div>
 
                       <div className="overflow-x-auto">
-                        <div className="theme-text-primary text-sm font-semibold mb-2">Liabilities</div>
+                        <div className="theme-text-primary text-sm font-semibold mb-2">
+                          Liabilities
+                        </div>
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
@@ -825,7 +974,10 @@ export function AccountingReportsPage() {
                           </thead>
                           <tbody>
                             {liabilityRows.map((r: any) => (
-                              <tr key={r.accountId} className="border-b border-white/5">
+                              <tr
+                                key={r.accountId}
+                                className="border-b border-white/5"
+                              >
                                 <td className="py-2 pr-4 theme-text-primary">
                                   {r.code} — {r.name}
                                 </td>
@@ -835,9 +987,14 @@ export function AccountingReportsPage() {
                               </tr>
                             ))}
                             <tr className="border-t border-white/10">
-                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Liabilities</td>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                Total Liabilities
+                              </td>
                               <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
-                                {formatMoney(liabilities?.totalCents || 0, currency)}
+                                {formatMoney(
+                                  liabilities?.totalCents || 0,
+                                  currency,
+                                )}
                               </td>
                             </tr>
                           </tbody>
@@ -845,7 +1002,9 @@ export function AccountingReportsPage() {
                       </div>
 
                       <div className="overflow-x-auto">
-                        <div className="theme-text-primary text-sm font-semibold mb-2">Equity</div>
+                        <div className="theme-text-primary text-sm font-semibold mb-2">
+                          Equity
+                        </div>
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left theme-text-secondary text-xs border-b border-white/10">
@@ -855,7 +1014,10 @@ export function AccountingReportsPage() {
                           </thead>
                           <tbody>
                             {equityRows.map((r: any) => (
-                              <tr key={r.accountId} className="border-b border-white/5">
+                              <tr
+                                key={r.accountId}
+                                className="border-b border-white/5"
+                              >
                                 <td className="py-2 pr-4 theme-text-primary">
                                   {r.code} — {r.name}
                                 </td>
@@ -865,21 +1027,33 @@ export function AccountingReportsPage() {
                               </tr>
                             ))}
                             <tr className="border-t border-white/10">
-                              <td className="py-3 pr-4 theme-text-primary font-semibold">Net Income</td>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                Net Income
+                              </td>
                               <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
-                                {formatMoney(equity?.netIncomeCents || 0, currency)}
+                                {formatMoney(
+                                  equity?.netIncomeCents || 0,
+                                  currency,
+                                )}
                               </td>
                             </tr>
                             <tr>
-                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Equity</td>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                Total Equity
+                              </td>
                               <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
                                 {formatMoney(equity?.totalCents || 0, currency)}
                               </td>
                             </tr>
                             <tr>
-                              <td className="py-3 pr-4 theme-text-primary font-semibold">Total Equity + Net Income</td>
+                              <td className="py-3 pr-4 theme-text-primary font-semibold">
+                                Total Equity + Net Income
+                              </td>
                               <td className="py-3 text-right theme-text-primary font-semibold whitespace-nowrap">
-                                {formatMoney(equity?.totalWithNetIncomeCents || 0, currency)}
+                                {formatMoney(
+                                  equity?.totalWithNetIncomeCents || 0,
+                                  currency,
+                                )}
                               </td>
                             </tr>
                           </tbody>

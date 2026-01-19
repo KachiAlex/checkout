@@ -44,4 +44,3 @@ For questions or support, contact us at hello@checkouthq.com
 ---
 
 **Thank you for choosing Checkout POS!**
-

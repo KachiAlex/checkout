@@ -1,1 +1,529 @@
-import{a as e,r as t,j as s,e as a,A as r,n as o}from"./index-DBPtFCNR.js";import{f as d}from"./format-CiGwivc0.js";function n(){const{accessToken:n}=e(),[l,i]=t.useState([]),[m,c]=t.useState(!1),[h,x]=t.useState(!1),[u,p]=t.useState(null),[b,f]=t.useState(""),[y,g]=t.useState({name:"",phone:"",email:"",preferredPaymentMethod:"",dateOfBirth:"",address:"",notes:""}),j=async()=>{if(n){c(!0);try{const e=b?{search:b}:{},t=await a.get(`${r}/api/v1/customers`,{headers:{Authorization:`Bearer ${n}`},params:e});i(t.data||[])}catch(e){401!==e.response?.status&&o.error("Failed to load customers")}finally{c(!1)}}};t.useEffect(()=>{j()},[n,b]);return s.jsx("div",{className:"theme-background min-h-screen w-full overflow-x-hidden page-with-nav",children:s.jsxs("div",{className:"relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10",children:[s.jsxs("div",{className:"flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4",children:[s.jsxs("div",{className:"min-w-0 flex-1",children:[s.jsx("h1",{className:"theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold",children:"Customers"}),s.jsx("p",{className:"theme-text-secondary mt-1 text-xs sm:text-sm",children:"Manage customer profiles and loyalty"})]}),s.jsx("button",{onClick:()=>{p(null),g({name:"",phone:"",email:"",preferredPaymentMethod:"",dateOfBirth:"",address:"",notes:""}),x(!0)},className:"rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm lg:text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70 touch-manipulation w-full sm:w-auto",children:"+ Add Customer"})]}),s.jsx("div",{className:"theme-card rounded-3xl border p-4 backdrop-blur-xl",children:s.jsx("input",{type:"text",value:b,onChange:e=>f(e.target.value),placeholder:"Search by name, phone, email, or loyalty ID...",className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"})}),s.jsx("div",{className:"theme-card rounded-3xl border p-6 backdrop-blur-xl",children:m?s.jsx("div",{className:"theme-text-secondary text-center py-8",children:"Loading customers..."}):0===l.length?s.jsx("div",{className:"theme-text-secondary text-center py-8",children:"No customers found"}):s.jsx("div",{className:"space-y-3",children:l.map(e=>s.jsx("div",{className:"theme-surface rounded-2xl border p-4 transition hover:border-white/25",children:s.jsxs("div",{className:"flex items-start justify-between gap-4",children:[s.jsxs("div",{className:"flex-1",children:[s.jsx("h3",{className:"theme-text-primary text-lg font-semibold",children:e.name}),s.jsxs("div",{className:"mt-2 flex flex-wrap items-center gap-3 text-sm theme-text-secondary",children:[e.phone&&s.jsxs("span",{children:["📞 ",e.phone]}),e.email&&s.jsxs("span",{children:["✉️ ",e.email]}),e.loyaltyId&&s.jsxs("span",{className:"font-mono",children:["🎫 ",e.loyaltyId]})]}),s.jsxs("div",{className:"mt-2 flex items-center gap-4 text-sm",children:[s.jsxs("span",{className:"theme-text-secondary",children:["Points: ",s.jsx("span",{className:"font-semibold theme-text-primary",children:e.loyaltyPoints})]}),s.jsxs("span",{className:"theme-text-secondary",children:["Credit: ",s.jsxs("span",{className:"font-semibold theme-text-primary",children:["₦",(e.storeCreditCents/100).toFixed(2)]})]})]}),e.address&&s.jsxs("p",{className:"theme-text-secondary mt-2 text-sm",children:["📍 ",e.address]}),e.notes&&s.jsx("p",{className:"theme-text-secondary mt-1 text-sm italic",children:e.notes}),s.jsxs("p",{className:"theme-text-secondary mt-2 text-xs",children:["Added: ",d(new Date(e.createdAt),"MMM d, yyyy")]})]}),s.jsxs("div",{className:"flex flex-col gap-2",children:[s.jsx("button",{onClick:()=>(e=>{p(e),g({name:e.name,phone:e.phone||"",email:e.email||"",preferredPaymentMethod:e.preferredPaymentMethod||"",dateOfBirth:e.dateOfBirth?e.dateOfBirth.split("T")[0]:"",address:e.address||"",notes:e.notes||""}),x(!0)})(e),className:"rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold theme-text-primary transition hover:bg-white/5",children:"Edit"}),s.jsx("button",{onClick:()=>(async e=>{const t=prompt("Enter points to add:");if(t&&!isNaN(Number(t)))try{await a.post(`${r}/api/v1/customers/${e}/loyalty-points`,{points:Number(t)},{headers:{Authorization:`Bearer ${n}`}}),o.success("Loyalty points added"),j()}catch(s){o.error(s.response?.data?.message||"Failed to add points")}})(e.id),className:"rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold theme-text-primary transition hover:bg-white/5",children:"Add Points"}),s.jsx("button",{onClick:()=>(async e=>{const t=prompt("Enter amount in NGN:");if(t&&!isNaN(Number(t)))try{await a.post(`${r}/api/v1/customers/${e}/store-credit`,{amountCents:Math.round(100*Number(t))},{headers:{Authorization:`Bearer ${n}`}}),o.success("Store credit added"),j()}catch(s){o.error(s.response?.data?.message||"Failed to add store credit")}})(e.id),className:"rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold theme-text-primary transition hover:bg-white/5",children:"Add Credit"})]})]})},e.id))})}),h&&s.jsx("div",{className:"fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm",children:s.jsxs("div",{className:"theme-card w-full max-w-2xl rounded-3xl border p-6 backdrop-blur-xl",children:[s.jsx("h2",{className:"theme-text-primary text-xl font-semibold mb-4",children:u?"Edit Customer":"Add New Customer"}),s.jsxs("form",{onSubmit:async e=>{if(e.preventDefault(),n)try{u?(await a.patch(`${r}/api/v1/customers/${u.id}`,y,{headers:{Authorization:`Bearer ${n}`}}),o.success("Customer updated")):(await a.post(`${r}/api/v1/customers`,y,{headers:{Authorization:`Bearer ${n}`}}),o.success("Customer created")),x(!1),p(null),g({name:"",phone:"",email:"",preferredPaymentMethod:"",dateOfBirth:"",address:"",notes:""}),j()}catch(t){o.error(t.response?.data?.message||"Failed to save customer")}else o.error("Not authenticated")},className:"space-y-4",children:[s.jsxs("div",{className:"grid grid-cols-2 gap-4",children:[s.jsxs("div",{children:[s.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-1",children:"Name *"}),s.jsx("input",{type:"text",value:y.name,onChange:e=>g({...y,name:e.target.value}),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",required:!0})]}),s.jsxs("div",{children:[s.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-1",children:"Phone"}),s.jsx("input",{type:"tel",value:y.phone,onChange:e=>g({...y,phone:e.target.value}),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"})]})]}),s.jsxs("div",{children:[s.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-1",children:"Email"}),s.jsx("input",{type:"email",value:y.email,onChange:e=>g({...y,email:e.target.value}),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"})]}),s.jsxs("div",{className:"grid grid-cols-2 gap-4",children:[s.jsxs("div",{children:[s.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-1",children:"Preferred Payment Method"}),s.jsxs("select",{value:y.preferredPaymentMethod,onChange:e=>g({...y,preferredPaymentMethod:e.target.value}),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",children:[s.jsx("option",{value:"",children:"None"}),s.jsx("option",{value:"cash",children:"Cash"}),s.jsx("option",{value:"card",children:"Card"}),s.jsx("option",{value:"qr",children:"QR Code"}),s.jsx("option",{value:"transfer",children:"Transfer"})]})]}),s.jsxs("div",{children:[s.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-1",children:"Date of Birth"}),s.jsx("input",{type:"date",value:y.dateOfBirth,onChange:e=>g({...y,dateOfBirth:e.target.value}),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"})]})]}),s.jsxs("div",{children:[s.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-1",children:"Address"}),s.jsx("textarea",{value:y.address,onChange:e=>g({...y,address:e.target.value}),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",rows:2})]}),s.jsxs("div",{children:[s.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-1",children:"Notes"}),s.jsx("textarea",{value:y.notes,onChange:e=>g({...y,notes:e.target.value}),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",rows:3})]}),s.jsxs("div",{className:"flex gap-3",children:[s.jsx("button",{type:"submit",className:"flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70",children:u?"Update Customer":"Create Customer"}),s.jsx("button",{type:"button",onClick:()=>{x(!1),p(null)},className:"rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5",children:"Cancel"})]})]})]})})]})})}export{n as CustomersPage};
+import {
+  a as e,
+  r as t,
+  j as s,
+  e as a,
+  A as r,
+  n as o,
+} from "./index-DBPtFCNR.js";
+import { f as d } from "./format-CiGwivc0.js";
+function n() {
+  const { accessToken: n } = e(),
+    [l, i] = t.useState([]),
+    [m, c] = t.useState(!1),
+    [h, x] = t.useState(!1),
+    [u, p] = t.useState(null),
+    [b, f] = t.useState(""),
+    [y, g] = t.useState({
+      name: "",
+      phone: "",
+      email: "",
+      preferredPaymentMethod: "",
+      dateOfBirth: "",
+      address: "",
+      notes: "",
+    }),
+    j = async () => {
+      if (n) {
+        c(!0);
+        try {
+          const e = b ? { search: b } : {},
+            t = await a.get(`${r}/api/v1/customers`, {
+              headers: { Authorization: `Bearer ${n}` },
+              params: e,
+            });
+          i(t.data || []);
+        } catch (e) {
+          401 !== e.response?.status && o.error("Failed to load customers");
+        } finally {
+          c(!1);
+        }
+      }
+    };
+  t.useEffect(() => {
+    j();
+  }, [n, b]);
+  return s.jsx("div", {
+    className:
+      "theme-background min-h-screen w-full overflow-x-hidden page-with-nav",
+    children: s.jsxs("div", {
+      className:
+        "relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10",
+      children: [
+        s.jsxs("div", {
+          className:
+            "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4",
+          children: [
+            s.jsxs("div", {
+              className: "min-w-0 flex-1",
+              children: [
+                s.jsx("h1", {
+                  className:
+                    "theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold",
+                  children: "Customers",
+                }),
+                s.jsx("p", {
+                  className: "theme-text-secondary mt-1 text-xs sm:text-sm",
+                  children: "Manage customer profiles and loyalty",
+                }),
+              ],
+            }),
+            s.jsx("button", {
+              onClick: () => {
+                (p(null),
+                  g({
+                    name: "",
+                    phone: "",
+                    email: "",
+                    preferredPaymentMethod: "",
+                    dateOfBirth: "",
+                    address: "",
+                    notes: "",
+                  }),
+                  x(!0));
+              },
+              className:
+                "rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm lg:text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70 touch-manipulation w-full sm:w-auto",
+              children: "+ Add Customer",
+            }),
+          ],
+        }),
+        s.jsx("div", {
+          className: "theme-card rounded-3xl border p-4 backdrop-blur-xl",
+          children: s.jsx("input", {
+            type: "text",
+            value: b,
+            onChange: (e) => f(e.target.value),
+            placeholder: "Search by name, phone, email, or loyalty ID...",
+            className:
+              "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+          }),
+        }),
+        s.jsx("div", {
+          className: "theme-card rounded-3xl border p-6 backdrop-blur-xl",
+          children: m
+            ? s.jsx("div", {
+                className: "theme-text-secondary text-center py-8",
+                children: "Loading customers...",
+              })
+            : 0 === l.length
+              ? s.jsx("div", {
+                  className: "theme-text-secondary text-center py-8",
+                  children: "No customers found",
+                })
+              : s.jsx("div", {
+                  className: "space-y-3",
+                  children: l.map((e) =>
+                    s.jsx(
+                      "div",
+                      {
+                        className:
+                          "theme-surface rounded-2xl border p-4 transition hover:border-white/25",
+                        children: s.jsxs("div", {
+                          className: "flex items-start justify-between gap-4",
+                          children: [
+                            s.jsxs("div", {
+                              className: "flex-1",
+                              children: [
+                                s.jsx("h3", {
+                                  className:
+                                    "theme-text-primary text-lg font-semibold",
+                                  children: e.name,
+                                }),
+                                s.jsxs("div", {
+                                  className:
+                                    "mt-2 flex flex-wrap items-center gap-3 text-sm theme-text-secondary",
+                                  children: [
+                                    e.phone &&
+                                      s.jsxs("span", {
+                                        children: ["📞 ", e.phone],
+                                      }),
+                                    e.email &&
+                                      s.jsxs("span", {
+                                        children: ["✉️ ", e.email],
+                                      }),
+                                    e.loyaltyId &&
+                                      s.jsxs("span", {
+                                        className: "font-mono",
+                                        children: ["🎫 ", e.loyaltyId],
+                                      }),
+                                  ],
+                                }),
+                                s.jsxs("div", {
+                                  className:
+                                    "mt-2 flex items-center gap-4 text-sm",
+                                  children: [
+                                    s.jsxs("span", {
+                                      className: "theme-text-secondary",
+                                      children: [
+                                        "Points: ",
+                                        s.jsx("span", {
+                                          className:
+                                            "font-semibold theme-text-primary",
+                                          children: e.loyaltyPoints,
+                                        }),
+                                      ],
+                                    }),
+                                    s.jsxs("span", {
+                                      className: "theme-text-secondary",
+                                      children: [
+                                        "Credit: ",
+                                        s.jsxs("span", {
+                                          className:
+                                            "font-semibold theme-text-primary",
+                                          children: [
+                                            "₦",
+                                            (e.storeCreditCents / 100).toFixed(
+                                              2,
+                                            ),
+                                          ],
+                                        }),
+                                      ],
+                                    }),
+                                  ],
+                                }),
+                                e.address &&
+                                  s.jsxs("p", {
+                                    className:
+                                      "theme-text-secondary mt-2 text-sm",
+                                    children: ["📍 ", e.address],
+                                  }),
+                                e.notes &&
+                                  s.jsx("p", {
+                                    className:
+                                      "theme-text-secondary mt-1 text-sm italic",
+                                    children: e.notes,
+                                  }),
+                                s.jsxs("p", {
+                                  className:
+                                    "theme-text-secondary mt-2 text-xs",
+                                  children: [
+                                    "Added: ",
+                                    d(new Date(e.createdAt), "MMM d, yyyy"),
+                                  ],
+                                }),
+                              ],
+                            }),
+                            s.jsxs("div", {
+                              className: "flex flex-col gap-2",
+                              children: [
+                                s.jsx("button", {
+                                  onClick: () =>
+                                    ((e) => {
+                                      (p(e),
+                                        g({
+                                          name: e.name,
+                                          phone: e.phone || "",
+                                          email: e.email || "",
+                                          preferredPaymentMethod:
+                                            e.preferredPaymentMethod || "",
+                                          dateOfBirth: e.dateOfBirth
+                                            ? e.dateOfBirth.split("T")[0]
+                                            : "",
+                                          address: e.address || "",
+                                          notes: e.notes || "",
+                                        }),
+                                        x(!0));
+                                    })(e),
+                                  className:
+                                    "rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold theme-text-primary transition hover:bg-white/5",
+                                  children: "Edit",
+                                }),
+                                s.jsx("button", {
+                                  onClick: () =>
+                                    (async (e) => {
+                                      const t = prompt("Enter points to add:");
+                                      if (t && !isNaN(Number(t)))
+                                        try {
+                                          (await a.post(
+                                            `${r}/api/v1/customers/${e}/loyalty-points`,
+                                            { points: Number(t) },
+                                            {
+                                              headers: {
+                                                Authorization: `Bearer ${n}`,
+                                              },
+                                            },
+                                          ),
+                                            o.success("Loyalty points added"),
+                                            j());
+                                        } catch (s) {
+                                          o.error(
+                                            s.response?.data?.message ||
+                                              "Failed to add points",
+                                          );
+                                        }
+                                    })(e.id),
+                                  className:
+                                    "rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold theme-text-primary transition hover:bg-white/5",
+                                  children: "Add Points",
+                                }),
+                                s.jsx("button", {
+                                  onClick: () =>
+                                    (async (e) => {
+                                      const t = prompt("Enter amount in NGN:");
+                                      if (t && !isNaN(Number(t)))
+                                        try {
+                                          (await a.post(
+                                            `${r}/api/v1/customers/${e}/store-credit`,
+                                            {
+                                              amountCents: Math.round(
+                                                100 * Number(t),
+                                              ),
+                                            },
+                                            {
+                                              headers: {
+                                                Authorization: `Bearer ${n}`,
+                                              },
+                                            },
+                                          ),
+                                            o.success("Store credit added"),
+                                            j());
+                                        } catch (s) {
+                                          o.error(
+                                            s.response?.data?.message ||
+                                              "Failed to add store credit",
+                                          );
+                                        }
+                                    })(e.id),
+                                  className:
+                                    "rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold theme-text-primary transition hover:bg-white/5",
+                                  children: "Add Credit",
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      },
+                      e.id,
+                    ),
+                  ),
+                }),
+        }),
+        h &&
+          s.jsx("div", {
+            className:
+              "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm",
+            children: s.jsxs("div", {
+              className:
+                "theme-card w-full max-w-2xl rounded-3xl border p-6 backdrop-blur-xl",
+              children: [
+                s.jsx("h2", {
+                  className: "theme-text-primary text-xl font-semibold mb-4",
+                  children: u ? "Edit Customer" : "Add New Customer",
+                }),
+                s.jsxs("form", {
+                  onSubmit: async (e) => {
+                    if ((e.preventDefault(), n))
+                      try {
+                        (u
+                          ? (await a.patch(`${r}/api/v1/customers/${u.id}`, y, {
+                              headers: { Authorization: `Bearer ${n}` },
+                            }),
+                            o.success("Customer updated"))
+                          : (await a.post(`${r}/api/v1/customers`, y, {
+                              headers: { Authorization: `Bearer ${n}` },
+                            }),
+                            o.success("Customer created")),
+                          x(!1),
+                          p(null),
+                          g({
+                            name: "",
+                            phone: "",
+                            email: "",
+                            preferredPaymentMethod: "",
+                            dateOfBirth: "",
+                            address: "",
+                            notes: "",
+                          }),
+                          j());
+                      } catch (t) {
+                        o.error(
+                          t.response?.data?.message ||
+                            "Failed to save customer",
+                        );
+                      }
+                    else o.error("Not authenticated");
+                  },
+                  className: "space-y-4",
+                  children: [
+                    s.jsxs("div", {
+                      className: "grid grid-cols-2 gap-4",
+                      children: [
+                        s.jsxs("div", {
+                          children: [
+                            s.jsx("label", {
+                              className:
+                                "block text-sm font-medium theme-text-secondary mb-1",
+                              children: "Name *",
+                            }),
+                            s.jsx("input", {
+                              type: "text",
+                              value: y.name,
+                              onChange: (e) =>
+                                g({ ...y, name: e.target.value }),
+                              className:
+                                "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                              required: !0,
+                            }),
+                          ],
+                        }),
+                        s.jsxs("div", {
+                          children: [
+                            s.jsx("label", {
+                              className:
+                                "block text-sm font-medium theme-text-secondary mb-1",
+                              children: "Phone",
+                            }),
+                            s.jsx("input", {
+                              type: "tel",
+                              value: y.phone,
+                              onChange: (e) =>
+                                g({ ...y, phone: e.target.value }),
+                              className:
+                                "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    s.jsxs("div", {
+                      children: [
+                        s.jsx("label", {
+                          className:
+                            "block text-sm font-medium theme-text-secondary mb-1",
+                          children: "Email",
+                        }),
+                        s.jsx("input", {
+                          type: "email",
+                          value: y.email,
+                          onChange: (e) => g({ ...y, email: e.target.value }),
+                          className:
+                            "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                        }),
+                      ],
+                    }),
+                    s.jsxs("div", {
+                      className: "grid grid-cols-2 gap-4",
+                      children: [
+                        s.jsxs("div", {
+                          children: [
+                            s.jsx("label", {
+                              className:
+                                "block text-sm font-medium theme-text-secondary mb-1",
+                              children: "Preferred Payment Method",
+                            }),
+                            s.jsxs("select", {
+                              value: y.preferredPaymentMethod,
+                              onChange: (e) =>
+                                g({
+                                  ...y,
+                                  preferredPaymentMethod: e.target.value,
+                                }),
+                              className:
+                                "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                              children: [
+                                s.jsx("option", {
+                                  value: "",
+                                  children: "None",
+                                }),
+                                s.jsx("option", {
+                                  value: "cash",
+                                  children: "Cash",
+                                }),
+                                s.jsx("option", {
+                                  value: "card",
+                                  children: "Card",
+                                }),
+                                s.jsx("option", {
+                                  value: "qr",
+                                  children: "QR Code",
+                                }),
+                                s.jsx("option", {
+                                  value: "transfer",
+                                  children: "Transfer",
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        s.jsxs("div", {
+                          children: [
+                            s.jsx("label", {
+                              className:
+                                "block text-sm font-medium theme-text-secondary mb-1",
+                              children: "Date of Birth",
+                            }),
+                            s.jsx("input", {
+                              type: "date",
+                              value: y.dateOfBirth,
+                              onChange: (e) =>
+                                g({ ...y, dateOfBirth: e.target.value }),
+                              className:
+                                "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    s.jsxs("div", {
+                      children: [
+                        s.jsx("label", {
+                          className:
+                            "block text-sm font-medium theme-text-secondary mb-1",
+                          children: "Address",
+                        }),
+                        s.jsx("textarea", {
+                          value: y.address,
+                          onChange: (e) => g({ ...y, address: e.target.value }),
+                          className:
+                            "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                          rows: 2,
+                        }),
+                      ],
+                    }),
+                    s.jsxs("div", {
+                      children: [
+                        s.jsx("label", {
+                          className:
+                            "block text-sm font-medium theme-text-secondary mb-1",
+                          children: "Notes",
+                        }),
+                        s.jsx("textarea", {
+                          value: y.notes,
+                          onChange: (e) => g({ ...y, notes: e.target.value }),
+                          className:
+                            "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                          rows: 3,
+                        }),
+                      ],
+                    }),
+                    s.jsxs("div", {
+                      className: "flex gap-3",
+                      children: [
+                        s.jsx("button", {
+                          type: "submit",
+                          className:
+                            "flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70",
+                          children: u ? "Update Customer" : "Create Customer",
+                        }),
+                        s.jsx("button", {
+                          type: "button",
+                          onClick: () => {
+                            (x(!1), p(null));
+                          },
+                          className:
+                            "rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5",
+                          children: "Cancel",
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          }),
+      ],
+    }),
+  });
+}
+export { n as CustomersPage };

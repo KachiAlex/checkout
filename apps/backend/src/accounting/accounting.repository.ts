@@ -116,7 +116,9 @@ export class AccountingRepository {
         tenantId,
         isActive: true,
         taxCode: filters?.taxCode ?? undefined,
-        OR: filters?.locationId ? [{ locationId: filters.locationId }, { locationId: null }] : undefined,
+        OR: filters?.locationId
+          ? [{ locationId: filters.locationId }, { locationId: null }]
+          : undefined,
       },
       orderBy: [{ locationId: 'desc' }, { effectiveFrom: 'desc' }],
     });
@@ -151,7 +153,11 @@ export class AccountingRepository {
     });
   }
 
-  async upsertTaxPeriod(tenantId: string, dto: UpsertTaxPeriodDto, createdBy?: string): Promise<TaxPeriod> {
+  async upsertTaxPeriod(
+    tenantId: string,
+    dto: UpsertTaxPeriodDto,
+    createdBy?: string,
+  ): Promise<TaxPeriod> {
     const periodStart = new Date(dto.periodStart);
     const periodEnd = new Date(dto.periodEnd);
     if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
@@ -210,7 +216,8 @@ export class AccountingRepository {
           tenantId,
           locationId: filters?.locationId ?? undefined,
           taxCode: filters?.taxCode ?? undefined,
-          periodStart: filters?.from || filters?.to ? { gte: filters?.from, lte: filters?.to } : undefined,
+          periodStart:
+            filters?.from || filters?.to ? { gte: filters?.from, lte: filters?.to } : undefined,
         },
         orderBy: [{ periodStart: 'desc' }],
       });
@@ -260,7 +267,11 @@ export class AccountingRepository {
     }
   }
 
-  async createTaxRule(tenantId: string, dto: CreateTaxRuleDto, createdBy?: string): Promise<TaxRule> {
+  async createTaxRule(
+    tenantId: string,
+    dto: CreateTaxRuleDto,
+    createdBy?: string,
+  ): Promise<TaxRule> {
     await this.ensureTenantExists(tenantId);
 
     const effectiveFrom = new Date(dto.effectiveFrom);
@@ -544,7 +555,11 @@ export class AccountingRepository {
     });
   }
 
-  async updateAccount(tenantId: string, accountId: string, dto: UpdateAccountDto): Promise<Account> {
+  async updateAccount(
+    tenantId: string,
+    accountId: string,
+    dto: UpdateAccountDto,
+  ): Promise<Account> {
     const existing = await this.prisma.account.findFirst({
       where: { id: accountId, tenantId },
     });

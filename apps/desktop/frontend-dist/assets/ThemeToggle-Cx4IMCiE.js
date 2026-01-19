@@ -1,1 +1,24 @@
-import{c as e,r as t,j as n}from"./index-CcrCVdax.js";const a=n.jsx("span",{role:"img","aria-hidden":!0,children:"☀️"}),i=n.jsx("span",{role:"img","aria-hidden":!0,children:"🌙"});function d(){const{theme:d,toggleTheme:o}=e();return t.useEffect(()=>{"undefined"!=typeof document&&(document.documentElement.dataset.theme=d)},[d]),n.jsxs("button",{type:"button",onClick:o,className:"theme-toggle inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition","aria-label":`Switch to ${"dark"===d?"light":"dark"} theme`,children:["dark"===d?a:i,n.jsx("span",{children:"dark"===d?"Light mode":"Dark mode"})]})}export{d as T};
+import { c as e, r as t, j as n } from "./index-CcrCVdax.js";
+const a = n.jsx("span", { role: "img", "aria-hidden": !0, children: "☀️" }),
+  i = n.jsx("span", { role: "img", "aria-hidden": !0, children: "🌙" });
+function d() {
+  const { theme: d, toggleTheme: o } = e();
+  return (
+    t.useEffect(() => {
+      "undefined" != typeof document &&
+        (document.documentElement.dataset.theme = d);
+    }, [d]),
+    n.jsxs("button", {
+      type: "button",
+      onClick: o,
+      className:
+        "theme-toggle inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition",
+      "aria-label": `Switch to ${"dark" === d ? "light" : "dark"} theme`,
+      children: [
+        "dark" === d ? a : i,
+        n.jsx("span", { children: "dark" === d ? "Light mode" : "Dark mode" }),
+      ],
+    })
+  );
+}
+export { d as T };

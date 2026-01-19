@@ -369,7 +369,7 @@ export class PurchaseOrdersRepository {
       expiryDate:
         item.expiryDate instanceof Date
           ? item.expiryDate.toISOString()
-          : item.expiryDate ?? undefined,
+          : (item.expiryDate ?? undefined),
     }));
     return normalized as unknown as Prisma.JsonValue;
   }

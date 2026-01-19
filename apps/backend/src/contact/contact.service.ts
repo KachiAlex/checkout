@@ -99,7 +99,10 @@ export class ContactService {
       `.trim();
 
       await this.sendGridService.sendEmail({
-        to: supportInbox || this.configService.get<string>('SENDGRID_FROM_EMAIL') || 'noreply@checkout.com',
+        to:
+          supportInbox ||
+          this.configService.get<string>('SENDGRID_FROM_EMAIL') ||
+          'noreply@checkout.com',
         subject,
         text,
         html,

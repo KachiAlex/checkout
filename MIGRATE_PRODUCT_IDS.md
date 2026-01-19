@@ -11,12 +11,15 @@
 The script requires `firebase-admin` and `uuid` packages. Since this is a monorepo, you can either:
 
 ### Option A: Install at root level (Recommended)
+
 ```powershell
 npm install firebase-admin uuid
 ```
 
 ### Option B: Use backend's dependencies
+
 The backend already has these packages. You can run the script from the backend directory:
+
 ```powershell
 cd apps/backend
 node ../../scripts/migrateProductIdsToUUID.js
@@ -27,7 +30,9 @@ node ../../scripts/migrateProductIdsToUUID.js
 You have three options:
 
 ### Option 1: Use Environment Variables (Recommended for production)
+
 Set these environment variables (same as your Render backend):
+
 ```powershell
 $env:FIREBASE_PROJECT_ID = "checkout-77d99"
 $env:FIREBASE_CLIENT_EMAIL = "your-client-email@checkout-77d99.iam.gserviceaccount.com"
@@ -35,13 +40,17 @@ $env:FIREBASE_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE 
 ```
 
 ### Option 2: Use Firebase Login (for local development)
+
 ```powershell
 firebase login
 ```
+
 This will use application default credentials.
 
 ### Option 3: Use Service Account JSON File
+
 If you have a service account JSON file, you can modify the script to use it, or set:
+
 ```powershell
 $env:GOOGLE_APPLICATION_CREDENTIALS = "path\to\your\service-account-key.json"
 ```
@@ -49,16 +58,19 @@ $env:GOOGLE_APPLICATION_CREDENTIALS = "path\to\your\service-account-key.json"
 ## Step 3: Run the Migration Script
 
 ### Migrate All Tenants
+
 ```powershell
 npm run migrate:product-ids
 ```
 
 Or directly:
+
 ```powershell
 node scripts/migrateProductIdsToUUID.js
 ```
 
 ### Migrate Specific Tenant
+
 ```powershell
 node scripts/migrateProductIdsToUUID.js YOUR_TENANT_ID
 ```
@@ -113,15 +125,19 @@ Found 1 tenant(s) to process
 ## Troubleshooting
 
 ### Error: "Cannot find module 'firebase-admin'"
+
 **Solution:** Install dependencies:
+
 ```powershell
 npm install firebase-admin uuid
 ```
 
 ### Error: "Failed to initialize Firebase Admin SDK"
+
 **Solution:** Make sure environment variables are set correctly, or run `firebase login`
 
 ### Error: "Permission denied"
+
 **Solution:** Ensure your Firebase credentials have Firestore read/write permissions
 
 ## Important Notes
@@ -129,9 +145,9 @@ npm install firebase-admin uuid
 ⚠️ **Backup First**: Consider backing up your Firestore database before running the migration
 
 ⚠️ **Test First**: If possible, test on a single tenant first:
+
 ```powershell
 node scripts/migrateProductIdsToUUID.js YOUR_TEST_TENANT_ID
 ```
 
 ⚠️ **One-Time Operation**: This script is designed to be run once. After migration, all products will have valid UUID IDs.
-

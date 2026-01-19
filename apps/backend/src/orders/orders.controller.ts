@@ -38,12 +38,7 @@ export class OrdersController {
     const tenantId = this.getTenantId(req);
     const userId = this.getUserId(req);
     const locationId = req.user?.locationId;
-    return this.ordersService.create(
-      createOrderDto,
-      userId,
-      tenantId,
-      locationId,
-    );
+    return this.ordersService.create(createOrderDto, userId, tenantId, locationId);
   }
 
   @Get()
@@ -69,7 +64,10 @@ export class OrdersController {
   @Get('held')
   @ApiOperation({ summary: 'Get all held/suspended orders' })
   @ApiResponse({ status: 200, description: 'List of held orders' })
-  async findHeldOrders(@Req() req: AuthenticatedRequest, @Query('location_id') locationId?: string) {
+  async findHeldOrders(
+    @Req() req: AuthenticatedRequest,
+    @Query('location_id') locationId?: string,
+  ) {
     const tenantId = this.getTenantId(req);
     // Ensure location belongs to tenant if provided
     if (locationId) {
@@ -82,7 +80,10 @@ export class OrdersController {
   @Get('credit')
   @ApiOperation({ summary: 'Get all credit orders (products taken on credit)' })
   @ApiResponse({ status: 200, description: 'List of credit orders' })
-  async getCreditOrders(@Req() req: AuthenticatedRequest, @Query('location_id') locationId?: string) {
+  async getCreditOrders(
+    @Req() req: AuthenticatedRequest,
+    @Query('location_id') locationId?: string,
+  ) {
     const tenantId = this.getTenantId(req);
     // Ensure location belongs to tenant if provided
     if (locationId) {
@@ -166,7 +167,10 @@ export class OrdersController {
   @Post(':id/complete-held')
   @ApiOperation({ summary: 'Complete a held order (decrements inventory)' })
   @ApiResponse({ status: 200, description: 'Held order completed' })
-  async completeHeldOrder(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async completeHeldOrder(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const tenantId = this.getTenantId(req);
     return this.ordersService.completeHeldOrder(id, tenantId);
   }

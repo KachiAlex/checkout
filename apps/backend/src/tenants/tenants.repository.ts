@@ -339,10 +339,7 @@ export class TenantsRepository {
       await prisma.$transaction(async (tx) => {
         await tx.journalLine.deleteMany({
           where: {
-            OR: [
-              { journalEntry: { tenantId: id } },
-              { account: { tenantId: id } },
-            ],
+            OR: [{ journalEntry: { tenantId: id } }, { account: { tenantId: id } }],
           },
         });
 
@@ -396,12 +393,9 @@ export class TenantsRepository {
 
   private async applyFreeTrialGuard(record: TenantRecord): Promise<TenantRecord> {
     const now = Date.now();
-    const hasTrialEnded =
-      record.billingCycleEnd && record.billingCycleEnd.getTime() < now;
+    const hasTrialEnded = record.billingCycleEnd && record.billingCycleEnd.getTime() < now;
     const shouldSuspend =
-      record.plan === TenantPlan.FREE &&
-      record.status === TenantStatus.ACTIVE &&
-      hasTrialEnded;
+      record.plan === TenantPlan.FREE && record.status === TenantStatus.ACTIVE && hasTrialEnded;
 
     if (!shouldSuspend) {
       return record;
@@ -464,7 +458,10 @@ export class TenantsRepository {
         html,
       });
     } catch (error) {
-      console.error('[TenantsRepository] Failed to send trial expiry email:', (error as Error).message);
+      console.error(
+        '[TenantsRepository] Failed to send trial expiry email:',
+        (error as Error).message,
+      );
     }
   }
 

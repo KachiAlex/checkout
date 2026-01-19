@@ -1,1 +1,267 @@
-import{d as e,p as t,e as a,A as n,a as d}from"./index-L_FkDW6m.js";const i=e()(t((e,t)=>({devices:[],activeDeviceId:null,addDevice:t=>{const a=t.id??`device_${Date.now()}_${Math.random().toString(36).substr(2,9)}`,n=t.connectedAt?new Date(t.connectedAt):new Date,d=t.lastUsedAt?new Date(t.lastUsedAt):new Date,i={...t,id:a,connectedAt:n,lastUsedAt:d};return e(e=>{const t=e.devices.find(e=>e.id===a);return t?{devices:e.devices.map(e=>e.id===a?{...t,...i}:e),activeDeviceId:e.activeDeviceId||a}:{devices:[...e.devices,i],activeDeviceId:e.activeDeviceId||a}}),a},updateDevice:(t,a)=>{e(e=>({devices:e.devices.map(e=>e.id===t?{...e,...a,connectedAt:a.connectedAt?new Date(a.connectedAt):e.connectedAt,lastUsedAt:a.lastUsedAt?new Date(a.lastUsedAt):e.lastUsedAt}:e)}))},removeDevice:t=>{e(e=>({devices:e.devices.filter(e=>e.id!==t),activeDeviceId:e.activeDeviceId===t?null:e.activeDeviceId}))},setActiveDevice:t=>{e(e=>({devices:e.devices.map(e=>({...e,isActive:e.id===t})),activeDeviceId:t}))},getActiveDevice:()=>{const e=t();return e.activeDeviceId&&e.devices.find(t=>t.id===e.activeDeviceId)||null},markDeviceUsed:t=>{e(e=>({devices:e.devices.map(e=>e.id===t?{...e,lastUsedAt:new Date,isActive:!0}:e)}))}}),{name:"scanner-devices-storage",partialize:e=>({devices:e.devices.map(e=>({...e,connectedAt:e.connectedAt.toISOString(),lastUsedAt:e.lastUsedAt.toISOString()})),activeDeviceId:e.activeDeviceId}),onRehydrateStorage:()=>e=>{e&&(e.devices=e.devices.map(e=>({...e,connectedAt:new Date(e.connectedAt),lastUsedAt:new Date(e.lastUsedAt)})))}}));function c(e,t){return{id:e.id,name:e.name,type:e.type,deviceId:e.hardwareId??e.identifier??t,vendorId:e.vendorId,productId:e.productId,connectedAt:e.createdAt?new Date(e.createdAt):new Date,lastUsedAt:e.lastUsedAt?new Date(e.lastUsedAt):new Date,locationId:e.locationId,userId:e.lastUsedById??e.registeredById,isActive:e.isActive,metadata:e.metadata}}const r=()=>{const e=d.getState().tenantSlug;if(!e)throw new Error("Tenant context missing. Please log in again.");return e};async function o(e,t){var d;const i=await a.post(`${n}/api/v1/devices/register`,e,{headers:{"X-Tenant-Slug":r()}});return c((null==(d=i.data)?void 0:d.data)??i.data??i.data,t)}async function s(e){return(await a.get(`${n}/api/v1/devices`,{params:e?{location_id:e}:void 0})).data.map(e=>c(e))}function v(e,t){switch(e){case"usb":return(null==t?void 0:t.name)?t.name:(null==t?void 0:t.vendorId)&&(null==t?void 0:t.productId)?`USB Scanner (${t.vendorId}:${t.productId})`:"USB Scanner";case"bluetooth":return(null==t?void 0:t.name)||"Bluetooth Scanner";case"camera":return"Camera Scanner";default:return"Unknown Scanner"}}function u(e){if("number"==typeof e)return e.toString(16).padStart(4,"0")}async function l(e,t,a,n=!1){const d=function(e,t,a){const n=e.path||e.serialNumber||e.id,d=n?n.toLowerCase():`${e.type}_${Date.now()}`,i=u(e.vendorId),c=u(e.productId);return{identifier:d,name:e.name||("usb"===e.type?"USB Scanner":"Bluetooth Scanner"),type:"bluetooth"===e.type?"bluetooth":"usb",hardwareId:e.serialNumber||d,vendorId:i,productId:c,locationId:t,registeredById:a,metadata:{manufacturer:e.manufacturer,transport:e.transport,source:"native-bridge"},isActive:!0}}(e,t,a);return o(d,d.identifier)}async function I(e,t,a){var n;const d=await async function(){var e,t;if("undefined"==typeof navigator)return null;const a=navigator;if(!a.usb)return null;try{const n=await a.usb.getDevices();if(0===n.length)return null;const d=n[0];return{vendorId:null==(e=d.vendorId)?void 0:e.toString(16).padStart(4,"0"),productId:null==(t=d.productId)?void 0:t.toString(16).padStart(4,"0"),deviceName:d.productName||"USB Scanner"}}catch(n){return null}}(),i=(null==d?void 0:d.vendorId)&&(null==d?void 0:d.productId)?`${d.vendorId}:${d.productId}`.toLowerCase():`usb_${Date.now()}`;return o({identifier:i,name:v("usb",d??void 0),type:"usb",hardwareId:i,vendorId:null==d?void 0:d.vendorId,productId:null==d?void 0:d.productId,locationId:e,registeredById:t,metadata:{manufacturer:null==(n=null==d?void 0:d.deviceName)?void 0:n.split(" ")[0],deviceName:(null==d?void 0:d.deviceName)||"USB HID Scanner (Keyboard Mode)",note:"Most USB scanners work automatically as keyboards. Just plug in and scan."},isActive:!0},i)}async function m(e,t,a){if("type"in e)return l({...e,type:"bluetooth"},t,a);const n={deviceId:(d=e).id,name:d.name||"Bluetooth Scanner",metadata:{manufacturer:null==(i=d.name)?void 0:i.split(" ")[0],model:d.name}};var d,i;const c=n.deviceId||`bluetooth_${Date.now()}`;return o({identifier:c.toLowerCase(),name:n.name,type:"bluetooth",hardwareId:n.deviceId,locationId:t,registeredById:a,metadata:n.metadata,isActive:!0},c)}async function p(e,t,d){if(e)try{await a.post(`${n}/api/v1/devices/${e}/heartbeat`,{userId:t,isActive:(null==d?void 0:d.isActive)??!0})}catch(i){}}export{m as a,s as f,I as r,p as s,i as u};
+import { d as e, p as t, e as a, A as n, a as d } from "./index-L_FkDW6m.js";
+const i = e()(
+  t(
+    (e, t) => ({
+      devices: [],
+      activeDeviceId: null,
+      addDevice: (t) => {
+        const a =
+            t.id ??
+            `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          n = t.connectedAt ? new Date(t.connectedAt) : new Date(),
+          d = t.lastUsedAt ? new Date(t.lastUsedAt) : new Date(),
+          i = { ...t, id: a, connectedAt: n, lastUsedAt: d };
+        return (
+          e((e) => {
+            const t = e.devices.find((e) => e.id === a);
+            return t
+              ? {
+                  devices: e.devices.map((e) =>
+                    e.id === a ? { ...t, ...i } : e,
+                  ),
+                  activeDeviceId: e.activeDeviceId || a,
+                }
+              : {
+                  devices: [...e.devices, i],
+                  activeDeviceId: e.activeDeviceId || a,
+                };
+          }),
+          a
+        );
+      },
+      updateDevice: (t, a) => {
+        e((e) => ({
+          devices: e.devices.map((e) =>
+            e.id === t
+              ? {
+                  ...e,
+                  ...a,
+                  connectedAt: a.connectedAt
+                    ? new Date(a.connectedAt)
+                    : e.connectedAt,
+                  lastUsedAt: a.lastUsedAt
+                    ? new Date(a.lastUsedAt)
+                    : e.lastUsedAt,
+                }
+              : e,
+          ),
+        }));
+      },
+      removeDevice: (t) => {
+        e((e) => ({
+          devices: e.devices.filter((e) => e.id !== t),
+          activeDeviceId: e.activeDeviceId === t ? null : e.activeDeviceId,
+        }));
+      },
+      setActiveDevice: (t) => {
+        e((e) => ({
+          devices: e.devices.map((e) => ({ ...e, isActive: e.id === t })),
+          activeDeviceId: t,
+        }));
+      },
+      getActiveDevice: () => {
+        const e = t();
+        return (
+          (e.activeDeviceId &&
+            e.devices.find((t) => t.id === e.activeDeviceId)) ||
+          null
+        );
+      },
+      markDeviceUsed: (t) => {
+        e((e) => ({
+          devices: e.devices.map((e) =>
+            e.id === t ? { ...e, lastUsedAt: new Date(), isActive: !0 } : e,
+          ),
+        }));
+      },
+    }),
+    {
+      name: "scanner-devices-storage",
+      partialize: (e) => ({
+        devices: e.devices.map((e) => ({
+          ...e,
+          connectedAt: e.connectedAt.toISOString(),
+          lastUsedAt: e.lastUsedAt.toISOString(),
+        })),
+        activeDeviceId: e.activeDeviceId,
+      }),
+      onRehydrateStorage: () => (e) => {
+        e &&
+          (e.devices = e.devices.map((e) => ({
+            ...e,
+            connectedAt: new Date(e.connectedAt),
+            lastUsedAt: new Date(e.lastUsedAt),
+          })));
+      },
+    },
+  ),
+);
+function c(e, t) {
+  return {
+    id: e.id,
+    name: e.name,
+    type: e.type,
+    deviceId: e.hardwareId ?? e.identifier ?? t,
+    vendorId: e.vendorId,
+    productId: e.productId,
+    connectedAt: e.createdAt ? new Date(e.createdAt) : new Date(),
+    lastUsedAt: e.lastUsedAt ? new Date(e.lastUsedAt) : new Date(),
+    locationId: e.locationId,
+    userId: e.lastUsedById ?? e.registeredById,
+    isActive: e.isActive,
+    metadata: e.metadata,
+  };
+}
+const r = () => {
+  const e = d.getState().tenantSlug;
+  if (!e) throw new Error("Tenant context missing. Please log in again.");
+  return e;
+};
+async function o(e, t) {
+  var d;
+  const i = await a.post(`${n}/api/v1/devices/register`, e, {
+    headers: { "X-Tenant-Slug": r() },
+  });
+  return c((null == (d = i.data) ? void 0 : d.data) ?? i.data ?? i.data, t);
+}
+async function s(e) {
+  return (
+    await a.get(`${n}/api/v1/devices`, {
+      params: e ? { location_id: e } : void 0,
+    })
+  ).data.map((e) => c(e));
+}
+function v(e, t) {
+  switch (e) {
+    case "usb":
+      return (null == t ? void 0 : t.name)
+        ? t.name
+        : (null == t ? void 0 : t.vendorId) &&
+            (null == t ? void 0 : t.productId)
+          ? `USB Scanner (${t.vendorId}:${t.productId})`
+          : "USB Scanner";
+    case "bluetooth":
+      return (null == t ? void 0 : t.name) || "Bluetooth Scanner";
+    case "camera":
+      return "Camera Scanner";
+    default:
+      return "Unknown Scanner";
+  }
+}
+function u(e) {
+  if ("number" == typeof e) return e.toString(16).padStart(4, "0");
+}
+async function l(e, t, a, n = !1) {
+  const d = (function (e, t, a) {
+    const n = e.path || e.serialNumber || e.id,
+      d = n ? n.toLowerCase() : `${e.type}_${Date.now()}`,
+      i = u(e.vendorId),
+      c = u(e.productId);
+    return {
+      identifier: d,
+      name: e.name || ("usb" === e.type ? "USB Scanner" : "Bluetooth Scanner"),
+      type: "bluetooth" === e.type ? "bluetooth" : "usb",
+      hardwareId: e.serialNumber || d,
+      vendorId: i,
+      productId: c,
+      locationId: t,
+      registeredById: a,
+      metadata: {
+        manufacturer: e.manufacturer,
+        transport: e.transport,
+        source: "native-bridge",
+      },
+      isActive: !0,
+    };
+  })(e, t, a);
+  return o(d, d.identifier);
+}
+async function I(e, t, a) {
+  var n;
+  const d = await (async function () {
+      var e, t;
+      if ("undefined" == typeof navigator) return null;
+      const a = navigator;
+      if (!a.usb) return null;
+      try {
+        const n = await a.usb.getDevices();
+        if (0 === n.length) return null;
+        const d = n[0];
+        return {
+          vendorId:
+            null == (e = d.vendorId) ? void 0 : e.toString(16).padStart(4, "0"),
+          productId:
+            null == (t = d.productId)
+              ? void 0
+              : t.toString(16).padStart(4, "0"),
+          deviceName: d.productName || "USB Scanner",
+        };
+      } catch (n) {
+        return null;
+      }
+    })(),
+    i =
+      (null == d ? void 0 : d.vendorId) && (null == d ? void 0 : d.productId)
+        ? `${d.vendorId}:${d.productId}`.toLowerCase()
+        : `usb_${Date.now()}`;
+  return o(
+    {
+      identifier: i,
+      name: v("usb", d ?? void 0),
+      type: "usb",
+      hardwareId: i,
+      vendorId: null == d ? void 0 : d.vendorId,
+      productId: null == d ? void 0 : d.productId,
+      locationId: e,
+      registeredById: t,
+      metadata: {
+        manufacturer:
+          null == (n = null == d ? void 0 : d.deviceName)
+            ? void 0
+            : n.split(" ")[0],
+        deviceName:
+          (null == d ? void 0 : d.deviceName) ||
+          "USB HID Scanner (Keyboard Mode)",
+        note: "Most USB scanners work automatically as keyboards. Just plug in and scan.",
+      },
+      isActive: !0,
+    },
+    i,
+  );
+}
+async function m(e, t, a) {
+  if ("type" in e) return l({ ...e, type: "bluetooth" }, t, a);
+  const n = {
+    deviceId: (d = e).id,
+    name: d.name || "Bluetooth Scanner",
+    metadata: {
+      manufacturer: null == (i = d.name) ? void 0 : i.split(" ")[0],
+      model: d.name,
+    },
+  };
+  var d, i;
+  const c = n.deviceId || `bluetooth_${Date.now()}`;
+  return o(
+    {
+      identifier: c.toLowerCase(),
+      name: n.name,
+      type: "bluetooth",
+      hardwareId: n.deviceId,
+      locationId: t,
+      registeredById: a,
+      metadata: n.metadata,
+      isActive: !0,
+    },
+    c,
+  );
+}
+async function p(e, t, d) {
+  if (e)
+    try {
+      await a.post(`${n}/api/v1/devices/${e}/heartbeat`, {
+        userId: t,
+        isActive: (null == d ? void 0 : d.isActive) ?? !0,
+      });
+    } catch (i) {}
+}
+export { m as a, s as f, I as r, p as s, i as u };

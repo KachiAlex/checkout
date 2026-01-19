@@ -1,6 +1,7 @@
-const admin = require('firebase-admin');
+const admin = require("firebase-admin");
 
-const serviceAccountPath = 'C:/Users/user/Downloads/checkout-77d99-firebase-adminsdk-fbsvc-4501015022.json';
+const serviceAccountPath =
+  "C:/Users/user/Downloads/checkout-77d99-firebase-adminsdk-fbsvc-4501015022.json";
 
 async function ensureInitialized() {
   if (admin.apps.length === 0) {
@@ -15,13 +16,13 @@ async function main() {
 
   const db = admin.firestore();
   const snapshot = await db
-    .collection('users')
-    .where('email', '==', 'onyedika.akoma@gmail.com')
+    .collection("users")
+    .where("email", "==", "onyedika.akoma@gmail.com")
     .limit(1)
     .get();
 
   if (snapshot.empty) {
-    console.log('No user found');
+    console.log("No user found");
     return;
   }
 
@@ -35,4 +36,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

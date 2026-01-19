@@ -1,5 +1,5 @@
-import { PaymentAdapter, PaymentContext, PaymentResult } from './interfaces';
-import { PaymentMethod, PaymentStatus } from '@pos-checkout/shared';
+import { PaymentAdapter, PaymentContext, PaymentResult } from "./interfaces";
+import { PaymentMethod, PaymentStatus } from "@pos-checkout/shared";
 
 /**
  * GatewayAdapter - Simulates an online payment gateway (Stripe/Paystack/Flutterwave)
@@ -25,7 +25,7 @@ export class GatewayAdapter implements PaymentAdapter {
       return {
         payment_id: paymentId,
         status: PaymentStatus.FAILED,
-        error: 'Payment token required',
+        error: "Payment token required",
       };
     }
 
@@ -42,10 +42,10 @@ export class GatewayAdapter implements PaymentAdapter {
     } else {
       status = PaymentStatus.FAILED;
       const declineReasons = [
-        'Card declined by issuer',
-        '3D Secure authentication failed',
-        'Invalid token',
-        'Network error',
+        "Card declined by issuer",
+        "3D Secure authentication failed",
+        "Invalid token",
+        "Network error",
       ];
       error = declineReasons[Math.floor(Math.random() * declineReasons.length)];
     }
@@ -59,7 +59,7 @@ export class GatewayAdapter implements PaymentAdapter {
         amount: context.amount_cents,
         token_id: token, // Only store token, never PAN
         timestamp: new Date().toISOString(),
-        gateway: 'mock_gateway',
+        gateway: "mock_gateway",
       },
       error,
     };
@@ -70,7 +70,7 @@ export class GatewayAdapter implements PaymentAdapter {
 
   async capture(paymentId: string): Promise<PaymentResult> {
     const payment = this.payments.get(paymentId);
-    
+
     if (!payment) {
       throw new Error(`Payment ${paymentId} not found`);
     }
@@ -83,13 +83,16 @@ export class GatewayAdapter implements PaymentAdapter {
 
     payment.status = PaymentStatus.COMPLETED;
     this.payments.set(paymentId, payment);
-    
+
     return payment;
   }
 
-  async refund(paymentId: string, amountCents?: number): Promise<PaymentResult> {
+  async refund(
+    paymentId: string,
+    amountCents?: number,
+  ): Promise<PaymentResult> {
     const payment = this.payments.get(paymentId);
-    
+
     if (!payment) {
       throw new Error(`Payment ${paymentId} not found`);
     }
@@ -108,7 +111,7 @@ export class GatewayAdapter implements PaymentAdapter {
 
   async getStatus(paymentId: string): Promise<PaymentStatus> {
     const payment = this.payments.get(paymentId);
-    
+
     if (!payment) {
       return PaymentStatus.FAILED;
     }

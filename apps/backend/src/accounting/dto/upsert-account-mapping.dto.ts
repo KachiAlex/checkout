@@ -10,7 +10,10 @@ export class UpsertAccountMappingDto {
   @IsUUID()
   creditAccountId!: string;
 
-  @ApiProperty({ required: false, description: 'Branch/location override (null for tenant default)' })
+  @ApiProperty({
+    required: false,
+    description: 'Branch/location override (null for tenant default)',
+  })
   @IsOptional()
   @IsString()
   branchId?: string;

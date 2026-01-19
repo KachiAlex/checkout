@@ -86,11 +86,7 @@ export function SEO({
   const url = toAbsoluteUrl(canonical ?? pathname ?? "/");
   const openGraphImage = toAbsoluteUrl(image ?? "/checkout-icon-512.png");
 
-  const extraSchemas = Array.isArray(jsonLd)
-    ? jsonLd
-    : jsonLd
-      ? [jsonLd]
-      : [];
+  const extraSchemas = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
   const structuredDataList = [...defaultStructuredData, ...extraSchemas];
 
   return (
@@ -104,7 +100,9 @@ export function SEO({
       {/* Robots */}
       <meta
         name="robots"
-        content={noindex ? "noindex,nofollow" : "index,follow,max-image-preview:large"}
+        content={
+          noindex ? "noindex,nofollow" : "index,follow,max-image-preview:large"
+        }
       />
 
       {/* Open Graph */}

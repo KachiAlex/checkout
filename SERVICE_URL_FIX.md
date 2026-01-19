@@ -3,22 +3,27 @@
 ## 🚨 Issues Found
 
 ### Issue 1: Wrong Service URL
+
 **Problem**: You've been trying to access `https://pos-checkout-api.onrender.com` but your actual service is at `https://checkout-45tb.onrender.com`
 
 **From the logs**:
+
 ```
 Available at your primary URL https://checkout-45tb.onrender.com
 ```
 
 ### Issue 2: Wrong Port
+
 **Problem**: App is listening on port 1000, but Render expects port 10000
 
 **From the logs**:
+
 ```
 🚀 Application is running on: http://localhost:1000
 ```
 
 **Should be**:
+
 ```
 🚀 Application is running on: http://localhost:10000
 ```
@@ -35,11 +40,14 @@ Available at your primary URL https://checkout-45tb.onrender.com
 **Update your frontend to use the correct URL**:
 
 1. **Update `apps/frontend/src/config.ts`**:
+
    ```typescript
-   const DEFAULT_API_BASE = import.meta.env.VITE_API_URL || 'https://checkout-45tb.onrender.com';
+   const DEFAULT_API_BASE =
+     import.meta.env.VITE_API_URL || "https://checkout-45tb.onrender.com";
    ```
 
 2. **Rebuild and redeploy frontend**:
+
    ```powershell
    npm run build --workspace=apps/frontend
    npm run deploy:web
@@ -88,14 +96,15 @@ Invoke-WebRequest -Uri "https://checkout-45tb.onrender.com/api/v1/auth/login" -M
 ## 📋 Summary
 
 **The service IS running and routes ARE registered**, but:
+
 1. ✅ You're using the wrong URL (`pos-checkout-api` vs `checkout-45tb`)
 2. ✅ PORT might not be set correctly (showing 1000 instead of 10000)
 
 **Quick Fix**: Use `https://checkout-45tb.onrender.com` instead of `https://pos-checkout-api.onrender.com`
 
 **After fixing**: Your CORS errors should be resolved because:
+
 - ✅ Service is running
 - ✅ Routes are registered (logs show `/api/v1/health` is mapped)
 - ✅ CORS is configured
 - ✅ You just need to use the correct URL
-

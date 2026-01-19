@@ -20,10 +20,12 @@ npm run build:android
 ### 1. Install Java JDK
 
 Download and install Java JDK 11 or 17:
+
 - **Eclipse Adoptium (Recommended)**: https://adoptium.net/
 - **Oracle JDK**: https://www.oracle.com/java/technologies/downloads/
 
 After installation, set environment variables:
+
 ```powershell
 # Set JAVA_HOME (replace with your actual path)
 [System.Environment]::SetEnvironmentVariable('JAVA_HOME', 'C:\Program Files\Eclipse Adoptium\jdk-17.0.x-hotspot', 'User')
@@ -36,11 +38,13 @@ $currentPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
 ### 2. Install Android SDK
 
 **Option A: Android Studio (Easiest)**
+
 1. Download: https://developer.android.com/studio
 2. Install Android Studio
 3. Open Android Studio → SDK Manager
 4. Install Android SDK Platform and Build Tools
 5. Set environment variables:
+
 ```powershell
 # Set ANDROID_HOME (default location)
 [System.Environment]::SetEnvironmentVariable('ANDROID_HOME', "$env:LOCALAPPDATA\Android\Sdk", 'User')
@@ -52,6 +56,7 @@ $androidPath = "$env:LOCALAPPDATA\Android\Sdk"
 ```
 
 **Option B: Command Line Tools**
+
 1. Download: https://developer.android.com/studio#command-tools
 2. Extract to `C:\Android\Sdk`
 3. Set ANDROID_HOME to `C:\Android\Sdk`
@@ -76,6 +81,7 @@ npm run build:android
 ```
 
 The APK will be at:
+
 ```
 android/app/build/outputs/apk/release/app-release-unsigned.apk
 ```
@@ -85,4 +91,3 @@ android/app/build/outputs/apk/release/app-release-unsigned.apk
 - **"JAVA_HOME not set"**: Run the setup script or set it manually
 - **"Android SDK not found"**: Install Android Studio or set ANDROID_HOME
 - **Build fails**: Try `cd android && .\gradlew.bat clean` then rebuild
-

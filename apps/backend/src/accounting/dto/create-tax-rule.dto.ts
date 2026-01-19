@@ -1,5 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { TaxMode } from '@prisma/client';
 
 export class CreateTaxRuleDto {
@@ -18,12 +27,21 @@ export class CreateTaxRuleDto {
   @MaxLength(50)
   taxCode: string;
 
-  @ApiProperty({ description: 'Tax rate as decimal (EXCLUSIVE). Example: 0.075 for 7.5%', example: 0.075, minimum: 0 })
+  @ApiProperty({
+    description: 'Tax rate as decimal (EXCLUSIVE). Example: 0.075 for 7.5%',
+    example: 0.075,
+    minimum: 0,
+  })
   @IsNumber()
   @Min(0)
   rate: number;
 
-  @ApiProperty({ description: 'Tax mode', enum: TaxMode, required: false, default: TaxMode.EXCLUSIVE })
+  @ApiProperty({
+    description: 'Tax mode',
+    enum: TaxMode,
+    required: false,
+    default: TaxMode.EXCLUSIVE,
+  })
   @IsOptional()
   @IsEnum(TaxMode)
   mode?: TaxMode;

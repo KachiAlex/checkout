@@ -24,7 +24,9 @@ export function AccountingAccountsPage() {
         const list = await accountingService.listAccounts();
         setAccounts(list);
       } catch (error: any) {
-        toast.error(error?.response?.data?.message || "Unable to load accounts");
+        toast.error(
+          error?.response?.data?.message || "Unable to load accounts",
+        );
       } finally {
         setLoading(false);
       }
@@ -66,7 +68,9 @@ export function AccountingAccountsPage() {
         ) : loading ? (
           <div className="text-center py-8">
             <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-            <p className="theme-text-secondary mt-2 text-sm">Loading accounts...</p>
+            <p className="theme-text-secondary mt-2 text-sm">
+              Loading accounts...
+            </p>
           </div>
         ) : accounts.length === 0 ? (
           <div className="text-center py-10 theme-card rounded-2xl border">
@@ -75,7 +79,8 @@ export function AccountingAccountsPage() {
               No accounts found
             </p>
             <p className="theme-text-secondary text-xs">
-              Accounts should be created automatically when accounting defaults are ensured.
+              Accounts should be created automatically when accounting defaults
+              are ensured.
             </p>
           </div>
         ) : (

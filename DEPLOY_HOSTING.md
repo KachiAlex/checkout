@@ -1,6 +1,7 @@
 # Deploy Hosting with Supabase
 
 ## ✅ Already Done
+
 - Frontend config updated to use Supabase URL
 - Axios interceptor updated to include API key
 
@@ -33,6 +34,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
 Then build and deploy:
+
 ```powershell
 npm run build --workspace=apps/frontend
 npm run deploy:web
@@ -41,6 +43,7 @@ npm run deploy:web
 ## Step 3: Verify Deployment
 
 After deployment:
+
 1. Visit your site: https://checkout-77d99.web.app
 2. Test login
 3. Test product listing
@@ -57,8 +60,10 @@ After deployment:
 If something goes wrong, rollback:
 
 1. Update `apps/frontend/src/config.ts`:
+
    ```typescript
-   const DEFAULT_API_BASE = 'https://us-central1-checkout-77d99.cloudfunctions.net';
+   const DEFAULT_API_BASE =
+     "https://us-central1-checkout-77d99.cloudfunctions.net";
    ```
 
 2. Remove `VITE_SUPABASE_ANON_KEY` from environment
@@ -74,4 +79,3 @@ If something goes wrong, rollback:
 - **Before**: $33.60/month (Firebase Functions)
 - **After**: $0/month (Supabase free tier)
 - **Savings**: $33.60/month
-

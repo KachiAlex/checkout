@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { useAuthStore } from "../stores/authStore";
 import toast from "react-hot-toast";
 import { API_URL } from "../config";
-import { formatCurrency, formatNumber } from "../utils/numberFormat";
+import { formatCurrency } from "../utils/numberFormat";
 
 interface Product {
   id: string;
@@ -175,62 +175,66 @@ export function ProductSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchQuery, accessToken]);
+  }, [searchQuery, accessToken, loadAllProducts, searchProducts]);
 
   // Load stock levels for products
-  const loadStockLevels = async (
-    productList: Product[],
-  ): Promise<ProductWithStock[]> => {
-    if (!user?.locationId || !accessToken) {
-      return productList.map((p) => ({ ...p, stock: undefined }));
-    }
+  const loadStockLevels = useCallback(
+    async (productList: Product[]): Promise<ProductWithStock[]> => {
+      if (!user?.locationId || !accessToken) {
+        return productList.map((p) => ({ ...p, stock: undefined }));
+      }
 
-    try {
-      const stockResponse = await axios.get(
-        `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-      const stockMap = new Map<string, number>(
-        (stockResponse.data || []).map((item: any) => [
-          item.productId,
-          item.quantity,
-        ]),
-      );
-      return productList.map((product) => ({
-        ...product,
-        stock: stockMap.get(product.id) as number | undefined,
-      }));
-    } catch (error) {
-      console.warn("Failed to load stock levels:", error);
-      return productList.map((p) => ({ ...p, stock: undefined }));
-    }
-  };
+      try {
+        const stockResponse = await axios.get(
+          `${API_URL}/api/v1/inventory/${user.locationId}/stock`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          },
+        );
+        const stockMap = new Map<string, number>(
+          (stockResponse.data || []).map((item: any) => [
+            item.productId,
+            item.quantity,
+          ]),
+        );
+        return productList.map((product) => ({
+          ...product,
+          stock: stockMap.get(product.id) as number | undefined,
+        }));
+      } catch (error) {
+        console.warn("Failed to load stock levels:", error);
+        return productList.map((p) => ({ ...p, stock: undefined }));
+      }
+    },
+    [user?.locationId, accessToken],
+  );
 
-  const searchProducts = async (query: string) => {
-    if (!accessToken) {
-      console.warn("No access token available");
-      return;
-    }
+  const searchProducts = useCallback(
+    async (query: string) => {
+      if (!accessToken) {
+        console.warn("No access token available");
+        return;
+      }
 
-    setLoading(true);
-    try {
-      const response = await axios.get(
-        `${API_URL}/api/v1/products?query=${encodeURIComponent(query)}`,
-      );
-      const productList = response.data || [];
-      const productsWithStock = await loadStockLevels(productList);
-      setProducts(productsWithStock);
-    } catch (error) {
-      console.error("Failed to search products:", error);
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/v1/products?query=${encodeURIComponent(query)}`,
+        );
+        const productList = response.data || [];
+        const productsWithStock = await loadStockLevels(productList);
+        setProducts(productsWithStock);
+      } catch (error) {
+        console.error("Failed to search products:", error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [accessToken, loadStockLevels],
+  );
 
-  const loadAllProducts = async () => {
+  const loadAllProducts = useCallback(async () => {
     if (!accessToken) {
       console.warn("No access token available");
       return;
@@ -248,7 +252,7 @@ export function ProductSearch({
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, loadStockLevels]);
 
   // Load recently scanned products from localStorage
   useEffect(() => {
@@ -261,7 +265,7 @@ export function ProductSearch({
         console.warn("Failed to load recently scanned:", error);
       }
     }
-  }, []);
+  }, [loadStockLevels]);
 
   // Save to recently scanned when product is added
   const saveToRecentlyScanned = (product: Product) => {

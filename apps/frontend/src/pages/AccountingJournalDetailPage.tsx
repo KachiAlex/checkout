@@ -31,8 +31,14 @@ export function AccountingJournalDetailPage() {
   }, [accessToken, id, isAdmin]);
 
   const totals = useMemo(() => {
-    const debit = (entry?.lines || []).reduce((sum, l) => sum + (l.debitCents || 0), 0);
-    const credit = (entry?.lines || []).reduce((sum, l) => sum + (l.creditCents || 0), 0);
+    const debit = (entry?.lines || []).reduce(
+      (sum, l) => sum + (l.debitCents || 0),
+      0,
+    );
+    const credit = (entry?.lines || []).reduce(
+      (sum, l) => sum + (l.creditCents || 0),
+      0,
+    );
     return { debit, credit, balanced: debit === credit };
   }, [entry]);
 
@@ -70,7 +76,9 @@ export function AccountingJournalDetailPage() {
         ) : loading ? (
           <div className="text-center py-8">
             <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-            <p className="theme-text-secondary mt-2 text-sm">Loading journal...</p>
+            <p className="theme-text-secondary mt-2 text-sm">
+              Loading journal...
+            </p>
           </div>
         ) : !entry ? (
           <div className="text-center py-10 theme-card rounded-2xl border">
@@ -92,11 +100,15 @@ export function AccountingJournalDetailPage() {
                 </div>
                 <div>
                   <div className="theme-text-secondary text-xs">Source</div>
-                  <div className="theme-text-primary font-semibold">{entry.source}</div>
+                  <div className="theme-text-primary font-semibold">
+                    {entry.source}
+                  </div>
                 </div>
                 <div>
                   <div className="theme-text-secondary text-xs">Status</div>
-                  <div className="theme-text-primary font-semibold">{entry.status}</div>
+                  <div className="theme-text-primary font-semibold">
+                    {entry.status}
+                  </div>
                 </div>
                 <div>
                   <div className="theme-text-secondary text-xs">Balanced</div>
@@ -146,7 +158,9 @@ export function AccountingJournalDetailPage() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-white/10">
-                    <td className="px-4 py-3 theme-text-primary font-semibold">Totals</td>
+                    <td className="px-4 py-3 theme-text-primary font-semibold">
+                      Totals
+                    </td>
                     <td className="px-4 py-3 theme-text-primary font-semibold text-right">
                       {totals.debit}
                     </td>

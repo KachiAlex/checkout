@@ -87,7 +87,10 @@ export class AccountingReportsService {
       to: toDate?.toISOString(),
       locationId: params.locationId,
       currency: 'NGN',
-      openingBalanceCents: rows.length > 0 ? rows[0].balanceCents - ((rows[0].debitCents ?? 0) - (rows[0].creditCents ?? 0)) : 0,
+      openingBalanceCents:
+        rows.length > 0
+          ? rows[0].balanceCents - ((rows[0].debitCents ?? 0) - (rows[0].creditCents ?? 0))
+          : 0,
       closingBalanceCents: rows.length > 0 ? rows[rows.length - 1].balanceCents : 0,
       rows,
     };
@@ -176,9 +179,24 @@ export class AccountingReportsService {
       accountTypes: [AccountType.REVENUE, AccountType.CONTRA_REVENUE, AccountType.EXPENSE],
     });
 
-    const revenueRows: Array<{ accountId: string; code: string; name: string; amountCents: number }> = [];
-    const contraRevenueRows: Array<{ accountId: string; code: string; name: string; amountCents: number }> = [];
-    const expenseRows: Array<{ accountId: string; code: string; name: string; amountCents: number }> = [];
+    const revenueRows: Array<{
+      accountId: string;
+      code: string;
+      name: string;
+      amountCents: number;
+    }> = [];
+    const contraRevenueRows: Array<{
+      accountId: string;
+      code: string;
+      name: string;
+      amountCents: number;
+    }> = [];
+    const expenseRows: Array<{
+      accountId: string;
+      code: string;
+      name: string;
+      amountCents: number;
+    }> = [];
 
     for (const b of balances) {
       const account = byId.get(b.accountId);
@@ -189,7 +207,12 @@ export class AccountingReportsService {
       if (account.type === AccountType.REVENUE) {
         const amountCents = credit - debit;
         if (amountCents !== 0) {
-          revenueRows.push({ accountId: account.id, code: account.code, name: account.name, amountCents });
+          revenueRows.push({
+            accountId: account.id,
+            code: account.code,
+            name: account.name,
+            amountCents,
+          });
         }
         continue;
       }
@@ -197,7 +220,12 @@ export class AccountingReportsService {
       if (account.type === AccountType.CONTRA_REVENUE) {
         const amountCents = debit - credit;
         if (amountCents !== 0) {
-          contraRevenueRows.push({ accountId: account.id, code: account.code, name: account.name, amountCents });
+          contraRevenueRows.push({
+            accountId: account.id,
+            code: account.code,
+            name: account.name,
+            amountCents,
+          });
         }
         continue;
       }
@@ -205,7 +233,12 @@ export class AccountingReportsService {
       if (account.type === AccountType.EXPENSE) {
         const amountCents = debit - credit;
         if (amountCents !== 0) {
-          expenseRows.push({ accountId: account.id, code: account.code, name: account.name, amountCents });
+          expenseRows.push({
+            accountId: account.id,
+            code: account.code,
+            name: account.name,
+            amountCents,
+          });
         }
       }
     }
@@ -264,9 +297,16 @@ export class AccountingReportsService {
       ],
     });
 
-    const assets: Array<{ accountId: string; code: string; name: string; amountCents: number }> = [];
-    const liabilities: Array<{ accountId: string; code: string; name: string; amountCents: number }> = [];
-    const equity: Array<{ accountId: string; code: string; name: string; amountCents: number }> = [];
+    const assets: Array<{ accountId: string; code: string; name: string; amountCents: number }> =
+      [];
+    const liabilities: Array<{
+      accountId: string;
+      code: string;
+      name: string;
+      amountCents: number;
+    }> = [];
+    const equity: Array<{ accountId: string; code: string; name: string; amountCents: number }> =
+      [];
 
     let netIncomeCents = 0;
 
@@ -279,40 +319,64 @@ export class AccountingReportsService {
 
       if (account.type === AccountType.ASSET) {
         const amountCents = debit - credit;
-        if (amountCents !== 0) assets.push({ accountId: account.id, code: account.code, name: account.name, amountCents });
+        if (amountCents !== 0)
+          assets.push({
+            accountId: account.id,
+            code: account.code,
+            name: account.name,
+            amountCents,
+          });
         continue;
       }
 
       if (account.type === AccountType.CONTRA_ASSET) {
         const amountCents = credit - debit;
-        if (amountCents !== 0) assets.push({ accountId: account.id, code: account.code, name: account.name, amountCents: -amountCents });
+        if (amountCents !== 0)
+          assets.push({
+            accountId: account.id,
+            code: account.code,
+            name: account.name,
+            amountCents: -amountCents,
+          });
         continue;
       }
 
       if (account.type === AccountType.LIABILITY) {
         const amountCents = credit - debit;
-        if (amountCents !== 0) liabilities.push({ accountId: account.id, code: account.code, name: account.name, amountCents });
+        if (amountCents !== 0)
+          liabilities.push({
+            accountId: account.id,
+            code: account.code,
+            name: account.name,
+            amountCents,
+          });
         continue;
       }
 
       if (account.type === AccountType.EQUITY) {
         const amountCents = credit - debit;
-        if (amountCents !== 0) equity.push({ accountId: account.id, code: account.code, name: account.name, amountCents });
+        if (amountCents !== 0)
+          equity.push({
+            accountId: account.id,
+            code: account.code,
+            name: account.name,
+            amountCents,
+          });
         continue;
       }
 
       if (account.type === AccountType.REVENUE) {
-        netIncomeCents += (credit - debit);
+        netIncomeCents += credit - debit;
         continue;
       }
 
       if (account.type === AccountType.CONTRA_REVENUE) {
-        netIncomeCents -= (debit - credit);
+        netIncomeCents -= debit - credit;
         continue;
       }
 
       if (account.type === AccountType.EXPENSE) {
-        netIncomeCents -= (debit - credit);
+        netIncomeCents -= debit - credit;
       }
     }
 
@@ -385,14 +449,9 @@ export class AccountingReportsService {
       to: toDate,
     });
 
-    const taxRuleIds = byRule
-      .map((r) => r.taxRuleId)
-      .filter((id): id is string => Boolean(id));
+    const taxRuleIds = byRule.map((r) => r.taxRuleId).filter((id): id is string => Boolean(id));
 
-    const taxRules = await this.accountingRepository.listTaxRulesByIds(
-      params.tenantId,
-      taxRuleIds,
-    );
+    const taxRules = await this.accountingRepository.listTaxRulesByIds(params.tenantId, taxRuleIds);
     const ruleById = new Map(taxRules.map((r) => [r.id, r] as const));
 
     const breakdown = byRule
@@ -417,15 +476,12 @@ export class AccountingReportsService {
     dueDate.setDate(21);
     dueDate.setHours(0, 0, 0, 0);
 
-    const period = await this.accountingRepository.findTaxPeriodCoveringRange(
-      params.tenantId,
-      {
-        locationId: params.locationId,
-        taxCode,
-        from: fromDate,
-        to: toDate,
-      },
-    );
+    const period = await this.accountingRepository.findTaxPeriodCoveringRange(params.tenantId, {
+      locationId: params.locationId,
+      taxCode,
+      from: fromDate,
+      to: toDate,
+    });
 
     return {
       taxCode,

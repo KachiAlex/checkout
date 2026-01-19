@@ -52,14 +52,17 @@ describe('E2E: Accounting Smoke', () => {
     testProductId = uuidv4();
 
     // Firestore fixtures
-    await firestoreService.collection('tenants').doc(testTenantId).set({
-      id: testTenantId,
-      name: 'Test Store',
-      slug: `test-store-${testTenantId}`,
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    await firestoreService
+      .collection('tenants')
+      .doc(testTenantId)
+      .set({
+        id: testTenantId,
+        name: 'Test Store',
+        slug: `test-store-${testTenantId}`,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
     await firestoreService.collection('locations').doc(testLocationId).set({
       id: testLocationId,
@@ -157,10 +160,12 @@ describe('E2E: Accounting Smoke', () => {
     }
 
     // Login
-    const login = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
-      tenantSlug: `test-store-${testTenantId}`,
-      pin: '123456',
-    });
+    const login = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        tenantSlug: `test-store-${testTenantId}`,
+        pin: '123456',
+      });
 
     expect([200, 201]).toContain(login.status);
     accessToken = login.body.accessToken;

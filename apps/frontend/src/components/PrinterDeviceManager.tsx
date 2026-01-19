@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import {
   PrinterDevice,
@@ -10,9 +10,7 @@ import {
   connectBluetoothPrinter,
   registerPrinterDevice,
   listPrinterDevices,
-  updatePrinterDevice,
   getSerialPortInfo,
-  getAvailableSerialPorts,
   closeSerialPort,
 } from "../services/printerDeviceService";
 import { receiptService } from "../services/receiptService";
@@ -28,16 +26,8 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
-  const [availablePorts, setAvailablePorts] = useState<SerialPort[]>([]);
 
-  useEffect(() => {
-    if (accessToken) {
-      loadPrinters();
-      loadAvailablePorts();
-    }
-  }, [accessToken]);
-
-  const loadPrinters = async () => {
+  const loadPrinters = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -49,18 +39,13 @@ export function PrinterDeviceManager({ onClose }: PrinterDeviceManagerProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, user?.locationId]);
 
-  const loadAvailablePorts = async () => {
-    if (isSerialAPISupported()) {
-      try {
-        const ports = await getAvailableSerialPorts();
-        setAvailablePorts(ports);
-      } catch (error) {
-        console.warn("Failed to load serial ports:", error);
-      }
+  useEffect(() => {
+    if (accessToken) {
+      loadPrinters();
     }
-  };
+  }, [accessToken, loadPrinters]);
 
   const handleConnectUSB = async () => {
     if (!isSerialAPISupported()) {

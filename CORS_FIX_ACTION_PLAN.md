@@ -43,6 +43,7 @@ The `net::ERR_FAILED` error means the request isn't reaching the server. This is
 ### 4. Test Backend (1 minute)
 
 Open PowerShell and run:
+
 ```powershell
 Invoke-WebRequest -Uri "https://pos-checkout-api.onrender.com/api/v1/health" -Method GET
 ```
@@ -73,6 +74,7 @@ Invoke-WebRequest -Uri "https://pos-checkout-api.onrender.com/api/v1/auth/login"
 ## 🔧 What I Fixed in the Code
 
 I added an explicit OPTIONS handler middleware in `apps/backend/src/app.bootstrap.ts` that:
+
 - ✅ Always sets CORS headers on every request
 - ✅ Handles OPTIONS preflight requests immediately
 - ✅ Logs when OPTIONS requests are handled
@@ -84,31 +86,35 @@ I added an explicit OPTIONS handler middleware in `apps/backend/src/app.bootstra
 
 Make sure these are set in Render Dashboard → Environment:
 
-| Variable | Required | Value |
-|----------|----------|-------|
-| `NODE_ENV` | Yes | `production` |
-| `PORT` | Yes | `10000` |
-| `CORS_ORIGIN` | **CRITICAL** | `https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174` |
-| `JWT_SECRET` | Yes | (your secret key) |
-| `FIREBASE_PROJECT_ID` | Yes | `checkout-77d99` |
-| `FIREBASE_CLIENT_EMAIL` | Yes | (your service account email) |
-| `FIREBASE_PRIVATE_KEY` | Yes | (your private key) |
+| Variable                | Required     | Value                                                                                                               |
+| ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`              | Yes          | `production`                                                                                                        |
+| `PORT`                  | Yes          | `10000`                                                                                                             |
+| `CORS_ORIGIN`           | **CRITICAL** | `https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174` |
+| `JWT_SECRET`            | Yes          | (your secret key)                                                                                                   |
+| `FIREBASE_PROJECT_ID`   | Yes          | `checkout-77d99`                                                                                                    |
+| `FIREBASE_CLIENT_EMAIL` | Yes          | (your service account email)                                                                                        |
+| `FIREBASE_PRIVATE_KEY`  | Yes          | (your private key)                                                                                                  |
 
 ## 🚨 Most Common Issues
 
 ### Issue 1: Service Not Deployed
+
 **Symptom**: 404 or connection refused
 **Fix**: Deploy service in Render Dashboard
 
 ### Issue 2: Service Sleeping (Free Tier)
+
 **Symptom**: First request fails, subsequent requests work
 **Fix**: Wait 30-60 seconds after first request, or upgrade to paid tier
 
 ### Issue 3: CORS_ORIGIN Not Set
+
 **Symptom**: CORS errors even when service is running
 **Fix**: Set `CORS_ORIGIN` in Environment tab (see step 2)
 
 ### Issue 4: Service Crashed
+
 **Symptom**: Service shows "Failed" status
 **Fix**: Check logs, fix error, service will auto-redeploy
 
@@ -139,4 +145,3 @@ If you've done all steps and it's still not working:
 The code fix I made ensures CORS headers are always sent, but if the service isn't running, nothing will work.
 
 **Next Step**: Go to Render Dashboard and verify service status + CORS_ORIGIN variable.
-

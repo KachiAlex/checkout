@@ -187,7 +187,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         clearTimeout(scanTimeoutRef.current);
       }
     };
-  }, [scanMode, onScan, markDeviceUsed, user?.id]);
+  }, [scanMode, onScan, markDeviceUsed, user?.id, registerUSBScanner]);
 
   // Register USB scanner on mount
   const registerUSBScanner = useCallback(async () => {
@@ -327,7 +327,6 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       onScan,
       markDeviceUsed,
       updateDevice,
-      sendDeviceHeartbeat,
     ],
   );
 
@@ -452,6 +451,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     markDeviceUsed,
     handleNativeScan,
     isNative,
+    stopCameraScan,
   ]);
 
   // Camera snap & decode mode (better for low light)
@@ -628,7 +628,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     } finally {
       setIsCapturing(false);
     }
-  }, [onScan, markDeviceUsed, user?.id]);
+  }, [onScan, markDeviceUsed, user?.id, stopCameraScan]);
 
   const stopCameraScan = useCallback(() => {
     if (isNative) {
@@ -675,7 +675,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
-  }, [setActiveDevice, isNative]);
+  }, [setActiveDevice, isNative, user?.id]);
 
   // Cleanup camera on unmount
   useEffect(() => {
@@ -730,8 +730,8 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         toast.success(
           `Bluetooth scanner "${deviceData.name}" connected through Windows`,
         );
-        setCameraError(null);
         setScanMode("keyboard");
+        setCameraError(null);
         return;
       }
 
@@ -741,7 +741,6 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         );
       }
 
-      // Check if we're on HTTPS or localhost
       const isSecure =
         window.location.protocol === "https:" ||
         window.location.hostname === "localhost" ||
@@ -782,13 +781,9 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         }
       }
 
-      // Request Bluetooth device - this will show the browser's device chooser
-      // We'll accept HID devices (keyboard scanners) or generic devices
       const device = await (navigator as any).bluetooth.requestDevice({
         filters: [
-          // HID (Human Interface Device) - most barcode scanners act as keyboards
           { services: ["00001812-0000-1000-8000-00805f9b34fb"] },
-          // Generic device with name containing "scanner" or "barcode"
           { namePrefix: "Scanner" },
           { namePrefix: "Barcode" },
           { namePrefix: "QR" },
@@ -796,7 +791,7 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         optionalServices: [
           "battery_service",
           "device_information",
-          "00001812-0000-1000-8000-00805f9b34fb", // HID Service
+          "00001812-0000-1000-8000-00805f9b34fb",
         ],
       });
 
@@ -804,13 +799,11 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       toast.dismiss("bluetooth-connect");
       toast.loading("Connecting to device...", { id: "bluetooth-connect" });
 
-      // Connect to GATT server if available
       if (device.gatt) {
         try {
           const server = await device.gatt.connect();
           console.log("GATT server connected:", server);
 
-          // Try to get battery level if available
           try {
             const batteryService =
               await server.getPrimaryService("battery_service");
@@ -820,7 +813,6 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             const level = batteryLevel.getUint8(0);
             console.log("Battery level:", level + "%");
           } catch (e) {
-            // Battery service not available, that's okay
             console.log("Battery service not available");
           }
         } catch (gattError) {
@@ -828,11 +820,9 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             "GATT connection failed (device may be HID-only):",
             gattError,
           );
-          // HID devices don't need GATT connection, they work as keyboards
         }
       }
 
-      // Register Bluetooth device
       const deviceData = await registerBluetoothDevice(
         device,
         user?.locationId,
@@ -846,15 +836,11 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       bluetoothDeviceRef.current = device;
       await sendDeviceHeartbeat(deviceId, user?.id);
 
-      // For HID devices, the scanner will act as a keyboard
-      // The keyboard input handler will catch the scans
       setScanMode("keyboard");
 
-      // Monitor connection
       device.addEventListener("gattserverdisconnected", () => {
         console.log("Bluetooth scanner disconnected");
         toast.error(`Bluetooth scanner "${device.name}" disconnected`);
-        // Update device status
         if (deviceId) {
           useScannerDeviceStore
             .getState()
@@ -874,47 +860,35 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     } catch (error: any) {
       toast.dismiss("bluetooth-connect");
 
-      if (error.name === "NotFoundError") {
+      if (error?.name === "NotFoundError") {
         const errorMsg =
           "No Bluetooth scanner found nearby. Make sure your scanner is powered on and in pairing mode.";
         setCameraError(errorMsg);
         toast.error(errorMsg);
-      } else if (error.name === "SecurityError") {
+      } else if (error?.name === "SecurityError") {
         const errorMsg =
           "Bluetooth access denied. Please allow Bluetooth access in your browser settings.";
         setCameraError(errorMsg);
         toast.error(errorMsg);
-      } else if (error.name === "AbortError") {
-        // User cancelled the device chooser - don't show error
+      } else if (error?.name === "AbortError") {
         console.log("User cancelled Bluetooth device selection");
       } else {
-        const errorMsg = error.message || "Failed to connect Bluetooth scanner";
-        setCameraError(errorMsg);
-        toast.error(errorMsg);
+        const message =
+          error?.message || "Failed to connect to Bluetooth scanner.";
+        setCameraError(message);
+        toast.error(message);
       }
     } finally {
       setIsConnectingBluetooth(false);
     }
   }, [
+    isConnectingBluetooth,
+    selectNativeDevice,
     user?.locationId,
     user?.id,
     addDevice,
     setActiveDevice,
-    isConnectingBluetooth,
-    selectNativeDevice,
   ]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // If Enter is pressed and input has value, treat as barcode scan
-    if (e.key === "Enter" && input.trim()) {
-      e.preventDefault();
-      onScan(input.trim());
-      setInput("");
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
-    }
-  };
 
   const isBluetoothSupported =
     typeof navigator !== "undefined" && "bluetooth" in (navigator as any);

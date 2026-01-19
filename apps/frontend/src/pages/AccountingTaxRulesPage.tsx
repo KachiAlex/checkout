@@ -32,7 +32,9 @@ export function AccountingTaxRulesPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [rules, setRules] = useState<TaxRule[]>([]);
 
   const [filters, setFilters] = useState({
@@ -87,7 +89,12 @@ export function AccountingTaxRulesPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, filters.locationId, filters.taxCode, filters.includeInactive]);
+  }, [
+    accessToken,
+    filters.locationId,
+    filters.taxCode,
+    filters.includeInactive,
+  ]);
 
   useEffect(() => {
     if (!canUse) return;
@@ -157,7 +164,9 @@ export function AccountingTaxRulesPage() {
       rate: ratePercent / 100,
       mode: form.mode,
       effectiveFrom: localDateToIsoStart(form.effectiveFrom),
-      effectiveTo: form.effectiveTo ? localDateToIsoStart(form.effectiveTo) : undefined,
+      effectiveTo: form.effectiveTo
+        ? localDateToIsoStart(form.effectiveTo)
+        : undefined,
       locationId: form.locationId || undefined,
       isActive: form.isActive,
     };
@@ -221,7 +230,9 @@ export function AccountingTaxRulesPage() {
                   </label>
                   <select
                     value={filters.locationId}
-                    onChange={(e) => setFilters((s) => ({ ...s, locationId: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, locationId: e.target.value }))
+                    }
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   >
                     <option value="">All locations</option>
@@ -239,7 +250,9 @@ export function AccountingTaxRulesPage() {
                   </label>
                   <input
                     value={filters.taxCode}
-                    onChange={(e) => setFilters((s) => ({ ...s, taxCode: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, taxCode: e.target.value }))
+                    }
                     placeholder="VAT"
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
@@ -251,7 +264,10 @@ export function AccountingTaxRulesPage() {
                       type="checkbox"
                       checked={filters.includeInactive}
                       onChange={(e) =>
-                        setFilters((s) => ({ ...s, includeInactive: e.target.checked }))
+                        setFilters((s) => ({
+                          ...s,
+                          includeInactive: e.target.checked,
+                        }))
                       }
                     />
                     Include inactive
@@ -289,7 +305,9 @@ export function AccountingTaxRulesPage() {
                     </label>
                     <select
                       value={form.locationId}
-                      onChange={(e) => setForm((s) => ({ ...s, locationId: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, locationId: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     >
                       <option value="">All locations</option>
@@ -307,7 +325,9 @@ export function AccountingTaxRulesPage() {
                     </label>
                     <input
                       value={form.taxCode}
-                      onChange={(e) => setForm((s) => ({ ...s, taxCode: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, taxCode: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -318,7 +338,9 @@ export function AccountingTaxRulesPage() {
                     </label>
                     <input
                       value={form.name}
-                      onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, name: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -329,7 +351,9 @@ export function AccountingTaxRulesPage() {
                     </label>
                     <input
                       value={form.authority}
-                      onChange={(e) => setForm((s) => ({ ...s, authority: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, authority: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -340,7 +364,9 @@ export function AccountingTaxRulesPage() {
                     </label>
                     <input
                       value={form.ratePercent}
-                      onChange={(e) => setForm((s) => ({ ...s, ratePercent: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, ratePercent: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                     <div className="theme-text-secondary text-[11px] mt-1">
@@ -354,7 +380,12 @@ export function AccountingTaxRulesPage() {
                     </label>
                     <select
                       value={form.mode}
-                      onChange={(e) => setForm((s) => ({ ...s, mode: e.target.value as TaxMode }))}
+                      onChange={(e) =>
+                        setForm((s) => ({
+                          ...s,
+                          mode: e.target.value as TaxMode,
+                        }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     >
                       <option value="EXCLUSIVE">EXCLUSIVE</option>
@@ -369,7 +400,12 @@ export function AccountingTaxRulesPage() {
                     <input
                       type="date"
                       value={form.effectiveFrom}
-                      onChange={(e) => setForm((s) => ({ ...s, effectiveFrom: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({
+                          ...s,
+                          effectiveFrom: e.target.value,
+                        }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -381,7 +417,9 @@ export function AccountingTaxRulesPage() {
                     <input
                       type="date"
                       value={form.effectiveTo}
-                      onChange={(e) => setForm((s) => ({ ...s, effectiveTo: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, effectiveTo: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -391,7 +429,9 @@ export function AccountingTaxRulesPage() {
                       <input
                         type="checkbox"
                         checked={form.isActive}
-                        onChange={(e) => setForm((s) => ({ ...s, isActive: e.target.checked }))}
+                        onChange={(e) =>
+                          setForm((s) => ({ ...s, isActive: e.target.checked }))
+                        }
                       />
                       Active
                     </label>
@@ -433,13 +473,19 @@ export function AccountingTaxRulesPage() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td className="px-4 py-6 theme-text-secondary" colSpan={5}>
+                        <td
+                          className="px-4 py-6 theme-text-secondary"
+                          colSpan={5}
+                        >
                           Loading...
                         </td>
                       </tr>
                     ) : rules.length === 0 ? (
                       <tr>
-                        <td className="px-4 py-6 theme-text-secondary" colSpan={5}>
+                        <td
+                          className="px-4 py-6 theme-text-secondary"
+                          colSpan={5}
+                        >
                           No tax rules found.
                         </td>
                       </tr>
@@ -448,18 +494,30 @@ export function AccountingTaxRulesPage() {
                         .slice()
                         .sort((a, b) => a.name.localeCompare(b.name))
                         .map((r) => {
-                          const rate = typeof r.rate === "string" ? parseFloat(r.rate) : r.rate;
-                          const pct = Number.isFinite(rate) ? `${(rate * 100).toFixed(2)}%` : "-";
+                          const rate =
+                            typeof r.rate === "string"
+                              ? parseFloat(r.rate)
+                              : r.rate;
+                          const pct = Number.isFinite(rate)
+                            ? `${(rate * 100).toFixed(2)}%`
+                            : "-";
                           return (
                             <tr key={r.id} className="border-b border-white/5">
                               <td className="px-4 py-3 theme-text-primary">
                                 {r.name}
-                                <div className="theme-text-secondary text-[11px]">{r.taxCode}</div>
+                                <div className="theme-text-secondary text-[11px]">
+                                  {r.taxCode}
+                                </div>
                               </td>
                               <td className="px-4 py-3 theme-text-secondary">
-                                {r.locationId ? locationsById.get(r.locationId) || r.locationId : "All"}
+                                {r.locationId
+                                  ? locationsById.get(r.locationId) ||
+                                    r.locationId
+                                  : "All"}
                               </td>
-                              <td className="px-4 py-3 theme-text-primary whitespace-nowrap">{pct}</td>
+                              <td className="px-4 py-3 theme-text-primary whitespace-nowrap">
+                                {pct}
+                              </td>
                               <td className="px-4 py-3">
                                 <span
                                   className={`theme-chip rounded-full border px-3 py-1 text-xs font-semibold ${

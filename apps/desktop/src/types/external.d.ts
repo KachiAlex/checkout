@@ -1,4 +1,2 @@
-declare module 'node-hid';
-declare module 'usb-detection';
-
-
+declare module "node-hid";
+declare module "usb-detection";

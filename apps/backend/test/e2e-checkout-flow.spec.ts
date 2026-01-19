@@ -139,12 +139,10 @@ describe('E2E: Complete Checkout Flow', () => {
 
   describe('Authentication', () => {
     it('should login with PIN', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({
-          tenantSlug: 'test-store',
-          pin: '123456',
-        });
+      const response = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
+        tenantSlug: 'test-store',
+        pin: '123456',
+      });
 
       expect([200, 201]).toContain(response.status);
 

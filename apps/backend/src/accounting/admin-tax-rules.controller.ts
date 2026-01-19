@@ -72,7 +72,11 @@ export class AdminTaxRulesController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a tax rule' })
   @ApiResponse({ status: 200, description: 'Tax rule updated' })
-  async update(@Req() req: AuthenticatedRequest, @Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
+  async update(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateTaxRuleDto,
+  ) {
     this.ensureTenantAdmin(req);
     return this.accountingRepository.updateTaxRule(req.user.tenantId, id, dto);
   }

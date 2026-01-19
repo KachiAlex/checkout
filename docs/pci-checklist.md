@@ -36,6 +36,7 @@ This document outlines the PCI-DSS compliance considerations for the POS Checkou
 - [x] **2.5**: Store only necessary payment data
 
 **Implementation:**
+
 - Payment adapters receive tokens only
 - Database stores transaction IDs, not PAN
 - Payment processor data stored as JSON without sensitive fields
@@ -61,6 +62,7 @@ This document outlines the PCI-DSS compliance considerations for the POS Checkou
 - [ ] **5.4**: Intrusion detection (production)
 
 **Current Implementation:**
+
 - Payment transactions logged in `Payment` entity
 - Audit logs for order creation
 - Structured logging for errors

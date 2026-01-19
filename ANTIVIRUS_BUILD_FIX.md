@@ -1,12 +1,15 @@
 # Fix for esbuild Build Issues (Antivirus/Windows Defender)
 
 ## Problem
+
 The esbuild service keeps crashing during frontend build with error:
+
 ```
 [vite:esbuild] The service is no longer running
 ```
 
 ## Root Cause
+
 Windows Defender or antivirus software is likely blocking/scanning esbuild processes, causing them to crash.
 
 ## Solution
@@ -50,6 +53,7 @@ Set-MpPreference -DisableRealtimeMonitoring $false
 ### Option 3: Check Third-Party Antivirus
 
 If you have third-party antivirus (Norton, McAfee, Avast, etc.):
+
 1. Open your antivirus settings
 2. Add exclusions for:
    - `D:\checkout` (entire directory)
@@ -82,20 +86,20 @@ If esbuild continues to fail, we can switch to using Babel instead:
 
 ```typescript
 // vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [
     react({
-      jsxRuntime: 'automatic',
+      jsxRuntime: "automatic",
       babel: {
         configFile: false,
       },
     }),
   ],
   build: {
-    minify: 'terser', // Use terser instead of esbuild
+    minify: "terser", // Use terser instead of esbuild
   },
   esbuild: false, // Completely disable esbuild
 });
@@ -121,4 +125,3 @@ firebase deploy --only hosting
 - The exclusions are safe as they only exclude development build tools
 - You can remove exclusions after the build if concerned about security
 - For production deployments, consider using CI/CD (GitHub Actions, etc.) which don't have this issue
-

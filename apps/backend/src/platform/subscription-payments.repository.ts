@@ -328,13 +328,18 @@ export class SubscriptionPaymentsRepository {
   }
 
   private normalizePlan(value: TenantPlan | string | null | undefined): TenantPlan {
-    return (String(value ?? TenantPlan.FREE).trim().toLowerCase() as TenantPlan) || TenantPlan.FREE;
+    return (
+      (String(value ?? TenantPlan.FREE)
+        .trim()
+        .toLowerCase() as TenantPlan) || TenantPlan.FREE
+    );
   }
 
   private normalizeStatus(value: PaymentStatus | string | null | undefined): PaymentStatus {
     return (
-      (String(value ?? PaymentStatus.PENDING).trim().toLowerCase() as PaymentStatus) ||
-      PaymentStatus.PENDING
+      (String(value ?? PaymentStatus.PENDING)
+        .trim()
+        .toLowerCase() as PaymentStatus) || PaymentStatus.PENDING
     );
   }
 

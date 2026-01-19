@@ -1,9 +1,11 @@
 # CORS Fix for Render Deployment
 
 ## Problem
+
 CORS errors when accessing Render backend from Firebase-hosted frontend:
+
 ```
-Access to XMLHttpRequest at 'https://pos-checkout-api.onrender.com/api/v1/auth/login' 
+Access to XMLHttpRequest at 'https://pos-checkout-api.onrender.com/api/v1/auth/login'
 from origin 'https://checkout-77d99.web.app' has been blocked by CORS policy
 ```
 
@@ -32,14 +34,16 @@ After redeployment:
    - Should show: `https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,...`
 
 2. **Test the API**:
+
    ```bash
    curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
      -H "Origin: https://checkout-77d99.web.app" \
      -H "Access-Control-Request-Method: POST" \
      -v
    ```
-   
+
    Should return headers:
+
    ```
    Access-Control-Allow-Origin: https://checkout-77d99.web.app
    Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD
@@ -78,22 +82,28 @@ After redeployment:
 ### Common Issues
 
 #### Issue 1: Environment Variable Not Set
+
 **Symptom**: CORS errors persist after setting variable
-**Fix**: 
+**Fix**:
+
 - Make sure you clicked "Save Changes"
 - Wait for redeploy to complete
 - Check logs to verify variable is being read
 
 #### Issue 2: Wrong Origin Format
+
 **Symptom**: Still getting CORS errors
 **Fix**:
+
 - Ensure no trailing slashes: `https://checkout-77d99.web.app` (not `https://checkout-77d99.web.app/`)
 - Ensure comma-separated with no spaces: `origin1,origin2` (not `origin1, origin2`)
 - Check exact URL in browser console error message
 
 #### Issue 3: Service Not Responding
+
 **Symptom**: `net::ERR_FAILED` errors
 **Fix**:
+
 - Check if service is running in Render dashboard
 - Check service logs for errors
 - Verify PORT is set to 10000
@@ -112,15 +122,15 @@ After redeployment:
 ### Expected Log Output
 
 When backend starts, you should see:
+
 ```
 🔧 Bootstrap - NODE_ENV: production, Prefix: /api/v1, Origin: https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174
 🔧 CORS Configuration - Allowed Origins: [ 'https://checkout-77d99.web.app', 'https://checkout-77d99.firebaseapp.com', 'http://localhost:5173', 'http://localhost:5174' ]
 🔧 CORS Configuration - CORS_ORIGIN env var: https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174
 ```
 
-If you see different origins or "ALL (*)", the environment variable isn't being read correctly.
+If you see different origins or "ALL (\*)", the environment variable isn't being read correctly.
 
 ---
 
 **Quick Fix**: Set `CORS_ORIGIN` in Render Dashboard → Environment tab → Save → Wait for redeploy
-

@@ -65,4 +65,3 @@ the latest assets before building the APK.
 
 For more details, refer to the official Capacitor Android workflow docs:
 https://capacitorjs.com/docs/android
-

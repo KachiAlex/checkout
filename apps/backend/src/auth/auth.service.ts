@@ -9,6 +9,7 @@ import { UsersRepository, UserRecord } from '../users/users.repository';
 import { TenantStatus, UserRole } from '@pos-checkout/shared';
 import { TenantsRepository } from '../tenants/tenants.repository';
 import { SuperAdminLoginDto } from './dto/super-admin-login.dto';
+import { EmailLoginDto } from './dto/email-login.dto';
 
 @Injectable()
 export class AuthService {
@@ -162,47 +163,48 @@ export class AuthService {
 
     console.log(`[AuthService] Login successful for user: ${user.id} (${user.name})`);
 
-    const payload = {
-      sub: user.id,
-      role: user.role,
-      locationId: user.locationId,
-      deviceId: user.deviceId,
-      tenantId: user.tenantId,
-      isPlatformAdmin: user.isPlatformAdmin,
-    };
+    return this.buildAuthResponse(user, tenant);
+  }
 
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '24h', // Fixed to 24h to prevent 15m expiration from .env
-    });
+  async loginByEmail(dto: EmailLoginDto): Promise<AuthResponseDto> {
+    const email = dto.email.trim().toLowerCase();
+    console.log(`[AuthService] Login attempt for email: ${email}`);
+    const user = await this.usersRepository.findByEmail(email);
 
-    const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-    });
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        locationId: user.locationId || undefined,
-        tenantId: user.tenantId,
-        isPlatformAdmin: user.isPlatformAdmin,
-      },
-      tenant: {
-        id: tenant.id,
-        name: tenant.name,
-        slug: tenant.slug,
-        plan: tenant.plan,
-        status: tenant.status,
-        seatLimit: tenant.seatLimit,
-        contactEmail: tenant.contactEmail,
-        billingCycleStart: tenant.billingCycleStart?.toISOString(),
-        billingCycleEnd: tenant.billingCycleEnd?.toISOString(),
-      },
-    };
+    const isValid = await bcrypt.compare(dto.pin, user.pinHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const tenant = await this.tenantsRepository.findById(user.tenantId);
+
+    if (!tenant) {
+      throw new UnauthorizedException('Tenant not found');
+    }
+
+    if (tenant.status !== TenantStatus.ACTIVE) {
+      throw new UnauthorizedException(`Tenant ${tenant.slug} is not active`);
+    }
+
+    if (dto.deviceId && user.deviceId !== dto.deviceId) {
+      try {
+        const updated = await this.usersRepository.update(user.id, { deviceId: dto.deviceId });
+        user.deviceId = updated.deviceId;
+      } catch (error) {
+        console.warn(
+          '[AuthService] Failed to save device ID for email login:',
+          (error as any)?.message,
+        );
+      }
+    }
+
+    console.log(`[AuthService] Login successful for user: ${user.id} (${user.name}) via email`);
+
+    return this.buildAuthResponse(user, tenant);
   }
 
   async loginSuperAdmin(dto: SuperAdminLoginDto): Promise<AuthResponseDto> {
@@ -228,47 +230,7 @@ export class AuthService {
       throw new UnauthorizedException(`Tenant ${tenant.slug} is not active`);
     }
 
-    const payload = {
-      sub: user.id,
-      role: user.role,
-      locationId: user.locationId,
-      deviceId: user.deviceId,
-      tenantId: user.tenantId,
-      isPlatformAdmin: user.isPlatformAdmin,
-    };
-
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '24h', // Fixed to 24h to prevent 15m expiration from .env
-    });
-
-    const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        locationId: user.locationId || undefined,
-        tenantId: user.tenantId,
-        isPlatformAdmin: user.isPlatformAdmin,
-      },
-      tenant: {
-        id: tenant.id,
-        name: tenant.name,
-        slug: tenant.slug,
-        plan: tenant.plan,
-        status: tenant.status,
-        seatLimit: tenant.seatLimit,
-        contactEmail: tenant.contactEmail,
-        billingCycleStart: tenant.billingCycleStart?.toISOString(),
-        billingCycleEnd: tenant.billingCycleEnd?.toISOString(),
-      },
-    };
+    return this.buildAuthResponse(user, tenant);
   }
 
   async registerDevice(dto: DeviceRegisterDto): Promise<{ success: boolean; message: string }> {
@@ -381,5 +343,56 @@ export class AuthService {
       }
       throw new UnauthorizedException('Invalid or expired refresh token. Please log in again.');
     }
+  }
+
+  private buildAuthResponse(
+    user: UserRecord,
+    tenant: Awaited<ReturnType<TenantsRepository['findById']>> extends infer T
+      ? T extends null
+        ? never
+        : T
+      : never,
+  ): AuthResponseDto {
+    const payload = {
+      sub: user.id,
+      role: user.role,
+      locationId: user.locationId,
+      deviceId: user.deviceId,
+      tenantId: user.tenantId,
+      isPlatformAdmin: user.isPlatformAdmin,
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: '24h', // Fixed to 24h to prevent 15m expiration from .env
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        locationId: user.locationId || undefined,
+        tenantId: user.tenantId,
+        isPlatformAdmin: user.isPlatformAdmin,
+      },
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+        plan: tenant.plan,
+        status: tenant.status,
+        seatLimit: tenant.seatLimit,
+        contactEmail: tenant.contactEmail,
+        billingCycleStart: tenant.billingCycleStart?.toISOString(),
+        billingCycleEnd: tenant.billingCycleEnd?.toISOString(),
+      },
+    };
   }
 }

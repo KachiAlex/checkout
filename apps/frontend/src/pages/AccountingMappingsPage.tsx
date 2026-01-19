@@ -50,7 +50,9 @@ export function AccountingMappingsPage() {
 
   const updateLocal = (
     eventType: string,
-    patch: Partial<Pick<AccountingMapping, "debitAccountId" | "creditAccountId" | "isActive">>,
+    patch: Partial<
+      Pick<AccountingMapping, "debitAccountId" | "creditAccountId" | "isActive">
+    >,
   ) => {
     setMappings((prev) =>
       prev.map((m) => (m.eventType === eventType ? { ...m, ...patch } : m)),
@@ -109,7 +111,9 @@ export function AccountingMappingsPage() {
         ) : loading ? (
           <div className="text-center py-8">
             <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-            <p className="theme-text-secondary mt-2 text-sm">Loading mappings...</p>
+            <p className="theme-text-secondary mt-2 text-sm">
+              Loading mappings...
+            </p>
           </div>
         ) : mappings.length === 0 ? (
           <div className="text-center py-10 theme-card rounded-2xl border">
@@ -118,7 +122,8 @@ export function AccountingMappingsPage() {
               No mappings found
             </p>
             <p className="theme-text-secondary text-xs">
-              Defaults should be created automatically when the first journal is posted.
+              Defaults should be created automatically when the first journal is
+              posted.
             </p>
           </div>
         ) : (
@@ -138,7 +143,10 @@ export function AccountingMappingsPage() {
                   .slice()
                   .sort((a, b) => a.eventType.localeCompare(b.eventType))
                   .map((m) => (
-                    <tr key={m.id} className="border-b border-white/5 align-top">
+                    <tr
+                      key={m.id}
+                      className="border-b border-white/5 align-top"
+                    >
                       <td className="px-4 py-3 theme-text-primary font-semibold whitespace-nowrap">
                         {m.eventType}
                       </td>
@@ -146,7 +154,9 @@ export function AccountingMappingsPage() {
                         <select
                           value={m.debitAccountId}
                           onChange={(e) =>
-                            updateLocal(m.eventType, { debitAccountId: e.target.value })
+                            updateLocal(m.eventType, {
+                              debitAccountId: e.target.value,
+                            })
                           }
                           className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                         >
@@ -161,7 +171,9 @@ export function AccountingMappingsPage() {
                         <select
                           value={m.creditAccountId}
                           onChange={(e) =>
-                            updateLocal(m.eventType, { creditAccountId: e.target.value })
+                            updateLocal(m.eventType, {
+                              creditAccountId: e.target.value,
+                            })
                           }
                           className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                         >
@@ -174,7 +186,9 @@ export function AccountingMappingsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => updateLocal(m.eventType, { isActive: !m.isActive })}
+                          onClick={() =>
+                            updateLocal(m.eventType, { isActive: !m.isActive })
+                          }
                           className={`theme-chip rounded-full border px-3 py-1 text-xs font-semibold ${
                             m.isActive
                               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
@@ -190,10 +204,15 @@ export function AccountingMappingsPage() {
                           disabled={savingEventType === m.eventType}
                           className="theme-chip rounded-full border px-4 py-2 text-xs font-semibold transition hover:border-sky-400 disabled:opacity-50"
                         >
-                          {savingEventType === m.eventType ? "Saving..." : "Save"}
+                          {savingEventType === m.eventType
+                            ? "Saving..."
+                            : "Save"}
                         </button>
                         <div className="theme-text-secondary text-[11px] mt-1">
-                          Debit: {accountsById.get(m.debitAccountId)?.code || "?"} / Credit: {accountsById.get(m.creditAccountId)?.code || "?"}
+                          Debit:{" "}
+                          {accountsById.get(m.debitAccountId)?.code || "?"} /
+                          Credit:{" "}
+                          {accountsById.get(m.creditAccountId)?.code || "?"}
                         </div>
                       </td>
                     </tr>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { BarcodeScanner } from "../components/BarcodeScanner";
 import { ScannerDeviceList } from "../components/ScannerDeviceList";
@@ -80,7 +80,7 @@ export function InventorySalesPage() {
   const [adjustQuantity, setAdjustQuantity] = useState("");
   const [adjustType, setAdjustType] = useState<"adjust" | "received">("adjust");
 
-  const loadInventoryTransactions = async () => {
+  const loadInventoryTransactions = useCallback(async () => {
     if (!accessToken || !user?.locationId) {
       console.warn("Missing accessToken or locationId");
       return;
@@ -116,9 +116,9 @@ export function InventorySalesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, user?.locationId]);
 
-  const loadSales = async () => {
+  const loadSales = useCallback(async () => {
     if (!accessToken || !user?.locationId) {
       console.warn("Missing accessToken or locationId");
       return;
@@ -151,9 +151,9 @@ export function InventorySalesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, user?.locationId]);
 
-  const loadInventoryStock = async () => {
+  const loadInventoryStock = useCallback(async () => {
     if (!accessToken || !user?.locationId) {
       console.warn("Missing accessToken or locationId");
       return;
@@ -188,7 +188,7 @@ export function InventorySalesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, user?.locationId]);
 
   useEffect(() => {
     if (user?.locationId && accessToken) {
@@ -207,7 +207,14 @@ export function InventorySalesPage() {
         },
       );
     }
-  }, [user?.locationId, accessToken, activeTab]);
+  }, [
+    user?.locationId,
+    accessToken,
+    activeTab,
+    loadInventoryStock,
+    loadInventoryTransactions,
+    loadSales,
+  ]);
 
   const handleScan = async (barcode: string) => {
     if (!accessToken) {

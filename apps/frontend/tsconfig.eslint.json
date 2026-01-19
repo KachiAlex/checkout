@@ -3,10 +3,8 @@
   "include": [
     "src",
     "vite.config.ts",
-    "tsconfig.node.json"
+    "tsconfig.node.json",
+    "capacitor.config.ts"
   ],
-  "exclude": [
-    "dist",
-    "node_modules"
-  ]
+  "exclude": ["dist", "node_modules"]
 }

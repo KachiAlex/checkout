@@ -12,6 +12,7 @@ A local WebSocket server that bridges the POS web application to ESC/POS receipt
 ## Installation
 
 1. Navigate to the print-proxy directory:
+
    ```bash
    cd apps/print-proxy
    ```
@@ -30,6 +31,7 @@ npm start
 ```
 
 Or for development with auto-reload:
+
 ```bash
 npm run dev
 ```
@@ -39,10 +41,12 @@ The server will start on port 8080 by default (configurable via `PRINT_PROXY_POR
 ### Configuration
 
 Set environment variables (optional):
+
 - `PRINT_PROXY_PORT`: WebSocket server port (default: 8080)
 - `SERIAL_BAUD_RATE`: Serial port baud rate (default: 9600)
 
 Example:
+
 ```bash
 PRINT_PROXY_PORT=8080 SERIAL_BAUD_RATE=9600 npm start
 ```
@@ -82,6 +86,7 @@ PRINT_PROXY_PORT=8080 SERIAL_BAUD_RATE=9600 npm start
 The server accepts the following message types:
 
 ### Register Printer
+
 ```json
 {
   "type": "register-printer",
@@ -95,6 +100,7 @@ The server accepts the following message types:
 ```
 
 ### Print
+
 ```json
 {
   "type": "print",
@@ -105,6 +111,7 @@ The server accepts the following message types:
 ```
 
 ### List Printers
+
 ```json
 {
   "type": "list-printers"
@@ -114,17 +121,20 @@ The server accepts the following message types:
 ## Troubleshooting
 
 ### Printer Not Found
+
 - Verify the printer is connected and powered on
 - Check the port/path is correct
 - On Windows, ensure the printer driver is installed
 - On Linux, ensure your user has permission to access the device (may need to add user to `dialout` group)
 
 ### Connection Refused
+
 - Ensure the print proxy server is running
 - Check firewall settings allow connections on port 8080
 - Verify the WebSocket URL in Settings matches the server address
 
 ### Print Jobs Not Printing
+
 - Check printer is online and has paper
 - Verify printer supports ESC/POS commands
 - Check server console for error messages
@@ -135,4 +145,3 @@ The server accepts the following message types:
 - The print proxy should only be accessible on your local network
 - For production, consider adding authentication
 - Do not expose the print proxy to the public internet
-

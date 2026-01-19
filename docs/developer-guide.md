@@ -11,26 +11,31 @@
 - **Redis** 7+ (auto-provisioned via Docker Compose)
 
 > **Windows setup tip:**
+>
 > ```powershell
 > wsl --update
 > wsl --set-default-version 2
 > ```
+>
 > Reboot, then install/launch Docker Desktop and ensure **Settings → Resources → WSL integration** is enabled.
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repo-url>
 cd pos-checkout-mvp
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Set up environment variables:
+
 ```bash
 # Backend
 cp apps/backend/.env.example apps/backend/.env
@@ -42,6 +47,7 @@ cp apps/frontend/.env.example apps/frontend/.env
 ```
 
 4. Start infrastructure (PostgreSQL + Redis + API + Frontend):
+
 ```bash
 npm run docker:up
 ```
@@ -53,12 +59,14 @@ npm run docker:down
 ```
 
 5. Run database migrations:
+
 ```bash
 npm run migration:run
 npm run seed
 ```
 
 6. Start development servers:
+
 ```bash
 npm run dev
 ```
@@ -159,6 +167,7 @@ All endpoints (except auth endpoints) require JWT authentication:
 ### State Management
 
 We use Zustand for state management:
+
 - `authStore`: Authentication state
 - `cartStore`: Shopping cart state
 
@@ -205,6 +214,7 @@ npm run deploy:web
 The NestJS backend is packaged as a single HTTPS Firebase Function (`api`). To deploy it:
 
 1. **Configure secrets and environment variables** (run once per project):
+
    ```bash
    firebase functions:secrets:set DATABASE_URL
    firebase functions:secrets:set JWT_SECRET
@@ -212,6 +222,7 @@ The NestJS backend is packaged as a single HTTPS Firebase Function (`api`). To d
    # Optional: only if you have a managed Redis instance
    firebase functions:secrets:set REDIS_URL
    ```
+
    > Tip: leave `ENABLE_BULL` unset (or set it to `false`) unless you really need Redis-powered queues—this keeps the function lightweight and avoids unexpected billing.
 
 2. **Optional runtime tuning**  
@@ -221,9 +232,11 @@ The NestJS backend is packaged as a single HTTPS Firebase Function (`api`). To d
    - `TYPEORM_RUN_MIGRATIONS` (`true/false`, defaults to `false` in production)
 
 3. **Build and deploy the function**:
+
    ```bash
    npm run deploy:functions
    ```
+
    This script builds the NestJS backend, copies the compiled artifacts into `functions/backend-dist`, and compiles the TypeScript entrypoint before running `firebase deploy --only functions`.
 
 4. **API URL**  

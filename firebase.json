@@ -2,17 +2,11 @@
   "functions": {
     "source": "functions",
     "runtime": "nodejs20",
-    "predeploy": [
-      "npm run build:functions"
-    ]
+    "predeploy": ["npm run build:functions"]
   },
   "hosting": {
     "public": "apps/frontend/dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
         "source": "**",
@@ -71,4 +65,3 @@
     "singleProjectMode": true
   }
 }
-

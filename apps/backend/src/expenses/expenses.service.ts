@@ -16,11 +16,7 @@ export class ExpensesService {
     return method === PaymentMethod.CASH;
   }
 
-  async createExpense(params: {
-    tenantId: string;
-    createdBy: string;
-    dto: CreateExpenseDto;
-  }) {
+  async createExpense(params: { tenantId: string; createdBy: string; dto: CreateExpenseDto }) {
     if (params.dto.paymentMethod === PaymentMethod.CREDIT) {
       throw new BadRequestException('Credit is not a valid payment method for expenses');
     }

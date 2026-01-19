@@ -7,9 +7,11 @@ The desktop app has been successfully built and packaged. However, creating an N
 ## Available Builds
 
 ### Portable Build (Ready to Use)
+
 Location: `apps/desktop/release/Checkout POS-win32-x64/`
 
 This is a fully functional portable version that can be:
+
 - Run directly by double-clicking `Checkout POS.exe`
 - Distributed as a ZIP file
 - Copied to any location on the system
@@ -17,6 +19,7 @@ This is a fully functional portable version that can be:
 ### Creating an Installer
 
 #### Option 1: Use NSIS Directly (Recommended)
+
 1. Install NSIS from https://nsis.sourceforge.io/Download
 2. Run the NSIS script:
    ```powershell
@@ -25,13 +28,16 @@ This is a fully functional portable version that can be:
    ```
 
 #### Option 2: Use electron-builder with Admin Privileges
+
 Run PowerShell as Administrator and execute:
+
 ```powershell
 cd apps/desktop
 npm run package:installer
 ```
 
 #### Option 3: Manual Installer Creation
+
 Use any installer creation tool (Inno Setup, Advanced Installer, etc.) to package the portable build.
 
 ## Auto-Update Configuration
@@ -43,6 +49,7 @@ The app is configured for auto-updates via GitHub Releases. To enable:
 3. When publishing releases, electron-builder will automatically upload the installer and update files
 
 The app will:
+
 - Check for updates on startup (after 3 seconds)
 - Check for updates every 4 hours
 - Show update notifications to users
@@ -62,4 +69,3 @@ The app will:
 1. **For Production**: Obtain a code signing certificate to sign the installer
 2. **For Distribution**: Upload releases to GitHub to enable auto-updates
 3. **For Testing**: Use the portable build for immediate testing
-

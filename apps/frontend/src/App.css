@@ -2,7 +2,9 @@
 
 /* Padding for fixed navigation */
 .page-with-nav {
-  padding-bottom: calc(var(--nav-height-mobile) + env(safe-area-inset-bottom, 0px) + 1rem);
+  padding-bottom: calc(
+    var(--nav-height-mobile) + env(safe-area-inset-bottom, 0px) + 1rem
+  );
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: var(--page-inline-padding);
   padding-right: var(--page-inline-padding);
@@ -11,12 +13,16 @@
 @media (min-width: 640px) {
   .page-with-nav {
     padding-bottom: 0;
-    padding-top: calc(var(--nav-height-desktop) + 1rem + env(safe-area-inset-top, 0px));
+    padding-top: calc(
+      var(--nav-height-desktop) + 1rem + env(safe-area-inset-top, 0px)
+    );
   }
 }
 
 @media (min-width: 1024px) {
   .page-with-nav {
-    padding-top: calc(var(--nav-height-desktop) + 1.5rem + env(safe-area-inset-top, 0px));
+    padding-top: calc(
+      var(--nav-height-desktop) + 1.5rem + env(safe-area-inset-top, 0px)
+    );
   }
 }

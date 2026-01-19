@@ -3,6 +3,7 @@
 ## The Problem
 
 You're getting CORS errors because:
+
 1. **The backend service at `https://pos-checkout-api.onrender.com` is NOT responding**
 2. The `net::ERR_FAILED` error means the request isn't even reaching the server
 3. This could mean: service is down, sleeping (free tier), or crashed
@@ -10,16 +11,18 @@ You're getting CORS errors because:
 ## Root Cause Analysis
 
 ### Error Breakdown:
+
 ```
-Access to XMLHttpRequest at 'https://pos-checkout-api.onrender.com/api/v1/auth/login' 
-from origin 'https://checkout-77d99.web.app' has been blocked by CORS policy: 
-Response to preflight request doesn't pass access control check: 
+Access to XMLHttpRequest at 'https://pos-checkout-api.onrender.com/api/v1/auth/login'
+from origin 'https://checkout-77d99.web.app' has been blocked by CORS policy:
+Response to preflight request doesn't pass access control check:
 No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ```
 
 **Translation**: The browser sent an OPTIONS preflight request, but got no response (or a response without CORS headers).
 
 ### Why This Happens:
+
 1. **Service Not Running**: Render service is down or crashed
 2. **Service Sleeping**: Free tier services spin down after 15 min inactivity
 3. **Service Not Deployed**: Service was never deployed or deployment failed
@@ -39,6 +42,7 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ### Step 2: If Service is Down or Failed
 
 **Check Logs**:
+
 1. Click on your service → "Logs" tab
 2. Look for error messages:
    - Missing environment variables
@@ -47,6 +51,7 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
    - Database connection errors
 
 **Common Fixes**:
+
 - **Missing `CORS_ORIGIN`**: Set it in Environment tab
 - **Missing `JWT_SECRET`**: Set it in Environment tab
 - **Missing Firebase credentials**: Set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
@@ -67,12 +72,15 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ### Step 4: Verify Frontend Configuration
 
 **Check `apps/frontend/src/config.ts`**:
+
 ```typescript
 // Should be:
-const DEFAULT_API_BASE = import.meta.env.VITE_API_URL || 'https://pos-checkout-api.onrender.com';
+const DEFAULT_API_BASE =
+  import.meta.env.VITE_API_URL || "https://pos-checkout-api.onrender.com";
 ```
 
 **Verify Production Build**:
+
 1. Check your deployed frontend at `https://checkout-77d99.web.app`
 2. Open browser console (F12)
 3. Look for: `[config] API_URL (prod) https://pos-checkout-api.onrender.com`
@@ -81,12 +89,14 @@ const DEFAULT_API_BASE = import.meta.env.VITE_API_URL || 'https://pos-checkout-a
 ### Step 5: Test Backend Directly
 
 **Test Health Endpoint**:
+
 ```bash
 # Should return: {"status":"ok","timestamp":"...","service":"pos-backend"}
 curl https://pos-checkout-api.onrender.com/api/v1/health
 ```
 
 **Test OPTIONS Request** (CORS Preflight):
+
 ```bash
 curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
   -H "Origin: https://checkout-77d99.web.app" \
@@ -95,6 +105,7 @@ curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
 ```
 
 **Expected Response**:
+
 ```
 < HTTP/1.1 204 No Content
 < Access-Control-Allow-Origin: https://checkout-77d99.web.app
@@ -107,6 +118,7 @@ curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
 ### Step 6: Wake Up Sleeping Service (Free Tier)
 
 If service is sleeping:
+
 1. Make a request to wake it up: `curl https://pos-checkout-api.onrender.com/api/v1/health`
 2. Wait 30-60 seconds for service to start
 3. Try your frontend again
@@ -117,6 +129,7 @@ If service is sleeping:
 
 1. **Go to Render Dashboard** → Your Service → **Logs** tab
 2. **Look for these messages on startup**:
+
    ```
    🔧 Bootstrap - NODE_ENV: production, Prefix: /api/v1, Origin: https://checkout-77d99.web.app,...
    🔧 CORS Configuration - Allowed Origins: [ 'https://checkout-77d99.web.app', ... ]
@@ -160,6 +173,7 @@ Run through this checklist:
 ### Option 3: Verify Environment Variables
 
 **Required Variables** (check in Render Dashboard → Environment):
+
 - `NODE_ENV` = `production`
 - `PORT` = `10000`
 - `CORS_ORIGIN` = `https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174`
@@ -181,12 +195,14 @@ If nothing works, trigger a manual redeploy:
 ## Expected Behavior After Fix
 
 ✅ **Backend Health Check**:
+
 ```bash
 curl https://pos-checkout-api.onrender.com/api/v1/health
 # Returns: {"status":"ok","timestamp":"2024-...","service":"pos-backend"}
 ```
 
 ✅ **OPTIONS Request**:
+
 ```bash
 curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
   -H "Origin: https://checkout-77d99.web.app" \
@@ -196,6 +212,7 @@ curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
 ```
 
 ✅ **Frontend Login**:
+
 - No CORS errors in browser console
 - Login request succeeds
 - User is authenticated
@@ -212,6 +229,7 @@ To prevent this in the future:
 ## Summary
 
 **The fix is simple**:
+
 1. ✅ Ensure backend service is running in Render
 2. ✅ Set `CORS_ORIGIN` environment variable correctly
 3. ✅ Wait for service to redeploy
@@ -219,4 +237,3 @@ To prevent this in the future:
 5. ✅ Test frontend login
 
 **Most common issue**: Service is not running or `CORS_ORIGIN` is not set.
-

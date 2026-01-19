@@ -3,6 +3,7 @@
 ## Setup Complete ✅
 
 The Android project has been configured with:
+
 - ✅ Capacitor initialized
 - ✅ Android platform added
 - ✅ App icons configured (using favicon/checkout-icon files)
@@ -33,6 +34,7 @@ npm run build:android
 ```
 
 This will:
+
 1. Build the frontend
 2. Sync with Capacitor
 3. Build the Android APK
@@ -63,6 +65,7 @@ cd apps/frontend/android
 ## Output Location
 
 The APK will be generated at:
+
 ```
 apps/frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk
 ```
@@ -72,11 +75,13 @@ apps/frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk
 To sign the APK for Google Play Store distribution:
 
 1. Generate a keystore:
+
 ```bash
 keytool -genkey -v -keystore pos-checkout-release.keystore -alias pos-checkout -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 2. Configure signing in `android/app/build.gradle`:
+
 ```gradle
 android {
     ...
@@ -100,6 +105,7 @@ android {
 ## App Icon
 
 The app icon has been configured using the checkout-icon files:
+
 - mdpi: checkout-icon-48.png
 - hdpi: checkout-icon-64.png
 - xhdpi: checkout-icon-128.png
@@ -111,14 +117,16 @@ All launcher icons (regular, round, and foreground) have been updated.
 ## Troubleshooting
 
 ### Java not found
+
 - Ensure JAVA_HOME is set correctly
 - Verify Java is in your PATH: `java -version`
 
 ### Android SDK not found
+
 - Ensure ANDROID_HOME is set correctly
 - Verify Android SDK is installed via Android Studio SDK Manager
 
 ### Gradle build fails
+
 - Try: `cd android && gradlew.bat clean` then rebuild
 - Check that all dependencies are downloaded
-

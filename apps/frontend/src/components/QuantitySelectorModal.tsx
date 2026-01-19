@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { formatCurrency, formatNumber } from "../utils/numberFormat";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { formatCurrency } from "../utils/numberFormat";
 
 interface Product {
   id: string;
@@ -26,6 +26,21 @@ export function QuantitySelectorModal({
 }: QuantitySelectorModalProps) {
   const [quantity, setQuantity] = useState(1);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleConfirm = useCallback(() => {
+    if (!product) {
+      return;
+    }
+
+    if (
+      quantity > 0 &&
+      (product.stock === undefined || quantity <= product.stock)
+    ) {
+      onConfirm(product, quantity);
+      onClose();
+      setQuantity(1);
+    }
+  }, [product, quantity, onConfirm, onClose]);
 
   useEffect(() => {
     if (isOpen && product) {
@@ -60,17 +75,9 @@ export function QuantitySelectorModal({
       document.removeEventListener("keydown", handleEscape);
       document.removeEventListener("keydown", handleEnter);
     };
-  }, [isOpen, product, quantity, onClose]);
+  }, [isOpen, product, quantity, onClose, handleConfirm]);
 
   if (!isOpen || !product) return null;
-
-  const handleConfirm = () => {
-    if (quantity > 0 && (!product.stock || quantity <= product.stock)) {
-      onConfirm(product, quantity);
-      onClose();
-      setQuantity(1);
-    }
-  };
 
   const handleQuantityChange = (value: string) => {
     const numValue = parseInt(value, 10);

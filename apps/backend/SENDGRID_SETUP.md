@@ -32,6 +32,7 @@ SENDGRID_FROM_EMAIL=noreply@yourdomain.com
 ```
 
 **Important Notes:**
+
 - Replace `SG.your_actual_api_key_here` with your actual SendGrid API key
 - Replace `noreply@yourdomain.com` with a verified sender email address
 - The sender email must be verified in SendGrid (see step 3)
@@ -41,6 +42,7 @@ SENDGRID_FROM_EMAIL=noreply@yourdomain.com
 SendGrid requires you to verify the email address you'll send from:
 
 #### Option A: Single Sender Verification (Quick & Easy)
+
 1. Go to Settings → Sender Authentication → Single Sender Verification
 2. Click "Create New Sender"
 3. Fill in your details (use `akoma@kreatixtech.com` or your domain)
@@ -48,6 +50,7 @@ SendGrid requires you to verify the email address you'll send from:
 5. Click the verification link
 
 #### Option B: Domain Authentication (Recommended for Production)
+
 1. Go to Settings → Sender Authentication → Domain Authentication
 2. Follow the wizard to add DNS records to your domain
 3. This allows you to send from any email address on your domain
@@ -78,6 +81,7 @@ Add the environment variables to your Render backend service:
 ## Email Template Features
 
 The demo request email includes:
+
 - ✅ Professional HTML design with gradient header
 - ✅ All form fields beautifully formatted
 - ✅ Reply-to set to requester's email (easy to respond)
@@ -90,6 +94,7 @@ The demo request email includes:
 ### Emails Not Sending
 
 1. **Check API Key:**
+
    ```bash
    # In Render logs, you should see:
    ✅ SendGrid configured successfully
@@ -119,14 +124,16 @@ The demo request email includes:
 
 You mentioned the API key ID: `qjYBneBERf2sPMIbWS-gcg`
 
-**Note:** This appears to be an API Key ID (used internally by SendGrid), not the full API key. 
+**Note:** This appears to be an API Key ID (used internally by SendGrid), not the full API key.
 
 You need the **full API key** that:
+
 - Starts with `SG.`
 - Is about 70 characters long
 - Was shown when you created the key
 
 If you don't have the full API key:
+
 1. You cannot retrieve it (SendGrid doesn't store it)
 2. You'll need to create a new API key in SendGrid
 3. Follow the steps in "Get Your SendGrid API Key" above
@@ -134,9 +141,10 @@ If you don't have the full API key:
 ## Support
 
 For SendGrid-specific issues:
+
 - SendGrid Docs: https://docs.sendgrid.com
 - SendGrid Support: https://support.sendgrid.com
 
 For Checkout POS integration issues:
-- Contact: akoma@kreatixtech.com
 
+- Contact: akoma@kreatixtech.com

@@ -199,7 +199,9 @@ export function HelpSupportPage() {
 
         {/* Guides */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <h2 className="theme-text-primary text-sm font-semibold mb-3">Module Guides</h2>
+          <h2 className="theme-text-primary text-sm font-semibold mb-3">
+            Module Guides
+          </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {guides.map((section) => (
               <details
@@ -215,8 +217,12 @@ export function HelpSupportPage() {
                 <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
                   {section.items.map((item) => (
                     <div key={item.title}>
-                      <p className="theme-text-primary text-xs font-semibold mb-1">{item.title}</p>
-                      <p className="theme-text-secondary text-xs">{item.body}</p>
+                      <p className="theme-text-primary text-xs font-semibold mb-1">
+                        {item.title}
+                      </p>
+                      <p className="theme-text-secondary text-xs">
+                        {item.body}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -230,7 +236,10 @@ export function HelpSupportPage() {
           <h2 className="theme-text-primary text-sm font-semibold mb-3">FAQ</h2>
           <div className="space-y-3">
             {faq.map((item) => (
-              <details key={item.q} className="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
+              <details
+                key={item.q}
+                className="rounded-2xl border border-white/10 bg-slate-950/20 p-4"
+              >
                 <summary className="theme-text-primary cursor-pointer text-sm font-semibold list-none">
                   {item.q}
                 </summary>
@@ -242,14 +251,19 @@ export function HelpSupportPage() {
 
         {/* Support form */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <h2 className="theme-text-primary text-sm font-semibold mb-1">Request Help</h2>
+          <h2 className="theme-text-primary text-sm font-semibold mb-1">
+            Request Help
+          </h2>
           <p className="theme-text-secondary text-xs mb-4">
-            Send a message to support. Include what you were trying to do and what happened.
+            Send a message to support. Include what you were trying to do and
+            what happened.
           </p>
 
           {!canUseForm ? (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-              <p className="theme-text-primary text-sm font-semibold text-amber-400 mb-2">⚠️ Login required</p>
+              <p className="theme-text-primary text-sm font-semibold text-amber-400 mb-2">
+                ⚠️ Login required
+              </p>
               <p className="theme-text-secondary text-xs">
                 Please log in as a company user to submit a support request.
               </p>
@@ -261,7 +275,9 @@ export function HelpSupportPage() {
                   <span className="theme-text-secondary text-xs">Subject</span>
                   <input
                     value={form.subject}
-                    onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, subject: e.target.value }))
+                    }
                     placeholder="What do you need help with?"
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   />
@@ -270,7 +286,9 @@ export function HelpSupportPage() {
                   <span className="theme-text-secondary text-xs">Module</span>
                   <select
                     value={form.module}
-                    onChange={(e) => setForm((p) => ({ ...p, module: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, module: e.target.value }))
+                    }
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   >
                     {moduleOptions.map((opt) => (
@@ -286,7 +304,9 @@ export function HelpSupportPage() {
                 <span className="theme-text-secondary text-xs">Message</span>
                 <textarea
                   value={form.message}
-                  onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, message: e.target.value }))
+                  }
                   placeholder="Describe the problem, steps to reproduce, and any error message you saw."
                   rows={6}
                   className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"

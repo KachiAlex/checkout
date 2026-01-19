@@ -5,6 +5,7 @@ This guide explains how to configure the print proxy to work with cash registers
 ## Overview
 
 The print proxy server bridges your POS web application to physical receipt printers and cash registers. It supports:
+
 - **Serial/USB Printers**: Direct connection via COM ports (Windows) or device paths (Linux/Mac)
 - **Network Printers**: Connection via TCP/IP (Ethernet or Wi-Fi)
 - **Cash Registers**: Most modern cash registers support ESC/POS printing
@@ -14,6 +15,7 @@ The print proxy server bridges your POS web application to physical receipt prin
 ### 1. Start the Print Proxy Server
 
 **Windows:**
+
 ```bash
 cd apps/print-proxy
 npm install
@@ -23,6 +25,7 @@ npm start
 Or double-click `start.bat`
 
 **Linux/Mac:**
+
 ```bash
 cd apps/print-proxy
 npm install
@@ -46,17 +49,20 @@ The server will start on port 8080 by default.
 **Step 1: Find Your Printer Port**
 
 **Windows:**
+
 1. Open Device Manager
 2. Expand "Ports (COM & LPT)"
 3. Find your printer (usually shows as "USB Serial Port" or similar)
 4. Note the COM port number (e.g., COM3, COM4)
 
 **Linux:**
+
 ```bash
 ls /dev/ttyUSB* /dev/ttyACM* /dev/cu.*
 ```
 
 **Mac:**
+
 ```bash
 ls /dev/cu.usbserial-* /dev/cu.usbmodem*
 ```
@@ -96,21 +102,25 @@ Most modern cash registers use ESC/POS compatible printers. Follow these steps:
 ### Common Cash Register Brands
 
 **Epson TM Series:**
+
 - Type: Serial/USB or Network
 - Baud Rate: 9600 or 19200
 - Port: Check Device Manager for COM port
 
 **Star Micronics:**
+
 - Type: Serial/USB
 - Baud Rate: 9600
 - Port: Check Device Manager
 
 **Citizen:**
+
 - Type: Serial/USB
 - Baud Rate: 9600
 - Port: Check Device Manager
 
 **Bixolon:**
+
 - Type: Serial/USB or Network
 - Baud Rate: 9600
 - Port: COM port or IP address
@@ -142,24 +152,28 @@ Most modern cash registers use ESC/POS compatible printers. Follow these steps:
 ### Troubleshooting
 
 **Printer Not Found:**
+
 - Verify printer is powered on and connected
 - Check port/path is correct
 - On Windows, ensure printer driver is installed
 - On Linux, ensure user has permission: `sudo usermod -a -G dialout $USER`
 
 **Connection Refused:**
+
 - Ensure print proxy server is running
 - Check firewall allows port 8080
 - Verify WebSocket URL matches server address
 - For mobile: Use computer's IP instead of localhost
 
 **Print Jobs Not Printing:**
+
 - Check printer has paper and is online
 - Verify printer supports ESC/POS commands
 - Check server console for error messages
 - Try restarting print proxy server
 
 **Cash Register Not Responding:**
+
 - Verify cash register is in "POS mode" or "Receipt mode"
 - Check cash register settings allow external printing
 - Some cash registers require specific initialization commands
@@ -170,6 +184,7 @@ Most modern cash registers use ESC/POS compatible printers. Follow these steps:
 ### Multiple Printers
 
 You can register multiple printers for different purposes:
+
 - `pos-printer`: Main receipt printer
 - `kitchen-printer`: Kitchen order printer
 - `cash-register`: Cash register printer
@@ -177,12 +192,14 @@ You can register multiple printers for different purposes:
 ### Custom Baud Rates
 
 Some printers require different baud rates:
+
 - 9600: Most common
 - 19200: Some Epson models
 - 38400: High-speed printers
 - 115200: Fast network printers
 
 Set in printer registration or via environment variable:
+
 ```bash
 SERIAL_BAUD_RATE=19200 npm start
 ```
@@ -190,6 +207,7 @@ SERIAL_BAUD_RATE=19200 npm start
 ### Network Configuration
 
 For mobile devices or remote access:
+
 1. Find your computer's IP address:
    - Windows: `ipconfig` (look for IPv4 Address)
    - Linux/Mac: `ifconfig` or `ip addr`
@@ -206,8 +224,8 @@ For mobile devices or remote access:
 ## Support
 
 For issues or questions:
+
 1. Check server console for error messages
 2. Verify printer compatibility with ESC/POS
 3. Test with printer's test print function
 4. Check printer manual for specific requirements
-

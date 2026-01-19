@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -106,12 +106,6 @@ export function AddInventoryPage() {
     Array<{ id: string; name: string }>
   >([]);
   const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([]);
-  const [editingQuantities, setEditingQuantities] = useState<
-    Record<string, string>
-  >({});
-  const [updatingQuantities, setUpdatingQuantities] = useState<
-    Record<string, boolean>
-  >({});
   const [editingItem, setEditingItem] = useState<{
     productId: string;
     quantity: string;
@@ -121,7 +115,9 @@ export function AddInventoryPage() {
   } | null>(null);
 
   // Get the effective locationId (user's locationId or first location for tenant)
-  const getEffectiveLocationId = async (): Promise<string | null> => {
+  const getEffectiveLocationId = useCallback(async (): Promise<
+    string | null
+  > => {
     if (!accessToken || !user) return null;
 
     if (user.locationId) {
@@ -141,9 +137,9 @@ export function AddInventoryPage() {
     }
 
     return null;
-  };
+  }, [accessToken, user]);
 
-  const loadInventory = async () => {
+  const loadInventory = useCallback(async () => {
     if (!accessToken || !user) return;
 
     setLoading(true);
@@ -173,9 +169,9 @@ export function AddInventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, user, getEffectiveLocationId]);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/categories`, {
@@ -185,9 +181,9 @@ export function AddInventoryPage() {
     } catch (error) {
       console.error("Failed to load categories:", error);
     }
-  };
+  }, [accessToken]);
 
-  const loadBrands = async () => {
+  const loadBrands = useCallback(async () => {
     if (!accessToken) return;
     try {
       const response = await axios.get(`${API_URL}/api/v1/brands`, {
@@ -197,7 +193,7 @@ export function AddInventoryPage() {
     } catch (error) {
       console.error("Failed to load brands:", error);
     }
-  };
+  }, [accessToken]);
 
   // Handle barcode scan - search for existing product and auto-fill form
   const handleBarcodeScan = async (barcode: string) => {
@@ -511,13 +507,6 @@ export function AddInventoryPage() {
     }
   };
 
-  const handleQuantityInputChange = (itemId: string, value: string) => {
-    setEditingQuantities((prev) => ({
-      ...prev,
-      [itemId]: value,
-    }));
-  };
-
   const toggleCategoryMode = () => {
     setCategoryMode((prevMode) => {
       const nextMode = prevMode === "existing" ? "new" : "existing";
@@ -544,91 +533,6 @@ export function AddInventoryPage() {
       });
       return nextMode;
     });
-  };
-
-  const handleUpdateQuantity = async (item: InventoryItem) => {
-    if (!user || !accessToken) {
-      toast.error("Please log in before adjusting inventory.");
-      return;
-    }
-
-    const rawValue = editingQuantities[item.id] ?? item.quantity.toString();
-    const newQuantity = parseInt(rawValue, 10);
-    if (isNaN(newQuantity) || newQuantity < 0) {
-      toast.error("Quantity must be a non-negative number.");
-      return;
-    }
-
-    if (newQuantity === item.quantity) {
-      toast("Quantity already up to date.");
-      return;
-    }
-
-    const delta = newQuantity - item.quantity;
-    const type = delta > 0 ? "received" : "adjust";
-
-    setUpdatingQuantities((prev) => ({
-      ...prev,
-      [item.id]: true,
-    }));
-
-    try {
-      // Backend will automatically resolve locationId and userId from JWT/user context
-      await axios.post(
-        `${API_URL}/api/v1/inventory/adjust`,
-        {
-          productId: item.product.id,
-          delta,
-          type,
-          // Do NOT send userId or locationId – backend resolves them to avoid validation errors
-          notes: "Updated via inventory management",
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      toast.success(`Updated ${item.product.name} quantity to ${newQuantity}`);
-      await loadInventory();
-      setEditingQuantities((prev) => {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      });
-    } catch (error: any) {
-      console.error("Failed to update quantity:", error);
-
-      // Extract full error message
-      let errorMessage = "Failed to update inventory quantity";
-      if (error.response?.data) {
-        if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        } else if (typeof error.response.data === "string") {
-          errorMessage = error.response.data;
-        } else if (Array.isArray(error.response.data.message)) {
-          errorMessage = error.response.data.message.join(", ");
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      if (error.response?.status === 401) {
-        errorMessage = "Authentication expired. Please log in again.";
-      }
-
-      toast.error(errorMessage);
-    } finally {
-      setUpdatingQuantities((prev) => {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      });
-    }
   };
 
   const handleUpdateItem = async (productId: string) => {
@@ -848,7 +752,7 @@ export function AddInventoryPage() {
       loadCategories();
       loadBrands();
     }
-  }, [user?.id, accessToken]);
+  }, [user, accessToken, loadInventory, loadCategories, loadBrands]);
 
   // Auto-refresh when page comes into focus
   useEffect(() => {
@@ -871,7 +775,7 @@ export function AddInventoryPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [user?.id, accessToken]);
+  }, [user, accessToken, loadInventory]);
 
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">

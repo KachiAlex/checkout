@@ -38,7 +38,7 @@ export async function setupFirestoreEmulator() {
     );
 
     req.on('timeout', () => {
-      req.destroy(new Error('Timed out')); 
+      req.destroy(new Error('Timed out'));
     });
 
     req.on('error', (error) => {

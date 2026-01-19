@@ -1,75 +1,75 @@
 // Shared types and interfaces for POS Checkout MVP
 
 export enum UserRole {
-  CASHIER = 'cashier',
-  MANAGER = 'manager',
-  ADMIN = 'admin',
+  CASHIER = "cashier",
+  MANAGER = "manager",
+  ADMIN = "admin",
 }
 
 export enum PaymentMethod {
-  CARD = 'card',
-  QR = 'qr',
-  CASH = 'cash',
-  TRANSFER = 'transfer',
-  CREDIT = 'credit',
+  CARD = "card",
+  QR = "qr",
+  CASH = "cash",
+  TRANSFER = "transfer",
+  CREDIT = "credit",
 }
 
 export enum PaymentStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  REFUNDED = 'refunded',
+  PENDING = "pending",
+  PROCESSING = "processing",
+  COMPLETED = "completed",
+  FAILED = "failed",
+  REFUNDED = "refunded",
 }
 
 export enum OrderStatus {
-  DRAFT = 'draft',
-  PENDING = 'pending',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+  DRAFT = "draft",
+  PENDING = "pending",
+  COMPLETED = "completed",
+  CANCELLED = "cancelled",
 }
 
 export enum InventoryTransactionType {
-  SALE = 'sale',
-  CREDIT_SALE = 'credit_sale',
-  RETURN = 'return',
-  ADJUST = 'adjust',
-  RECEIVED = 'received',
+  SALE = "sale",
+  CREDIT_SALE = "credit_sale",
+  RETURN = "return",
+  ADJUST = "adjust",
+  RECEIVED = "received",
 }
 
 export enum DeviceType {
-  USB = 'usb',
-  BLUETOOTH = 'bluetooth',
-  CAMERA = 'camera',
+  USB = "usb",
+  BLUETOOTH = "bluetooth",
+  CAMERA = "camera",
 }
 
 export enum TenantPlan {
-  FREE = 'free', // 14-day free trial
-  STARTER = 'starter',
-  PROFESSIONAL = 'professional',
-  ENTERPRISE = 'enterprise',
-  MONTHLY = 'monthly', // Legacy
-  ANNUAL = 'annual', // Legacy
-  LIFETIME = 'lifetime', // Legacy
-  TRIAL = 'trial', // Legacy
+  FREE = "free", // 14-day free trial
+  STARTER = "starter",
+  PROFESSIONAL = "professional",
+  ENTERPRISE = "enterprise",
+  MONTHLY = "monthly", // Legacy
+  ANNUAL = "annual", // Legacy
+  LIFETIME = "lifetime", // Legacy
+  TRIAL = "trial", // Legacy
 }
 
 export enum TenantStatus {
-  ACTIVE = 'active',
-  SUSPENDED = 'suspended',
-  CANCELLED = 'cancelled',
-  PENDING = 'pending',
+  ACTIVE = "active",
+  SUSPENDED = "suspended",
+  CANCELLED = "cancelled",
+  PENDING = "pending",
 }
 
 export enum Industry {
-  GENERAL = 'general',
-  PHARMACEUTICAL = 'pharmaceutical',
-  RESTAURANT = 'restaurant',
-  RETAIL = 'retail',
-  GROCERY = 'grocery',
-  ELECTRONICS = 'electronics',
-  FASHION = 'fashion',
-  HARDWARE = 'hardware',
+  GENERAL = "general",
+  PHARMACEUTICAL = "pharmaceutical",
+  RESTAURANT = "restaurant",
+  RETAIL = "retail",
+  GROCERY = "grocery",
+  ELECTRONICS = "electronics",
+  FASHION = "fashion",
+  HARDWARE = "hardware",
 }
 
 export interface IndustryFeatureFlags {
@@ -79,20 +79,20 @@ export interface IndustryFeatureFlags {
   prescriptionManagement?: boolean;
   drugInteractionWarnings?: boolean;
   prescriptionRefills?: boolean;
-  
+
   // Restaurant features
   tableManagement?: boolean;
   kitchenOrders?: boolean;
   menuModifiers?: boolean;
   splitBills?: boolean;
   reservations?: boolean;
-  
+
   // Retail features
   variantManagement?: boolean;
   layaway?: boolean;
   giftCards?: boolean;
   loyaltyPrograms?: boolean;
-  
+
   // General features
   multiLocation?: boolean;
   advancedReports?: boolean;

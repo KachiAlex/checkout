@@ -1542,7 +1542,11 @@ export function SettingsPage() {
                   </Link>
                 </div>
                 <p className="theme-text-secondary mt-4 text-xs">
-                  Managers should use <span className="theme-text-primary">Accounting → Reports</span> from the main navigation.
+                  Managers should use{" "}
+                  <span className="theme-text-primary">
+                    Accounting → Reports
+                  </span>{" "}
+                  from the main navigation.
                 </p>
               </SectionContainer>
             </>

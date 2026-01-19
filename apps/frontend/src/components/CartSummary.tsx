@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CartItem, useCartStore } from "../stores/cartStore";
 import toast from "react-hot-toast";
-import { formatCurrency, formatNumber } from "../utils/numberFormat";
+import { formatCurrency } from "../utils/numberFormat";
 
 interface CartSummaryProps {
   cart: CartItem[];
@@ -9,7 +9,6 @@ interface CartSummaryProps {
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onPayment: (method: "card" | "cash" | "qr") => void;
-  onItemDiscount?: (item: CartItem) => void;
   onCartDiscount?: () => void;
   isProcessing: boolean;
 }
@@ -20,7 +19,6 @@ export function CartSummary({
   onRemove,
   onUpdateQuantity,
   onPayment,
-  onItemDiscount: _onItemDiscount,
   onCartDiscount,
   isProcessing,
 }: CartSummaryProps) {

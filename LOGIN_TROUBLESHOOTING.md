@@ -39,6 +39,7 @@ Replace `your-anon-key-here` with the actual anon key from Step 2.
 If you're building for production, you need to set the environment variable before building:
 
 **Windows PowerShell:**
+
 ```powershell
 $env:VITE_SUPABASE_ANON_KEY="your-anon-key-here"
 cd apps/frontend
@@ -46,6 +47,7 @@ npm run build
 ```
 
 **Linux/Mac:**
+
 ```bash
 export VITE_SUPABASE_ANON_KEY="your-anon-key-here"
 cd apps/frontend
@@ -134,9 +136,11 @@ If you've followed all steps and still can't log in:
 To quickly test if the anon key is set correctly, open browser console and run:
 
 ```javascript
-console.log('Anon Key Set:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-console.log('Anon Key Prefix:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) || 'NOT SET');
+console.log("Anon Key Set:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+console.log(
+  "Anon Key Prefix:",
+  import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) || "NOT SET",
+);
 ```
 
 If the first line shows `false` or the second shows `NOT SET`, the environment variable is not set correctly.
-

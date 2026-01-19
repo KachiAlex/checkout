@@ -1,5 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { TaxMode } from '@prisma/client';
 
 export class UpdateTaxRuleDto {
@@ -9,7 +18,11 @@ export class UpdateTaxRuleDto {
   @MaxLength(100)
   name?: string;
 
-  @ApiProperty({ description: 'Tax authority', required: false, example: 'Federal Inland Revenue Service' })
+  @ApiProperty({
+    description: 'Tax authority',
+    required: false,
+    example: 'Federal Inland Revenue Service',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -21,7 +34,11 @@ export class UpdateTaxRuleDto {
   @MaxLength(50)
   taxCode?: string;
 
-  @ApiProperty({ description: 'Tax rate as decimal. Example: 0.075 for 7.5%', required: false, minimum: 0 })
+  @ApiProperty({
+    description: 'Tax rate as decimal. Example: 0.075 for 7.5%',
+    required: false,
+    minimum: 0,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)

@@ -5,6 +5,7 @@ This guide explains how to configure and use the Monnify payment gateway integra
 ## Overview
 
 The Monnify integration allows your POS system to accept:
+
 - **Card payments** (debit/credit cards)
 - **QR code payments** (via bank transfers)
 - **Bank transfers**
@@ -96,6 +97,7 @@ ngrok http 3000
 ```
 
 Then use the ngrok URL in Monnify webhook configuration:
+
 ```
 https://your-ngrok-url.ngrok.io/api/v1/webhooks/monnify
 ```
@@ -126,7 +128,7 @@ GET /api/v1/orders/:orderId/payments/status
 ### Webhook Endpoint
 
 ```typescript
-POST /api/v1/webhooks/monnify
+POST / api / v1 / webhooks / monnify;
 ```
 
 ## Frontend Integration
@@ -202,4 +204,3 @@ If you're currently using the mock terminal for testing:
 4. **Switch to production credentials** when ready
 
 The system automatically falls back to `MockTerminal` if Monnify credentials are not configured.
-

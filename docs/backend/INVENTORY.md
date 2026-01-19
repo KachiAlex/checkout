@@ -67,20 +67,24 @@ Base route: `@Controller('inventory')`.
 ## Core logic (InventoryService)
 
 ### Stock enrichment
+
 - `getStock(locationId, tenantId)` lists inventory, batches product IDs for lookup, hydrates last transactions/users, and falls back to “Unknown product” when metadata is missing.@apps/backend/src/inventory/inventory.service.ts#25-142
 - `getBatchInventory` proxies to `BatchInventoryRepository` for tenants with batch/expiry tracking.@apps/backend/src/inventory/inventory.service.ts#144-146
 
 ### Adjustments & order hooks
+
 - `adjust` upserts inventory quantities (never negative), logs an inventory transaction, and captures metadata (user, notes, reference).@apps/backend/src/inventory/inventory.service.ts#160-186
 - Convenience helpers `decrementForSale`, `decrementForCreditSale`, `incrementForReturn` wrap `adjust` with specific `InventoryTransactionType` enums and reference IDs (order/return).@apps/backend/src/inventory/inventory.service.ts#188-239
 - `getTransactions` converts string query params to `Date` and delegates to repository listing.@apps/backend/src/inventory/inventory.service.ts#241-245
 
 ### Create inventory item pipeline
+
 - Validates tenant feature flags for batch/expiry requirements (via `TenantsService`), ensures expiry dates/batch numbers align with enabled features, and autogenerates SKUs when omitted.@apps/backend/src/inventory/inventory.service.ts#247-272
 - Finds/creates categories & brands if names are provided (soft dependencies on Categories/Brands modules).@apps/backend/src/inventory/inventory.service.ts#273-288
 - Creates a Product via `ProductsService`, upserts initial inventory, logs a RECEIVED transaction, and optionally inserts into `batch_inventory` for batch tracking.@apps/backend/src/inventory/inventory.service.ts#290-339
 
 ### Data hygiene & pricing
+
 - `findDuplicates` / `removeDuplicates` delegate to repository utilities for cleaning duplicate product/location rows (keeps oldest record).@apps/backend/src/inventory/inventory.service.ts#347-353 @apps/backend/src/inventory/inventory.repository.ts#278-340
 - `clearAllInventory` deletes every inventory doc using Firestore batch commits (500 ops per batch).@apps/backend/src/inventory/inventory.service.ts#355-357 @apps/backend/src/inventory/inventory.repository.ts#342-370
 - `updateInventoryPrices` and `updateInventoryItem` re-use repository upsert to apply new price/thresholds, and `updateInventoryItem` logs an ADJUST transaction if quantity changed to keep history consistent.@apps/backend/src/inventory/inventory.service.ts#359-428

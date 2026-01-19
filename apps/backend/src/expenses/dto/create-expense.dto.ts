@@ -1,6 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PaymentMethod } from '@pos-checkout/shared';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateExpenseDto {
   @ApiProperty({ description: 'Amount in cents', example: 250000 })
@@ -29,7 +38,11 @@ export class CreateExpenseDto {
   @IsUUID()
   locationId?: string;
 
-  @ApiProperty({ required: false, description: 'ISO date string', example: '2026-01-07T10:00:00.000Z' })
+  @ApiProperty({
+    required: false,
+    description: 'ISO date string',
+    example: '2026-01-07T10:00:00.000Z',
+  })
   @IsOptional()
   @IsString()
   occurredAt?: string;

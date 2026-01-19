@@ -461,7 +461,6 @@ export class ReceiptService {
 
       // Detect mobile device
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const screenWidth = window.screen.width;
 
       printWindow.document.write(`
         <!DOCTYPE html>

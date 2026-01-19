@@ -7,29 +7,35 @@ Service shows as "Live" in Render, but all routes return "Not Found" (404).
 ## Possible Causes
 
 ### 1. App Crashed After Startup
+
 **Symptom**: Service shows "Live" but no routes work
 **Check**: Render Dashboard → Logs tab → Look for errors after startup messages
 
 **Common causes**:
+
 - Missing environment variables (app starts but crashes on first request)
 - Database connection failure
 - Module import errors
 - Port conflict
 
 ### 2. Routes Not Registered
+
 **Symptom**: App starts but routes return 404
 **Check**: Logs should show route registration
 
 **Possible causes**:
+
 - Module not imported in AppModule
 - Controller not registered in module
 - Global prefix issue
 
 ### 3. Middleware Blocking Requests
+
 **Symptom**: Requests reach server but return 404
 **Check**: CORS middleware, validation pipes, guards
 
 ### 4. Wrong Port or Path
+
 **Symptom**: Service running but on wrong port/path
 **Check**: Verify PORT=10000 is set correctly
 
@@ -39,6 +45,7 @@ Service shows as "Live" in Render, but all routes return "Not Found" (404).
 
 1. **Go to Render Dashboard** → Your Service → **Logs** tab
 2. **Look for these messages**:
+
    ```
    ✅ CORS middleware configured
    ✅ Global prefix set to: /api/v1
@@ -55,6 +62,7 @@ Service shows as "Live" in Render, but all routes return "Not Found" (404).
 ### Step 2: Test Root Endpoint
 
 After my fix, test:
+
 ```powershell
 Invoke-WebRequest -Uri "https://pos-checkout-api.onrender.com" -UseBasicParsing
 ```
@@ -102,11 +110,13 @@ The service might show "Live" but the app might have crashed. Check:
 
 **Symptom**: Service starts, but first request causes crash
 **Check Logs For**:
+
 - `Error: Cannot read property 'x' of undefined`
 - `Error: Missing required environment variable`
 - `Error: Database connection failed`
 
-**Fix**: 
+**Fix**:
+
 - Add missing environment variables
 - Fix database connection
 - Add error handling
@@ -115,11 +125,13 @@ The service might show "Live" but the app might have crashed. Check:
 
 **Symptom**: App runs but all routes return 404
 **Check**:
+
 - HealthModule is imported in AppModule ✅
 - HealthController is in HealthModule ✅
 - Global prefix is set correctly ✅
 
-**Fix**: 
+**Fix**:
+
 - Verify all modules are imported
 - Check controller decorators
 - Verify global prefix
@@ -127,22 +139,26 @@ The service might show "Live" but the app might have crashed. Check:
 ### Issue 3: Port Mismatch
 
 **Symptom**: Service runs but can't receive requests
-**Check**: 
+**Check**:
+
 - PORT environment variable is set to 10000
 - Service is listening on correct port
 
-**Fix**: 
+**Fix**:
+
 - Set `PORT=10000` in Render environment
 
 ### Issue 4: Module Import Error
 
 **Symptom**: App fails to start or routes don't work
 **Check Logs For**:
+
 - `Error: Cannot find module`
 - `Error: Module not found`
 - Import errors
 
-**Fix**: 
+**Fix**:
+
 - Check package.json dependencies
 - Verify all imports are correct
 - Rebuild and redeploy
@@ -164,6 +180,7 @@ The service might show "Live" but the app might have crashed. Check:
 ## Expected Log Output
 
 When service starts correctly, you should see:
+
 ```
 🔧 Bootstrap - NODE_ENV: production, Prefix: /api/v1, Origin: ...
 🔧 CORS Configuration - Allowed Origins: [ 'https://checkout-77d99.web.app', ... ]
@@ -188,4 +205,3 @@ If you don't see these messages, the app didn't start correctly.
 ---
 
 **Most Important**: Check the Render Logs tab - it will tell you exactly what's wrong.
-

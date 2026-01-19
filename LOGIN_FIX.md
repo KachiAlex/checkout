@@ -1,14 +1,17 @@
 # Login Authorization Header Fix
 
 ## Issue
+
 After the security fix that removed JWT_SECRET default fallback, users reported "missing authorization header" error when trying to log in.
 
 ## Root Cause
+
 The axios interceptor was clearing the Authorization header for login endpoints, but Supabase infrastructure may require the `apikey` header to be present. Additionally, if JWT_SECRET is not set in Supabase secrets, the login would fail with a generic error.
 
 ## Fix Applied
 
 ### 1. Improved Error Handling in Supabase Functions
+
 - Changed JWT_SECRET check to return proper error response instead of throwing
 - Better error messages when JWT_SECRET is missing
 - Added check for JWT_REFRESH_SECRET
@@ -16,6 +19,7 @@ The axios interceptor was clearing the Authorization header for login endpoints,
 **File**: `supabase/functions/api/auth.ts`
 
 ### 2. Fixed Axios Interceptor
+
 - Improved handling of login endpoints
 - Ensured `apikey` header is always sent for Supabase requests
 - Better logic for when to clear Authorization header
@@ -41,6 +45,7 @@ The axios interceptor was clearing the Authorization header for login endpoints,
 ## If Login Still Fails
 
 1. **Check Supabase Secrets**:
+
    ```bash
    # In Supabase Dashboard > Project Settings > Edge Functions > Secrets
    # Ensure these are set:
@@ -52,6 +57,7 @@ The axios interceptor was clearing the Authorization header for login endpoints,
    ```
 
 2. **Check Frontend Environment**:
+
    ```bash
    # In apps/frontend/.env
    VITE_SUPABASE_ANON_KEY=your-anon-key-here
@@ -63,11 +69,12 @@ The axios interceptor was clearing the Authorization header for login endpoints,
    - Verify the response from the login endpoint
 
 ## Deployment Status
+
 - ✅ Frontend fix deployed
 - ⏳ Supabase function fix needs deployment (Docker issue encountered)
 
 ## Next Steps
+
 1. Deploy Supabase function fix when Docker issue is resolved
 2. Verify login works after deployment
 3. Monitor for any other authentication issues
-

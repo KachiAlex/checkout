@@ -1,1 +1,382 @@
-import{u as e,r as s,a as t,b as a,c as r,j as l,L as n,z as o}from"./index-L_FkDW6m.js";import{T as i}from"./ThemeToggle-TO1YIz9m.js";import{B as d}from"./BrandMark-HxNEMnER.js";import{g as c}from"./uuid-BKj53S_8.js";function m(s,t){try{e.getState().addLog(s,t)}catch(a){}}function u({variant:e="tenant"}){const[u,p]=s.useState(""),[x,h]=s.useState(""),[g,f]=s.useState(""),[y,v]=s.useState(""),[b,j]=s.useState(!1),[w,N]=s.useState(null),{login:S,loginSuperAdmin:k}=t(e=>({login:e.login,loginSuperAdmin:e.loginSuperAdmin})),C=a(),L=r(e=>e.theme),I="light"===L?"bg-indigo-200/40":"bg-blue-600/40",q="light"===L?"bg-cyan-200/35":"bg-cyan-500/30";return l.jsxs("div",{className:"theme-background relative flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-10 overflow-x-hidden w-full",children:[l.jsxs("div",{className:"pointer-events-none absolute inset-0",children:[l.jsx("div",{className:`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${I} blur-[180px]`}),l.jsx("div",{className:`absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${q} blur-[200px]`})]}),l.jsxs("div",{className:"relative z-10 flex w-full max-w-md flex-col gap-4 sm:gap-6 px-1 sm:px-0",children:[l.jsx("div",{className:"flex justify-end pr-1 sm:pr-0",children:l.jsx(i,{})}),l.jsxs("div",{className:"theme-card rounded-2xl sm:rounded-3xl border px-4 py-6 sm:px-5 sm:py-8 lg:px-8 lg:py-10 backdrop-blur-xl",children:[l.jsxs("div",{className:"flex flex-col items-center gap-3 sm:gap-4",children:[l.jsx(d,{size:64,backgroundClassName:"light"===L?"bg-white":"bg-white/10",className:"ring-1 ring-slate-200/40 dark:ring-white/10 sm:w-[84px] sm:h-[84px]"}),l.jsxs("div",{className:"space-y-1.5 sm:space-y-2 text-center",children:[l.jsx("h1",{className:"theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold",children:"superadmin"===e?"Checkout Platform Console":"POS Checkout MVP"}),l.jsx("p",{className:"theme-text-secondary text-xs sm:text-sm px-2",children:"superadmin"===e?"Access the multi-tenant command center to provision and manage companies.":"Enter your company slug and secure PIN to access the checkout console."})]})]}),l.jsxs("form",{onSubmit:async s=>{var a,r,l,n,i,d;s.preventDefault(),j(!0);let p="",h="",f="";try{if("superadmin"===e){if(!g.trim())throw new Error("Email is required");if(!y)throw new Error("Password is required");f=g.trim().toLowerCase(),await k(f,y),m("Login success",{type:"superadmin",email:f}),o.success("Welcome back"),C("/superadmin/dashboard",{replace:!0})}else{if(!u.trim())throw new Error("Company slug is required");const e=u.trim().toLowerCase();p=e;const s=localStorage.getItem("deviceId")??c();localStorage.setItem("deviceId",s),h=s,await S(e,x,s);const{user:a}=t.getState();m("Login success",{type:"tenant",tenantSlug:e,userRole:null==a?void 0:a.role,locationId:null==a?void 0:a.locationId}),o.success("Login successful"),(null==a?void 0:a.isPlatformAdmin)?C("/superadmin/dashboard",{replace:!0}):C("/checkout",{replace:!0})}}catch(v){const e=(null==(a=v.response)?void 0:a.status)??v.status,s=(null==(r=v.response)?void 0:r.data)??v.data??null,t=v.customMessage||v.message||"Login failed",c=v.code??(null==(l=v.response)?void 0:l.code),u=v.config??(null==(n=v.response)?void 0:n.config),x=(null==u?void 0:u.baseURL)&&(null==u?void 0:u.url)?`${u.baseURL.replace(/\/+$/,"")}/${u.url.replace(/^\/+/,"")}`:null==u?void 0:u.url,g=null==u?void 0:u.method,y=!v.response&&!!v.request,b=null==(i=v.response)?void 0:i.headers,j=null==(d=v.response)?void 0:d.statusText,w=null==u?void 0:u.data;o.error(e?`${t} (status ${e})`:t),m("Login failed",{message:t,status:e,statusText:j,code:c,isNetworkError:y,tenantSlug:p||void 0,deviceId:h||void 0,email:f||void 0}),N({timestamp:(new Date).toISOString(),message:t,status:e,statusText:j,responseData:s,tenantSlug:p||void 0,deviceId:h||void 0,email:f||void 0,code:c,requestUrl:x,method:g,isNetworkError:y,headers:b,requestData:w})}finally{j(!1)}},className:"mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5",children:["superadmin"===e?l.jsxs(l.Fragment,{children:[l.jsxs("div",{className:"space-y-2",children:[l.jsx("label",{htmlFor:"email",className:"theme-text-secondary text-sm font-medium",children:"Email"}),l.jsx("input",{id:"email",type:"email",value:g,onChange:e=>f(e.target.value),placeholder:"superadmin@checkouthq.com",className:"theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400",autoComplete:"username",required:!0})]}),l.jsxs("div",{className:"space-y-2",children:[l.jsx("label",{htmlFor:"password",className:"theme-text-secondary text-sm font-medium",children:"Password"}),l.jsx("input",{id:"password",type:"password",value:y,onChange:e=>v(e.target.value),placeholder:"Enter password",className:"theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-sky-400",autoComplete:"current-password",required:!0})]})]}):l.jsxs(l.Fragment,{children:[l.jsxs("div",{className:"space-y-2",children:[l.jsx("label",{htmlFor:"tenant-slug",className:"theme-text-secondary text-sm font-medium",children:"Company slug"}),l.jsx("input",{id:"tenant-slug",type:"text",value:u,onChange:e=>p(e.target.value),placeholder:"acme-retail",className:"theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400",inputMode:"text",pattern:"^[a-z0-9]+(?:-[a-z0-9]+)*$",title:"Use lowercase letters, numbers, and hyphens only",required:!0})]}),l.jsxs("div",{className:"space-y-2",children:[l.jsx("label",{htmlFor:"pin",className:"theme-text-secondary text-sm font-medium",children:"Enter PIN or passphrase"}),l.jsx("input",{id:"pin",type:"password",value:x,onChange:e=>h(e.target.value),placeholder:"secure-pin",className:"theme-surface w-full rounded-2xl border px-4 py-3 text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-sky-400",maxLength:64,autoFocus:!0,autoComplete:"current-password",required:!0})]})]}),l.jsx("button",{type:"submit",disabled:b||("superadmin"===e?!g.trim()||!y:!x||!u.trim()),className:"w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base lg:text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 touch-manipulation",children:b?"Logging in...":"Login"})]}),w&&l.jsxs("div",{className:"mt-6 space-y-2 rounded-3xl border border-red-400/40 bg-red-500/10 p-4 text-left text-[11px] text-red-100",children:[l.jsxs("div",{className:"flex items-center justify-between text-xs font-semibold uppercase tracking-wide",children:[l.jsx("span",{children:"Debug Info (temporary)"}),l.jsx("button",{type:"button",className:"rounded-full border border-red-300/40 px-3 py-1 text-[10px] font-semibold text-red-200 transition hover:bg-red-400/10",onClick:()=>N(null),children:"Clear"})]}),l.jsx("pre",{className:"max-h-56 overflow-auto whitespace-pre-wrap break-words",children:JSON.stringify(w,null,2)})]}),l.jsx("div",{className:"theme-text-secondary mt-6 text-center text-xs space-y-2",children:"tenant"===e?l.jsxs(l.Fragment,{children:[l.jsx("p",{children:"Default PINs: Admin (1234), Cashier (5678)"}),l.jsxs("p",{children:["Platform operator?"," ",l.jsx(n,{to:"/superadmin/login",className:"theme-text-primary underline-offset-4 hover:underline",children:"Sign in here"})]})]}):l.jsxs(l.Fragment,{children:[l.jsx("p",{children:"Use the platform credentials shared with your operations lead."}),l.jsxs("p",{children:["Need to access a tenant console instead?"," ",l.jsx(n,{to:"/login",className:"theme-text-primary underline-offset-4 hover:underline",children:"Switch to tenant login"})]})]})})]})]})]})}export{u as LoginPage};
+import {
+  u as e,
+  r as s,
+  a as t,
+  b as a,
+  c as r,
+  j as l,
+  L as n,
+  z as o,
+} from "./index-L_FkDW6m.js";
+import { T as i } from "./ThemeToggle-TO1YIz9m.js";
+import { B as d } from "./BrandMark-HxNEMnER.js";
+import { g as c } from "./uuid-BKj53S_8.js";
+function m(s, t) {
+  try {
+    e.getState().addLog(s, t);
+  } catch (a) {}
+}
+function u({ variant: e = "tenant" }) {
+  const [u, p] = s.useState(""),
+    [x, h] = s.useState(""),
+    [g, f] = s.useState(""),
+    [y, v] = s.useState(""),
+    [b, j] = s.useState(!1),
+    [w, N] = s.useState(null),
+    { login: S, loginSuperAdmin: k } = t((e) => ({
+      login: e.login,
+      loginSuperAdmin: e.loginSuperAdmin,
+    })),
+    C = a(),
+    L = r((e) => e.theme),
+    I = "light" === L ? "bg-indigo-200/40" : "bg-blue-600/40",
+    q = "light" === L ? "bg-cyan-200/35" : "bg-cyan-500/30";
+  return l.jsxs("div", {
+    className:
+      "theme-background relative flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-10 overflow-x-hidden w-full",
+    children: [
+      l.jsxs("div", {
+        className: "pointer-events-none absolute inset-0",
+        children: [
+          l.jsx("div", {
+            className: `absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${I} blur-[180px]`,
+          }),
+          l.jsx("div", {
+            className: `absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${q} blur-[200px]`,
+          }),
+        ],
+      }),
+      l.jsxs("div", {
+        className:
+          "relative z-10 flex w-full max-w-md flex-col gap-4 sm:gap-6 px-1 sm:px-0",
+        children: [
+          l.jsx("div", {
+            className: "flex justify-end pr-1 sm:pr-0",
+            children: l.jsx(i, {}),
+          }),
+          l.jsxs("div", {
+            className:
+              "theme-card rounded-2xl sm:rounded-3xl border px-4 py-6 sm:px-5 sm:py-8 lg:px-8 lg:py-10 backdrop-blur-xl",
+            children: [
+              l.jsxs("div", {
+                className: "flex flex-col items-center gap-3 sm:gap-4",
+                children: [
+                  l.jsx(d, {
+                    size: 64,
+                    backgroundClassName:
+                      "light" === L ? "bg-white" : "bg-white/10",
+                    className:
+                      "ring-1 ring-slate-200/40 dark:ring-white/10 sm:w-[84px] sm:h-[84px]",
+                  }),
+                  l.jsxs("div", {
+                    className: "space-y-1.5 sm:space-y-2 text-center",
+                    children: [
+                      l.jsx("h1", {
+                        className:
+                          "theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold",
+                        children:
+                          "superadmin" === e
+                            ? "Checkout Platform Console"
+                            : "POS Checkout MVP",
+                      }),
+                      l.jsx("p", {
+                        className:
+                          "theme-text-secondary text-xs sm:text-sm px-2",
+                        children:
+                          "superadmin" === e
+                            ? "Access the multi-tenant command center to provision and manage companies."
+                            : "Enter your company slug and secure PIN to access the checkout console.",
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              l.jsxs("form", {
+                onSubmit: async (s) => {
+                  var a, r, l, n, i, d;
+                  (s.preventDefault(), j(!0));
+                  let p = "",
+                    h = "",
+                    f = "";
+                  try {
+                    if ("superadmin" === e) {
+                      if (!g.trim()) throw new Error("Email is required");
+                      if (!y) throw new Error("Password is required");
+                      ((f = g.trim().toLowerCase()),
+                        await k(f, y),
+                        m("Login success", { type: "superadmin", email: f }),
+                        o.success("Welcome back"),
+                        C("/superadmin/dashboard", { replace: !0 }));
+                    } else {
+                      if (!u.trim())
+                        throw new Error("Company slug is required");
+                      const e = u.trim().toLowerCase();
+                      p = e;
+                      const s = localStorage.getItem("deviceId") ?? c();
+                      (localStorage.setItem("deviceId", s),
+                        (h = s),
+                        await S(e, x, s));
+                      const { user: a } = t.getState();
+                      (m("Login success", {
+                        type: "tenant",
+                        tenantSlug: e,
+                        userRole: null == a ? void 0 : a.role,
+                        locationId: null == a ? void 0 : a.locationId,
+                      }),
+                        o.success("Login successful"),
+                        (null == a ? void 0 : a.isPlatformAdmin)
+                          ? C("/superadmin/dashboard", { replace: !0 })
+                          : C("/checkout", { replace: !0 }));
+                    }
+                  } catch (v) {
+                    const e =
+                        (null == (a = v.response) ? void 0 : a.status) ??
+                        v.status,
+                      s =
+                        (null == (r = v.response) ? void 0 : r.data) ??
+                        v.data ??
+                        null,
+                      t = v.customMessage || v.message || "Login failed",
+                      c =
+                        v.code ?? (null == (l = v.response) ? void 0 : l.code),
+                      u =
+                        v.config ??
+                        (null == (n = v.response) ? void 0 : n.config),
+                      x =
+                        (null == u ? void 0 : u.baseURL) &&
+                        (null == u ? void 0 : u.url)
+                          ? `${u.baseURL.replace(/\/+$/, "")}/${u.url.replace(/^\/+/, "")}`
+                          : null == u
+                            ? void 0
+                            : u.url,
+                      g = null == u ? void 0 : u.method,
+                      y = !v.response && !!v.request,
+                      b = null == (i = v.response) ? void 0 : i.headers,
+                      j = null == (d = v.response) ? void 0 : d.statusText,
+                      w = null == u ? void 0 : u.data;
+                    (o.error(e ? `${t} (status ${e})` : t),
+                      m("Login failed", {
+                        message: t,
+                        status: e,
+                        statusText: j,
+                        code: c,
+                        isNetworkError: y,
+                        tenantSlug: p || void 0,
+                        deviceId: h || void 0,
+                        email: f || void 0,
+                      }),
+                      N({
+                        timestamp: new Date().toISOString(),
+                        message: t,
+                        status: e,
+                        statusText: j,
+                        responseData: s,
+                        tenantSlug: p || void 0,
+                        deviceId: h || void 0,
+                        email: f || void 0,
+                        code: c,
+                        requestUrl: x,
+                        method: g,
+                        isNetworkError: y,
+                        headers: b,
+                        requestData: w,
+                      }));
+                  } finally {
+                    j(!1);
+                  }
+                },
+                className: "mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5",
+                children: [
+                  "superadmin" === e
+                    ? l.jsxs(l.Fragment, {
+                        children: [
+                          l.jsxs("div", {
+                            className: "space-y-2",
+                            children: [
+                              l.jsx("label", {
+                                htmlFor: "email",
+                                className:
+                                  "theme-text-secondary text-sm font-medium",
+                                children: "Email",
+                              }),
+                              l.jsx("input", {
+                                id: "email",
+                                type: "email",
+                                value: g,
+                                onChange: (e) => f(e.target.value),
+                                placeholder: "superadmin@checkouthq.com",
+                                className:
+                                  "theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400",
+                                autoComplete: "username",
+                                required: !0,
+                              }),
+                            ],
+                          }),
+                          l.jsxs("div", {
+                            className: "space-y-2",
+                            children: [
+                              l.jsx("label", {
+                                htmlFor: "password",
+                                className:
+                                  "theme-text-secondary text-sm font-medium",
+                                children: "Password",
+                              }),
+                              l.jsx("input", {
+                                id: "password",
+                                type: "password",
+                                value: y,
+                                onChange: (e) => v(e.target.value),
+                                placeholder: "Enter password",
+                                className:
+                                  "theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-sky-400",
+                                autoComplete: "current-password",
+                                required: !0,
+                              }),
+                            ],
+                          }),
+                        ],
+                      })
+                    : l.jsxs(l.Fragment, {
+                        children: [
+                          l.jsxs("div", {
+                            className: "space-y-2",
+                            children: [
+                              l.jsx("label", {
+                                htmlFor: "tenant-slug",
+                                className:
+                                  "theme-text-secondary text-sm font-medium",
+                                children: "Company slug",
+                              }),
+                              l.jsx("input", {
+                                id: "tenant-slug",
+                                type: "text",
+                                value: u,
+                                onChange: (e) => p(e.target.value),
+                                placeholder: "acme-retail",
+                                className:
+                                  "theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400",
+                                inputMode: "text",
+                                pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                                title:
+                                  "Use lowercase letters, numbers, and hyphens only",
+                                required: !0,
+                              }),
+                            ],
+                          }),
+                          l.jsxs("div", {
+                            className: "space-y-2",
+                            children: [
+                              l.jsx("label", {
+                                htmlFor: "pin",
+                                className:
+                                  "theme-text-secondary text-sm font-medium",
+                                children: "Enter PIN or passphrase",
+                              }),
+                              l.jsx("input", {
+                                id: "pin",
+                                type: "password",
+                                value: x,
+                                onChange: (e) => h(e.target.value),
+                                placeholder: "secure-pin",
+                                className:
+                                  "theme-surface w-full rounded-2xl border px-4 py-3 text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-sky-400",
+                                maxLength: 64,
+                                autoFocus: !0,
+                                autoComplete: "current-password",
+                                required: !0,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                  l.jsx("button", {
+                    type: "submit",
+                    disabled:
+                      b ||
+                      ("superadmin" === e ? !g.trim() || !y : !x || !u.trim()),
+                    className:
+                      "w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base lg:text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 touch-manipulation",
+                    children: b ? "Logging in..." : "Login",
+                  }),
+                ],
+              }),
+              w &&
+                l.jsxs("div", {
+                  className:
+                    "mt-6 space-y-2 rounded-3xl border border-red-400/40 bg-red-500/10 p-4 text-left text-[11px] text-red-100",
+                  children: [
+                    l.jsxs("div", {
+                      className:
+                        "flex items-center justify-between text-xs font-semibold uppercase tracking-wide",
+                      children: [
+                        l.jsx("span", { children: "Debug Info (temporary)" }),
+                        l.jsx("button", {
+                          type: "button",
+                          className:
+                            "rounded-full border border-red-300/40 px-3 py-1 text-[10px] font-semibold text-red-200 transition hover:bg-red-400/10",
+                          onClick: () => N(null),
+                          children: "Clear",
+                        }),
+                      ],
+                    }),
+                    l.jsx("pre", {
+                      className:
+                        "max-h-56 overflow-auto whitespace-pre-wrap break-words",
+                      children: JSON.stringify(w, null, 2),
+                    }),
+                  ],
+                }),
+              l.jsx("div", {
+                className:
+                  "theme-text-secondary mt-6 text-center text-xs space-y-2",
+                children:
+                  "tenant" === e
+                    ? l.jsxs(l.Fragment, {
+                        children: [
+                          l.jsx("p", {
+                            children:
+                              "Default PINs: Admin (1234), Cashier (5678)",
+                          }),
+                          l.jsxs("p", {
+                            children: [
+                              "Platform operator?",
+                              " ",
+                              l.jsx(n, {
+                                to: "/superadmin/login",
+                                className:
+                                  "theme-text-primary underline-offset-4 hover:underline",
+                                children: "Sign in here",
+                              }),
+                            ],
+                          }),
+                        ],
+                      })
+                    : l.jsxs(l.Fragment, {
+                        children: [
+                          l.jsx("p", {
+                            children:
+                              "Use the platform credentials shared with your operations lead.",
+                          }),
+                          l.jsxs("p", {
+                            children: [
+                              "Need to access a tenant console instead?",
+                              " ",
+                              l.jsx(n, {
+                                to: "/login",
+                                className:
+                                  "theme-text-primary underline-offset-4 hover:underline",
+                                children: "Switch to tenant login",
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+export { u as LoginPage };

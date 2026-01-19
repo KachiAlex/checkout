@@ -1,5 +1,5 @@
-import type { Express } from 'express';
+import type { Express } from "express";
 
-declare module '../backend-dist/serverless' {
+declare module "../backend-dist/serverless" {
   export function createServer(): Promise<Express>;
 }

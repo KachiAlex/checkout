@@ -12,7 +12,6 @@ export const FixedNavigation = memo(function FixedNavigation() {
   const isCompanyUser = isAuthenticated && !isPlatformAdmin;
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
-  const isCashier = user?.role === "cashier";
 
   // Only show navigation for authenticated company users
   // Also show on settings page if user is authenticated (settings requires admin)

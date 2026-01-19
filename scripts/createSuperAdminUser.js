@@ -1,7 +1,8 @@
-const admin = require('firebase-admin');
-const bcrypt = require('bcrypt');
+const admin = require("firebase-admin");
+const bcrypt = require("bcrypt");
 
-const serviceAccountPath = 'C:/Users/user/Downloads/checkout-77d99-firebase-adminsdk-fbsvc-4501015022.json';
+const serviceAccountPath =
+  "C:/Users/user/Downloads/checkout-77d99-firebase-adminsdk-fbsvc-4501015022.json";
 
 async function ensureInitialized() {
   if (admin.apps.length === 0) {
@@ -12,16 +13,25 @@ async function ensureInitialized() {
 }
 
 async function getPlatformTenantId(db) {
-  const snapshot = await db.collection('tenants').where('slug', '==', 'platform').limit(1).get();
+  const snapshot = await db
+    .collection("tenants")
+    .where("slug", "==", "platform")
+    .limit(1)
+    .get();
   if (snapshot.empty) {
-    throw new Error('Platform tenant not found. Seed the platform tenant before creating a super admin.');
+    throw new Error(
+      "Platform tenant not found. Seed the platform tenant before creating a super admin.",
+    );
   }
   return snapshot.docs[0].id;
 }
 
 async function upsertSuperAdminUser(db, tenantId, email, name, pin) {
-  const usersCollection = db.collection('users');
-  const existing = await usersCollection.where('email', '==', email).limit(1).get();
+  const usersCollection = db.collection("users");
+  const existing = await usersCollection
+    .where("email", "==", email)
+    .limit(1)
+    .get();
   const pinHash = await bcrypt.hash(pin, 10);
   const now = admin.firestore.FieldValue.serverTimestamp();
 
@@ -33,7 +43,7 @@ async function upsertSuperAdminUser(db, tenantId, email, name, pin) {
         pinHash,
         tenantId,
         isPlatformAdmin: true,
-        role: 'admin',
+        role: "admin",
         updatedAt: now,
       },
       { merge: true },
@@ -47,7 +57,7 @@ async function upsertSuperAdminUser(db, tenantId, email, name, pin) {
   const docRef = await usersCollection.add({
     name,
     email,
-    role: 'admin',
+    role: "admin",
     pinHash,
     tenantId,
     isPlatformAdmin: true,
@@ -69,16 +79,16 @@ async function main() {
   const db = admin.firestore();
 
   const tenantId = await getPlatformTenantId(db);
-  const email = 'superadmin@checkouthq.com';
-  const name = 'Checkout Platform Super Admin';
-  const pin = 'superadmin';
+  const email = "superadmin@checkouthq.com";
+  const name = "Checkout Platform Super Admin";
+  const pin = "superadmin";
 
   const result = await upsertSuperAdminUser(db, tenantId, email, name, pin);
 
   console.log(
     JSON.stringify(
       {
-        tenantSlug: 'platform',
+        tenantSlug: "platform",
         superAdminEmail: email,
         superAdminPin: pin,
         userId: result.id,
@@ -96,4 +106,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

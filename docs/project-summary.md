@@ -127,36 +127,43 @@ This is a production-ready Point-of-Sale (POS) system designed for superstores a
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/login` - Login with PIN
 - `POST /api/v1/auth/refresh` - Refresh token
 - `POST /api/v1/auth/device-register` - Register device
 
 ### Products
+
 - `GET /api/v1/products` - List products (with search)
 - `POST /api/v1/products` - Create product
 - `PUT /api/v1/products/:id` - Update product
 - `GET /api/v1/products/:id` - Get product
 
 ### Inventory
+
 - `GET /api/v1/inventory/:location_id/stock` - Get stock
 - `POST /api/v1/inventory/adjust` - Adjust inventory
 
 ### Orders
+
 - `POST /api/v1/orders` - Create order (idempotent)
 - `GET /api/v1/orders/:id` - Get order
 - `PATCH /api/v1/orders/:id` - Update order
 
 ### Payments
+
 - `POST /api/v1/orders/:id/payments/initiate` - Initiate payment
 - `POST /api/v1/payments/:id/capture` - Capture payment
 - `POST /api/v1/payments/:id/refund` - Refund payment
 - `POST /api/v1/webhooks/payment-status` - Payment webhook
 
 ### Sync
+
 - `POST /api/v1/sync/push-changes` - Push offline events
 - `GET /api/v1/sync/pull-changes` - Pull server changes
 
 ### Reports
+
 - `GET /api/v1/reports/sales` - Sales report
 - `GET /api/v1/reports/top-sellers` - Top sellers
 
@@ -234,6 +241,7 @@ kubectl apply -f infra/k8s/
 ### MockTerminal
 
 The MockTerminal adapter allows testing payment flows:
+
 - Configurable approval rate
 - Simulated delays
 - Timeout scenarios

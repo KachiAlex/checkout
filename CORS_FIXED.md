@@ -3,6 +3,7 @@
 ## Problem Solved
 
 The CORS errors were happening because:
+
 1. ❌ Frontend was pointing to wrong URL: `https://pos-checkout-api.onrender.com`
 2. ✅ Actual backend URL: `https://checkout-45tb.onrender.com`
 
@@ -15,12 +16,14 @@ The CORS errors were happening because:
 ## Test Results
 
 ### ✅ Health Endpoint Works
+
 ```powershell
 Invoke-WebRequest -Uri "https://checkout-45tb.onrender.com/api/v1/health"
 # Returns: {"status":"ok","timestamp":"...","service":"pos-backend"}
 ```
 
 ### ✅ CORS Preflight Works
+
 ```powershell
 $headers = @{
     "Origin" = "https://checkout-77d99.web.app"
@@ -49,6 +52,7 @@ npx firebase deploy --only hosting
 ### 2. Test in Browser
 
 After redeploying:
+
 1. Open: https://checkout-77d99.web.app
 2. Open browser console (F12)
 3. Try to login
@@ -57,6 +61,7 @@ After redeploying:
 ### 3. Verify API URL in Browser
 
 In browser console, you should see:
+
 ```
 [config] API_URL (prod) https://checkout-45tb.onrender.com
 ```
@@ -66,9 +71,11 @@ If you see the old URL, the frontend hasn't been redeployed yet.
 ## What Changed
 
 **File: `apps/frontend/src/config.ts`**
+
 - Changed `DEFAULT_API_BASE` from `https://pos-checkout-api.onrender.com` to `https://checkout-45tb.onrender.com`
 
 **File: `apps/backend/src/main.ts`**
+
 - Fixed PORT reading to correctly use `process.env.PORT` (Render sets this automatically)
 
 ## Verification Checklist
@@ -89,4 +96,3 @@ After redeploying frontend:
 ⏳ **Next**: Rebuild and redeploy frontend to apply changes
 
 The CORS issue is **resolved** - you just need to redeploy the frontend with the updated config!
-

@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { API_URL } from "../config";
 import {
   formatCurrency,
-  formatNumber,
   parseFormattedNumber,
   handleNumberInputChange,
 } from "../utils/numberFormat";
@@ -41,13 +40,7 @@ export function SplitPaymentModal({
   const [paymentAmount, setPaymentAmount] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && orderId && accessToken) {
-      loadPayments();
-    }
-  }, [isOpen, orderId, accessToken]);
-
-  const loadPayments = async () => {
+  const loadPayments = useCallback(async () => {
     if (!orderId || !accessToken) return;
     try {
       const response = await axios.get(
@@ -60,7 +53,13 @@ export function SplitPaymentModal({
     } catch (error) {
       console.error("Failed to load payments:", error);
     }
-  };
+  }, [orderId, accessToken]);
+
+  useEffect(() => {
+    if (isOpen && orderId && accessToken) {
+      loadPayments();
+    }
+  }, [isOpen, orderId, accessToken, loadPayments]);
 
   const getTotalPaid = () => {
     return payments

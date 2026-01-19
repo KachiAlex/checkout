@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 import toast from "react-hot-toast";
 
@@ -15,19 +15,21 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) {
-      stopScanning();
-      return;
+  const stopScanning = useCallback(() => {
+    if (codeReaderRef.current) {
+      codeReaderRef.current.reset();
+      codeReaderRef.current = null;
     }
 
-    startScanning();
-    return () => {
-      stopScanning();
-    };
-  }, [isOpen]);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
 
-  const startScanning = async () => {
+    setScanning(false);
+  }, []);
+
+  const startScanning = useCallback(async () => {
     if (!videoRef.current) return;
 
     try {
@@ -98,21 +100,19 @@ export function CameraScanner({ onScan, onClose, isOpen }: CameraScannerProps) {
         toast.error("Failed to start camera scanner: " + err.message);
       }
     }
-  };
+  }, [onScan]);
 
-  const stopScanning = () => {
-    if (codeReaderRef.current) {
-      codeReaderRef.current.reset();
-      codeReaderRef.current = null;
+  useEffect(() => {
+    if (!isOpen) {
+      stopScanning();
+      return;
     }
 
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    setScanning(false);
-  };
+    startScanning();
+    return () => {
+      stopScanning();
+    };
+  }, [isOpen, startScanning, stopScanning]);
 
   if (!isOpen) return null;
 

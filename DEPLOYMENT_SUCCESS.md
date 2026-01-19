@@ -19,10 +19,12 @@ https://cdazlztdllykbtfnssma.supabase.co/functions/v1/api
 ### 1. Test the Function
 
 Get your Supabase anon key:
+
 - Dashboard: https://supabase.com/dashboard/project/cdazlztdllykbtfnssma/settings/api
 - Look for "anon public" key
 
 Test health endpoint:
+
 ```powershell
 $anonKey = "YOUR_ANON_KEY"
 Invoke-RestMethod -Uri "https://cdazlztdllykbtfnssma.supabase.co/functions/v1/api/health" -Headers @{"apikey"=$anonKey; "Authorization"="Bearer $anonKey"}
@@ -33,7 +35,8 @@ Invoke-RestMethod -Uri "https://cdazlztdllykbtfnssma.supabase.co/functions/v1/ap
 Update `apps/frontend/src/config.ts`:
 
 ```typescript
-const DEFAULT_API_BASE = 'https://cdazlztdllykbtfnssma.supabase.co/functions/v1/api';
+const DEFAULT_API_BASE =
+  "https://cdazlztdllykbtfnssma.supabase.co/functions/v1/api";
 ```
 
 ### 3. Configure Frontend to Include API Key
@@ -85,4 +88,3 @@ If needed, rollback to Firebase Functions:
 - Frontend needs to be configured to include this header
 - Test thoroughly before switching production traffic
 - Monitor usage to stay within free tier limits
-

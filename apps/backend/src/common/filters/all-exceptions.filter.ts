@@ -1,10 +1,4 @@
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import type { Request } from 'express';
 
@@ -36,14 +30,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? (exception as any).statusCode
           : undefined;
 
-    const status =
-      isHttpExceptionLike
-        ? (maybeHttpException as HttpException).getStatus()
-        : typeof numericStatus === 'number'
-          ? numericStatus
-          : isPassportUnauthorizedError
-            ? HttpStatus.UNAUTHORIZED
-            : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status = isHttpExceptionLike
+      ? (maybeHttpException as HttpException).getStatus()
+      : typeof numericStatus === 'number'
+        ? numericStatus
+        : isPassportUnauthorizedError
+          ? HttpStatus.UNAUTHORIZED
+          : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const responseBody = isHttpExceptionLike
       ? (maybeHttpException as HttpException).getResponse()

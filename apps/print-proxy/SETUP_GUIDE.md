@@ -14,10 +14,12 @@ npm install
 ### 2. Find Your Printer
 
 **Windows:**
+
 - Open Device Manager → Ports (COM & LPT)
 - Look for your printer (e.g., "USB Serial Port (COM3)")
 
 **Or use the helper script:**
+
 ```bash
 node find-printers.js
 ```
@@ -25,12 +27,15 @@ node find-printers.js
 ### 3. Start the Server
 
 **Windows:**
+
 ```bash
 npm start
 ```
+
 Or double-click `start.bat`
 
 **Linux/Mac:**
+
 ```bash
 npm start
 ```
@@ -48,6 +53,7 @@ The server will start on `ws://localhost:8080`
 ### Serial/USB Printers
 
 **In POS Settings:**
+
 - Printer ID: `pos-printer` (or any name)
 - Type: Serial/USB
 - Port Path: `COM3` (or from find-printers.js)
@@ -56,6 +62,7 @@ The server will start on `ws://localhost:8080`
 ### Network Printers
 
 **In POS Settings:**
+
 - Printer ID: `network-printer` (or any name)
 - Type: Network (TCP/IP)
 - Host/IP: `192.168.1.100` (your printer's IP)
@@ -71,6 +78,7 @@ Most cash registers use ESC/POS compatible printers. Common brands:
 - **Bixolon**: Serial/USB or Network
 
 **Steps:**
+
 1. Connect cash register to computer (USB/Serial/Network)
 2. Find COM port or IP address
 3. Register in POS Settings (same as printer registration)
@@ -86,21 +94,25 @@ Most cash registers use ESC/POS compatible printers. Common brands:
 ## Troubleshooting
 
 **Server won't start:**
+
 - Check port 8080 is not in use
 - Try different port: `PRINT_PROXY_PORT=8081 npm start`
 
 **Printer not found:**
+
 - Verify printer is powered on
 - Check COM port is correct
 - Install printer drivers
 - On Linux: `sudo usermod -a -G dialout $USER`
 
 **Connection refused:**
+
 - Ensure server is running
 - Check firewall allows port 8080
 - For mobile: use computer's IP instead of localhost
 
 **Print jobs fail:**
+
 - Check printer has paper
 - Verify ESC/POS compatibility
 - Check server console for errors
@@ -119,6 +131,7 @@ Most cash registers use ESC/POS compatible printers. Common brands:
 ## Environment Variables
 
 Create `.env` file (optional):
+
 ```
 PRINT_PROXY_PORT=8080
 SERIAL_BAUD_RATE=9600
@@ -131,4 +144,3 @@ SERIAL_BAUD_RATE=9600
 - Consider authentication for production
 
 For detailed cash register setup, see `CASH_REGISTER_SETUP.md`
-

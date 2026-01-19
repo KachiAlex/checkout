@@ -42,6 +42,7 @@ The Orders module powers the **checkout transaction lifecycle**:
 Base route: `@Controller('orders')`
 
 ### `POST /orders`
+
 - **Summary**: Create an order (idempotent by `dto.uuid`).
 - **Body**: `CreateOrderDto`
   - `uuid` (required client UUID)
@@ -56,6 +57,7 @@ Base route: `@Controller('orders')`
 - **Behavior**: resolves location, validates prices vs Products/Inventory, decrements stock (unless held), posts journals, awards loyalty.
 
 ### `GET /orders`
+
 - **Summary**: List orders (sales).
 - **Query**:
   - `location_id?`
@@ -64,41 +66,51 @@ Base route: `@Controller('orders')`
 - **Notes**: verifies optional location belongs to tenant before invoking `OrdersService.findAll`. Without `location_id`, results filtered by tenant’s locations.
 
 ### `GET /orders/held`
+
 - **Summary**: List held/suspended orders.
 - **Query**: `location_id?` (tenant access enforced if provided).
 
 ### `GET /orders/credit`
+
 - **Summary**: List credit orders (items taken on credit).
 - **Query**: `location_id?` (tenant access enforced if provided).
 
 ### `GET /orders/:id`
+
 - **Summary**: Fetch order by ID.
 - **Behavior**: verifies tenant owns the order’s location, else `ForbiddenException`.
 
 ### `PATCH /orders/:id`
+
 - **Summary**: Update order status and/or notes.
 - **Body**: `{ status?: string; notes?: string }`
 - **Guard**: tenant ownership check before update.
 
 ### `POST /orders/:id/hold`
+
 - **Summary**: Mark an order as held (pending). Fails if already completed.
 
 ### `POST /orders/:id/recall`
+
 - **Summary**: Recall (un-hold) a held order.
 
 ### `POST /orders/:id/complete-held`
+
 - **Summary**: Complete a held order (validates inventory, decrements stock, posts journal, awards loyalty).
 
 ### `POST /orders/:id/credit/mark-paid`
+
 - **Summary**: Mark a credit order as paid.
 - **Validation**: order must be credit, not already paid/returned.
 
 ### `POST /orders/:id/credit/mark-returned`
+
 - **Summary**: Mark a credit order as returned (restocks items, sets payment status to REFUNDED).
 
 ## Core logic (OrdersService)
 
 ### Location resolution
+
 1. `dto.locationId`
 2. User’s `locationId` (via `UsersRepository.findById`)
 3. `userLocationId` argument from controller (derived from JWT)
@@ -108,6 +120,7 @@ Base route: `@Controller('orders')`
 If still missing, throws `BadRequestException` advising to assign/create a location.
 
 ### Order validation & creation
+
 - `validateOrderPrices` cross-checks item prices against Products/Inventory (logs mismatches).
 - `validateAndDecrementInventory` ensures sufficient stock and decrements with proper transaction types (credit vs cash sale).
 - Held orders skip inventory decrement until completion.
@@ -119,16 +132,19 @@ If still missing, throws `BadRequestException` advising to assign/create a locat
 - Loyalty points awarded (Customers service) for completed orders with a `customerId`.
 
 ### Held order flow
+
 - `holdOrder`: ensures order not completed, toggles `isHeld=true`, status `PENDING`, sets `heldAt`.
 - `recallOrder`: ensures `isHeld`, toggles `isHeld=false`, clears `heldAt`.
 - `completeHeldOrder`: validates stock, decrements inventory, marks `COMPLETED`, posts journal, awards loyalty.
 
 ### Credit order flow
+
 - `isCreditOrder` flag triggers `paymentStatus = PENDING` and requires `customerId`.
 - `markCreditOrderAsPaid`: ensures tenant access, credit status, not already paid/refunded; sets `paymentStatus=COMPLETED`, `paidAt`.
 - `markCreditOrderAsReturned`: ensures credit order, not already returned; increments inventory for each item via `InventoryService.incrementForReturn`, sets `paymentStatus=REFUNDED`, `returnedAt`.
 
 ### Tenant guardrails
+
 - `verifyTenantAccess(order, tenantId)` fetches order location to ensure tenant ownership.
 - `verifyLocationAccess(locationId, tenantId)` ensures location exists and belongs to tenant.
 

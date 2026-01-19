@@ -40,6 +40,7 @@ pos-checkout-mvp/
 ### Local Development
 
 1. **Clone and install dependencies:**
+
 ```bash
 git clone <repo-url>
 cd pos-checkout-mvp
@@ -47,11 +48,13 @@ npm install
 ```
 
 2. **Start infrastructure:**
+
 ```bash
 docker-compose up -d postgres redis
 ```
 
 3. **Setup environment variables:**
+
 ```bash
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
@@ -59,12 +62,14 @@ cp apps/frontend/.env.example apps/frontend/.env
 ```
 
 4. **Run database migrations:**
+
 ```bash
 npm run migration:run
 npm run seed
 ```
 
 5. **Start development servers:**
+
 ```bash
 npm run dev
 ```
@@ -132,6 +137,7 @@ See [docs/developer-guide.md](./docs/developer-guide.md) for development guideli
 **MVP Status: COMPLETE ✅**
 
 All MVP features have been implemented:
+
 - ✅ Authentication & Authorization
 - ✅ Products & Inventory Management
 - ✅ Checkout & Payment Processing

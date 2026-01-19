@@ -1,5 +1,5 @@
-import { PaymentAdapter, PaymentContext, PaymentResult } from './interfaces';
-import { PaymentMethod, PaymentStatus } from '@pos-checkout/shared';
+import { PaymentAdapter, PaymentContext, PaymentResult } from "./interfaces";
+import { PaymentMethod, PaymentStatus } from "@pos-checkout/shared";
 
 /**
  * MockTerminal - Simulates a payment terminal for testing
@@ -22,7 +22,7 @@ export class MockTerminal implements PaymentAdapter {
 
     // Simulate approval/decline based on rate
     const isApproved = Math.random() < this.approveRate;
-    
+
     // Simulate timeout (1% chance)
     const isTimeout = Math.random() < 0.01;
 
@@ -32,7 +32,7 @@ export class MockTerminal implements PaymentAdapter {
 
     if (isTimeout) {
       status = PaymentStatus.FAILED;
-      error = 'Payment timeout: Terminal did not respond';
+      error = "Payment timeout: Terminal did not respond";
     } else if (isApproved) {
       status = PaymentStatus.COMPLETED;
       transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
@@ -40,10 +40,10 @@ export class MockTerminal implements PaymentAdapter {
       status = PaymentStatus.FAILED;
       // Simulate different decline reasons
       const declineReasons = [
-        'Insufficient funds',
-        'Card declined',
-        'Invalid card',
-        'Transaction not permitted',
+        "Insufficient funds",
+        "Card declined",
+        "Invalid card",
+        "Transaction not permitted",
       ];
       error = declineReasons[Math.floor(Math.random() * declineReasons.length)];
     }
@@ -56,7 +56,7 @@ export class MockTerminal implements PaymentAdapter {
         method: context.method,
         amount: context.amount_cents,
         timestamp: new Date().toISOString(),
-        terminal_id: 'MOCK_TERMINAL_001',
+        terminal_id: "MOCK_TERMINAL_001",
       },
       error,
     };
@@ -67,7 +67,7 @@ export class MockTerminal implements PaymentAdapter {
 
   async capture(paymentId: string): Promise<PaymentResult> {
     const payment = this.payments.get(paymentId);
-    
+
     if (!payment) {
       throw new Error(`Payment ${paymentId} not found`);
     }
@@ -81,13 +81,16 @@ export class MockTerminal implements PaymentAdapter {
 
     payment.status = PaymentStatus.COMPLETED;
     this.payments.set(paymentId, payment);
-    
+
     return payment;
   }
 
-  async refund(paymentId: string, amountCents?: number): Promise<PaymentResult> {
+  async refund(
+    paymentId: string,
+    amountCents?: number,
+  ): Promise<PaymentResult> {
     const payment = this.payments.get(paymentId);
-    
+
     if (!payment) {
       throw new Error(`Payment ${paymentId} not found`);
     }
@@ -107,7 +110,7 @@ export class MockTerminal implements PaymentAdapter {
 
   async getStatus(paymentId: string): Promise<PaymentStatus> {
     const payment = this.payments.get(paymentId);
-    
+
     if (!payment) {
       return PaymentStatus.FAILED;
     }

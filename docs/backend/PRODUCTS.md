@@ -47,14 +47,17 @@ Base route: `@Controller('products')`
 ## Core logic (ProductsService)
 
 ### Search & listing
+
 - `findAll(query, locationId, tenantId)` pulls active products then applies in-memory filtering/sorting for search relevance (exact barcode > exact SKU > partials). Location filtering is a placeholder for future integration with inventory/branches.@apps/backend/src/products/products.service.ts#10-22 @apps/backend/src/products/products.repository.ts#66-109
 
 ### Lookup helpers
+
 - `findOne(id, tenantId)` ensures tenant ownership and throws `NotFoundException` if absent.@apps/backend/src/products/products.service.ts#23-31
 - `findByIds(ids, tenantId)` batches up to 10 Firestore document fetches per chunk to efficiently hydrate drafts or credit memos.@apps/backend/src/products/products.repository.ts#146-185
 - `findByBarcode` / `findBySku` only return active products; used by barcode scanners or SKU entry flows.@apps/backend/src/products/products.service.ts#40-54
 
 ### Mutations
+
 - `create(dto, tenantId)` maps validated DTO fields to repository `CreateProductInput`, ensuring required SKU/name and default tax rate/timestamps.@apps/backend/src/products/products.service.ts#56-74 @apps/backend/src/products/products.repository.ts#186-219
 - `update(id, tenantId, dto)` first verifies existence (guarding against cross-tenant access) then issues a partial Firestore merge update limited to allowed fields.@apps/backend/src/products/products.service.ts#76-85 @apps/backend/src/products/products.repository.ts#221-259
 

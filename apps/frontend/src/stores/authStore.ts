@@ -13,7 +13,9 @@ const BACKEND_WAKE_POLL_INTERVAL_MS = 3_000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const isTimeoutError = (error: any) =>
-  Boolean(error?.code === "ECONNABORTED" || error?.message?.includes("timeout"));
+  Boolean(
+    error?.code === "ECONNABORTED" || error?.message?.includes("timeout"),
+  );
 
 let backendWarmupPromise: Promise<void> | null = null;
 
@@ -41,7 +43,9 @@ const ensureBackendAwake = async () => {
         await delay(BACKEND_WAKE_POLL_INTERVAL_MS);
       }
     }
-    console.warn("[Auth] Backend health check timed out while waiting for service wake-up");
+    console.warn(
+      "[Auth] Backend health check timed out while waiting for service wake-up",
+    );
   })().finally(() => {
     backendWarmupPromise = null;
   });
@@ -101,6 +105,11 @@ interface AuthState {
   tenantSlug: string | null;
   isAuthenticated: boolean;
   login: (tenantSlug: string, pin: string, deviceId?: string) => Promise<void>;
+  loginWithEmail: (
+    email: string,
+    pin: string,
+    deviceId?: string,
+  ) => Promise<void>;
   loginSuperAdmin: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -166,7 +175,60 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem("accessToken", accessToken);
 
         // Set default authorization header
-        axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+        axios.defaults.headers.common["Authorization"] =
+          `Bearer ${accessToken}`;
+      },
+
+      loginWithEmail: async (email: string, pin: string, deviceId?: string) => {
+        await ensureBackendAwake();
+
+        const normalizedEmail = email.trim().toLowerCase();
+        let response;
+        for (let attempt = 1; attempt <= LOGIN_MAX_ATTEMPTS; attempt++) {
+          try {
+            response = await axios.post(
+              `${API_URL}/api/v1/auth/login/email`,
+              {
+                email: normalizedEmail,
+                pin,
+                deviceId,
+              },
+              {
+                timeout:
+                  attempt === 1 ? LOGIN_TIMEOUT_MS : LOGIN_RETRY_TIMEOUT_MS,
+              },
+            );
+            break;
+          } catch (error: any) {
+            if (isTimeoutError(error) && attempt < LOGIN_MAX_ATTEMPTS) {
+              console.warn(
+                `[Auth] Email login attempt ${attempt} timed out. Retrying automatically...`,
+              );
+              await ensureBackendAwake();
+              continue;
+            }
+            throw buildLoginError(error);
+          }
+        }
+
+        if (!response) {
+          throw buildLoginError(new Error("Login failed after retries"));
+        }
+
+        const { accessToken, refreshToken, user, tenant } = response.data;
+
+        set({
+          accessToken,
+          refreshToken,
+          user,
+          tenant,
+          tenantSlug: tenant?.slug ?? null,
+          isAuthenticated: true,
+        });
+
+        localStorage.setItem("accessToken", accessToken);
+        axios.defaults.headers.common["Authorization"] =
+          `Bearer ${accessToken}`;
       },
 
       loginSuperAdmin: async (email: string, password: string) => {

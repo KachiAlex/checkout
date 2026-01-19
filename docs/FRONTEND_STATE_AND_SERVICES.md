@@ -77,4 +77,3 @@ Services are thin wrappers around API endpoints. They typically:
 
 - **Auth**: tokens are managed centrally in `authStore`.
 - **API errors**: pages generally catch and show toast notifications.
-

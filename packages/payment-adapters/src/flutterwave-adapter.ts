@@ -1,7 +1,7 @@
-import { PaymentAdapter, PaymentContext, PaymentResult } from './interfaces';
-import { PaymentMethod, PaymentStatus } from '@pos-checkout/shared';
-import axios, { AxiosInstance } from 'axios';
-import * as crypto from 'crypto';
+import { PaymentAdapter, PaymentContext, PaymentResult } from "./interfaces";
+import { PaymentMethod, PaymentStatus } from "@pos-checkout/shared";
+import axios, { AxiosInstance } from "axios";
+import * as crypto from "crypto";
 
 export interface FlutterwaveConfig {
   publicKey: string;
@@ -108,13 +108,13 @@ export class FlutterwaveAdapter implements PaymentAdapter {
 
   constructor(config: FlutterwaveConfig) {
     this.config = config;
-    this.baseUrl = config.baseUrl || 'https://api.flutterwave.com/v3';
+    this.baseUrl = config.baseUrl || "https://api.flutterwave.com/v3";
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       headers: {
-        'Authorization': `Bearer ${config.secretKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.secretKey}`,
+        "Content-Type": "application/json",
       },
       timeout: 30000, // 30 seconds
     });
@@ -129,12 +129,16 @@ export class FlutterwaveAdapter implements PaymentAdapter {
       const txRef = `POS_${context.order_id}_${Date.now()}`;
 
       // Build customer info from metadata or use defaults
-      const customerName = (context.metadata?.customerName as string) || 'POS Customer';
-      const customerEmail = (context.metadata?.customerEmail as string) || 'customer@pos.local';
-      const customerPhone = (context.metadata?.customerPhone as string) || undefined;
+      const customerName =
+        (context.metadata?.customerName as string) || "POS Customer";
+      const customerEmail =
+        (context.metadata?.customerEmail as string) || "customer@pos.local";
+      const customerPhone =
+        (context.metadata?.customerPhone as string) || undefined;
 
       // Build redirect URL (if provided in metadata)
-      const redirectUrl = (context.metadata?.redirectUrl as string) || undefined;
+      const redirectUrl =
+        (context.metadata?.redirectUrl as string) || undefined;
 
       // Determine payment options based on context method
       const paymentOptions = this.getPaymentOptions(context.method);
@@ -142,7 +146,7 @@ export class FlutterwaveAdapter implements PaymentAdapter {
       const request: FlutterwaveInitiatePaymentRequest = {
         tx_ref: txRef,
         amount: context.amount_cents / 100, // Convert cents to currency unit
-        currency: context.currency?.toUpperCase() || 'NGN',
+        currency: context.currency?.toUpperCase() || "NGN",
         redirect_url: redirectUrl,
         payment_options: paymentOptions,
         customer: {
@@ -151,7 +155,7 @@ export class FlutterwaveAdapter implements PaymentAdapter {
           phone_number: customerPhone,
         },
         customizations: {
-          title: 'Checkout POS Payment',
+          title: "Checkout POS Payment",
           description: `Payment for Order ${context.order_id}`,
         },
         meta: {
@@ -160,16 +164,17 @@ export class FlutterwaveAdapter implements PaymentAdapter {
         },
       };
 
-      const response = await this.axiosInstance.post<FlutterwaveInitiatePaymentResponse>(
-        '/payments',
-        request
-      );
+      const response =
+        await this.axiosInstance.post<FlutterwaveInitiatePaymentResponse>(
+          "/payments",
+          request,
+        );
 
-      if (response.data.status !== 'success') {
+      if (response.data.status !== "success") {
         return {
           payment_id: txRef,
           status: PaymentStatus.FAILED,
-          error: response.data.message || 'Payment initiation failed',
+          error: response.data.message || "Payment initiation failed",
           processor_data: {
             flutterwave_status: response.data.status,
           },
@@ -187,7 +192,8 @@ export class FlutterwaveAdapter implements PaymentAdapter {
         },
       };
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       const txRef = `POS_${context.order_id}_${Date.now()}`;
 
       return {
@@ -213,7 +219,7 @@ export class FlutterwaveAdapter implements PaymentAdapter {
       if (statusResult === PaymentStatus.COMPLETED) {
         // Fetch full transaction details
         const transactionDetails = await this.getTransactionDetails(payment_id);
-        
+
         return {
           payment_id,
           status: PaymentStatus.COMPLETED,
@@ -225,10 +231,14 @@ export class FlutterwaveAdapter implements PaymentAdapter {
       return {
         payment_id,
         status: statusResult,
-        error: statusResult === PaymentStatus.FAILED ? 'Payment not completed' : undefined,
+        error:
+          statusResult === PaymentStatus.FAILED
+            ? "Payment not completed"
+            : undefined,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       return {
         payment_id,
         status: PaymentStatus.FAILED,
@@ -240,21 +250,26 @@ export class FlutterwaveAdapter implements PaymentAdapter {
   /**
    * Refund a completed payment
    */
-  async refund(payment_id: string, amount_cents?: number): Promise<PaymentResult> {
+  async refund(
+    payment_id: string,
+    amount_cents?: number,
+  ): Promise<PaymentResult> {
     try {
       // Get transaction details to find transaction ID
       const transactionDetails = await this.getTransactionDetails(payment_id);
-      
-      if (!transactionDetails || transactionDetails.status !== 'successful') {
+
+      if (!transactionDetails || transactionDetails.status !== "successful") {
         return {
           payment_id,
           status: PaymentStatus.FAILED,
-          error: 'Transaction not found or not successful',
+          error: "Transaction not found or not successful",
         };
       }
 
-      const refundAmount = amount_cents ? amount_cents / 100 : transactionDetails.amount;
-      const comments = 'Refund requested from POS system';
+      const refundAmount = amount_cents
+        ? amount_cents / 100
+        : transactionDetails.amount;
+      const comments = "Refund requested from POS system";
 
       const request: FlutterwaveRefundRequest = {
         id: transactionDetails.id,
@@ -263,15 +278,15 @@ export class FlutterwaveAdapter implements PaymentAdapter {
       };
 
       const response = await this.axiosInstance.post<FlutterwaveRefundResponse>(
-        '/refunds',
-        request
+        "/refunds",
+        request,
       );
 
-      if (response.data.status !== 'success') {
+      if (response.data.status !== "success") {
         return {
           payment_id,
           status: PaymentStatus.FAILED,
-          error: response.data.message || 'Refund failed',
+          error: response.data.message || "Refund failed",
           processor_data: {
             flutterwave_status: response.data.status,
           },
@@ -292,7 +307,8 @@ export class FlutterwaveAdapter implements PaymentAdapter {
         },
       };
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       return {
         payment_id,
         status: PaymentStatus.FAILED,
@@ -318,15 +334,15 @@ export class FlutterwaveAdapter implements PaymentAdapter {
 
       // Map Flutterwave payment status to our PaymentStatus enum
       const flutterwaveStatus = transactionDetails.status.toLowerCase();
-      
+
       switch (flutterwaveStatus) {
-        case 'successful':
+        case "successful":
           return PaymentStatus.COMPLETED;
-        case 'pending':
+        case "pending":
           return PaymentStatus.PROCESSING;
-        case 'failed':
+        case "failed":
           return PaymentStatus.FAILED;
-        case 'cancelled':
+        case "cancelled":
           return PaymentStatus.FAILED;
         default:
           return PaymentStatus.PROCESSING;
@@ -339,13 +355,16 @@ export class FlutterwaveAdapter implements PaymentAdapter {
   /**
    * Get transaction details from Flutterwave using tx_ref
    */
-  private async getTransactionDetails(txRef: string): Promise<FlutterwaveTransactionStatusResponse['data'] | null> {
+  private async getTransactionDetails(
+    txRef: string,
+  ): Promise<FlutterwaveTransactionStatusResponse["data"] | null> {
     try {
-      const response = await this.axiosInstance.get<FlutterwaveTransactionStatusResponse>(
-        `/transactions/verify_by_reference?tx_ref=${encodeURIComponent(txRef)}`
-      );
+      const response =
+        await this.axiosInstance.get<FlutterwaveTransactionStatusResponse>(
+          `/transactions/verify_by_reference?tx_ref=${encodeURIComponent(txRef)}`,
+        );
 
-      if (response.data.status !== 'success' || !response.data.data) {
+      if (response.data.status !== "success" || !response.data.data) {
         return null;
       }
 
@@ -361,13 +380,13 @@ export class FlutterwaveAdapter implements PaymentAdapter {
   private getPaymentOptions(method: PaymentMethod): string {
     switch (method) {
       case PaymentMethod.CARD:
-        return 'card';
+        return "card";
       case PaymentMethod.QR:
-        return 'ussd,banktransfer,mobilemoney';
+        return "ussd,banktransfer,mobilemoney";
       case PaymentMethod.TRANSFER:
-        return 'banktransfer';
+        return "banktransfer";
       default:
-        return 'card,banktransfer,ussd,mobilemoney';
+        return "card,banktransfer,ussd,mobilemoney";
     }
   }
 
@@ -380,11 +399,10 @@ export class FlutterwaveAdapter implements PaymentAdapter {
     }
 
     const computedHash = crypto
-      .createHmac('sha256', this.config.webhookSecret)
+      .createHmac("sha256", this.config.webhookSecret)
       .update(payload)
-      .digest('hex');
+      .digest("hex");
 
     return computedHash === signature;
   }
 }
-

@@ -154,10 +154,10 @@ export function GetAppPage() {
                 Get the Checkout app for your team&apos;s devices
               </h1>
               <p className="max-w-2xl text-base text-slate-300">
-                Roll out native experiences on the hardware your operators already
-                use. Download installers for desktop deployments or side-load the
-                Android build for handhelds. iOS and macOS packages are arriving
-                shortly.
+                Roll out native experiences on the hardware your operators
+                already use. Download installers for desktop deployments or
+                side-load the Android build for handhelds. iOS and macOS
+                packages are arriving shortly.
               </p>
             </div>
           </section>
@@ -234,8 +234,8 @@ export function GetAppPage() {
                   Need another format?
                 </h2>
                 <p className="mt-3">
-                  Have a device fleet that needs custom packaging, MDM deployment,
-                  or offline installers? Reach out to
+                  Have a device fleet that needs custom packaging, MDM
+                  deployment, or offline installers? Reach out to
                   <a
                     href="mailto:hello@checkouthq.com"
                     className="ml-1 text-sky-300 underline"
@@ -261,7 +261,10 @@ export function GetAppPage() {
               <Link to="/login" className="hover:text-white">
                 Console login
               </Link>
-              <a href="mailto:hello@checkouthq.com" className="hover:text-white">
+              <a
+                href="mailto:hello@checkouthq.com"
+                className="hover:text-white"
+              >
                 Contact support
               </a>
             </div>

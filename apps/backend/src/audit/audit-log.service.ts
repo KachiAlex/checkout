@@ -43,9 +43,7 @@ export class AuditLogService {
         retentionDays: days,
       };
     } catch (error) {
-      this.logger.warn(
-        `Failed to purge audit logs: ${(error as Error)?.message ?? String(error)}`,
-      );
+      this.logger.warn(`Failed to purge audit logs: ${(error as Error)?.message ?? String(error)}`);
       return {
         deletedCount: 0,
         cutoff: cutoff.toISOString(),
@@ -105,9 +103,7 @@ export class AuditLogService {
         skip,
       };
     } catch (error) {
-      this.logger.warn(
-        `Failed to list audit logs: ${(error as Error)?.message ?? String(error)}`,
-      );
+      this.logger.warn(`Failed to list audit logs: ${(error as Error)?.message ?? String(error)}`);
       return {
         items: [],
         total: 0,

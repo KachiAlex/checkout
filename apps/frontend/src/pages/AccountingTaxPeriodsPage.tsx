@@ -54,7 +54,9 @@ export function AccountingTaxPeriodsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [periods, setPeriods] = useState<TaxPeriod[]>([]);
 
   const initialQuery = useMemo(() => {
@@ -74,7 +76,9 @@ export function AccountingTaxPeriodsPage() {
   const [form, setForm] = useState(() => ({
     locationId: initialQuery.locationId,
     taxCode: initialQuery.taxCode,
-    periodStart: initialQuery.from ? isoToLocalDateInput(initialQuery.from) : "",
+    periodStart: initialQuery.from
+      ? isoToLocalDateInput(initialQuery.from)
+      : "",
     periodEnd: initialQuery.to ? isoToLocalDateInput(initialQuery.to) : "",
     status: "OPEN" as TaxPeriodStatus,
     dueDate: "",
@@ -112,7 +116,9 @@ export function AccountingTaxPeriodsPage() {
       });
       setPeriods(list || []);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Unable to load tax periods");
+      toast.error(
+        error?.response?.data?.message || "Unable to load tax periods",
+      );
     } finally {
       setLoading(false);
     }
@@ -135,7 +141,8 @@ export function AccountingTaxPeriodsPage() {
       filedAt: isoToLocalDateInput(p.filedAt),
       paidAt: isoToLocalDateInput(p.paidAt),
       paymentReference: p.paymentReference || "",
-      paymentAmountCents: p.paymentAmountCents != null ? String(p.paymentAmountCents) : "",
+      paymentAmountCents:
+        p.paymentAmountCents != null ? String(p.paymentAmountCents) : "",
     });
   };
 
@@ -173,12 +180,16 @@ export function AccountingTaxPeriodsPage() {
         paidAt: form.paidAt ? toLocalDayStartIso(form.paidAt) : undefined,
         paymentReference: form.paymentReference || undefined,
         paymentAmountCents:
-          form.paymentAmountCents.trim() === "" ? undefined : Number(form.paymentAmountCents),
+          form.paymentAmountCents.trim() === ""
+            ? undefined
+            : Number(form.paymentAmountCents),
       });
       toast.success("Tax period saved");
       await load();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to save tax period");
+      toast.error(
+        error?.response?.data?.message || "Failed to save tax period",
+      );
     } finally {
       setSaving(false);
     }
@@ -225,7 +236,9 @@ export function AccountingTaxPeriodsPage() {
                   </label>
                   <select
                     value={filters.locationId}
-                    onChange={(e) => setFilters((s) => ({ ...s, locationId: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, locationId: e.target.value }))
+                    }
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   >
                     <option value="">All locations</option>
@@ -243,7 +256,9 @@ export function AccountingTaxPeriodsPage() {
                   </label>
                   <input
                     value={filters.taxCode}
-                    onChange={(e) => setFilters((s) => ({ ...s, taxCode: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, taxCode: e.target.value }))
+                    }
                     placeholder="VAT"
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
@@ -269,7 +284,9 @@ export function AccountingTaxPeriodsPage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="theme-card rounded-2xl border p-4 sm:p-5">
-                <div className="theme-text-primary text-sm font-semibold mb-3">Upsert period</div>
+                <div className="theme-text-primary text-sm font-semibold mb-3">
+                  Upsert period
+                </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
@@ -278,7 +295,9 @@ export function AccountingTaxPeriodsPage() {
                     </label>
                     <select
                       value={form.locationId}
-                      onChange={(e) => setForm((s) => ({ ...s, locationId: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, locationId: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     >
                       <option value="">All locations</option>
@@ -296,7 +315,9 @@ export function AccountingTaxPeriodsPage() {
                     </label>
                     <input
                       value={form.taxCode}
-                      onChange={(e) => setForm((s) => ({ ...s, taxCode: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, taxCode: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -308,7 +329,9 @@ export function AccountingTaxPeriodsPage() {
                     <input
                       type="date"
                       value={form.periodStart}
-                      onChange={(e) => setForm((s) => ({ ...s, periodStart: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, periodStart: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -320,7 +343,9 @@ export function AccountingTaxPeriodsPage() {
                     <input
                       type="date"
                       value={form.periodEnd}
-                      onChange={(e) => setForm((s) => ({ ...s, periodEnd: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, periodEnd: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -331,7 +356,12 @@ export function AccountingTaxPeriodsPage() {
                     </label>
                     <select
                       value={form.status}
-                      onChange={(e) => setForm((s) => ({ ...s, status: e.target.value as TaxPeriodStatus }))}
+                      onChange={(e) =>
+                        setForm((s) => ({
+                          ...s,
+                          status: e.target.value as TaxPeriodStatus,
+                        }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     >
                       <option value="OPEN">OPEN</option>
@@ -347,7 +377,9 @@ export function AccountingTaxPeriodsPage() {
                     <input
                       type="date"
                       value={form.dueDate}
-                      onChange={(e) => setForm((s) => ({ ...s, dueDate: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, dueDate: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -359,7 +391,9 @@ export function AccountingTaxPeriodsPage() {
                     <input
                       type="date"
                       value={form.filedAt}
-                      onChange={(e) => setForm((s) => ({ ...s, filedAt: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, filedAt: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -371,7 +405,9 @@ export function AccountingTaxPeriodsPage() {
                     <input
                       type="date"
                       value={form.paidAt}
-                      onChange={(e) => setForm((s) => ({ ...s, paidAt: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, paidAt: e.target.value }))
+                      }
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -382,7 +418,12 @@ export function AccountingTaxPeriodsPage() {
                     </label>
                     <input
                       value={form.paymentReference}
-                      onChange={(e) => setForm((s) => ({ ...s, paymentReference: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({
+                          ...s,
+                          paymentReference: e.target.value,
+                        }))
+                      }
                       placeholder="Bank transfer ref / receipt no"
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
@@ -394,7 +435,12 @@ export function AccountingTaxPeriodsPage() {
                     </label>
                     <input
                       value={form.paymentAmountCents}
-                      onChange={(e) => setForm((s) => ({ ...s, paymentAmountCents: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((s) => ({
+                          ...s,
+                          paymentAmountCents: e.target.value,
+                        }))
+                      }
                       placeholder="e.g. 120000"
                       className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                     />
@@ -436,28 +482,44 @@ export function AccountingTaxPeriodsPage() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td className="px-4 py-6 theme-text-secondary" colSpan={5}>
+                        <td
+                          className="px-4 py-6 theme-text-secondary"
+                          colSpan={5}
+                        >
                           Loading...
                         </td>
                       </tr>
                     ) : periods.length === 0 ? (
                       <tr>
-                        <td className="px-4 py-6 theme-text-secondary" colSpan={5}>
+                        <td
+                          className="px-4 py-6 theme-text-secondary"
+                          colSpan={5}
+                        >
                           No tax periods found.
                         </td>
                       </tr>
                     ) : (
                       periods
                         .slice()
-                        .sort((a, b) => new Date(b.periodStart).getTime() - new Date(a.periodStart).getTime())
+                        .sort(
+                          (a, b) =>
+                            new Date(b.periodStart).getTime() -
+                            new Date(a.periodStart).getTime(),
+                        )
                         .map((p) => (
                           <tr key={p.id} className="border-b border-white/5">
                             <td className="px-4 py-3 theme-text-primary whitespace-nowrap">
-                              {isoToLocalDateInput(p.periodStart)} → {isoToLocalDateInput(p.periodEnd)}
-                              <div className="theme-text-secondary text-[11px]">{p.taxCode}</div>
+                              {isoToLocalDateInput(p.periodStart)} →{" "}
+                              {isoToLocalDateInput(p.periodEnd)}
+                              <div className="theme-text-secondary text-[11px]">
+                                {p.taxCode}
+                              </div>
                             </td>
                             <td className="px-4 py-3 theme-text-secondary">
-                              {p.locationId ? locationsById.get(p.locationId) || p.locationId : "All"}
+                              {p.locationId
+                                ? locationsById.get(p.locationId) ||
+                                  p.locationId
+                                : "All"}
                             </td>
                             <td className="px-4 py-3">
                               <span className="theme-chip rounded-full border px-3 py-1 text-xs font-semibold">

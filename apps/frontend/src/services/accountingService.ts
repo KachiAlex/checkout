@@ -53,12 +53,15 @@ export const accountingService = {
     return res.data || [];
   },
 
-  async upsertMapping(eventType: string, input: {
-    debitAccountId: string;
-    creditAccountId: string;
-    branchId?: string;
-    isActive?: boolean;
-  }): Promise<AccountingMapping> {
+  async upsertMapping(
+    eventType: string,
+    input: {
+      debitAccountId: string;
+      creditAccountId: string;
+      branchId?: string;
+      isActive?: boolean;
+    },
+  ): Promise<AccountingMapping> {
     const res = await axios.put(
       `${API_URL}/api/v1/admin/accounting/mappings/${encodeURIComponent(eventType)}`,
       input,
@@ -80,7 +83,9 @@ export const accountingService = {
   },
 
   async getJournal(id: string): Promise<JournalEntry> {
-    const res = await axios.get(`${API_URL}/api/v1/admin/accounting/journals/${id}`);
+    const res = await axios.get(
+      `${API_URL}/api/v1/admin/accounting/journals/${id}`,
+    );
     return res.data;
   },
 
@@ -151,9 +156,12 @@ export const accountingService = {
     from?: string;
     to?: string;
   }): Promise<any[]> {
-    const res = await axios.get(`${API_URL}/api/v1/admin/accounting/tax-periods`, {
-      params,
-    });
+    const res = await axios.get(
+      `${API_URL}/api/v1/admin/accounting/tax-periods`,
+      {
+        params,
+      },
+    );
     return res.data || [];
   },
 
@@ -170,7 +178,10 @@ export const accountingService = {
     dueDate?: string;
     currency?: string;
   }): Promise<any> {
-    const res = await axios.post(`${API_URL}/api/v1/admin/accounting/tax-periods`, input);
+    const res = await axios.post(
+      `${API_URL}/api/v1/admin/accounting/tax-periods`,
+      input,
+    );
     return res.data;
   },
 };

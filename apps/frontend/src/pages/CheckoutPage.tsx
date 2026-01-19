@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
-import { useCartStore, CartItem } from "../stores/cartStore";
+import { useCartStore } from "../stores/cartStore";
 import { PaymentModal } from "../components/PaymentModal";
 import { ReceiptOptionsModal } from "../components/ReceiptOptionsModal";
 import { QuantitySelectorModal } from "../components/QuantitySelectorModal";
@@ -13,8 +13,7 @@ import toast from "react-hot-toast";
 import { Link, Navigate } from "react-router-dom";
 import { API_URL } from "../config";
 import { generateUUID } from "../utils/uuid";
-import { receiptService } from "../services/receiptService";
-import { formatCurrency, formatNumber } from "../utils/numberFormat";
+import { formatCurrency } from "../utils/numberFormat";
 import { TaxRulesService, TaxRule } from "../services/taxRulesService";
 
 interface Product {
@@ -36,10 +35,6 @@ export function CheckoutPage() {
   }));
   const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
 
-  if (isPlatformAdmin) {
-    return <Navigate to="/superadmin" replace />;
-  }
-
   const {
     cart,
     clearCart,
@@ -51,7 +46,6 @@ export function CheckoutPage() {
     activeSessionId,
     createSession,
     switchSession,
-    closeSession,
     cartDiscountCents,
     cartDiscountPercent,
     discountReason,
@@ -79,7 +73,6 @@ export function CheckoutPage() {
     string | null
   >(null);
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
-  const [cashChange, setCashChange] = useState<number>(0);
   const [selectedCustomer, setSelectedCustomer] = useState<{
     id: string;
     name: string;
@@ -347,7 +340,9 @@ export function CheckoutPage() {
           const first = rules[0];
           if (first) {
             const parsedRate =
-              typeof first.rate === "string" ? parseFloat(first.rate) : first.rate;
+              typeof first.rate === "string"
+                ? parseFloat(first.rate)
+                : first.rate;
             if (!Number.isNaN(parsedRate)) {
               setSelectedTaxRule({
                 id: first.id,
@@ -498,7 +493,8 @@ export function CheckoutPage() {
     (cartItems: typeof cart) => {
       const defaultVATPercentage = 7.5;
       const taxPercentage = taxEnabled
-        ? getTaxRate() || (taxSettings?.percentage || defaultVATPercentage) / 100
+        ? getTaxRate() ||
+          (taxSettings?.percentage || defaultVATPercentage) / 100
         : 0;
 
       return cartItems
@@ -559,33 +555,14 @@ export function CheckoutPage() {
     const totalDiscountCents = subtotal - finalSubtotal;
 
     return { subtotal, tax, finalSubtotal, totalAmount, totalDiscountCents };
-  }, [cart, cartDiscountPercent, cartDiscountCents, taxEnabled, taxSettings, getTaxRate]);
-
-  // Extract receipt printing logic
-  const handleReceiptPrint = useCallback(async (orderId: string) => {
-    try {
-      const printAvailable = await receiptService.isAvailable();
-      if (printAvailable) {
-        const printSuccess = await receiptService.printReceipt(orderId);
-        if (printSuccess) {
-          toast.success("✅ Receipt printed successfully");
-          return;
-        }
-      }
-      const browserPrintSuccess =
-        await receiptService.printReceiptBrowser(orderId);
-      if (browserPrintSuccess) {
-        toast.success("Opening print dialog...");
-      } else {
-        const receipt = await receiptService.getReceipt(orderId);
-        console.log("Receipt:", receipt);
-        toast.success("Receipt generated");
-      }
-    } catch (error) {
-      console.warn("Failed to generate/print receipt:", error);
-      toast.error("Receipt generation failed");
-    }
-  }, []);
+  }, [
+    cart,
+    cartDiscountPercent,
+    cartDiscountCents,
+    taxEnabled,
+    taxSettings,
+    getTaxRate,
+  ]);
 
   const handlePaymentClick = (
     method: "card" | "cash" | "qr" | "transfer" | "credit",
@@ -846,8 +823,7 @@ export function CheckoutPage() {
   };
 
   // Calculate display totals using the same logic as calculateOrderTotals
-  const { subtotal, tax, finalSubtotal, totalDiscountCents } =
-    calculateOrderTotals();
+  const { tax, finalSubtotal, totalDiscountCents } = calculateOrderTotals();
   const totalDiscount = totalDiscountCents;
 
   const effectiveVatPercent = taxEnabled
@@ -858,6 +834,10 @@ export function CheckoutPage() {
   const displayVatPercent = taxEnabled
     ? effectiveVatPercent || fallbackVatPercent
     : 0;
+
+  if (isPlatformAdmin) {
+    return <Navigate to="/superadmin" replace />;
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden theme-background page-with-nav">
@@ -1208,407 +1188,408 @@ export function CheckoutPage() {
 
                   {/* Customer Selector */}
                   <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10 customer-search-container">
-                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
-                    Customer (Optional)
-                  </label>
-                  {selectedCustomer ? (
-                    <div className="flex items-center justify-between rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="theme-text-primary text-sm font-medium truncate">
-                          {selectedCustomer.name}
-                        </p>
-                        {selectedCustomer.phone && (
-                          <p className="theme-text-secondary text-xs truncate">
-                            {selectedCustomer.phone}
+                    <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
+                      Customer (Optional)
+                    </label>
+                    {selectedCustomer ? (
+                      <div className="flex items-center justify-between rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="theme-text-primary text-sm font-medium truncate">
+                            {selectedCustomer.name}
                           </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedCustomer(null);
-                          setCustomerSearchQuery("");
-                          setCustomerSearchResults([]);
-                        }}
-                        className="ml-2 rounded px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={customerSearchQuery}
-                        onChange={(e) => {
-                          setCustomerSearchQuery(e.target.value);
-                          setShowCustomerSearch(true);
-                        }}
-                        onFocus={() => setShowCustomerSearch(true)}
-                        onKeyDown={async (e) => {
-                          // Create customer on Enter if no results and query is not empty
-                          if (
-                            e.key === "Enter" &&
-                            customerSearchQuery.trim() &&
-                            customerSearchResults.length === 0 &&
-                            !isSearchingCustomer
-                          ) {
-                            e.preventDefault();
-                            const newCustomer =
-                              await createCustomer(customerSearchQuery);
-                            if (newCustomer) {
-                              setSelectedCustomer({
-                                id: newCustomer.id,
-                                name: newCustomer.name,
-                                phone: newCustomer.phone,
-                              });
-                              setCustomerSearchQuery("");
-                              setCustomerSearchResults([]);
-                              setShowCustomerSearch(false);
-                              toast.success(
-                                `Customer "${newCustomer.name}" created`,
-                              );
-                            }
-                          }
-                        }}
-                        placeholder="Search by name or phone, or type name to create..."
-                        className="theme-surface w-full rounded-lg border border-white/20 px-3 py-2 text-xs sm:text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
-                      />
-                      {isSearchingCustomer && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                          {selectedCustomer.phone && (
+                            <p className="theme-text-secondary text-xs truncate">
+                              {selectedCustomer.phone}
+                            </p>
+                          )}
                         </div>
-                      )}
-                      {showCustomerSearch && (
-                        <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-white/20 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
-                          {customerSearchResults.length > 0 ? (
-                            customerSearchResults.map((customer) => (
+                        <button
+                          onClick={() => {
+                            setSelectedCustomer(null);
+                            setCustomerSearchQuery("");
+                            setCustomerSearchResults([]);
+                          }}
+                          className="ml-2 rounded px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={customerSearchQuery}
+                          onChange={(e) => {
+                            setCustomerSearchQuery(e.target.value);
+                            setShowCustomerSearch(true);
+                          }}
+                          onFocus={() => setShowCustomerSearch(true)}
+                          onKeyDown={async (e) => {
+                            // Create customer on Enter if no results and query is not empty
+                            if (
+                              e.key === "Enter" &&
+                              customerSearchQuery.trim() &&
+                              customerSearchResults.length === 0 &&
+                              !isSearchingCustomer
+                            ) {
+                              e.preventDefault();
+                              const newCustomer =
+                                await createCustomer(customerSearchQuery);
+                              if (newCustomer) {
+                                setSelectedCustomer({
+                                  id: newCustomer.id,
+                                  name: newCustomer.name,
+                                  phone: newCustomer.phone,
+                                });
+                                setCustomerSearchQuery("");
+                                setCustomerSearchResults([]);
+                                setShowCustomerSearch(false);
+                                toast.success(
+                                  `Customer "${newCustomer.name}" created`,
+                                );
+                              }
+                            }
+                          }}
+                          placeholder="Search by name or phone, or type name to create..."
+                          className="theme-surface w-full rounded-lg border border-white/20 px-3 py-2 text-xs sm:text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
+                        />
+                        {isSearchingCustomer && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                          </div>
+                        )}
+                        {showCustomerSearch && (
+                          <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-white/20 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
+                            {customerSearchResults.length > 0 ? (
+                              customerSearchResults.map((customer) => (
+                                <button
+                                  key={customer.id}
+                                  onClick={() => {
+                                    setSelectedCustomer({
+                                      id: customer.id,
+                                      name: customer.name,
+                                      phone: customer.phone,
+                                    });
+                                    setCustomerSearchQuery("");
+                                    setCustomerSearchResults([]);
+                                    setShowCustomerSearch(false);
+                                  }}
+                                  className="w-full border-b border-white/10 px-3 py-2 text-left transition hover:bg-white/10 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
+                                >
+                                  <p className="theme-text-primary text-sm font-medium">
+                                    {customer.name}
+                                  </p>
+                                  {customer.phone && (
+                                    <p className="theme-text-secondary text-xs">
+                                      {customer.phone}
+                                    </p>
+                                  )}
+                                  {customer.email && (
+                                    <p className="theme-text-secondary text-xs">
+                                      {customer.email}
+                                    </p>
+                                  )}
+                                </button>
+                              ))
+                            ) : customerSearchQuery.trim() &&
+                              !isSearchingCustomer ? (
                               <button
-                                key={customer.id}
-                                onClick={() => {
-                                  setSelectedCustomer({
-                                    id: customer.id,
-                                    name: customer.name,
-                                    phone: customer.phone,
-                                  });
-                                  setCustomerSearchQuery("");
-                                  setCustomerSearchResults([]);
-                                  setShowCustomerSearch(false);
+                                onClick={async () => {
+                                  const newCustomer =
+                                    await createCustomer(customerSearchQuery);
+                                  if (newCustomer) {
+                                    setSelectedCustomer({
+                                      id: newCustomer.id,
+                                      name: newCustomer.name,
+                                      phone: newCustomer.phone,
+                                    });
+                                    setCustomerSearchQuery("");
+                                    setCustomerSearchResults([]);
+                                    setShowCustomerSearch(false);
+                                    toast.success(
+                                      `Customer "${newCustomer.name}" created`,
+                                    );
+                                  }
                                 }}
-                                className="w-full border-b border-white/10 px-3 py-2 text-left transition hover:bg-white/10 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
+                                className="w-full px-3 py-2 text-left transition hover:bg-white/10 rounded-lg border-b border-white/10"
                               >
                                 <p className="theme-text-primary text-sm font-medium">
-                                  {customer.name}
+                                  ➕ Create customer:{" "}
+                                  <span className="font-semibold">
+                                    {customerSearchQuery}
+                                  </span>
                                 </p>
-                                {customer.phone && (
-                                  <p className="theme-text-secondary text-xs">
-                                    {customer.phone}
-                                  </p>
-                                )}
-                                {customer.email && (
-                                  <p className="theme-text-secondary text-xs">
-                                    {customer.email}
-                                  </p>
-                                )}
+                                <p className="theme-text-secondary text-xs mt-0.5">
+                                  Press Enter or click to create
+                                </p>
                               </button>
-                            ))
-                          ) : customerSearchQuery.trim() &&
-                            !isSearchingCustomer ? (
-                            <button
-                              onClick={async () => {
-                                const newCustomer =
-                                  await createCustomer(customerSearchQuery);
-                                if (newCustomer) {
-                                  setSelectedCustomer({
-                                    id: newCustomer.id,
-                                    name: newCustomer.name,
-                                    phone: newCustomer.phone,
-                                  });
-                                  setCustomerSearchQuery("");
-                                  setCustomerSearchResults([]);
-                                  setShowCustomerSearch(false);
-                                  toast.success(
-                                    `Customer "${newCustomer.name}" created`,
-                                  );
-                                }
-                              }}
-                              className="w-full px-3 py-2 text-left transition hover:bg-white/10 rounded-lg border-b border-white/10"
-                            >
-                              <p className="theme-text-primary text-sm font-medium">
-                                ➕ Create customer:{" "}
-                                <span className="font-semibold">
-                                  {customerSearchQuery}
-                                </span>
-                              </p>
-                              <p className="theme-text-secondary text-xs mt-0.5">
-                                Press Enter or click to create
-                              </p>
-                            </button>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Customer phone input */}
                   <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
-                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
-                    Customer phone (required for credit orders)
-                  </label>
-                  <input
-                    type="tel"
-                    value={customerPhoneInput}
-                    onChange={(e) => setCustomerPhoneInput(e.target.value)}
-                    placeholder="Enter phone number"
-                    className="theme-surface w-full rounded-lg border border-white/20 px-3 py-2 text-xs sm:text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
-                  />
-                </div>
+                    <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
+                      Customer phone (required for credit orders)
+                    </label>
+                    <input
+                      type="tel"
+                      value={customerPhoneInput}
+                      onChange={(e) => setCustomerPhoneInput(e.target.value)}
+                      placeholder="Enter phone number"
+                      className="theme-surface w-full rounded-lg border border-white/20 px-3 py-2 text-xs sm:text-sm theme-text-primary placeholder:text-current/50 focus:border-sky-400 focus:outline-none"
+                    />
+                  </div>
 
                   {/* VAT Toggle - Always visible, optional for cashier */}
                   <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
-                  <input
-                    type="checkbox"
-                    id="vat-toggle"
-                    checked={taxEnabled}
-                    onChange={(e) => setTaxEnabled(e.target.checked)}
-                    className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-500 focus:ring-2 focus:ring-sky-400"
-                  />
-                  <label
-                    htmlFor="vat-toggle"
-                    className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer"
-                  >
-                    Apply VAT ({displayVatPercent}%)
-                  </label>
-                </div>
+                    <input
+                      type="checkbox"
+                      id="vat-toggle"
+                      checked={taxEnabled}
+                      onChange={(e) => setTaxEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-500 focus:ring-2 focus:ring-sky-400"
+                    />
+                    <label
+                      htmlFor="vat-toggle"
+                      className="theme-text-primary text-xs sm:text-sm font-medium cursor-pointer"
+                    >
+                      Apply VAT ({displayVatPercent}%)
+                    </label>
+                  </div>
 
                   {taxEnabled && (
                     <div className="mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-white/10">
-                    <div>
-                      <div className="theme-text-secondary text-[11px] sm:text-xs mb-1">
-                        VAT rule
+                      <div>
+                        <div className="theme-text-secondary text-[11px] sm:text-xs mb-1">
+                          VAT rule
+                        </div>
+                        <select
+                          value={selectedTaxRule?.id || ""}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            const found = taxRules.find((r) => r.id === id);
+                            if (!found) {
+                              setSelectedTaxRule(null);
+                              return;
+                            }
+                            const parsedRate =
+                              typeof found.rate === "string"
+                                ? parseFloat(found.rate)
+                                : found.rate;
+                            if (Number.isNaN(parsedRate)) {
+                              setSelectedTaxRule(null);
+                              return;
+                            }
+                            setSelectedTaxRule({
+                              id: found.id,
+                              name: found.name,
+                              taxCode: found.taxCode,
+                              rate: parsedRate,
+                            });
+                          }}
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm theme-text-primary"
+                          disabled={isLoadingTaxRules}
+                        >
+                          <option value="">Select VAT rule</option>
+                          {taxRules.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      <select
-                        value={selectedTaxRule?.id || ""}
-                        onChange={(e) => {
-                          const id = e.target.value;
-                          const found = taxRules.find((r) => r.id === id);
-                          if (!found) {
-                            setSelectedTaxRule(null);
-                            return;
-                          }
-                          const parsedRate =
-                            typeof found.rate === "string"
-                              ? parseFloat(found.rate)
-                              : found.rate;
-                          if (Number.isNaN(parsedRate)) {
-                            setSelectedTaxRule(null);
-                            return;
-                          }
-                          setSelectedTaxRule({
-                            id: found.id,
-                            name: found.name,
-                            taxCode: found.taxCode,
-                            rate: parsedRate,
-                          });
-                        }}
-                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm theme-text-primary"
-                        disabled={isLoadingTaxRules}
-                      >
-                        <option value="">Select VAT rule</option>
-                        {taxRules.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
 
-                    <div>
-                      <div className="theme-text-secondary text-[11px] sm:text-xs mb-1">
-                        Override rate (%)
+                      <div>
+                        <div className="theme-text-secondary text-[11px] sm:text-xs mb-1">
+                          Override rate (%)
+                        </div>
+                        <input
+                          value={
+                            taxRateOverridePercent === null
+                              ? ""
+                              : String(taxRateOverridePercent)
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!raw.trim()) {
+                              setTaxRateOverridePercent(null);
+                              return;
+                            }
+                            const parsed = parseFloat(raw);
+                            if (Number.isNaN(parsed) || parsed < 0) {
+                              return;
+                            }
+                            setTaxRateOverridePercent(parsed);
+                          }}
+                          inputMode="decimal"
+                          placeholder="e.g. 7.5"
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm theme-text-primary"
+                        />
                       </div>
-                      <input
-                        value={
-                          taxRateOverridePercent === null
-                            ? ""
-                            : String(taxRateOverridePercent)
-                        }
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          if (!raw.trim()) {
-                            setTaxRateOverridePercent(null);
-                            return;
-                          }
-                          const parsed = parseFloat(raw);
-                          if (Number.isNaN(parsed) || parsed < 0) {
-                            return;
-                          }
-                          setTaxRateOverridePercent(parsed);
-                        }}
-                        inputMode="decimal"
-                        placeholder="e.g. 7.5"
-                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm theme-text-primary"
-                      />
                     </div>
-                  </div>
-                )}
+                  )}
 
                   {/* Discount Input */}
                   <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-white/10">
-                  <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
-                    Discount
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={discountType}
-                      onChange={(e) => {
-                        setDiscountType(e.target.value as "percent" | "amount");
-                        setDiscountInput("");
-                        setCartDiscount(0, 0, "");
-                      }}
-                      className="theme-surface rounded-lg border border-white/20 px-2 sm:px-3 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-                    >
-                      <option value="amount">₦</option>
-                      <option value="percent">%</option>
-                    </select>
-                    <input
-                      type="number"
-                      value={discountInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setDiscountInput(value);
-                        const numValue = parseFloat(value) || 0;
-                        if (discountType === "percent") {
-                          setCartDiscount(0, numValue, "Manual discount");
-                        } else {
-                          setCartDiscount(
-                            Math.round(numValue * 100),
-                            0,
-                            "Manual discount",
+                    <label className="theme-text-secondary mb-2 block text-xs sm:text-sm font-medium">
+                      Discount
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={discountType}
+                        onChange={(e) => {
+                          setDiscountType(
+                            e.target.value as "percent" | "amount",
                           );
-                        }
-                      }}
-                      placeholder={discountType === "percent" ? "0" : "0.00"}
-                      min="0"
-                      step={discountType === "percent" ? "1" : "0.01"}
-                      className="theme-surface flex-1 rounded-lg border border-white/20 px-3 sm:px-4 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
-                    />
+                          setDiscountInput("");
+                          setCartDiscount(0, 0, "");
+                        }}
+                        className="theme-surface rounded-lg border border-white/20 px-2 sm:px-3 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                      >
+                        <option value="amount">₦</option>
+                        <option value="percent">%</option>
+                      </select>
+                      <input
+                        type="number"
+                        value={discountInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setDiscountInput(value);
+                          const numValue = parseFloat(value) || 0;
+                          if (discountType === "percent") {
+                            setCartDiscount(0, numValue, "Manual discount");
+                          } else {
+                            setCartDiscount(
+                              Math.round(numValue * 100),
+                              0,
+                              "Manual discount",
+                            );
+                          }
+                        }}
+                        placeholder={discountType === "percent" ? "0" : "0.00"}
+                        min="0"
+                        step={discountType === "percent" ? "1" : "0.01"}
+                        className="theme-surface flex-1 rounded-lg border border-white/20 px-3 sm:px-4 py-2 text-xs sm:text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                </div>
 
                   <div className="space-y-2 sm:space-y-3 border-b border-white/10 pb-3 sm:pb-4">
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="theme-text-secondary">Subtotal</span>
-                    <span className="theme-text-primary">
-                      {formatCurrency(finalSubtotal)}
-                    </span>
-                  </div>
-                  {totalDiscount > 0 && (
                     <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="theme-text-secondary">Discount</span>
-                      <span className="theme-text-primary text-emerald-400">
-                        -{formatCurrency(totalDiscount)}
-                      </span>
-                    </div>
-                  )}
-                  {taxEnabled && tax > 0 && (
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="theme-text-secondary">VAT</span>
+                      <span className="theme-text-secondary">Subtotal</span>
                       <span className="theme-text-primary">
-                        {formatCurrency(tax)}
+                        {formatCurrency(finalSubtotal)}
                       </span>
                     </div>
-                  )}
-                </div>
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="theme-text-secondary">Discount</span>
+                        <span className="theme-text-primary text-emerald-400">
+                          -{formatCurrency(totalDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    {taxEnabled && tax > 0 && (
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="theme-text-secondary">VAT</span>
+                        <span className="theme-text-primary">
+                          {formatCurrency(tax)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="mt-3 sm:mt-4 mb-4 sm:mb-6 flex justify-between border-t border-white/10 pt-3 sm:pt-4">
-                  <span className="theme-text-primary text-base sm:text-lg font-semibold">
-                    Total
-                  </span>
-                  <span className="theme-text-primary text-lg sm:text-xl font-bold">
-                    {formatCurrency(total)}
-                  </span>
-                </div>
+                    <span className="theme-text-primary text-base sm:text-lg font-semibold">
+                      Total
+                    </span>
+                    <span className="theme-text-primary text-lg sm:text-xl font-bold">
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
 
                   <div className="space-y-2">
-                  <button
-                    onClick={() => handlePaymentClick("cash")}
-                    disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
-                  >
-                    {isProcessing ? "Processing..." : "💵 Pay Cash"}
-                  </button>
-                  <button
-                    onClick={() => handlePaymentClick("card")}
-                    disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
-                  >
-                    💳 Pay Card
-                  </button>
-                  <button
-                    onClick={() => handlePaymentClick("qr")}
-                    disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
-                  >
-                    📱 Pay QR
-                  </button>
-                  <button
-                    onClick={() => handlePaymentClick("transfer")}
-                    disabled={cart.length === 0 || isProcessing}
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
-                  >
-                    🏦 Pay Transfer
-                  </button>
-                  {(isAdmin || isManager) && (
                     <button
-                      onClick={() => handlePaymentClick("credit")}
+                      onClick={() => handlePaymentClick("cash")}
                       disabled={cart.length === 0 || isProcessing}
-                      className="w-full rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                      className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
                     >
-                      💳 Credit Order
+                      {isProcessing ? "Processing..." : "💵 Pay Cash"}
+                    </button>
+                    <button
+                      onClick={() => handlePaymentClick("card")}
+                      disabled={cart.length === 0 || isProcessing}
+                      className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                    >
+                      💳 Pay Card
+                    </button>
+                    <button
+                      onClick={() => handlePaymentClick("qr")}
+                      disabled={cart.length === 0 || isProcessing}
+                      className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                    >
+                      📱 Pay QR
+                    </button>
+                    <button
+                      onClick={() => handlePaymentClick("transfer")}
+                      disabled={cart.length === 0 || isProcessing}
+                      className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                    >
+                      🏦 Pay Transfer
+                    </button>
+                    {(isAdmin || isManager) && (
+                      <button
+                        onClick={() => handlePaymentClick("credit")}
+                        disabled={cart.length === 0 || isProcessing}
+                        className="w-full rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
+                      >
+                        💳 Credit Order
+                      </button>
+                    )}
+                  </div>
+
+                  {cart.length > 0 && (
+                    <button
+                      onClick={clearCart}
+                      className="mt-3 sm:mt-4 w-full rounded-xl border border-white/20 bg-white/5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white touch-manipulation"
+                    >
+                      Clear Cart
                     </button>
                   )}
-                </div>
-
-                {cart.length > 0 && (
-                  <button
-                    onClick={clearCart}
-                    className="mt-3 sm:mt-4 w-full rounded-xl border border-white/20 bg-white/5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white touch-manipulation"
-                  >
-                    Clear Cart
-                  </button>
-                )}
                 </div>
               </aside>
             </div>
           </div>
         </main>
+      </div>
 
-        </div>
-
-        <PaymentModal
-          isOpen={paymentModalOpen}
-          method={selectedPaymentMethod}
-          total={total}
-          cart={cart}
-          customerName={selectedCustomer?.name || customerSearchQuery}
-          customerEmail={selectedCustomer?.email}
-          customerPhone={
-            customerPhoneInput || selectedCustomer?.phone || undefined
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        method={selectedPaymentMethod}
+        total={total}
+        cart={cart}
+        customerName={selectedCustomer?.name || customerSearchQuery}
+        customerEmail={selectedCustomer?.email}
+        customerPhone={
+          customerPhoneInput || selectedCustomer?.phone || undefined
+        }
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedPaymentMethod(null);
+        }}
+        onComplete={async (change) => {
+          if (change !== undefined) {
+            setCashChange(change);
           }
-          onClose={() => {
-            setPaymentModalOpen(false);
-            setSelectedPaymentMethod(null);
-          }}
-          onComplete={async (change) => {
-            if (change !== undefined) {
-              setCashChange(change);
-            }
-            if (selectedPaymentMethod && selectedPaymentMethod !== "credit") {
-              await handlePayment(selectedPaymentMethod);
-            }
-          }}
-        />
+          if (selectedPaymentMethod && selectedPaymentMethod !== "credit") {
+            await handlePayment(selectedPaymentMethod);
+          }
+        }}
+      />
 
       {/* Receipt Options Modal */}
       {lastCompletedOrderId && (

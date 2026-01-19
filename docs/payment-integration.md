@@ -26,8 +26,12 @@ interface PaymentAdapter {
 ### 1. Create Adapter Class
 
 ```typescript
-import { PaymentAdapter, PaymentContext, PaymentResult } from '@pos-checkout/payment-adapters';
-import { PaymentStatus } from '@pos-checkout/shared';
+import {
+  PaymentAdapter,
+  PaymentContext,
+  PaymentResult,
+} from "@pos-checkout/payment-adapters";
+import { PaymentStatus } from "@pos-checkout/shared";
 
 export class YourTerminalAdapter implements PaymentAdapter {
   async initiatePayment(context: PaymentContext): Promise<PaymentResult> {
@@ -35,12 +39,14 @@ export class YourTerminalAdapter implements PaymentAdapter {
     // - Send payment request to terminal
     // - Wait for response
     // - Return PaymentResult
-    
+
     return {
-      payment_id: 'unique_payment_id',
+      payment_id: "unique_payment_id",
       status: PaymentStatus.COMPLETED,
-      transaction_id: 'terminal_txn_id',
-      processor_data: { /* terminal-specific data */ },
+      transaction_id: "terminal_txn_id",
+      processor_data: {
+        /* terminal-specific data */
+      },
     };
   }
 
@@ -48,7 +54,10 @@ export class YourTerminalAdapter implements PaymentAdapter {
     // Implement capture logic if needed
   }
 
-  async refund(paymentId: string, amountCents?: number): Promise<PaymentResult> {
+  async refund(
+    paymentId: string,
+    amountCents?: number,
+  ): Promise<PaymentResult> {
     // Implement refund logic
   }
 
@@ -63,7 +72,7 @@ export class YourTerminalAdapter implements PaymentAdapter {
 In `PaymentsService`:
 
 ```typescript
-import { YourTerminalAdapter } from './adapters/your-terminal-adapter';
+import { YourTerminalAdapter } from "./adapters/your-terminal-adapter";
 
 @Injectable()
 export class PaymentsService {
@@ -82,7 +91,7 @@ export class PaymentsService {
 ### Verifone Terminal Integration
 
 ```typescript
-import { SerialPort } from 'serialport';
+import { SerialPort } from "serialport";
 
 export class VerifoneAdapter implements PaymentAdapter {
   private port: SerialPort;
@@ -95,10 +104,10 @@ export class VerifoneAdapter implements PaymentAdapter {
     // Send ESC/POS commands to terminal
     const command = this.buildPaymentCommand(context.amount_cents);
     await this.sendCommand(command);
-    
+
     // Wait for response
     const response = await this.waitForResponse();
-    
+
     return this.parseResponse(response);
   }
 }
@@ -107,7 +116,7 @@ export class VerifoneAdapter implements PaymentAdapter {
 ### Stripe Gateway Integration
 
 ```typescript
-import Stripe from 'stripe';
+import Stripe from "stripe";
 
 export class StripeAdapter implements PaymentAdapter {
   private stripe: Stripe;
@@ -119,19 +128,20 @@ export class StripeAdapter implements PaymentAdapter {
   async initiatePayment(context: PaymentContext): Promise<PaymentResult> {
     // Tokenization: Use payment token, never PAN/CVV
     const token = context.metadata?.token as string;
-    
+
     const paymentIntent = await this.stripe.paymentIntents.create({
       amount: context.amount_cents,
-      currency: context.currency || 'ngn',
+      currency: context.currency || "ngn",
       payment_method: token,
       confirm: true,
     });
 
     return {
       payment_id: paymentIntent.id,
-      status: paymentIntent.status === 'succeeded' 
-        ? PaymentStatus.COMPLETED 
-        : PaymentStatus.FAILED,
+      status:
+        paymentIntent.status === "succeeded"
+          ? PaymentStatus.COMPLETED
+          : PaymentStatus.FAILED,
       transaction_id: paymentIntent.id,
       processor_data: {
         stripe_payment_intent: paymentIntent.id,
@@ -163,12 +173,12 @@ export class StripeAdapter implements PaymentAdapter {
 ### Using MockTerminal
 
 ```typescript
-import { MockTerminal } from '@pos-checkout/payment-adapters';
+import { MockTerminal } from "@pos-checkout/payment-adapters";
 
 const terminal = new MockTerminal(0.95); // 95% approval rate
 
 const result = await terminal.initiatePayment({
-  order_id: 'order-123',
+  order_id: "order-123",
   amount_cents: 1000,
   method: PaymentMethod.CARD,
 });
@@ -177,15 +187,15 @@ const result = await terminal.initiatePayment({
 ### Integration Tests
 
 ```typescript
-describe('Payment Integration', () => {
-  it('should process card payment', async () => {
+describe("Payment Integration", () => {
+  it("should process card payment", async () => {
     const adapter = new YourTerminalAdapter();
     const result = await adapter.initiatePayment({
-      order_id: 'test-order',
+      order_id: "test-order",
       amount_cents: 1000,
       method: PaymentMethod.CARD,
     });
-    
+
     expect(result.status).toBe(PaymentStatus.COMPLETED);
   });
 });

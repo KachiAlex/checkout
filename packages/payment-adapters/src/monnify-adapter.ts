@@ -1,7 +1,7 @@
-import { PaymentAdapter, PaymentContext, PaymentResult } from './interfaces';
-import { PaymentMethod, PaymentStatus } from '@pos-checkout/shared';
-import axios, { AxiosInstance } from 'axios';
-import * as crypto from 'crypto';
+import { PaymentAdapter, PaymentContext, PaymentResult } from "./interfaces";
+import { PaymentMethod, PaymentStatus } from "@pos-checkout/shared";
+import axios, { AxiosInstance } from "axios";
+import * as crypto from "crypto";
 
 export interface MonnifyConfig {
   apiKey: string;
@@ -99,16 +99,18 @@ export class MonnifyAdapter implements PaymentAdapter {
 
   constructor(config: MonnifyConfig) {
     this.config = config;
-    this.baseUrl = config.baseUrl || 'https://api.monnify.com';
-    
+    this.baseUrl = config.baseUrl || "https://api.monnify.com";
+
     // Create basic auth token (API_KEY:SECRET_KEY base64 encoded)
-    const authToken = Buffer.from(`${config.apiKey}:${config.secretKey}`).toString('base64');
+    const authToken = Buffer.from(
+      `${config.apiKey}:${config.secretKey}`,
+    ).toString("base64");
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       headers: {
-        'Authorization': `Basic ${authToken}`,
-        'Content-Type': 'application/json',
+        Authorization: `Basic ${authToken}`,
+        "Content-Type": "application/json",
       },
       timeout: 30000, // 30 seconds
     });
@@ -126,12 +128,16 @@ export class MonnifyAdapter implements PaymentAdapter {
       const paymentMethods = this.getPaymentMethods(context.method);
 
       // Build customer info from metadata or use defaults
-      const customerName = (context.metadata?.customerName as string) || 'POS Customer';
-      const customerEmail = (context.metadata?.customerEmail as string) || 'customer@pos.local';
-      const customerPhone = (context.metadata?.customerPhone as string) || undefined;
+      const customerName =
+        (context.metadata?.customerName as string) || "POS Customer";
+      const customerEmail =
+        (context.metadata?.customerEmail as string) || "customer@pos.local";
+      const customerPhone =
+        (context.metadata?.customerPhone as string) || undefined;
 
       // Build redirect URL (if provided in metadata)
-      const redirectUrl = (context.metadata?.redirectUrl as string) || undefined;
+      const redirectUrl =
+        (context.metadata?.redirectUrl as string) || undefined;
 
       const request: MonnifyInitiatePaymentRequest = {
         amount: context.amount_cents / 100, // Convert cents to Naira
@@ -140,7 +146,7 @@ export class MonnifyAdapter implements PaymentAdapter {
         customerPhoneNumber: customerPhone,
         paymentReference,
         paymentDescription: `Payment for Order ${context.order_id}`,
-        currencyCode: context.currency?.toUpperCase() || 'NGN',
+        currencyCode: context.currency?.toUpperCase() || "NGN",
         contractCode: this.config.contractCode,
         redirectUrl,
         paymentMethods,
@@ -150,16 +156,17 @@ export class MonnifyAdapter implements PaymentAdapter {
         },
       };
 
-      const response = await this.axiosInstance.post<MonnifyInitiatePaymentResponse>(
-        '/api/v1/merchant/transactions/init-transaction',
-        request
-      );
+      const response =
+        await this.axiosInstance.post<MonnifyInitiatePaymentResponse>(
+          "/api/v1/merchant/transactions/init-transaction",
+          request,
+        );
 
       if (!response.data.requestSuccessful) {
         return {
           payment_id: paymentReference,
           status: PaymentStatus.FAILED,
-          error: response.data.responseMessage || 'Payment initiation failed',
+          error: response.data.responseMessage || "Payment initiation failed",
           processor_data: {
             monnify_response_code: response.data.responseCode,
           },
@@ -181,7 +188,8 @@ export class MonnifyAdapter implements PaymentAdapter {
         },
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       const paymentReference = `POS_${context.order_id}_${Date.now()}`;
 
       return {
@@ -206,7 +214,7 @@ export class MonnifyAdapter implements PaymentAdapter {
       if (statusResult === PaymentStatus.COMPLETED) {
         // Fetch full transaction details
         const transactionDetails = await this.getTransactionDetails(payment_id);
-        
+
         return {
           payment_id,
           status: PaymentStatus.COMPLETED,
@@ -218,10 +226,14 @@ export class MonnifyAdapter implements PaymentAdapter {
       return {
         payment_id,
         status: statusResult,
-        error: statusResult === PaymentStatus.FAILED ? 'Payment not completed' : undefined,
+        error:
+          statusResult === PaymentStatus.FAILED
+            ? "Payment not completed"
+            : undefined,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       return {
         payment_id,
         status: PaymentStatus.FAILED,
@@ -233,39 +245,44 @@ export class MonnifyAdapter implements PaymentAdapter {
   /**
    * Refund a completed payment
    */
-  async refund(payment_id: string, amount_cents?: number): Promise<PaymentResult> {
+  async refund(
+    payment_id: string,
+    amount_cents?: number,
+  ): Promise<PaymentResult> {
     try {
       // Get transaction details to find transaction reference
       const transactionDetails = await this.getTransactionDetails(payment_id);
-      
-      if (!transactionDetails || transactionDetails.paymentStatus !== 'PAID') {
+
+      if (!transactionDetails || transactionDetails.paymentStatus !== "PAID") {
         return {
           payment_id,
           status: PaymentStatus.FAILED,
-          error: 'Transaction not found or not paid',
+          error: "Transaction not found or not paid",
         };
       }
 
-      const refundAmount = amount_cents ? amount_cents / 100 : parseFloat(transactionDetails.amountPaid);
-      const refundReason = 'Refund requested from POS system';
+      const refundAmount = amount_cents
+        ? amount_cents / 100
+        : parseFloat(transactionDetails.amountPaid);
+      const refundReason = "Refund requested from POS system";
 
       const request: MonnifyRefundRequest = {
         transactionReference: transactionDetails.transactionReference,
         refundAmount,
         refundReason,
-        customerNote: 'Refund processed from POS',
+        customerNote: "Refund processed from POS",
       };
 
       const response = await this.axiosInstance.post<MonnifyRefundResponse>(
-        '/api/v2/refund/initiate-refund',
-        request
+        "/api/v2/refund/initiate-refund",
+        request,
       );
 
       if (!response.data.requestSuccessful) {
         return {
           payment_id,
           status: PaymentStatus.FAILED,
-          error: response.data.responseMessage || 'Refund failed',
+          error: response.data.responseMessage || "Refund failed",
           processor_data: {
             monnify_response_code: response.data.responseCode,
           },
@@ -286,7 +303,8 @@ export class MonnifyAdapter implements PaymentAdapter {
         },
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       return {
         payment_id,
         status: PaymentStatus.FAILED,
@@ -308,17 +326,17 @@ export class MonnifyAdapter implements PaymentAdapter {
 
       // Map Monnify payment status to our PaymentStatus enum
       const monnifyStatus = transactionDetails.paymentStatus.toUpperCase();
-      
+
       switch (monnifyStatus) {
-        case 'PAID':
+        case "PAID":
           return PaymentStatus.COMPLETED;
-        case 'OVERPAID':
+        case "OVERPAID":
           return PaymentStatus.COMPLETED;
-        case 'PENDING':
+        case "PENDING":
           return PaymentStatus.PROCESSING;
-        case 'FAILED':
+        case "FAILED":
           return PaymentStatus.FAILED;
-        case 'CANCELLED':
+        case "CANCELLED":
           return PaymentStatus.FAILED;
         default:
           return PaymentStatus.PROCESSING;
@@ -331,11 +349,14 @@ export class MonnifyAdapter implements PaymentAdapter {
   /**
    * Get transaction details from Monnify
    */
-  private async getTransactionDetails(paymentReference: string): Promise<MonnifyTransactionStatusResponse['responseBody'] | null> {
+  private async getTransactionDetails(
+    paymentReference: string,
+  ): Promise<MonnifyTransactionStatusResponse["responseBody"] | null> {
     try {
-      const response = await this.axiosInstance.get<MonnifyTransactionStatusResponse>(
-        `/api/v2/transactions/${encodeURIComponent(paymentReference)}`
-      );
+      const response =
+        await this.axiosInstance.get<MonnifyTransactionStatusResponse>(
+          `/api/v2/transactions/${encodeURIComponent(paymentReference)}`,
+        );
 
       if (!response.data.requestSuccessful || !response.data.responseBody) {
         return null;
@@ -353,14 +374,14 @@ export class MonnifyAdapter implements PaymentAdapter {
   private getPaymentMethods(method: PaymentMethod): string[] {
     switch (method) {
       case PaymentMethod.CARD:
-        return ['CARD'];
+        return ["CARD"];
       case PaymentMethod.QR:
-        return ['ACCOUNT_TRANSFER', 'USSD'];
+        return ["ACCOUNT_TRANSFER", "USSD"];
       case PaymentMethod.CASH:
         // For cash, we might want to enable offline payment
-        return ['ACCOUNT_TRANSFER'];
+        return ["ACCOUNT_TRANSFER"];
       default:
-        return ['CARD', 'ACCOUNT_TRANSFER', 'USSD'];
+        return ["CARD", "ACCOUNT_TRANSFER", "USSD"];
     }
   }
 
@@ -373,11 +394,10 @@ export class MonnifyAdapter implements PaymentAdapter {
     }
 
     const computedHash = crypto
-      .createHmac('sha512', this.config.webhookSecret)
+      .createHmac("sha512", this.config.webhookSecret)
       .update(payload)
-      .digest('hex');
+      .digest("hex");
 
     return computedHash === signature;
   }
 }
-

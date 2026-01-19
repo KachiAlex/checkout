@@ -67,7 +67,9 @@ export function AuditLogsPage() {
       setItems(res.items || []);
       setTotal(res.total || 0);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Unable to load audit logs");
+      toast.error(
+        error?.response?.data?.message || "Unable to load audit logs",
+      );
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,14 @@ export function AuditLogsPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [filters.from, filters.to, filters.entity, filters.action, filters.actorId, filters.entityId]);
+  }, [
+    filters.from,
+    filters.to,
+    filters.entity,
+    filters.action,
+    filters.actorId,
+    filters.entityId,
+  ]);
 
   return (
     <div className="theme-background min-h-screen w-full overflow-x-hidden page-with-nav">
@@ -122,7 +131,9 @@ export function AuditLogsPage() {
                   <input
                     type="date"
                     value={filters.from}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({ ...prev, from: e.target.value }))
+                    }
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   />
                 </label>
@@ -131,7 +142,9 @@ export function AuditLogsPage() {
                   <input
                     type="date"
                     value={filters.to}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({ ...prev, to: e.target.value }))
+                    }
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   />
                 </label>
@@ -139,16 +152,28 @@ export function AuditLogsPage() {
                   <span className="theme-text-secondary text-xs">Entity</span>
                   <input
                     value={filters.entity}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, entity: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        entity: e.target.value,
+                      }))
+                    }
                     placeholder="e.g. orders"
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="theme-text-secondary text-xs">Action contains</span>
+                  <span className="theme-text-secondary text-xs">
+                    Action contains
+                  </span>
                   <input
                     value={filters.action}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, action: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        action: e.target.value,
+                      }))
+                    }
                     placeholder="e.g. POST /orders"
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   />
@@ -157,16 +182,28 @@ export function AuditLogsPage() {
                   <span className="theme-text-secondary text-xs">Actor ID</span>
                   <input
                     value={filters.actorId}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, actorId: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        actorId: e.target.value,
+                      }))
+                    }
                     placeholder="user id"
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="theme-text-secondary text-xs">Entity ID</span>
+                  <span className="theme-text-secondary text-xs">
+                    Entity ID
+                  </span>
                   <input
                     value={filters.entityId}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, entityId: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        entityId: e.target.value,
+                      }))
+                    }
                     placeholder="id"
                     className="rounded-xl bg-slate-950/40 border border-white/10 px-3 py-2 text-sm theme-text-primary"
                   />
@@ -201,17 +238,30 @@ export function AuditLogsPage() {
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-white/5">
                     <tr>
-                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">Time</th>
-                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">Entity</th>
-                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">Entity ID</th>
-                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">Action</th>
-                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">Actor</th>
+                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">
+                        Entity
+                      </th>
+                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">
+                        Entity ID
+                      </th>
+                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">
+                        Action
+                      </th>
+                      <th className="px-4 py-3 theme-text-secondary text-xs font-semibold">
+                        Actor
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 theme-text-secondary text-xs">
+                        <td
+                          colSpan={5}
+                          className="px-4 py-6 theme-text-secondary text-xs"
+                        >
                           No audit logs found for these filters.
                         </td>
                       </tr>

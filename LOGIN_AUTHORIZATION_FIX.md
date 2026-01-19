@@ -1,15 +1,19 @@
 # Login Authorization Header Fix
 
 ## Issue
+
 After the security fix, users reported "missing authorization header status" error when trying to log in.
 
 ## Root Cause
+
 The frontend axios interceptor was deleting the `Authorization` header for login endpoints, assuming that only the `apikey` header was needed. However, Supabase Edge Functions infrastructure requires the `Authorization: Bearer <anon-key>` header even for public login endpoints, not just the `apikey` header.
 
 ## Solution
+
 Modified `apps/frontend/src/stores/authStore.ts` to ensure that for login endpoints (and any request without an app JWT token), we still send the Supabase anon key as the `Authorization` header:
 
 ### Changes Made
+
 1. **Simplified interceptor logic** to make it more robust and easier to understand
 2. **Ensured Authorization header is always sent** for Supabase requests:
    - For login endpoints: Send `Authorization: Bearer <anon-key>`
@@ -22,6 +26,7 @@ Modified `apps/frontend/src/stores/authStore.ts` to ensure that for login endpoi
 4. **Added debug logging** in development mode for login requests with header details
 
 ### Key Changes in `authStore.ts`:
+
 ```typescript
 // Before: Complex logic that could clear Authorization header in some cases
 // After: Clear, simple logic that always sends the correct Authorization header
@@ -38,23 +43,28 @@ if (isSupabaseRequest && supabaseAnonKey) {
 ```
 
 ## Deployment
+
 - ✅ Frontend built successfully
 - ✅ Frontend deployed to Firebase Hosting
 - ✅ Changes are live at: https://checkout-77d99.web.app
 
 ## Testing
+
 Please test login functionality:
+
 1. Navigate to the login page
 2. Enter tenant slug and PIN
 3. Verify that login succeeds without "missing authorization header" error
 
 ## Notes
+
 - The `apikey` header is still sent for all Supabase requests (as before)
 - The `Authorization` header now contains the anon key for login endpoints (new behavior)
 - App JWT tokens are only sent for authenticated requests (not login endpoints)
 - This fix maintains security while ensuring Supabase infrastructure requirements are met
 
 ## Environment Variable Required
+
 Ensure `VITE_SUPABASE_ANON_KEY` is set in your environment or `.env` file. The interceptor will log a critical error if it's missing.
 
 ### How to Fix "Missing Authorization Header" Error
@@ -73,6 +83,7 @@ If you're seeing "missing authorization header" errors:
    - Get your Supabase anon key from: Supabase Dashboard → Project Settings → API → `anon` `public` key
 
 3. **Rebuild and redeploy:**
+
    ```bash
    cd apps/frontend
    npm run build

@@ -9,6 +9,7 @@
 Provides a lightweight **offline synchronization bridge** for devices. It accepts event batches generated while offline (e.g., order creation on mobile/PWA) and lets devices pull recent server-side activity to reconcile local state.
 
 Capabilities:
+
 - Idempotent event ingestion (currently focused on `order.created` events).
 - Pull-based change feed so devices can request updates since a timestamp.
 
@@ -39,16 +40,19 @@ Capabilities:
 ## Core logic (SyncService)
 
 ### pushChanges(dto)
+
 1. Iterate incoming events, using `OrdersRepository.findByUuid` (via `findByUuid` in repo) to detect duplicates by event ID / order UUID.@apps/backend/src/sync/sync.service.ts#13-31
 2. If unseen and type is `order.created`, call `processOrderEvent` (placeholder for future integration with `OrdersService.create`). Unknown types log warnings but don’t halt processing.
 3. Track processed/failed counters to return summary to client (useful for retry logic).@apps/backend/src/sync/sync.service.ts#17-43
 
 ### pullChanges(deviceId, since?)
+
 1. Converts `since` query to a Date (defaults to 7 days back).
 2. Calls `ordersRepository.list` filtered by `deviceId` and `from` date to fetch relevant orders.
 3. Maps each order to a `SyncEventDto` (`type='order.created'`, payload = order snapshot, timestamps derived from `createdAt`).@apps/backend/src/sync/sync.service.ts#45-61
 
 ### processOrderEvent
+
 - Placeholder stub to future-proof event processing; currently just logs for `order.created` while actual order creation is handled elsewhere (OrdersService).@apps/backend/src/sync/sync.service.ts#63-71
 
 ## Persistence

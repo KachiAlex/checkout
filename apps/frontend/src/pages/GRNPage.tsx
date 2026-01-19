@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -57,7 +57,26 @@ export function GRNPage() {
     notes: "",
   });
 
-  const loadPurchaseOrders = async () => {
+  const initializeGRNItems = useCallback((po: PurchaseOrder) => {
+    const items: GRNItem[] = po.items.map((item) => {
+      const alreadyReceived = item.receivedQuantity || 0;
+      const remaining = item.quantity - alreadyReceived;
+      return {
+        productId: item.productId,
+        productName: item.productName,
+        sku: item.sku,
+        orderedQuantity: item.quantity,
+        receivedQuantity: remaining > 0 ? remaining : 0,
+        batchNumber: "",
+        expiryDate: "",
+        unitCostCents: item.unitCostCents,
+        totalCostCents: item.unitCostCents * (remaining > 0 ? remaining : 0),
+      };
+    });
+    setGrnItems(items);
+  }, []);
+
+  const loadPurchaseOrders = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -87,49 +106,33 @@ export function GRNPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, poIdFromUrl, initializeGRNItems]);
 
-  const loadPurchaseOrder = async (poId: string) => {
-    if (!accessToken) return;
-    try {
-      const response = await axios.get(
-        `${API_URL}/api/v1/purchase-orders/${poId}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-      setSelectedPO(response.data);
-      initializeGRNItems(response.data);
-    } catch (error: any) {
-      console.error("Failed to load purchase order:", error);
-      toast.error("Failed to load purchase order");
-    }
-  };
-
-  const initializeGRNItems = (po: PurchaseOrder) => {
-    const items: GRNItem[] = po.items.map((item) => {
-      const alreadyReceived = item.receivedQuantity || 0;
-      const remaining = item.quantity - alreadyReceived;
-      return {
-        productId: item.productId,
-        productName: item.productName,
-        sku: item.sku,
-        orderedQuantity: item.quantity,
-        receivedQuantity: remaining > 0 ? remaining : 0, // Default to remaining quantity
-        batchNumber: "",
-        expiryDate: "",
-        unitCostCents: item.unitCostCents,
-        totalCostCents: item.unitCostCents * (remaining > 0 ? remaining : 0),
-      };
-    });
-    setGrnItems(items);
-  };
+  const loadPurchaseOrder = useCallback(
+    async (poId: string) => {
+      if (!accessToken) return;
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/v1/purchase-orders/${poId}`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          },
+        );
+        setSelectedPO(response.data);
+        initializeGRNItems(response.data);
+      } catch (error: any) {
+        console.error("Failed to load purchase order:", error);
+        toast.error("Failed to load purchase order");
+      }
+    },
+    [accessToken, initializeGRNItems],
+  );
 
   useEffect(() => {
     if (accessToken) {
       loadPurchaseOrders();
     }
-  }, [accessToken]);
+  }, [accessToken, loadPurchaseOrders]);
 
   useEffect(() => {
     if (poIdFromUrl && accessToken && purchaseOrders.length > 0) {
@@ -142,7 +145,13 @@ export function GRNPage() {
         loadPurchaseOrder(poIdFromUrl);
       }
     }
-  }, [poIdFromUrl, accessToken, purchaseOrders]);
+  }, [
+    poIdFromUrl,
+    accessToken,
+    purchaseOrders,
+    initializeGRNItems,
+    loadPurchaseOrder,
+  ]);
 
   const updateGRNItem = (index: number, field: string, value: any) => {
     const newItems = [...grnItems];

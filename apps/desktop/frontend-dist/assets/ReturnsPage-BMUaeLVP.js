@@ -1,1 +1,710 @@
-import{a as e,r as t,j as r,e as s,A as a,n}from"./index-L_FkDW6m.js";import{f as d}from"./format-BJFo2Mkz.js";function l(){const{accessToken:l}=e(),[o,i]=t.useState([]),[c,m]=t.useState(!1),[u,x]=t.useState(!1),[h,p]=t.useState(""),[b,y]=t.useState(null),[f,v]=t.useState([]),[j,g]=t.useState("CUSTOMER_REQUEST"),[N,w]=t.useState(""),k=async()=>{var e;if(l){m(!0);try{const e=h?{search:h}:{},t=await s.get(`${a}/api/v1/returns`,{headers:{Authorization:`Bearer ${l}`},params:e});i(t.data||[])}catch(t){401!==(null==(e=t.response)?void 0:e.status)&&n.error("Failed to load returns")}finally{m(!1)}}};t.useEffect(()=>{k()},[l,h]);const C=async e=>{var t,r;if(l&&e)try{const t=await s.get(`${a}/api/v1/orders`,{headers:{Authorization:`Bearer ${l}`},params:{order_number:e}});if(t.data&&t.data.length>0){const e=t.data[0];y(e);const r=await Promise.all(e.items.map(async e=>{try{const t=await s.get(`${a}/api/v1/products/${e.productId}`,{headers:{Authorization:`Bearer ${l}`}});return{orderItemId:e.id,productId:e.productId,productName:t.data.name||"Unknown Product",quantity:e.quantity,returnQuantity:0,refundAmountCents:0}}catch{return{orderItemId:e.id,productId:e.productId,productName:"Unknown Product",quantity:e.quantity,returnQuantity:0,refundAmountCents:0}}}));v(r)}else n.error("Order not found")}catch(d){n.error((null==(r=null==(t=d.response)?void 0:t.data)?void 0:r.message)||"Failed to search order")}},I=(e,t)=>{v(r=>r.map(r=>{var s;if(r.orderItemId===e){const a=r.quantity,n=Math.min(Math.max(0,t),a),d=Math.round(n/r.quantity*((null==(s=null==b?void 0:b.items.find(t=>t.id===e))?void 0:s.priceCents)||0)*n);return{...r,returnQuantity:n,refundAmountCents:d}}return r}))},R=f.reduce((e,t)=>e+t.refundAmountCents,0);return r.jsx("div",{className:"theme-background min-h-screen w-full overflow-x-hidden page-with-nav",children:r.jsxs("div",{className:"relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10",children:[r.jsxs("div",{className:"flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4",children:[r.jsxs("div",{className:"min-w-0 flex-1",children:[r.jsx("h1",{className:"theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold",children:"Returns & Refunds"}),r.jsx("p",{className:"theme-text-secondary mt-1 text-xs sm:text-sm",children:"Process returns and refunds for orders"})]}),r.jsx("button",{onClick:()=>x(!0),className:"rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm lg:text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70 touch-manipulation w-full sm:w-auto",children:"+ New Return"})]}),r.jsx("div",{className:"theme-card rounded-3xl border p-4 backdrop-blur-xl",children:r.jsx("input",{type:"text",value:h,onChange:e=>p(e.target.value),placeholder:"Search by return number or order number...",className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"})}),r.jsx("div",{className:"theme-card rounded-3xl border p-6 backdrop-blur-xl",children:c?r.jsx("div",{className:"theme-text-secondary text-center py-8",children:"Loading returns..."}):0===o.length?r.jsx("div",{className:"theme-text-secondary text-center py-8",children:"No returns found"}):r.jsx("div",{className:"space-y-3",children:o.map(e=>r.jsx("div",{className:"theme-surface rounded-2xl border p-4 transition hover:border-white/25",children:r.jsxs("div",{className:"flex items-start justify-between gap-4",children:[r.jsxs("div",{className:"flex-1",children:[r.jsxs("div",{className:"flex items-center gap-3",children:[r.jsx("h3",{className:"theme-text-primary text-lg font-semibold",children:e.returnNumber}),r.jsx("span",{className:"rounded-full px-3 py-1 text-xs font-semibold "+("APPROVED"===e.status?"bg-emerald-500/15 text-emerald-200":"REJECTED"===e.status?"bg-rose-500/15 text-rose-200":"bg-amber-500/15 text-amber-200"),children:e.status})]}),r.jsxs("p",{className:"theme-text-secondary mt-2 text-sm",children:["Order: ",e.orderNumber]}),r.jsxs("p",{className:"theme-text-secondary text-sm",children:["Items: ",e.items.length," • Refund: ₦",(e.totalRefundCents/100).toFixed(2)]}),e.reason&&r.jsxs("p",{className:"theme-text-secondary mt-2 text-sm",children:["Reason: ",e.reason]}),e.notes&&r.jsx("p",{className:"theme-text-secondary mt-1 text-sm italic",children:e.notes}),r.jsxs("p",{className:"theme-text-secondary mt-2 text-xs",children:["Created: ",d(new Date(e.createdAt),"MMM d, yyyy HH:mm")]})]}),"PENDING"===e.status&&r.jsxs("div",{className:"flex flex-col gap-2",children:[r.jsx("button",{onClick:()=>(async e=>{var t,r;if(l)try{await s.patch(`${a}/api/v1/returns/${e}/approve`,{},{headers:{Authorization:`Bearer ${l}`}}),n.success("Return approved"),k()}catch(d){n.error((null==(r=null==(t=d.response)?void 0:t.data)?void 0:r.message)||"Failed to approve return")}})(e.id),className:"rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25",children:"Approve"}),r.jsx("button",{onClick:()=>(async e=>{var t,r;if(l)try{await s.patch(`${a}/api/v1/returns/${e}/reject`,{},{headers:{Authorization:`Bearer ${l}`}}),n.success("Return rejected"),k()}catch(d){n.error((null==(r=null==(t=d.response)?void 0:t.data)?void 0:r.message)||"Failed to reject return")}})(e.id),className:"rounded-full border border-rose-400/40 bg-rose-500/15 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/25",children:"Reject"})]})]})},e.id))})}),u&&r.jsx("div",{className:"fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4",children:r.jsxs("div",{className:"theme-card w-full max-w-3xl rounded-3xl border p-6 backdrop-blur-xl max-h-[90vh] overflow-y-auto",children:[r.jsx("h2",{className:"theme-text-primary text-xl font-semibold mb-4",children:"Create Return"}),b?r.jsxs("div",{className:"space-y-4",children:[r.jsxs("div",{className:"flex items-center justify-between",children:[r.jsxs("div",{children:[r.jsxs("p",{className:"theme-text-primary font-semibold",children:["Order: ",b.orderNumber]}),r.jsxs("p",{className:"theme-text-secondary text-sm",children:["Total: ₦",(b.totalCents/100).toFixed(2)]})]}),r.jsx("button",{onClick:()=>{y(null),v([])},className:"text-xs theme-text-secondary hover:theme-text-primary",children:"Change Order"})]}),r.jsxs("div",{className:"space-y-3",children:[r.jsx("h3",{className:"theme-text-primary font-semibold",children:"Select Items to Return"}),f.map(e=>{var t;return r.jsx("div",{className:"theme-surface rounded-lg border border-white/20 p-3",children:r.jsxs("div",{className:"flex items-center justify-between",children:[r.jsxs("div",{className:"flex-1",children:[r.jsx("p",{className:"theme-text-primary font-semibold",children:e.productName}),r.jsxs("p",{className:"theme-text-secondary text-sm",children:["Quantity: ",e.quantity," • Price: ₦",(((null==(t=b.items.find(t=>t.id===e.orderItemId))?void 0:t.priceCents)||0)/100).toFixed(2)]})]}),r.jsxs("div",{className:"flex items-center gap-3",children:[r.jsxs("div",{className:"flex items-center gap-2",children:[r.jsx("button",{onClick:()=>I(e.orderItemId,e.returnQuantity-1),className:"rounded border border-white/20 bg-transparent px-2 py-1 text-sm font-semibold theme-text-primary transition hover:bg-white/5",disabled:e.returnQuantity<=0,children:"−"}),r.jsx("input",{type:"number",value:e.returnQuantity,onChange:t=>I(e.orderItemId,parseInt(t.target.value)||0),min:"0",max:e.quantity,className:"w-16 rounded border border-white/20 bg-transparent px-2 py-1 text-center text-sm font-semibold theme-text-primary focus:border-sky-400 focus:outline-none"}),r.jsx("button",{onClick:()=>I(e.orderItemId,e.returnQuantity+1),className:"rounded border border-white/20 bg-transparent px-2 py-1 text-sm font-semibold theme-text-primary transition hover:bg-white/5",disabled:e.returnQuantity>=e.quantity,children:"+"})]}),e.returnQuantity>0&&r.jsxs("span",{className:"text-sm font-semibold text-emerald-400",children:["₦",(e.refundAmountCents/100).toFixed(2)]})]})]})},e.orderItemId)})]}),r.jsxs("div",{children:[r.jsxs("label",{className:"block text-sm font-medium theme-text-secondary mb-2",children:["Return Reason ",r.jsx("span",{className:"text-red-400",children:"*"})]}),r.jsx("select",{value:j,onChange:e=>g(e.target.value),className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none",required:!0,children:[{value:"CUSTOMER_REQUEST",label:"Customer Request",description:"Customer requested return"},{value:"DEFECTIVE",label:"Defective Product",description:"Product is defective or not working"},{value:"WRONG_ITEM",label:"Wrong Item",description:"Wrong item was delivered"},{value:"DAMAGED",label:"Damaged",description:"Product arrived damaged"},{value:"EXPIRED",label:"Expired",description:"Product is expired"},{value:"OTHER",label:"Other",description:"Other reason (specify in notes)"}].map(e=>r.jsxs("option",{value:e.value,children:[e.label," ",e.description?`- ${e.description}`:""]},e.value))}),"OTHER"===j&&r.jsx("p",{className:"theme-text-secondary mt-2 text-xs",children:"Please provide details in the notes field below"})]}),r.jsxs("div",{children:[r.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-2",children:"Notes (Optional)"}),r.jsx("textarea",{value:N,onChange:e=>w(e.target.value),placeholder:"Additional notes...",className:"w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none",rows:3})]}),r.jsx("div",{className:"rounded-lg border border-emerald-400/40 bg-emerald-500/15 p-4",children:r.jsxs("div",{className:"flex items-center justify-between",children:[r.jsx("span",{className:"theme-text-primary font-semibold",children:"Total Refund"}),r.jsxs("span",{className:"text-2xl font-bold text-emerald-400",children:["₦",(R/100).toFixed(2)]})]})}),r.jsxs("div",{className:"flex gap-3",children:[r.jsx("button",{onClick:()=>{x(!1),y(null),v([]),g("CUSTOMER_REQUEST"),w("")},className:"flex-1 rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5",children:"Cancel"}),r.jsx("button",{onClick:async()=>{var e,t;if(!l||!b)return;const r=f.filter(e=>e.returnQuantity>0);if(0!==r.length)try{await s.post(`${a}/api/v1/returns`,{orderId:b.id,items:r.map(e=>{var t;return{productId:e.productId,quantity:e.returnQuantity,priceCents:(null==(t=b.items.find(t=>t.id===e.orderItemId))?void 0:t.priceCents)||0,reason:j,notes:N}}),totalRefundCents:R,reason:j,notes:N},{headers:{Authorization:`Bearer ${l}`}}),n.success("Return request created"),x(!1),y(null),v([]),g("CUSTOMER_REQUEST"),w(""),k()}catch(d){n.error((null==(t=null==(e=d.response)?void 0:e.data)?void 0:t.message)||"Failed to create return")}else n.error("Please select items to return")},disabled:0===f.filter(e=>e.returnQuantity>0).length,className:"flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50",children:"Create Return"})]})]}):r.jsx("div",{className:"space-y-4",children:r.jsxs("div",{children:[r.jsx("label",{className:"block text-sm font-medium theme-text-secondary mb-2",children:"Order Number"}),r.jsxs("div",{className:"flex gap-2",children:[r.jsx("input",{type:"text",placeholder:"Enter order number...",className:"flex-1 theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",onKeyDown:e=>{"Enter"===e.key&&C(e.currentTarget.value)}}),r.jsx("button",{onClick:()=>{const e=document.querySelector('input[placeholder="Enter order number..."]');e&&C(e.value)},className:"rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-3 text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70",children:"Search"})]})]})})]})})]})})}export{l as ReturnsPage};
+import { a as e, r as t, j as r, e as s, A as a, n } from "./index-L_FkDW6m.js";
+import { f as d } from "./format-BJFo2Mkz.js";
+function l() {
+  const { accessToken: l } = e(),
+    [o, i] = t.useState([]),
+    [c, m] = t.useState(!1),
+    [u, x] = t.useState(!1),
+    [h, p] = t.useState(""),
+    [b, y] = t.useState(null),
+    [f, v] = t.useState([]),
+    [j, g] = t.useState("CUSTOMER_REQUEST"),
+    [N, w] = t.useState(""),
+    k = async () => {
+      var e;
+      if (l) {
+        m(!0);
+        try {
+          const e = h ? { search: h } : {},
+            t = await s.get(`${a}/api/v1/returns`, {
+              headers: { Authorization: `Bearer ${l}` },
+              params: e,
+            });
+          i(t.data || []);
+        } catch (t) {
+          401 !== (null == (e = t.response) ? void 0 : e.status) &&
+            n.error("Failed to load returns");
+        } finally {
+          m(!1);
+        }
+      }
+    };
+  t.useEffect(() => {
+    k();
+  }, [l, h]);
+  const C = async (e) => {
+      var t, r;
+      if (l && e)
+        try {
+          const t = await s.get(`${a}/api/v1/orders`, {
+            headers: { Authorization: `Bearer ${l}` },
+            params: { order_number: e },
+          });
+          if (t.data && t.data.length > 0) {
+            const e = t.data[0];
+            y(e);
+            const r = await Promise.all(
+              e.items.map(async (e) => {
+                try {
+                  const t = await s.get(`${a}/api/v1/products/${e.productId}`, {
+                    headers: { Authorization: `Bearer ${l}` },
+                  });
+                  return {
+                    orderItemId: e.id,
+                    productId: e.productId,
+                    productName: t.data.name || "Unknown Product",
+                    quantity: e.quantity,
+                    returnQuantity: 0,
+                    refundAmountCents: 0,
+                  };
+                } catch {
+                  return {
+                    orderItemId: e.id,
+                    productId: e.productId,
+                    productName: "Unknown Product",
+                    quantity: e.quantity,
+                    returnQuantity: 0,
+                    refundAmountCents: 0,
+                  };
+                }
+              }),
+            );
+            v(r);
+          } else n.error("Order not found");
+        } catch (d) {
+          n.error(
+            (null == (r = null == (t = d.response) ? void 0 : t.data)
+              ? void 0
+              : r.message) || "Failed to search order",
+          );
+        }
+    },
+    I = (e, t) => {
+      v((r) =>
+        r.map((r) => {
+          var s;
+          if (r.orderItemId === e) {
+            const a = r.quantity,
+              n = Math.min(Math.max(0, t), a),
+              d = Math.round(
+                (n / r.quantity) *
+                  ((null ==
+                  (s = null == b ? void 0 : b.items.find((t) => t.id === e))
+                    ? void 0
+                    : s.priceCents) || 0) *
+                  n,
+              );
+            return { ...r, returnQuantity: n, refundAmountCents: d };
+          }
+          return r;
+        }),
+      );
+    },
+    R = f.reduce((e, t) => e + t.refundAmountCents, 0);
+  return r.jsx("div", {
+    className:
+      "theme-background min-h-screen w-full overflow-x-hidden page-with-nav",
+    children: r.jsxs("div", {
+      className:
+        "relative mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10",
+      children: [
+        r.jsxs("div", {
+          className:
+            "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4",
+          children: [
+            r.jsxs("div", {
+              className: "min-w-0 flex-1",
+              children: [
+                r.jsx("h1", {
+                  className:
+                    "theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold",
+                  children: "Returns & Refunds",
+                }),
+                r.jsx("p", {
+                  className: "theme-text-secondary mt-1 text-xs sm:text-sm",
+                  children: "Process returns and refunds for orders",
+                }),
+              ],
+            }),
+            r.jsx("button", {
+              onClick: () => x(!0),
+              className:
+                "rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm lg:text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70 touch-manipulation w-full sm:w-auto",
+              children: "+ New Return",
+            }),
+          ],
+        }),
+        r.jsx("div", {
+          className: "theme-card rounded-3xl border p-4 backdrop-blur-xl",
+          children: r.jsx("input", {
+            type: "text",
+            value: h,
+            onChange: (e) => p(e.target.value),
+            placeholder: "Search by return number or order number...",
+            className:
+              "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+          }),
+        }),
+        r.jsx("div", {
+          className: "theme-card rounded-3xl border p-6 backdrop-blur-xl",
+          children: c
+            ? r.jsx("div", {
+                className: "theme-text-secondary text-center py-8",
+                children: "Loading returns...",
+              })
+            : 0 === o.length
+              ? r.jsx("div", {
+                  className: "theme-text-secondary text-center py-8",
+                  children: "No returns found",
+                })
+              : r.jsx("div", {
+                  className: "space-y-3",
+                  children: o.map((e) =>
+                    r.jsx(
+                      "div",
+                      {
+                        className:
+                          "theme-surface rounded-2xl border p-4 transition hover:border-white/25",
+                        children: r.jsxs("div", {
+                          className: "flex items-start justify-between gap-4",
+                          children: [
+                            r.jsxs("div", {
+                              className: "flex-1",
+                              children: [
+                                r.jsxs("div", {
+                                  className: "flex items-center gap-3",
+                                  children: [
+                                    r.jsx("h3", {
+                                      className:
+                                        "theme-text-primary text-lg font-semibold",
+                                      children: e.returnNumber,
+                                    }),
+                                    r.jsx("span", {
+                                      className:
+                                        "rounded-full px-3 py-1 text-xs font-semibold " +
+                                        ("APPROVED" === e.status
+                                          ? "bg-emerald-500/15 text-emerald-200"
+                                          : "REJECTED" === e.status
+                                            ? "bg-rose-500/15 text-rose-200"
+                                            : "bg-amber-500/15 text-amber-200"),
+                                      children: e.status,
+                                    }),
+                                  ],
+                                }),
+                                r.jsxs("p", {
+                                  className:
+                                    "theme-text-secondary mt-2 text-sm",
+                                  children: ["Order: ", e.orderNumber],
+                                }),
+                                r.jsxs("p", {
+                                  className: "theme-text-secondary text-sm",
+                                  children: [
+                                    "Items: ",
+                                    e.items.length,
+                                    " • Refund: ₦",
+                                    (e.totalRefundCents / 100).toFixed(2),
+                                  ],
+                                }),
+                                e.reason &&
+                                  r.jsxs("p", {
+                                    className:
+                                      "theme-text-secondary mt-2 text-sm",
+                                    children: ["Reason: ", e.reason],
+                                  }),
+                                e.notes &&
+                                  r.jsx("p", {
+                                    className:
+                                      "theme-text-secondary mt-1 text-sm italic",
+                                    children: e.notes,
+                                  }),
+                                r.jsxs("p", {
+                                  className:
+                                    "theme-text-secondary mt-2 text-xs",
+                                  children: [
+                                    "Created: ",
+                                    d(
+                                      new Date(e.createdAt),
+                                      "MMM d, yyyy HH:mm",
+                                    ),
+                                  ],
+                                }),
+                              ],
+                            }),
+                            "PENDING" === e.status &&
+                              r.jsxs("div", {
+                                className: "flex flex-col gap-2",
+                                children: [
+                                  r.jsx("button", {
+                                    onClick: () =>
+                                      (async (e) => {
+                                        var t, r;
+                                        if (l)
+                                          try {
+                                            (await s.patch(
+                                              `${a}/api/v1/returns/${e}/approve`,
+                                              {},
+                                              {
+                                                headers: {
+                                                  Authorization: `Bearer ${l}`,
+                                                },
+                                              },
+                                            ),
+                                              n.success("Return approved"),
+                                              k());
+                                          } catch (d) {
+                                            n.error(
+                                              (null ==
+                                              (r =
+                                                null == (t = d.response)
+                                                  ? void 0
+                                                  : t.data)
+                                                ? void 0
+                                                : r.message) ||
+                                                "Failed to approve return",
+                                            );
+                                          }
+                                      })(e.id),
+                                    className:
+                                      "rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25",
+                                    children: "Approve",
+                                  }),
+                                  r.jsx("button", {
+                                    onClick: () =>
+                                      (async (e) => {
+                                        var t, r;
+                                        if (l)
+                                          try {
+                                            (await s.patch(
+                                              `${a}/api/v1/returns/${e}/reject`,
+                                              {},
+                                              {
+                                                headers: {
+                                                  Authorization: `Bearer ${l}`,
+                                                },
+                                              },
+                                            ),
+                                              n.success("Return rejected"),
+                                              k());
+                                          } catch (d) {
+                                            n.error(
+                                              (null ==
+                                              (r =
+                                                null == (t = d.response)
+                                                  ? void 0
+                                                  : t.data)
+                                                ? void 0
+                                                : r.message) ||
+                                                "Failed to reject return",
+                                            );
+                                          }
+                                      })(e.id),
+                                    className:
+                                      "rounded-full border border-rose-400/40 bg-rose-500/15 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/25",
+                                    children: "Reject",
+                                  }),
+                                ],
+                              }),
+                          ],
+                        }),
+                      },
+                      e.id,
+                    ),
+                  ),
+                }),
+        }),
+        u &&
+          r.jsx("div", {
+            className:
+              "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4",
+            children: r.jsxs("div", {
+              className:
+                "theme-card w-full max-w-3xl rounded-3xl border p-6 backdrop-blur-xl max-h-[90vh] overflow-y-auto",
+              children: [
+                r.jsx("h2", {
+                  className: "theme-text-primary text-xl font-semibold mb-4",
+                  children: "Create Return",
+                }),
+                b
+                  ? r.jsxs("div", {
+                      className: "space-y-4",
+                      children: [
+                        r.jsxs("div", {
+                          className: "flex items-center justify-between",
+                          children: [
+                            r.jsxs("div", {
+                              children: [
+                                r.jsxs("p", {
+                                  className: "theme-text-primary font-semibold",
+                                  children: ["Order: ", b.orderNumber],
+                                }),
+                                r.jsxs("p", {
+                                  className: "theme-text-secondary text-sm",
+                                  children: [
+                                    "Total: ₦",
+                                    (b.totalCents / 100).toFixed(2),
+                                  ],
+                                }),
+                              ],
+                            }),
+                            r.jsx("button", {
+                              onClick: () => {
+                                (y(null), v([]));
+                              },
+                              className:
+                                "text-xs theme-text-secondary hover:theme-text-primary",
+                              children: "Change Order",
+                            }),
+                          ],
+                        }),
+                        r.jsxs("div", {
+                          className: "space-y-3",
+                          children: [
+                            r.jsx("h3", {
+                              className: "theme-text-primary font-semibold",
+                              children: "Select Items to Return",
+                            }),
+                            f.map((e) => {
+                              var t;
+                              return r.jsx(
+                                "div",
+                                {
+                                  className:
+                                    "theme-surface rounded-lg border border-white/20 p-3",
+                                  children: r.jsxs("div", {
+                                    className:
+                                      "flex items-center justify-between",
+                                    children: [
+                                      r.jsxs("div", {
+                                        className: "flex-1",
+                                        children: [
+                                          r.jsx("p", {
+                                            className:
+                                              "theme-text-primary font-semibold",
+                                            children: e.productName,
+                                          }),
+                                          r.jsxs("p", {
+                                            className:
+                                              "theme-text-secondary text-sm",
+                                            children: [
+                                              "Quantity: ",
+                                              e.quantity,
+                                              " • Price: ₦",
+                                              (
+                                                ((null ==
+                                                (t = b.items.find(
+                                                  (t) => t.id === e.orderItemId,
+                                                ))
+                                                  ? void 0
+                                                  : t.priceCents) || 0) / 100
+                                              ).toFixed(2),
+                                            ],
+                                          }),
+                                        ],
+                                      }),
+                                      r.jsxs("div", {
+                                        className: "flex items-center gap-3",
+                                        children: [
+                                          r.jsxs("div", {
+                                            className:
+                                              "flex items-center gap-2",
+                                            children: [
+                                              r.jsx("button", {
+                                                onClick: () =>
+                                                  I(
+                                                    e.orderItemId,
+                                                    e.returnQuantity - 1,
+                                                  ),
+                                                className:
+                                                  "rounded border border-white/20 bg-transparent px-2 py-1 text-sm font-semibold theme-text-primary transition hover:bg-white/5",
+                                                disabled: e.returnQuantity <= 0,
+                                                children: "−",
+                                              }),
+                                              r.jsx("input", {
+                                                type: "number",
+                                                value: e.returnQuantity,
+                                                onChange: (t) =>
+                                                  I(
+                                                    e.orderItemId,
+                                                    parseInt(t.target.value) ||
+                                                      0,
+                                                  ),
+                                                min: "0",
+                                                max: e.quantity,
+                                                className:
+                                                  "w-16 rounded border border-white/20 bg-transparent px-2 py-1 text-center text-sm font-semibold theme-text-primary focus:border-sky-400 focus:outline-none",
+                                              }),
+                                              r.jsx("button", {
+                                                onClick: () =>
+                                                  I(
+                                                    e.orderItemId,
+                                                    e.returnQuantity + 1,
+                                                  ),
+                                                className:
+                                                  "rounded border border-white/20 bg-transparent px-2 py-1 text-sm font-semibold theme-text-primary transition hover:bg-white/5",
+                                                disabled:
+                                                  e.returnQuantity >=
+                                                  e.quantity,
+                                                children: "+",
+                                              }),
+                                            ],
+                                          }),
+                                          e.returnQuantity > 0 &&
+                                            r.jsxs("span", {
+                                              className:
+                                                "text-sm font-semibold text-emerald-400",
+                                              children: [
+                                                "₦",
+                                                (
+                                                  e.refundAmountCents / 100
+                                                ).toFixed(2),
+                                              ],
+                                            }),
+                                        ],
+                                      }),
+                                    ],
+                                  }),
+                                },
+                                e.orderItemId,
+                              );
+                            }),
+                          ],
+                        }),
+                        r.jsxs("div", {
+                          children: [
+                            r.jsxs("label", {
+                              className:
+                                "block text-sm font-medium theme-text-secondary mb-2",
+                              children: [
+                                "Return Reason ",
+                                r.jsx("span", {
+                                  className: "text-red-400",
+                                  children: "*",
+                                }),
+                              ],
+                            }),
+                            r.jsx("select", {
+                              value: j,
+                              onChange: (e) => g(e.target.value),
+                              className:
+                                "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none",
+                              required: !0,
+                              children: [
+                                {
+                                  value: "CUSTOMER_REQUEST",
+                                  label: "Customer Request",
+                                  description: "Customer requested return",
+                                },
+                                {
+                                  value: "DEFECTIVE",
+                                  label: "Defective Product",
+                                  description:
+                                    "Product is defective or not working",
+                                },
+                                {
+                                  value: "WRONG_ITEM",
+                                  label: "Wrong Item",
+                                  description: "Wrong item was delivered",
+                                },
+                                {
+                                  value: "DAMAGED",
+                                  label: "Damaged",
+                                  description: "Product arrived damaged",
+                                },
+                                {
+                                  value: "EXPIRED",
+                                  label: "Expired",
+                                  description: "Product is expired",
+                                },
+                                {
+                                  value: "OTHER",
+                                  label: "Other",
+                                  description:
+                                    "Other reason (specify in notes)",
+                                },
+                              ].map((e) =>
+                                r.jsxs(
+                                  "option",
+                                  {
+                                    value: e.value,
+                                    children: [
+                                      e.label,
+                                      " ",
+                                      e.description ? `- ${e.description}` : "",
+                                    ],
+                                  },
+                                  e.value,
+                                ),
+                              ),
+                            }),
+                            "OTHER" === j &&
+                              r.jsx("p", {
+                                className: "theme-text-secondary mt-2 text-xs",
+                                children:
+                                  "Please provide details in the notes field below",
+                              }),
+                          ],
+                        }),
+                        r.jsxs("div", {
+                          children: [
+                            r.jsx("label", {
+                              className:
+                                "block text-sm font-medium theme-text-secondary mb-2",
+                              children: "Notes (Optional)",
+                            }),
+                            r.jsx("textarea", {
+                              value: N,
+                              onChange: (e) => w(e.target.value),
+                              placeholder: "Additional notes...",
+                              className:
+                                "w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-sm theme-text-primary focus:border-sky-400 focus:outline-none",
+                              rows: 3,
+                            }),
+                          ],
+                        }),
+                        r.jsx("div", {
+                          className:
+                            "rounded-lg border border-emerald-400/40 bg-emerald-500/15 p-4",
+                          children: r.jsxs("div", {
+                            className: "flex items-center justify-between",
+                            children: [
+                              r.jsx("span", {
+                                className: "theme-text-primary font-semibold",
+                                children: "Total Refund",
+                              }),
+                              r.jsxs("span", {
+                                className:
+                                  "text-2xl font-bold text-emerald-400",
+                                children: ["₦", (R / 100).toFixed(2)],
+                              }),
+                            ],
+                          }),
+                        }),
+                        r.jsxs("div", {
+                          className: "flex gap-3",
+                          children: [
+                            r.jsx("button", {
+                              onClick: () => {
+                                (x(!1),
+                                  y(null),
+                                  v([]),
+                                  g("CUSTOMER_REQUEST"),
+                                  w(""));
+                              },
+                              className:
+                                "flex-1 rounded-full border border-white/20 bg-transparent px-6 py-3 text-base font-semibold theme-text-primary transition hover:bg-white/5",
+                              children: "Cancel",
+                            }),
+                            r.jsx("button", {
+                              onClick: async () => {
+                                var e, t;
+                                if (!l || !b) return;
+                                const r = f.filter((e) => e.returnQuantity > 0);
+                                if (0 !== r.length)
+                                  try {
+                                    (await s.post(
+                                      `${a}/api/v1/returns`,
+                                      {
+                                        orderId: b.id,
+                                        items: r.map((e) => {
+                                          var t;
+                                          return {
+                                            productId: e.productId,
+                                            quantity: e.returnQuantity,
+                                            priceCents:
+                                              (null ==
+                                              (t = b.items.find(
+                                                (t) => t.id === e.orderItemId,
+                                              ))
+                                                ? void 0
+                                                : t.priceCents) || 0,
+                                            reason: j,
+                                            notes: N,
+                                          };
+                                        }),
+                                        totalRefundCents: R,
+                                        reason: j,
+                                        notes: N,
+                                      },
+                                      {
+                                        headers: {
+                                          Authorization: `Bearer ${l}`,
+                                        },
+                                      },
+                                    ),
+                                      n.success("Return request created"),
+                                      x(!1),
+                                      y(null),
+                                      v([]),
+                                      g("CUSTOMER_REQUEST"),
+                                      w(""),
+                                      k());
+                                  } catch (d) {
+                                    n.error(
+                                      (null ==
+                                      (t =
+                                        null == (e = d.response)
+                                          ? void 0
+                                          : e.data)
+                                        ? void 0
+                                        : t.message) ||
+                                        "Failed to create return",
+                                    );
+                                  }
+                                else n.error("Please select items to return");
+                              },
+                              disabled:
+                                0 ===
+                                f.filter((e) => e.returnQuantity > 0).length,
+                              className:
+                                "flex-1 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 px-6 py-3 text-base font-semibold text-emerald-950 shadow-lg transition hover:shadow-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50",
+                              children: "Create Return",
+                            }),
+                          ],
+                        }),
+                      ],
+                    })
+                  : r.jsx("div", {
+                      className: "space-y-4",
+                      children: r.jsxs("div", {
+                        children: [
+                          r.jsx("label", {
+                            className:
+                              "block text-sm font-medium theme-text-secondary mb-2",
+                            children: "Order Number",
+                          }),
+                          r.jsxs("div", {
+                            className: "flex gap-2",
+                            children: [
+                              r.jsx("input", {
+                                type: "text",
+                                placeholder: "Enter order number...",
+                                className:
+                                  "flex-1 theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none",
+                                onKeyDown: (e) => {
+                                  "Enter" === e.key && C(e.currentTarget.value);
+                                },
+                              }),
+                              r.jsx("button", {
+                                onClick: () => {
+                                  const e = document.querySelector(
+                                    'input[placeholder="Enter order number..."]',
+                                  );
+                                  e && C(e.value);
+                                },
+                                className:
+                                  "rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400 px-6 py-3 text-base font-semibold text-sky-950 shadow-lg transition hover:shadow-sky-900/70",
+                                children: "Search",
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                    }),
+              ],
+            }),
+          }),
+      ],
+    }),
+  });
+}
+export { l as ReturnsPage };

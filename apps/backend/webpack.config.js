@@ -15,8 +15,8 @@ module.exports = {
           loader: 'ts-loader',
           options: {
             transpileOnly: true, // Skip type checking for faster builds
-            configFile: 'tsconfig.build.json'
-          }
+            configFile: 'tsconfig.build.json',
+          },
         },
         exclude: /node_modules/,
       },

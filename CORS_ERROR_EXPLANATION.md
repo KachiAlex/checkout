@@ -7,9 +7,9 @@
 ## Your Specific Error
 
 ```
-Access to XMLHttpRequest at 'https://pos-checkout-api.onrender.com/api/v1/auth/login' 
-from origin 'https://checkout-77d99.web.app' has been blocked by CORS policy: 
-Response to preflight request doesn't pass access control check: 
+Access to XMLHttpRequest at 'https://pos-checkout-api.onrender.com/api/v1/auth/login'
+from origin 'https://checkout-77d99.web.app' has been blocked by CORS policy:
+Response to preflight request doesn't pass access control check:
 No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ```
 
@@ -42,6 +42,7 @@ The error `No 'Access-Control-Allow-Origin' header is present` means:
   - **Being blocked before reaching your app** (proxy/firewall issue)
 
 The `net::ERR_FAILED` error suggests the request might not even be reaching the server, which could indicate:
+
 - The Render service is down or sleeping (free tier)
 - The service crashed on startup
 - Network connectivity issues
@@ -49,35 +50,43 @@ The `net::ERR_FAILED` error suggests the request might not even be reaching the 
 ## Root Causes
 
 ### 1. Service Not Running (Most Likely)
+
 **Symptom**: `net::ERR_FAILED`
 
 **Check**:
+
 - Go to Render Dashboard → Your Service
 - Check if status is "Live" (green)
 - Check "Logs" tab for errors
 - Check "Events" tab for deployment status
 
-**Fix**: 
+**Fix**:
+
 - If service is down, check logs for startup errors
 - If on free tier, service might have spun down - it will wake up on next request (but first request may fail)
 
 ### 2. CORS_ORIGIN Environment Variable Not Set
+
 **Symptom**: Service is running but CORS errors persist
 
 **Check**:
+
 - Render Dashboard → Environment tab
 - Verify `CORS_ORIGIN` is set to: `https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174`
 - Check service logs for: `🔧 CORS Configuration - Allowed Origins:`
 
 **Fix**:
+
 - Set `CORS_ORIGIN` in Render Dashboard
 - Save changes (triggers auto-redeploy)
 - Wait for redeploy to complete (2-5 minutes)
 
 ### 3. Service Crashed on Startup
+
 **Symptom**: Service shows as "Live" but requests fail
 
 **Check**:
+
 - Render Dashboard → Logs tab
 - Look for error messages like:
   - Missing environment variables
@@ -85,33 +94,39 @@ The `net::ERR_FAILED` error suggests the request might not even be reaching the 
   - Build errors
   - Database connection errors
 
-**Fix**: 
+**Fix**:
+
 - Fix the error shown in logs
 - Service will auto-redeploy after fix
 
 ### 4. CORS Middleware Not Applied
+
 **Symptom**: Service running, CORS_ORIGIN set, but still failing
 
 **Check**:
+
 - Render Logs should show:
   ```
   ✅ CORS middleware configured
   🔧 CORS Configuration - Allowed Origins: [ 'https://checkout-77d99.web.app', ... ]
   ```
 
-**Fix**: 
+**Fix**:
+
 - If these logs are missing, the service might not be starting correctly
 - Check for errors in logs before these messages
 
 ## How to Fix
 
 ### Step 1: Verify Service Status
+
 1. Go to https://dashboard.render.com
 2. Select `pos-checkout-api` service
 3. Check status is "Live"
 4. If not, check "Events" and "Logs" tabs
 
 ### Step 2: Verify CORS Configuration
+
 1. Go to Render Dashboard → Environment tab
 2. Verify `CORS_ORIGIN` is set to:
    ```
@@ -120,6 +135,7 @@ The `net::ERR_FAILED` error suggests the request might not even be reaching the 
 3. If missing or incorrect, update it and save
 
 ### Step 3: Check Service Logs
+
 1. Go to Render Dashboard → Logs tab
 2. Look for startup messages:
    ```
@@ -129,6 +145,7 @@ The `net::ERR_FAILED` error suggests the request might not even be reaching the 
 3. If you see `❌ CORS blocked origin:`, add that origin to `CORS_ORIGIN`
 
 ### Step 4: Test OPTIONS Request
+
 Test if the preflight request works:
 
 ```bash
@@ -140,6 +157,7 @@ curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
 ```
 
 **Expected Response**:
+
 ```
 < HTTP/1.1 204 No Content
 < Access-Control-Allow-Origin: https://checkout-77d99.web.app
@@ -150,6 +168,7 @@ curl -X OPTIONS https://pos-checkout-api.onrender.com/api/v1/auth/login \
 **If this fails**: The service might not be running or CORS is not configured.
 
 ### Step 5: Test Actual Request
+
 Once OPTIONS works, test the actual login:
 
 ```bash
@@ -173,18 +192,22 @@ curl -X POST https://pos-checkout-api.onrender.com/api/v1/auth/login \
 ## Common Solutions
 
 ### Solution 1: Service Sleeping (Free Tier)
+
 **Problem**: Render free tier services spin down after 15 minutes of inactivity.
 
-**Fix**: 
+**Fix**:
+
 - First request after spin-down will fail
 - Service wakes up automatically
 - Wait 30-60 seconds and try again
 - Consider upgrading to paid tier for always-on service
 
 ### Solution 2: Environment Variable Not Applied
+
 **Problem**: Set CORS_ORIGIN but still getting errors.
 
 **Fix**:
+
 1. Double-check variable name: `CORS_ORIGIN` (not `CORS_ORIGINS`)
 2. Ensure no trailing spaces or commas
 3. Save changes (triggers redeploy)
@@ -192,9 +215,11 @@ curl -X POST https://pos-checkout-api.onrender.com/api/v1/auth/login \
 5. Check logs to verify it's being read
 
 ### Solution 3: Origin Mismatch
+
 **Problem**: Origin in error doesn't match what's configured.
 
 **Fix**:
+
 - Check exact origin in browser console error
 - Add that exact origin to `CORS_ORIGIN`
 - Ensure no trailing slashes: `https://checkout-77d99.web.app` (not `https://checkout-77d99.web.app/`)
@@ -217,6 +242,7 @@ const corsConfig = {
 ```
 
 The `originHandler` function:
+
 - Reads `CORS_ORIGIN` environment variable
 - Splits by comma to get allowed origins
 - Normalizes and compares origins (case-insensitive)
@@ -225,6 +251,7 @@ The `originHandler` function:
 ### Why Preflight is Required
 
 Your POST request includes:
+
 - Custom headers (Authorization, Content-Type)
 - Credentials (cookies/auth tokens)
 
@@ -240,4 +267,3 @@ This triggers a "preflight" OPTIONS request that must succeed before the actual 
 6. **Try Again** - Test login in browser after fixes
 
 If issues persist, check the `CORS_TROUBLESHOOTING.md` file for more detailed troubleshooting steps.
-

@@ -1,1 +1,765 @@
-import{a as e,r as t,j as s,B as a,e as r,A as n,z as i}from"./index-B6jbneE4.js";import{T as d}from"./ThemeToggle-DfPDAVEh.js";import{f as l}from"./format-CiGwivc0.js";function o(){const{user:o,logout:c,accessToken:m}=e(),[x,h]=t.useState([]),[p,u]=t.useState(!1),[g,j]=t.useState("all"),[b,w]=t.useState(null),[f,y]=t.useState(!1),N=async()=>{if(m){u(!0);try{r.defaults.headers.common.Authorization||(r.defaults.headers.common.Authorization=`Bearer ${m}`);const t=(await r.get(`${n}/api/v1/orders/credit`,{headers:{Authorization:`Bearer ${m}`}})).data||[];t.map(e=>({orderId:e.id,orderNumber:e.orderNumber,customerId:e.customerId}));let s=new Map;try{const e=await r.get(`${n}/api/v1/users`,{headers:{Authorization:`Bearer ${m}`}});(e.data||[]).forEach(e=>{s.set(e.id,e)})}catch(e){}const a=[...new Set(t.map(e=>e.customerId).filter(Boolean))],i=new Map;a.length>0&&await Promise.all(a.map(async e=>{try{const t=await r.get(`${n}/api/v1/customers/${e}`,{headers:{Authorization:`Bearer ${m}`}});t.data&&i.set(e,t.data)}catch(t){}}));const d=await Promise.all(t.map(async t=>{const a=t.customerId&&i.get(t.customerId)||null;t.customerId;const d=await Promise.all(t.items.map(async t=>{try{const e=await r.get(`${n}/api/v1/products/${t.productId}`,{headers:{Authorization:`Bearer ${m}`}});return{...t,product:e.data}}catch(e){return t}})),l=s.get(t.createdBy)||null;return{...t,customer:a,items:d,creator:l?{id:l.id,name:l.name}:null}}));h(d)}catch(e){401===e.response?.status?i.error("Authentication failed. Please log in again."):i.error(e.response?.data?.message||"Failed to load credit orders")}finally{u(!1)}}};t.useEffect(()=>{N()},[m]);const v=x.filter(e=>"all"===g||("pending"===g?"pending"===e.paymentStatus||!e.paymentStatus:"paid"===g?"completed"===e.paymentStatus:"returned"!==g||"refunded"===e.paymentStatus)),k=x.filter(e=>"pending"===e.paymentStatus||!e.paymentStatus).length,C=x.filter(e=>"completed"===e.paymentStatus).length,S=x.filter(e=>"refunded"===e.paymentStatus).length;return s.jsxs("div",{className:"min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white",children:[s.jsx("header",{className:"sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-xl",children:s.jsxs("div",{className:"mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6",children:[s.jsxs("div",{className:"flex items-center gap-4",children:[s.jsx(a,{className:"h-8 w-8"}),s.jsxs("div",{children:[s.jsx("h1",{className:"text-xl font-bold sm:text-2xl",children:"Credit Orders"}),s.jsx("p",{className:"text-xs text-slate-400 sm:text-sm",children:"Manage products taken on credit"})]})]}),s.jsxs("div",{className:"flex items-center gap-2",children:[s.jsx(d,{}),o&&s.jsx("button",{onClick:c,className:"rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/20 sm:px-4 sm:py-2 sm:text-sm",children:"Logout"})]})]})}),s.jsxs("main",{className:"mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8",children:[s.jsxs("div",{className:"mb-6 flex gap-2 overflow-x-auto pb-2",children:[s.jsxs("button",{onClick:()=>j("all"),className:"whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition "+("all"===g?"bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30":"bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),children:["All (",x.length,")"]}),s.jsxs("button",{onClick:()=>j("pending"),className:"whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition "+("pending"===g?"bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/30":"bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),children:["Pending (",k,")"]}),s.jsxs("button",{onClick:()=>j("paid"),className:"whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition "+("paid"===g?"bg-green-500/20 text-green-400 ring-1 ring-green-500/30":"bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),children:["Paid (",C,")"]}),s.jsxs("button",{onClick:()=>j("returned"),className:"whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition "+("returned"===g?"bg-red-500/20 text-red-400 ring-1 ring-red-500/30":"bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),children:["Returned (",S,")"]})]}),p?s.jsx("div",{className:"flex items-center justify-center py-12",children:s.jsx("div",{className:"h-12 w-12 animate-spin rounded-full border-b-2 border-sky-400"})}):0===v.length?s.jsxs("div",{className:"rounded-2xl border border-white/10 bg-white/5 p-12 text-center",children:[s.jsx("p",{className:"text-lg font-medium text-slate-400",children:"No credit orders found"}),s.jsx("p",{className:"mt-2 text-sm text-slate-500",children:"all"!==g?`No ${g} credit orders`:"Credit orders will appear here when products are taken on credit"})]}):s.jsx("div",{className:"rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6",children:s.jsx("div",{className:"space-y-2",children:v.map(e=>{const t="pending"===e.paymentStatus||!e.paymentStatus,a="completed"===e.paymentStatus;return e.paymentStatus,s.jsxs("div",{className:"flex items-center justify-between p-4 rounded-lg border border-white/10 hover:bg-white/5 transition",children:[s.jsxs("div",{className:"flex items-center gap-4 flex-1 min-w-0",children:[s.jsx("div",{className:"flex-shrink-0 text-2xl",children:"💳"}),s.jsxs("div",{className:"flex-1 min-w-0",children:[s.jsxs("div",{className:"flex items-center gap-2 mb-1",children:[s.jsx("p",{className:"font-medium text-white truncate",children:e.orderNumber}),s.jsx("span",{className:"rounded-full px-2 py-0.5 text-xs font-medium "+(t?"bg-yellow-500/20 text-yellow-400":a?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400"),children:t?"Pending":a?"Paid":"Returned"})]}),s.jsxs("div",{className:"flex flex-wrap gap-3 mt-1 text-sm text-slate-400",children:[e.customer&&s.jsxs("span",{children:["Customer: ",e.customer.name]}),s.jsxs("span",{children:["Total: ₦",(e.totalCents/100).toFixed(2)]}),s.jsxs("span",{children:["Items: ",e.items.length]}),s.jsx("span",{children:l(new Date(e.createdAt),"MMM dd, yyyy")})]})]})]}),s.jsx("button",{onClick:()=>{w(e),y(!0)},className:"p-2 rounded-lg border border-white/10 hover:bg-white/10 text-white transition flex-shrink-0",title:"View Details",children:s.jsxs("svg",{className:"w-5 h-5",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24",children:[s.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M15 12a3 3 0 11-6 0 3 3 0 016 0z"}),s.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"})]})})]},e.id)})})})]}),f&&b&&s.jsx("div",{className:"fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4",children:s.jsxs("div",{className:"w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-6",children:[s.jsxs("div",{className:"flex items-center justify-between mb-6",children:[s.jsx("h2",{className:"text-2xl font-bold text-white",children:"Order Details"}),s.jsx("button",{onClick:()=>{y(!1),w(null)},className:"p-2 rounded-lg border border-white/10 hover:bg-white/10 text-white transition",children:s.jsx("svg",{className:"w-5 h-5",fill:"none",stroke:"currentColor",viewBox:"0 0 24 24",children:s.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:2,d:"M6 18L18 6M6 6l12 12"})})})]}),s.jsxs("div",{className:"space-y-4",children:[s.jsxs("div",{className:"flex flex-wrap items-center gap-3 pb-4 border-b border-white/10",children:[s.jsx("h3",{className:"text-xl font-semibold text-white",children:b.orderNumber}),s.jsx("span",{className:"rounded-full px-3 py-1 text-xs font-medium "+("pending"!==b.paymentStatus&&b.paymentStatus?"completed"===b.paymentStatus?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400":"bg-yellow-500/20 text-yellow-400"),children:"pending"!==b.paymentStatus&&b.paymentStatus?"completed"===b.paymentStatus?"Paid":"Returned":"Pending Payment"})]}),b.customerId&&s.jsxs("div",{className:"p-4 rounded-lg bg-white/5",children:[s.jsx("h4",{className:"text-sm font-semibold text-slate-300 mb-2",children:"Customer Information"}),b.customer?s.jsxs("div",{className:"space-y-1 text-sm text-slate-400",children:[s.jsxs("p",{children:[s.jsx("span",{className:"font-medium",children:"Name:"})," ",b.customer.name]}),b.customer.phone&&s.jsxs("p",{children:[s.jsx("span",{className:"font-medium",children:"Phone:"})," ",b.customer.phone]}),b.customer.email&&s.jsxs("p",{children:[s.jsx("span",{className:"font-medium",children:"Email:"})," ",b.customer.email]})]}):s.jsxs("p",{className:"text-sm text-slate-500 italic",children:["Customer ID: ",b.customerId]})]}),s.jsxs("div",{className:"grid grid-cols-2 gap-4 text-sm",children:[b.creator&&s.jsxs("div",{children:[s.jsx("span",{className:"text-slate-400",children:"Created by:"}),s.jsx("p",{className:"text-white font-medium",children:b.creator.name})]}),s.jsxs("div",{children:[s.jsx("span",{className:"text-slate-400",children:"Collected on:"}),s.jsx("p",{className:"text-white font-medium",children:l(new Date(b.createdAt),"MMM dd, yyyy HH:mm")})]}),"completed"===b.paymentStatus&&b.paidAt&&new Date(b.paidAt).getTime()!==new Date(b.createdAt).getTime()&&s.jsxs("div",{children:[s.jsx("span",{className:"text-slate-400",children:"Paid on:"}),s.jsx("p",{className:"text-green-400 font-medium",children:l(new Date(b.paidAt),"MMM dd, yyyy HH:mm")})]}),"refunded"===b.paymentStatus&&b.returnedAt&&new Date(b.returnedAt).getTime()!==new Date(b.createdAt).getTime()&&s.jsxs("div",{children:[s.jsx("span",{className:"text-slate-400",children:"Returned on:"}),s.jsx("p",{className:"text-red-400 font-medium",children:l(new Date(b.returnedAt),"MMM dd, yyyy HH:mm")})]})]}),s.jsxs("div",{className:"rounded-lg bg-white/5 p-4",children:[s.jsx("h4",{className:"text-sm font-semibold text-slate-300 mb-3",children:"Items"}),s.jsx("div",{className:"space-y-2",children:b.items.map((e,t)=>s.jsxs("div",{className:"flex justify-between items-center py-2 border-b border-white/5 last:border-0",children:[s.jsxs("div",{className:"flex-1",children:[s.jsx("p",{className:"text-white font-medium",children:e.product?.name||`Product ${e.productId}`}),s.jsxs("p",{className:"text-sm text-slate-400",children:["Qty: ",e.quantity," × ₦",(e.priceCents/100).toFixed(2)]})]}),s.jsxs("p",{className:"text-white font-semibold",children:["₦",(e.priceCents*e.quantity/100).toFixed(2)]})]},t))}),s.jsxs("div",{className:"mt-4 pt-4 border-t border-white/10",children:[s.jsxs("div",{className:"flex justify-between items-center",children:[s.jsx("span",{className:"text-slate-400",children:"Subtotal:"}),s.jsxs("span",{className:"text-white font-medium",children:["₦",(b.subtotalCents/100).toFixed(2)]})]}),b.taxCents>0&&s.jsxs("div",{className:"flex justify-between items-center mt-1",children:[s.jsx("span",{className:"text-slate-400",children:"Tax:"}),s.jsxs("span",{className:"text-white font-medium",children:["₦",(b.taxCents/100).toFixed(2)]})]}),b.discountCents>0&&s.jsxs("div",{className:"flex justify-between items-center mt-1",children:[s.jsx("span",{className:"text-slate-400",children:"Discount:"}),s.jsxs("span",{className:"text-white font-medium",children:["-₦",(b.discountCents/100).toFixed(2)]})]}),s.jsxs("div",{className:"flex justify-between items-center mt-3 pt-3 border-t border-white/10",children:[s.jsx("span",{className:"text-lg font-semibold text-white",children:"Total:"}),s.jsxs("span",{className:"text-xl font-bold text-white",children:["₦",(b.totalCents/100).toFixed(2)]})]})]})]}),b.notes&&s.jsxs("div",{className:"p-4 rounded-lg bg-white/5",children:[s.jsx("h4",{className:"text-sm font-semibold text-slate-300 mb-2",children:"Notes"}),s.jsx("p",{className:"text-sm text-slate-400",children:b.notes})]}),("pending"===b.paymentStatus||!b.paymentStatus)&&s.jsxs("div",{className:"flex gap-3 pt-4 border-t border-white/10",children:[s.jsx("button",{onClick:()=>{(async e=>{if(m&&confirm("Mark this credit order as paid?"))try{await r.post(`${n}/api/v1/orders/${e}/credit/mark-paid`,{},{headers:{Authorization:`Bearer ${m}`}}),i.success("Credit order marked as paid"),N()}catch(t){i.error(t.response?.data?.message||"Failed to mark order as paid")}})(b.id),y(!1),w(null)},className:"flex-1 rounded-lg bg-green-500/20 px-4 py-2 text-sm font-medium text-green-400 transition hover:bg-green-500/30",children:"Mark as Paid"}),s.jsx("button",{onClick:()=>{(async e=>{if(m&&confirm("Mark this credit order as returned? This will restore inventory."))try{await r.post(`${n}/api/v1/orders/${e}/credit/mark-returned`,{},{headers:{Authorization:`Bearer ${m}`}}),i.success("Credit order marked as returned. Inventory restored."),N()}catch(t){i.error(t.response?.data?.message||"Failed to mark order as returned")}})(b.id),y(!1),w(null)},className:"flex-1 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/30",children:"Mark as Returned"})]})]})]})})]})}export{o as CreditOrdersPage};
+import {
+  a as e,
+  r as t,
+  j as s,
+  B as a,
+  e as r,
+  A as n,
+  z as i,
+} from "./index-B6jbneE4.js";
+import { T as d } from "./ThemeToggle-DfPDAVEh.js";
+import { f as l } from "./format-CiGwivc0.js";
+function o() {
+  const { user: o, logout: c, accessToken: m } = e(),
+    [x, h] = t.useState([]),
+    [p, u] = t.useState(!1),
+    [g, j] = t.useState("all"),
+    [b, w] = t.useState(null),
+    [f, y] = t.useState(!1),
+    N = async () => {
+      if (m) {
+        u(!0);
+        try {
+          r.defaults.headers.common.Authorization ||
+            (r.defaults.headers.common.Authorization = `Bearer ${m}`);
+          const t =
+            (
+              await r.get(`${n}/api/v1/orders/credit`, {
+                headers: { Authorization: `Bearer ${m}` },
+              })
+            ).data || [];
+          t.map((e) => ({
+            orderId: e.id,
+            orderNumber: e.orderNumber,
+            customerId: e.customerId,
+          }));
+          let s = new Map();
+          try {
+            const e = await r.get(`${n}/api/v1/users`, {
+              headers: { Authorization: `Bearer ${m}` },
+            });
+            (e.data || []).forEach((e) => {
+              s.set(e.id, e);
+            });
+          } catch (e) {}
+          const a = [...new Set(t.map((e) => e.customerId).filter(Boolean))],
+            i = new Map();
+          a.length > 0 &&
+            (await Promise.all(
+              a.map(async (e) => {
+                try {
+                  const t = await r.get(`${n}/api/v1/customers/${e}`, {
+                    headers: { Authorization: `Bearer ${m}` },
+                  });
+                  t.data && i.set(e, t.data);
+                } catch (t) {}
+              }),
+            ));
+          const d = await Promise.all(
+            t.map(async (t) => {
+              const a = (t.customerId && i.get(t.customerId)) || null;
+              t.customerId;
+              const d = await Promise.all(
+                  t.items.map(async (t) => {
+                    try {
+                      const e = await r.get(
+                        `${n}/api/v1/products/${t.productId}`,
+                        { headers: { Authorization: `Bearer ${m}` } },
+                      );
+                      return { ...t, product: e.data };
+                    } catch (e) {
+                      return t;
+                    }
+                  }),
+                ),
+                l = s.get(t.createdBy) || null;
+              return {
+                ...t,
+                customer: a,
+                items: d,
+                creator: l ? { id: l.id, name: l.name } : null,
+              };
+            }),
+          );
+          h(d);
+        } catch (e) {
+          401 === e.response?.status
+            ? i.error("Authentication failed. Please log in again.")
+            : i.error(
+                e.response?.data?.message || "Failed to load credit orders",
+              );
+        } finally {
+          u(!1);
+        }
+      }
+    };
+  t.useEffect(() => {
+    N();
+  }, [m]);
+  const v = x.filter(
+      (e) =>
+        "all" === g ||
+        ("pending" === g
+          ? "pending" === e.paymentStatus || !e.paymentStatus
+          : "paid" === g
+            ? "completed" === e.paymentStatus
+            : "returned" !== g || "refunded" === e.paymentStatus),
+    ),
+    k = x.filter(
+      (e) => "pending" === e.paymentStatus || !e.paymentStatus,
+    ).length,
+    C = x.filter((e) => "completed" === e.paymentStatus).length,
+    S = x.filter((e) => "refunded" === e.paymentStatus).length;
+  return s.jsxs("div", {
+    className:
+      "min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white",
+    children: [
+      s.jsx("header", {
+        className:
+          "sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-xl",
+        children: s.jsxs("div", {
+          className:
+            "mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6",
+          children: [
+            s.jsxs("div", {
+              className: "flex items-center gap-4",
+              children: [
+                s.jsx(a, { className: "h-8 w-8" }),
+                s.jsxs("div", {
+                  children: [
+                    s.jsx("h1", {
+                      className: "text-xl font-bold sm:text-2xl",
+                      children: "Credit Orders",
+                    }),
+                    s.jsx("p", {
+                      className: "text-xs text-slate-400 sm:text-sm",
+                      children: "Manage products taken on credit",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            s.jsxs("div", {
+              className: "flex items-center gap-2",
+              children: [
+                s.jsx(d, {}),
+                o &&
+                  s.jsx("button", {
+                    onClick: c,
+                    className:
+                      "rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/20 sm:px-4 sm:py-2 sm:text-sm",
+                    children: "Logout",
+                  }),
+              ],
+            }),
+          ],
+        }),
+      }),
+      s.jsxs("main", {
+        className: "mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8",
+        children: [
+          s.jsxs("div", {
+            className: "mb-6 flex gap-2 overflow-x-auto pb-2",
+            children: [
+              s.jsxs("button", {
+                onClick: () => j("all"),
+                className:
+                  "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition " +
+                  ("all" === g
+                    ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),
+                children: ["All (", x.length, ")"],
+              }),
+              s.jsxs("button", {
+                onClick: () => j("pending"),
+                className:
+                  "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition " +
+                  ("pending" === g
+                    ? "bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/30"
+                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),
+                children: ["Pending (", k, ")"],
+              }),
+              s.jsxs("button", {
+                onClick: () => j("paid"),
+                className:
+                  "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition " +
+                  ("paid" === g
+                    ? "bg-green-500/20 text-green-400 ring-1 ring-green-500/30"
+                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),
+                children: ["Paid (", C, ")"],
+              }),
+              s.jsxs("button", {
+                onClick: () => j("returned"),
+                className:
+                  "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition " +
+                  ("returned" === g
+                    ? "bg-red-500/20 text-red-400 ring-1 ring-red-500/30"
+                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300"),
+                children: ["Returned (", S, ")"],
+              }),
+            ],
+          }),
+          p
+            ? s.jsx("div", {
+                className: "flex items-center justify-center py-12",
+                children: s.jsx("div", {
+                  className:
+                    "h-12 w-12 animate-spin rounded-full border-b-2 border-sky-400",
+                }),
+              })
+            : 0 === v.length
+              ? s.jsxs("div", {
+                  className:
+                    "rounded-2xl border border-white/10 bg-white/5 p-12 text-center",
+                  children: [
+                    s.jsx("p", {
+                      className: "text-lg font-medium text-slate-400",
+                      children: "No credit orders found",
+                    }),
+                    s.jsx("p", {
+                      className: "mt-2 text-sm text-slate-500",
+                      children:
+                        "all" !== g
+                          ? `No ${g} credit orders`
+                          : "Credit orders will appear here when products are taken on credit",
+                    }),
+                  ],
+                })
+              : s.jsx("div", {
+                  className:
+                    "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6",
+                  children: s.jsx("div", {
+                    className: "space-y-2",
+                    children: v.map((e) => {
+                      const t =
+                          "pending" === e.paymentStatus || !e.paymentStatus,
+                        a = "completed" === e.paymentStatus;
+                      return (
+                        e.paymentStatus,
+                        s.jsxs(
+                          "div",
+                          {
+                            className:
+                              "flex items-center justify-between p-4 rounded-lg border border-white/10 hover:bg-white/5 transition",
+                            children: [
+                              s.jsxs("div", {
+                                className:
+                                  "flex items-center gap-4 flex-1 min-w-0",
+                                children: [
+                                  s.jsx("div", {
+                                    className: "flex-shrink-0 text-2xl",
+                                    children: "💳",
+                                  }),
+                                  s.jsxs("div", {
+                                    className: "flex-1 min-w-0",
+                                    children: [
+                                      s.jsxs("div", {
+                                        className:
+                                          "flex items-center gap-2 mb-1",
+                                        children: [
+                                          s.jsx("p", {
+                                            className:
+                                              "font-medium text-white truncate",
+                                            children: e.orderNumber,
+                                          }),
+                                          s.jsx("span", {
+                                            className:
+                                              "rounded-full px-2 py-0.5 text-xs font-medium " +
+                                              (t
+                                                ? "bg-yellow-500/20 text-yellow-400"
+                                                : a
+                                                  ? "bg-green-500/20 text-green-400"
+                                                  : "bg-red-500/20 text-red-400"),
+                                            children: t
+                                              ? "Pending"
+                                              : a
+                                                ? "Paid"
+                                                : "Returned",
+                                          }),
+                                        ],
+                                      }),
+                                      s.jsxs("div", {
+                                        className:
+                                          "flex flex-wrap gap-3 mt-1 text-sm text-slate-400",
+                                        children: [
+                                          e.customer &&
+                                            s.jsxs("span", {
+                                              children: [
+                                                "Customer: ",
+                                                e.customer.name,
+                                              ],
+                                            }),
+                                          s.jsxs("span", {
+                                            children: [
+                                              "Total: ₦",
+                                              (e.totalCents / 100).toFixed(2),
+                                            ],
+                                          }),
+                                          s.jsxs("span", {
+                                            children: [
+                                              "Items: ",
+                                              e.items.length,
+                                            ],
+                                          }),
+                                          s.jsx("span", {
+                                            children: l(
+                                              new Date(e.createdAt),
+                                              "MMM dd, yyyy",
+                                            ),
+                                          }),
+                                        ],
+                                      }),
+                                    ],
+                                  }),
+                                ],
+                              }),
+                              s.jsx("button", {
+                                onClick: () => {
+                                  (w(e), y(!0));
+                                },
+                                className:
+                                  "p-2 rounded-lg border border-white/10 hover:bg-white/10 text-white transition flex-shrink-0",
+                                title: "View Details",
+                                children: s.jsxs("svg", {
+                                  className: "w-5 h-5",
+                                  fill: "none",
+                                  stroke: "currentColor",
+                                  viewBox: "0 0 24 24",
+                                  children: [
+                                    s.jsx("path", {
+                                      strokeLinecap: "round",
+                                      strokeLinejoin: "round",
+                                      strokeWidth: 2,
+                                      d: "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
+                                    }),
+                                    s.jsx("path", {
+                                      strokeLinecap: "round",
+                                      strokeLinejoin: "round",
+                                      strokeWidth: 2,
+                                      d: "M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
+                                    }),
+                                  ],
+                                }),
+                              }),
+                            ],
+                          },
+                          e.id,
+                        )
+                      );
+                    }),
+                  }),
+                }),
+        ],
+      }),
+      f &&
+        b &&
+        s.jsx("div", {
+          className:
+            "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4",
+          children: s.jsxs("div", {
+            className:
+              "w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-6",
+            children: [
+              s.jsxs("div", {
+                className: "flex items-center justify-between mb-6",
+                children: [
+                  s.jsx("h2", {
+                    className: "text-2xl font-bold text-white",
+                    children: "Order Details",
+                  }),
+                  s.jsx("button", {
+                    onClick: () => {
+                      (y(!1), w(null));
+                    },
+                    className:
+                      "p-2 rounded-lg border border-white/10 hover:bg-white/10 text-white transition",
+                    children: s.jsx("svg", {
+                      className: "w-5 h-5",
+                      fill: "none",
+                      stroke: "currentColor",
+                      viewBox: "0 0 24 24",
+                      children: s.jsx("path", {
+                        strokeLinecap: "round",
+                        strokeLinejoin: "round",
+                        strokeWidth: 2,
+                        d: "M6 18L18 6M6 6l12 12",
+                      }),
+                    }),
+                  }),
+                ],
+              }),
+              s.jsxs("div", {
+                className: "space-y-4",
+                children: [
+                  s.jsxs("div", {
+                    className:
+                      "flex flex-wrap items-center gap-3 pb-4 border-b border-white/10",
+                    children: [
+                      s.jsx("h3", {
+                        className: "text-xl font-semibold text-white",
+                        children: b.orderNumber,
+                      }),
+                      s.jsx("span", {
+                        className:
+                          "rounded-full px-3 py-1 text-xs font-medium " +
+                          ("pending" !== b.paymentStatus && b.paymentStatus
+                            ? "completed" === b.paymentStatus
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-red-500/20 text-red-400"
+                            : "bg-yellow-500/20 text-yellow-400"),
+                        children:
+                          "pending" !== b.paymentStatus && b.paymentStatus
+                            ? "completed" === b.paymentStatus
+                              ? "Paid"
+                              : "Returned"
+                            : "Pending Payment",
+                      }),
+                    ],
+                  }),
+                  b.customerId &&
+                    s.jsxs("div", {
+                      className: "p-4 rounded-lg bg-white/5",
+                      children: [
+                        s.jsx("h4", {
+                          className:
+                            "text-sm font-semibold text-slate-300 mb-2",
+                          children: "Customer Information",
+                        }),
+                        b.customer
+                          ? s.jsxs("div", {
+                              className: "space-y-1 text-sm text-slate-400",
+                              children: [
+                                s.jsxs("p", {
+                                  children: [
+                                    s.jsx("span", {
+                                      className: "font-medium",
+                                      children: "Name:",
+                                    }),
+                                    " ",
+                                    b.customer.name,
+                                  ],
+                                }),
+                                b.customer.phone &&
+                                  s.jsxs("p", {
+                                    children: [
+                                      s.jsx("span", {
+                                        className: "font-medium",
+                                        children: "Phone:",
+                                      }),
+                                      " ",
+                                      b.customer.phone,
+                                    ],
+                                  }),
+                                b.customer.email &&
+                                  s.jsxs("p", {
+                                    children: [
+                                      s.jsx("span", {
+                                        className: "font-medium",
+                                        children: "Email:",
+                                      }),
+                                      " ",
+                                      b.customer.email,
+                                    ],
+                                  }),
+                              ],
+                            })
+                          : s.jsxs("p", {
+                              className: "text-sm text-slate-500 italic",
+                              children: ["Customer ID: ", b.customerId],
+                            }),
+                      ],
+                    }),
+                  s.jsxs("div", {
+                    className: "grid grid-cols-2 gap-4 text-sm",
+                    children: [
+                      b.creator &&
+                        s.jsxs("div", {
+                          children: [
+                            s.jsx("span", {
+                              className: "text-slate-400",
+                              children: "Created by:",
+                            }),
+                            s.jsx("p", {
+                              className: "text-white font-medium",
+                              children: b.creator.name,
+                            }),
+                          ],
+                        }),
+                      s.jsxs("div", {
+                        children: [
+                          s.jsx("span", {
+                            className: "text-slate-400",
+                            children: "Collected on:",
+                          }),
+                          s.jsx("p", {
+                            className: "text-white font-medium",
+                            children: l(
+                              new Date(b.createdAt),
+                              "MMM dd, yyyy HH:mm",
+                            ),
+                          }),
+                        ],
+                      }),
+                      "completed" === b.paymentStatus &&
+                        b.paidAt &&
+                        new Date(b.paidAt).getTime() !==
+                          new Date(b.createdAt).getTime() &&
+                        s.jsxs("div", {
+                          children: [
+                            s.jsx("span", {
+                              className: "text-slate-400",
+                              children: "Paid on:",
+                            }),
+                            s.jsx("p", {
+                              className: "text-green-400 font-medium",
+                              children: l(
+                                new Date(b.paidAt),
+                                "MMM dd, yyyy HH:mm",
+                              ),
+                            }),
+                          ],
+                        }),
+                      "refunded" === b.paymentStatus &&
+                        b.returnedAt &&
+                        new Date(b.returnedAt).getTime() !==
+                          new Date(b.createdAt).getTime() &&
+                        s.jsxs("div", {
+                          children: [
+                            s.jsx("span", {
+                              className: "text-slate-400",
+                              children: "Returned on:",
+                            }),
+                            s.jsx("p", {
+                              className: "text-red-400 font-medium",
+                              children: l(
+                                new Date(b.returnedAt),
+                                "MMM dd, yyyy HH:mm",
+                              ),
+                            }),
+                          ],
+                        }),
+                    ],
+                  }),
+                  s.jsxs("div", {
+                    className: "rounded-lg bg-white/5 p-4",
+                    children: [
+                      s.jsx("h4", {
+                        className: "text-sm font-semibold text-slate-300 mb-3",
+                        children: "Items",
+                      }),
+                      s.jsx("div", {
+                        className: "space-y-2",
+                        children: b.items.map((e, t) =>
+                          s.jsxs(
+                            "div",
+                            {
+                              className:
+                                "flex justify-between items-center py-2 border-b border-white/5 last:border-0",
+                              children: [
+                                s.jsxs("div", {
+                                  className: "flex-1",
+                                  children: [
+                                    s.jsx("p", {
+                                      className: "text-white font-medium",
+                                      children:
+                                        e.product?.name ||
+                                        `Product ${e.productId}`,
+                                    }),
+                                    s.jsxs("p", {
+                                      className: "text-sm text-slate-400",
+                                      children: [
+                                        "Qty: ",
+                                        e.quantity,
+                                        " × ₦",
+                                        (e.priceCents / 100).toFixed(2),
+                                      ],
+                                    }),
+                                  ],
+                                }),
+                                s.jsxs("p", {
+                                  className: "text-white font-semibold",
+                                  children: [
+                                    "₦",
+                                    ((e.priceCents * e.quantity) / 100).toFixed(
+                                      2,
+                                    ),
+                                  ],
+                                }),
+                              ],
+                            },
+                            t,
+                          ),
+                        ),
+                      }),
+                      s.jsxs("div", {
+                        className: "mt-4 pt-4 border-t border-white/10",
+                        children: [
+                          s.jsxs("div", {
+                            className: "flex justify-between items-center",
+                            children: [
+                              s.jsx("span", {
+                                className: "text-slate-400",
+                                children: "Subtotal:",
+                              }),
+                              s.jsxs("span", {
+                                className: "text-white font-medium",
+                                children: [
+                                  "₦",
+                                  (b.subtotalCents / 100).toFixed(2),
+                                ],
+                              }),
+                            ],
+                          }),
+                          b.taxCents > 0 &&
+                            s.jsxs("div", {
+                              className:
+                                "flex justify-between items-center mt-1",
+                              children: [
+                                s.jsx("span", {
+                                  className: "text-slate-400",
+                                  children: "Tax:",
+                                }),
+                                s.jsxs("span", {
+                                  className: "text-white font-medium",
+                                  children: [
+                                    "₦",
+                                    (b.taxCents / 100).toFixed(2),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          b.discountCents > 0 &&
+                            s.jsxs("div", {
+                              className:
+                                "flex justify-between items-center mt-1",
+                              children: [
+                                s.jsx("span", {
+                                  className: "text-slate-400",
+                                  children: "Discount:",
+                                }),
+                                s.jsxs("span", {
+                                  className: "text-white font-medium",
+                                  children: [
+                                    "-₦",
+                                    (b.discountCents / 100).toFixed(2),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          s.jsxs("div", {
+                            className:
+                              "flex justify-between items-center mt-3 pt-3 border-t border-white/10",
+                            children: [
+                              s.jsx("span", {
+                                className: "text-lg font-semibold text-white",
+                                children: "Total:",
+                              }),
+                              s.jsxs("span", {
+                                className: "text-xl font-bold text-white",
+                                children: [
+                                  "₦",
+                                  (b.totalCents / 100).toFixed(2),
+                                ],
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  b.notes &&
+                    s.jsxs("div", {
+                      className: "p-4 rounded-lg bg-white/5",
+                      children: [
+                        s.jsx("h4", {
+                          className:
+                            "text-sm font-semibold text-slate-300 mb-2",
+                          children: "Notes",
+                        }),
+                        s.jsx("p", {
+                          className: "text-sm text-slate-400",
+                          children: b.notes,
+                        }),
+                      ],
+                    }),
+                  ("pending" === b.paymentStatus || !b.paymentStatus) &&
+                    s.jsxs("div", {
+                      className: "flex gap-3 pt-4 border-t border-white/10",
+                      children: [
+                        s.jsx("button", {
+                          onClick: () => {
+                            ((async (e) => {
+                              if (
+                                m &&
+                                confirm("Mark this credit order as paid?")
+                              )
+                                try {
+                                  (await r.post(
+                                    `${n}/api/v1/orders/${e}/credit/mark-paid`,
+                                    {},
+                                    {
+                                      headers: { Authorization: `Bearer ${m}` },
+                                    },
+                                  ),
+                                    i.success("Credit order marked as paid"),
+                                    N());
+                                } catch (t) {
+                                  i.error(
+                                    t.response?.data?.message ||
+                                      "Failed to mark order as paid",
+                                  );
+                                }
+                            })(b.id),
+                              y(!1),
+                              w(null));
+                          },
+                          className:
+                            "flex-1 rounded-lg bg-green-500/20 px-4 py-2 text-sm font-medium text-green-400 transition hover:bg-green-500/30",
+                          children: "Mark as Paid",
+                        }),
+                        s.jsx("button", {
+                          onClick: () => {
+                            ((async (e) => {
+                              if (
+                                m &&
+                                confirm(
+                                  "Mark this credit order as returned? This will restore inventory.",
+                                )
+                              )
+                                try {
+                                  (await r.post(
+                                    `${n}/api/v1/orders/${e}/credit/mark-returned`,
+                                    {},
+                                    {
+                                      headers: { Authorization: `Bearer ${m}` },
+                                    },
+                                  ),
+                                    i.success(
+                                      "Credit order marked as returned. Inventory restored.",
+                                    ),
+                                    N());
+                                } catch (t) {
+                                  i.error(
+                                    t.response?.data?.message ||
+                                      "Failed to mark order as returned",
+                                  );
+                                }
+                            })(b.id),
+                              y(!1),
+                              w(null));
+                          },
+                          className:
+                            "flex-1 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/30",
+                          children: "Mark as Returned",
+                        }),
+                      ],
+                    }),
+                ],
+              }),
+            ],
+          }),
+        }),
+    ],
+  });
+}
+export { o as CreditOrdersPage };

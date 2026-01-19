@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../stores/authStore";
 import axios from "axios";
 import { API_URL } from "../config";
@@ -38,7 +38,7 @@ export function CustomersPage() {
     notes: "",
   });
 
-  const loadCustomers = async () => {
+  const loadCustomers = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
@@ -56,11 +56,11 @@ export function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, searchQuery]);
 
   useEffect(() => {
     loadCustomers();
-  }, [accessToken, searchQuery]);
+  }, [loadCustomers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

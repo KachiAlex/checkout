@@ -8,7 +8,6 @@ import { API_URL } from "../config";
 import { BrandMark } from "../components/BrandMark";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { AlertBanner } from "../components/AlertBanner";
-import { formatCurrency as formatCurrencyCents } from "../utils/numberFormat";
 
 interface SalesSummary {
   totalSales: number;

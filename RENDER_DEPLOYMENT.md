@@ -23,7 +23,7 @@ Render may not automatically use `render.yaml`. You **MUST** manually set the bu
 
 4. **Set Environment Variables**
    Go to the "Environment" tab and add:
-   
+
    ```
    NODE_ENV=production
    PORT=10000
@@ -37,7 +37,7 @@ Render may not automatically use `render.yaml`. You **MUST** manually set the bu
    FIREBASE_PRIVATE_KEY=<your-firebase-private-key>
    ```
 
-   **Important:** 
+   **Important:**
    - For `FIREBASE_PRIVATE_KEY`, paste the entire key including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`
    - Render will handle newlines automatically
    - Get these values from Firebase Console → Project Settings → Service Accounts
@@ -56,11 +56,13 @@ Render may not automatically use `render.yaml`. You **MUST** manually set the bu
 After deployment, update your frontend to use the Render backend:
 
 1. **Update `apps/frontend/src/config.ts`:**
+
    ```typescript
-   const DEFAULT_API_BASE = 'https://pos-checkout-api.onrender.com';
+   const DEFAULT_API_BASE = "https://pos-checkout-api.onrender.com";
    ```
 
 2. **Or set environment variable:**
+
    ```bash
    # In apps/frontend/.env
    VITE_API_URL=https://pos-checkout-api.onrender.com
@@ -73,18 +75,18 @@ After deployment, update your frontend to use the Render backend:
 
 ## Environment Variables Reference
 
-| Variable | Required | Description | Example |
-|----------|----------|-------------|---------|
-| `NODE_ENV` | Yes | Environment | `production` |
-| `PORT` | Yes | Port to listen on | `10000` |
-| `API_PREFIX` | No | API prefix | `api/v1` |
-| `CORS_ORIGIN` | Yes | Allowed origins (comma-separated) | `https://checkout-77d99.web.app` |
-| `JWT_SECRET` | Yes | Secret for JWT tokens | `your-secret-key` |
-| `JWT_EXPIRES_IN` | No | JWT expiration | `24h` |
-| `REFRESH_TOKEN_EXPIRES_IN` | No | Refresh token expiration | `7d` |
-| `FIREBASE_PROJECT_ID` | Yes | Firebase project ID | `checkout-77d99` |
-| `FIREBASE_CLIENT_EMAIL` | Yes | Firebase service account email | `firebase-adminsdk-...@...iam.gserviceaccount.com` |
-| `FIREBASE_PRIVATE_KEY` | Yes | Firebase private key | `-----BEGIN PRIVATE KEY-----...` |
+| Variable                   | Required | Description                       | Example                                            |
+| -------------------------- | -------- | --------------------------------- | -------------------------------------------------- |
+| `NODE_ENV`                 | Yes      | Environment                       | `production`                                       |
+| `PORT`                     | Yes      | Port to listen on                 | `10000`                                            |
+| `API_PREFIX`               | No       | API prefix                        | `api/v1`                                           |
+| `CORS_ORIGIN`              | Yes      | Allowed origins (comma-separated) | `https://checkout-77d99.web.app`                   |
+| `JWT_SECRET`               | Yes      | Secret for JWT tokens             | `your-secret-key`                                  |
+| `JWT_EXPIRES_IN`           | No       | JWT expiration                    | `24h`                                              |
+| `REFRESH_TOKEN_EXPIRES_IN` | No       | Refresh token expiration          | `7d`                                               |
+| `FIREBASE_PROJECT_ID`      | Yes      | Firebase project ID               | `checkout-77d99`                                   |
+| `FIREBASE_CLIENT_EMAIL`    | Yes      | Firebase service account email    | `firebase-adminsdk-...@...iam.gserviceaccount.com` |
+| `FIREBASE_PRIVATE_KEY`     | Yes      | Firebase private key              | `-----BEGIN PRIVATE KEY-----...`                   |
 
 ## Benefits of Render
 
@@ -101,31 +103,39 @@ After deployment, update your frontend to use the Render backend:
 ### Build Fails
 
 #### Missing Rollup Module Error
+
 If you see `Cannot find module '@rollup/rollup-linux-x64-gnu'`:
+
 - **Solution:** This has been fixed by adding the Linux rollup dependency to the frontend package
 - Ensure you're using the correct build command: `npm install --no-optional --include=dev && npm run build:backend`
 - Do NOT use `npm run build` (which builds all workspaces including frontend)
 
 #### Missing Build Script Error
+
 If you see `Missing script: "build"` for print-proxy:
+
 - **Solution:** This has been fixed by adding a build script to print-proxy
 - Ensure you're using `npm run build:backend` instead of building all workspaces
 
 #### General Build Issues
+
 - Check that all dependencies are in `package.json`
 - Ensure Node.js version is compatible (Render uses Node 20 by default)
 - Verify the build command is set correctly in Render dashboard (not using default)
 
 ### Service Won't Start
+
 - Check logs in Render dashboard
 - Verify all environment variables are set
 - Ensure `PORT` is set to `10000` (Render requirement)
 
 ### CORS Errors
+
 - Add your frontend URL to `CORS_ORIGIN`
 - Ensure no trailing slashes in URLs
 
 ### Database Connection Issues
+
 - Verify Firebase credentials are correct
 - Check that Firestore is enabled in Firebase Console
 
@@ -134,4 +144,3 @@ If you see `Missing script: "build"` for print-proxy:
 1. Deploy backend to Render
 2. Update frontend config to point to Render
 3. Test the application
-

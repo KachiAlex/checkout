@@ -1,4 +1,4 @@
-import { PaymentMethod, PaymentStatus } from '@pos-checkout/shared';
+import { PaymentMethod, PaymentStatus } from "@pos-checkout/shared";
 
 export interface PaymentContext {
   order_id: string;

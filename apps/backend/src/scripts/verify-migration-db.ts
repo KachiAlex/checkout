@@ -25,8 +25,14 @@ async function main() {
     };
 
     const samples = {
-      tenants: await prisma.tenant.findMany({ select: { id: true, slug: true, name: true }, take: 3 }),
-      locations: await prisma.location.findMany({ select: { id: true, name: true, tenantId: true }, take: 3 }),
+      tenants: await prisma.tenant.findMany({
+        select: { id: true, slug: true, name: true },
+        take: 3,
+      }),
+      locations: await prisma.location.findMany({
+        select: { id: true, name: true, tenantId: true },
+        take: 3,
+      }),
       orders: await prisma.order.findMany({
         select: { id: true, orderNumber: true, tenantId: true, totalCents: true, createdAt: true },
         orderBy: { createdAt: 'desc' },

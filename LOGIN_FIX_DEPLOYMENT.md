@@ -1,6 +1,7 @@
 # Login Authorization Header Fix - Deployment Summary
 
 ## Issue
+
 User reported "missing authorization header status" error when trying to log in after the security fix.
 
 ## Root Cause Analysis
@@ -16,18 +17,21 @@ The frontend interceptor code was correct, but the `VITE_SUPABASE_ANON_KEY` envi
 ## Changes Made
 
 ### Frontend (`apps/frontend/src/stores/authStore.ts`)
+
 - The interceptor already correctly sends:
   - `apikey` header for all Supabase requests
   - `Authorization: Bearer <anon-key>` for login endpoints
   - Enhanced error logging for missing environment variables
 
 ### Build Process
+
 - Rebuilt frontend with `npm run build` to ensure `VITE_SUPABASE_ANON_KEY` is embedded
 - Deployed to Firebase Hosting
 
 ## Deployment Status
 
 ✅ **Frontend rebuilt and deployed**
+
 - Build completed successfully
 - Deployed to: https://checkout-77d99.web.app
 
@@ -120,12 +124,20 @@ If the `.env` file isn't being read during Firebase build, you can set the envir
 Run this in the browser console after the page loads:
 
 ```javascript
-console.log('API URL:', import.meta.env.VITE_API_URL || 'https://lyxwslsckkbcpepxigdx.supabase.co/functions/v1');
-console.log('Anon Key Set:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-console.log('Anon Key Prefix:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) || 'NOT SET');
+console.log(
+  "API URL:",
+  import.meta.env.VITE_API_URL ||
+    "https://lyxwslsckkbcpepxigdx.supabase.co/functions/v1",
+);
+console.log("Anon Key Set:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+console.log(
+  "Anon Key Prefix:",
+  import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) || "NOT SET",
+);
 ```
 
 Expected output:
+
 - `Anon Key Set: true`
 - `Anon Key Prefix: eyJhbGciOiJIUzI1NiI` (or similar)
 
@@ -135,7 +147,7 @@ If `Anon Key Set: false`, the environment variable wasn't embedded in the build.
 
 1. **Test login** with the steps above
 2. **If it works**: Great! The fix is complete
-3. **If it still fails**: 
+3. **If it still fails**:
    - Check browser console for specific error messages
    - Check Supabase function logs
    - Verify Supabase Edge Function settings
@@ -147,4 +159,3 @@ If `Anon Key Set: false`, the environment variable wasn't embedded in the build.
 - The issue is likely related to environment variable embedding in the build
 - Firebase Hosting build process might not have access to `.env` files
 - Consider using Firebase Hosting environment variables for production builds
-

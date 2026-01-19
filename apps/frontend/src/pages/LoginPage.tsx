@@ -10,6 +10,7 @@ import { generateUUID } from "../utils/uuid";
 import { SEO } from "../components/SEO";
 
 type LoginVariant = "tenant" | "superadmin";
+type TenantLoginMethod = "slug" | "email";
 
 interface LoginPageProps {
   variant?: LoginVariant;
@@ -21,8 +22,11 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, loginSuperAdmin } = useAuthStore((state) => ({
+  const [tenantLoginMethod, setTenantLoginMethod] =
+    useState<TenantLoginMethod>("slug");
+  const { login, loginWithEmail, loginSuperAdmin } = useAuthStore((state) => ({
     login: state.login,
+    loginWithEmail: state.loginWithEmail,
     loginSuperAdmin: state.loginSuperAdmin,
   }));
   const navigate = useNavigate();
@@ -57,23 +61,41 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
         toast.success("Welcome back");
         navigate("/superadmin/dashboard", { replace: true });
       } else {
-        if (!tenantSlug.trim()) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedSlug = tenantSlug.trim().toLowerCase();
+
+        if (!pin) {
+          throw new Error("PIN is required");
+        }
+
+        if (tenantLoginMethod === "slug" && !normalizedSlug) {
           throw new Error("Company slug is required");
         }
 
-        const normalizedSlug = tenantSlug.trim().toLowerCase();
-        attemptedTenantSlug = normalizedSlug;
+        if (tenantLoginMethod === "email" && !normalizedEmail) {
+          throw new Error("Email is required");
+        }
+
+        attemptedTenantSlug =
+          tenantLoginMethod === "slug" ? normalizedSlug : "";
+        attemptedEmail = tenantLoginMethod === "email" ? normalizedEmail : "";
 
         // Generate device ID (store in localStorage for persistence)
         const deviceId = localStorage.getItem("deviceId") ?? generateUUID();
         localStorage.setItem("deviceId", deviceId);
         attemptedDeviceId = deviceId;
 
-        await login(normalizedSlug, pin, deviceId);
+        if (tenantLoginMethod === "email") {
+          await loginWithEmail(normalizedEmail, pin, deviceId);
+        } else {
+          await login(normalizedSlug, pin, deviceId);
+        }
         const { user } = useAuthStore.getState();
         debugLog("Login success", {
           type: "tenant",
-          tenantSlug: normalizedSlug,
+          tenantSlug:
+            tenantLoginMethod === "slug" ? normalizedSlug : user?.tenantId,
+          email: tenantLoginMethod === "email" ? normalizedEmail : undefined,
           userRole: user?.role,
           locationId: user?.locationId,
         });
@@ -152,174 +174,221 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
         noindex
       />
       <div className="theme-background relative flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-10 overflow-x-hidden w-full">
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className={`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${glowPrimary} blur-[180px]`}
-        />
-        <div
-          className={`absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${glowSecondary} blur-[200px]`}
-        />
-      </div>
-
-      <div className="relative z-10 flex w-full max-w-md flex-col gap-4 sm:gap-6 px-1 sm:px-0">
-        <div className="flex justify-end pr-1 sm:pr-0">
-          <ThemeToggle />
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className={`absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full ${glowPrimary} blur-[180px]`}
+          />
+          <div
+            className={`absolute bottom-[-160px] right-[-80px] h-72 w-72 rounded-full ${glowSecondary} blur-[200px]`}
+          />
         </div>
-        <div className="theme-card rounded-2xl sm:rounded-3xl border px-4 py-6 sm:px-5 sm:py-8 lg:px-8 lg:py-10 backdrop-blur-xl">
-          <div className="flex flex-col items-center gap-3 sm:gap-4">
-            <BrandMark
-              size={64}
-              backgroundClassName={
-                theme === "light" ? "bg-white" : "bg-white/10"
-              }
-              className="ring-1 ring-slate-200/40 dark:ring-white/10 sm:w-[84px] sm:h-[84px]"
-            />
-            <div className="space-y-1.5 sm:space-y-2 text-center">
-              <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">
-                {variant === "superadmin"
-                  ? "Checkout Platform Console"
-                  : "POS Checkout MVP"}
-              </h1>
-              <p className="theme-text-secondary text-xs sm:text-sm px-2">
-                {variant === "superadmin"
-                  ? "Access the multi-tenant command center to provision and manage companies."
-                  : "Enter your company slug and secure PIN to access the checkout console."}
-              </p>
+
+        <div className="relative z-10 flex w-full max-w-md flex-col gap-4 sm:gap-6 px-1 sm:px-0">
+          <div className="flex justify-end pr-1 sm:pr-0">
+            <ThemeToggle />
+          </div>
+          <div className="theme-card rounded-2xl sm:rounded-3xl border px-4 py-6 sm:px-5 sm:py-8 lg:px-8 lg:py-10 backdrop-blur-xl">
+            <div className="flex flex-col items-center gap-3 sm:gap-4">
+              <BrandMark
+                size={64}
+                backgroundClassName={
+                  theme === "light" ? "bg-white" : "bg-white/10"
+                }
+                className="ring-1 ring-slate-200/40 dark:ring-white/10 sm:w-[84px] sm:h-[84px]"
+              />
+              <div className="space-y-1.5 sm:space-y-2 text-center">
+                <h1 className="theme-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">
+                  {variant === "superadmin"
+                    ? "Checkout Platform Console"
+                    : "POS Checkout MVP"}
+                </h1>
+                <p className="theme-text-secondary text-xs sm:text-sm px-2">
+                  {variant === "superadmin"
+                    ? "Access the multi-tenant command center to provision and manage companies."
+                    : "Pick your login method and use your secure PIN to access the checkout console."}
+                </p>
+              </div>
+            </div>
+            <form
+              onSubmit={handleSubmit}
+              className="mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5"
+            >
+              {variant === "superadmin" ? (
+                <>
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="email"
+                      className="theme-text-secondary text-sm font-medium"
+                    >
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="superadmin@checkouthq.com"
+                      className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400"
+                      autoComplete="username"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="password"
+                      className="theme-text-secondary text-sm font-medium"
+                    >
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Enter password"
+                      className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-sky-400"
+                      autoComplete="current-password"
+                      required
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 rounded-2xl bg-slate-50/40 p-1 dark:bg-white/5">
+                    {(
+                      [
+                        { label: "Company slug", value: "slug" },
+                        { label: "Email", value: "email" },
+                      ] as { label: string; value: TenantLoginMethod }[]
+                    ).map(({ label, value }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`flex-1 rounded-2xl px-3 py-2 text-xs sm:text-sm font-semibold transition ${
+                          tenantLoginMethod === value
+                            ? "bg-white text-slate-900 shadow dark:bg-slate-900 dark:text-white"
+                            : "text-slate-500 dark:text-slate-300"
+                        }`}
+                        onClick={() => setTenantLoginMethod(value)}
+                        disabled={loading}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {tenantLoginMethod === "slug" ? (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="tenant-slug"
+                        className="theme-text-secondary text-sm font-medium"
+                      >
+                        Company slug
+                      </label>
+                      <input
+                        id="tenant-slug"
+                        type="text"
+                        value={tenantSlug}
+                        onChange={(e) => setTenantSlug(e.target.value)}
+                        placeholder="acme-retail"
+                        className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
+                        inputMode="text"
+                        pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        title="Use lowercase letters, numbers, and hyphens only"
+                        required={tenantLoginMethod === "slug"}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="tenant-email"
+                        className="theme-text-secondary text-sm font-medium"
+                      >
+                        Email
+                      </label>
+                      <input
+                        id="tenant-email"
+                        type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="cashier@acme-retail.com"
+                        className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400"
+                        autoComplete="username"
+                        required={tenantLoginMethod === "email"}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="pin"
+                      className="theme-text-secondary text-sm font-medium"
+                    >
+                      Enter PIN or passphrase
+                    </label>
+                    <input
+                      id="pin"
+                      type="password"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                      placeholder="secure-pin"
+                      className="theme-surface w-full rounded-2xl border px-4 py-3 text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-sky-400"
+                      maxLength={64}
+                      autoFocus
+                      autoComplete="current-password"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+              <button
+                type="submit"
+                disabled={
+                  loading ||
+                  (variant === "superadmin"
+                    ? !email.trim() || !password
+                    : !pin ||
+                      (tenantLoginMethod === "slug"
+                        ? !tenantSlug.trim()
+                        : !email.trim()))
+                }
+                className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base lg:text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 touch-manipulation"
+              >
+                {loading ? "Logging in..." : "Login"}
+              </button>
+            </form>
+            <div className="theme-text-secondary mt-6 text-center text-xs space-y-2">
+              {variant === "tenant" ? (
+                <>
+                  <p>Default PINs: Admin (1234), Cashier (5678)</p>
+                  <p>
+                    Platform operator?{" "}
+                    <Link
+                      to="/superadmin/login"
+                      className="theme-text-primary underline-offset-4 hover:underline"
+                    >
+                      Sign in here
+                    </Link>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Use the platform credentials shared with your operations
+                    lead.
+                  </p>
+                  <p>
+                    Need to access a tenant console instead?{" "}
+                    <Link
+                      to="/login"
+                      className="theme-text-primary underline-offset-4 hover:underline"
+                    >
+                      Switch to tenant login
+                    </Link>
+                  </p>
+                </>
+              )}
             </div>
           </div>
-          <form
-            onSubmit={handleSubmit}
-            className="mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5"
-          >
-            {variant === "superadmin" ? (
-              <>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="theme-text-secondary text-sm font-medium"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="superadmin@checkouthq.com"
-                    className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400"
-                    autoComplete="username"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="password"
-                    className="theme-text-secondary text-sm font-medium"
-                  >
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Enter password"
-                    className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-sky-400"
-                    autoComplete="current-password"
-                    required
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="tenant-slug"
-                    className="theme-text-secondary text-sm font-medium"
-                  >
-                    Company slug
-                  </label>
-                  <input
-                    id="tenant-slug"
-                    type="text"
-                    value={tenantSlug}
-                    onChange={(e) => setTenantSlug(e.target.value)}
-                    placeholder="acme-retail"
-                    className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
-                    inputMode="text"
-                    pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
-                    title="Use lowercase letters, numbers, and hyphens only"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="pin"
-                    className="theme-text-secondary text-sm font-medium"
-                  >
-                    Enter PIN or passphrase
-                  </label>
-                  <input
-                    id="pin"
-                    type="password"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    placeholder="secure-pin"
-                    className="theme-surface w-full rounded-2xl border px-4 py-3 text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-sky-400"
-                    maxLength={64}
-                    autoFocus
-                    autoComplete="current-password"
-                    required
-                  />
-                </div>
-              </>
-            )}
-            <button
-              type="submit"
-              disabled={
-                loading ||
-                (variant === "superadmin"
-                  ? !email.trim() || !password
-                  : !pin || !tenantSlug.trim())
-              }
-              className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base lg:text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 touch-manipulation"
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
-          </form>
-          <div className="theme-text-secondary mt-6 text-center text-xs space-y-2">
-            {variant === "tenant" ? (
-              <>
-                <p>Default PINs: Admin (1234), Cashier (5678)</p>
-                <p>
-                  Platform operator?{" "}
-                  <Link
-                    to="/superadmin/login"
-                    className="theme-text-primary underline-offset-4 hover:underline"
-                  >
-                    Sign in here
-                  </Link>
-                </p>
-              </>
-            ) : (
-              <>
-                <p>
-                  Use the platform credentials shared with your operations lead.
-                </p>
-                <p>
-                  Need to access a tenant console instead?{" "}
-                  <Link
-                    to="/login"
-                    className="theme-text-primary underline-offset-4 hover:underline"
-                  >
-                    Switch to tenant login
-                  </Link>
-                </p>
-              </>
-            )}
-          </div>
         </div>
-      </div>
       </div>
     </>
   );

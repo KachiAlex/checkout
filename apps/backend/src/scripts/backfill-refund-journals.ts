@@ -213,7 +213,13 @@ async function main() {
   };
 
   // eslint-disable-next-line no-console
-  console.log('Refund backfill summary:', { scanned, created, skippedExisting, skippedNoTenant, failures });
+  console.log('Refund backfill summary:', {
+    scanned,
+    created,
+    skippedExisting,
+    skippedNoTenant,
+    failures,
+  });
   // eslint-disable-next-line no-console
   console.log('Counts:', counts);
 

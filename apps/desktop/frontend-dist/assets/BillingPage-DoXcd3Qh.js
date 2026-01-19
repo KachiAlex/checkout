@@ -1,1 +1,1473 @@
-import{e,A as s,a as t,r,j as a,N as i,B as n,z as l}from"./index-CcrCVdax.js";import{T as o}from"./ThemeToggle-Cx4IMCiE.js";import{g as c,u as d}from"./subscriptionPricingService-Bq-3uVrO.js";import{f as m}from"./format-CiGwivc0.js";async function u(t){const{data:r}=await e.get(`${s}/api/v1/promo-discounts`,{headers:{Authorization:`Bearer ${t}`}});return r}function x(){const{user:x,logout:p}=t(e=>({user:e.user,logout:e.logout})),[h,f]=r.useState(null),[b,g]=r.useState(!1),[y,v]=r.useState(!1),[j,N]=r.useState({}),[w,k]=r.useState({}),[C,P]=r.useState([]),[S,D]=r.useState(!1),[T,V]=r.useState(!1),[A,$]=r.useState(null),[F,U]=r.useState({code:"",name:"",description:"",discountType:"percentage",discountValue:0,applicablePlans:[],minPurchaseCents:void 0,maxDiscountCents:void 0,validFrom:(new Date).toISOString().split("T")[0],validUntil:new Date(Date.now()+2592e6).toISOString().split("T")[0],usageLimit:void 0,isActive:!0}),[L,M]=r.useState({});if(r.useEffect(()=>{if(!x?.isPlatformAdmin)return;(async()=>{g(!0),D(!0);try{const e=await c();f(e),N(e),k({starter:(e.starter?.priceCents??0)/100,professional:(e.professional?.priceCents??0)/100,enterprise:(e.enterprise?.priceCents??0)/100,lifetime:(e.lifetime?.priceCents??0)/100});const{accessToken:s}=t.getState();if(s){const e=await u(s);P(e)}}catch(e){l.error(e?.response?.data?.message||"Unable to load billing data")}finally{g(!1),D(!1)}})()},[x?.isPlatformAdmin]),!x?.isPlatformAdmin)return a.jsx(i,{to:"/login",replace:!0});const I=async()=>{const{accessToken:r}=t.getState();if(r)if(F.code&&F.name&&F.validFrom&&F.validUntil)if("percentage"===F.discountType&&(F.discountValue<0||F.discountValue>100))l.error("Percentage discount must be between 0 and 100");else try{const t={...F,discountValue:"fixed"===F.discountType&&void 0!==L.discountValue?Math.round(100*L.discountValue):F.discountValue,minPurchaseCents:L.minPurchase?Math.round(100*L.minPurchase):void 0,maxDiscountCents:L.maxDiscount?Math.round(100*L.maxDiscount):void 0};A?(await async function(t,r,a){const{data:i}=await e.put(`${s}/api/v1/promo-discounts/${t}`,r,{headers:{Authorization:`Bearer ${a}`}});return i}(A.id,t,r),l.success("Promo discount updated")):(await async function(t,r){const{data:a}=await e.post(`${s}/api/v1/promo-discounts`,t,{headers:{Authorization:`Bearer ${r}`}});return a}(t,r),l.success("Promo discount created"));const a=await u(r);P(a),V(!1)}catch(a){l.error(a?.response?.data?.error||"Failed to save promo discount")}else l.error("Please fill in all required fields");else l.error("Not authenticated")},z=async r=>{if(!confirm("Are you sure you want to delete this promo discount?"))return;const{accessToken:a}=t.getState();if(a)try{await async function(t,r){await e.delete(`${s}/api/v1/promo-discounts/${t}`,{headers:{Authorization:`Bearer ${r}`}})}(r,a),l.success("Promo discount deleted");const t=await u(a);P(t)}catch(i){l.error(i?.response?.data?.error||"Failed to delete promo discount")}else l.error("Not authenticated")};return a.jsxs("div",{className:"theme-background min-h-screen w-full overflow-x-hidden",children:[a.jsxs("div",{className:"mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10",children:[a.jsxs("header",{className:"flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:justify-between",children:[a.jsxs("div",{className:"flex items-start gap-3 sm:gap-4 min-w-0",children:[a.jsx(n,{size:40,backgroundClassName:"bg-white/90 dark:bg-white/10",className:"flex-shrink-0 sm:w-[60px] sm:h-[60px] ring-1 ring-slate-200/40 dark:ring-white/10"}),a.jsxs("div",{children:[a.jsx("p",{className:"theme-text-secondary text-xs uppercase tracking-[0.35em]",children:"Platform billing"}),a.jsx("h1",{className:"theme-text-primary mt-3 text-3xl font-semibold tracking-tight",children:"Subscription & Promo Management"}),a.jsx("p",{className:"theme-text-secondary mt-2 text-sm md:max-w-xl",children:"Configure subscription pricing tiers and manage promotional discount codes."})]})]}),a.jsxs("div",{className:"flex items-center gap-3",children:[a.jsx(o,{}),a.jsx("a",{href:"/superadmin/dashboard",className:"rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40",children:"Back to Dashboard"}),a.jsx("button",{onClick:p,className:"rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40",children:"Logout"})]})]}),a.jsxs("section",{className:"theme-card rounded-3xl border p-6 backdrop-blur-xl",children:[a.jsxs("div",{className:"flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6",children:[a.jsxs("div",{children:[a.jsx("h2",{className:"theme-text-primary text-lg font-semibold",children:"Subscription Pricing"}),a.jsx("p",{className:"theme-text-secondary mt-1 text-xs",children:"Configure monthly prices for each subscription tier. Prices are in dollars."})]}),a.jsx("button",{onClick:async()=>{const{accessToken:e}=t.getState();if(e)if(h){v(!0);try{const s={...h,starter:{...h.starter,priceCents:Math.round(100*(w.starter??0)),locations:j.starter?.locations??h.starter?.locations??1,users:j.starter?.users??h.starter?.users??10},professional:{...h.professional,priceCents:Math.round(100*(w.professional??0)),locations:j.professional?.locations??h.professional?.locations??5,users:j.professional?.users??h.professional?.users??15},enterprise:{...h.enterprise,priceCents:Math.round(100*(w.enterprise??0)),locations:j.enterprise?.locations??h.enterprise?.locations??0,users:j.enterprise?.users??h.enterprise?.users??0},lifetime:{...h.lifetime,priceCents:Math.round(100*(w.lifetime??0)),locations:j.lifetime?.locations??h.lifetime?.locations??0,users:j.lifetime?.users??h.lifetime?.users??0}},t=await d(s,e);f(t),N(t),k({starter:(t.starter?.priceCents??0)/100,professional:(t.professional?.priceCents??0)/100,enterprise:(t.enterprise?.priceCents??0)/100,lifetime:(t.lifetime?.priceCents??0)/100}),l.success("Pricing updated successfully")}catch(s){l.error(s?.response?.data?.message||"Unable to update pricing")}finally{v(!1)}}else l.error("Pricing config not loaded");else l.error("Not authenticated")},disabled:y||b,className:"rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:shadow-lg disabled:opacity-50",children:y?"Saving...":"Save Pricing"})]}),b?a.jsxs("div",{className:"text-center py-8",children:[a.jsx("div",{className:"inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent"}),a.jsx("p",{className:"theme-text-secondary mt-2 text-sm",children:"Loading pricing..."})]}):h?a.jsxs("div",{className:"grid gap-4 md:grid-cols-2 lg:grid-cols-5",children:[a.jsxs("div",{className:"rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4",children:[a.jsx("h3",{className:"theme-text-primary text-sm font-semibold text-emerald-400 mb-2",children:"Free (14-day trial)"}),a.jsx("p",{className:"theme-text-secondary text-xs mb-3",children:"Auto-assigned on registration"}),a.jsxs("div",{className:"space-y-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Price ($)"}),a.jsx("input",{type:"number",value:((h?.free?.priceCents??0)/100).toFixed(2),disabled:!0,className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Locations"}),a.jsx("input",{type:"number",value:j.free?.locations??1,disabled:!0,className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Users"}),a.jsx("input",{type:"number",value:j.free?.users??3,disabled:!0,className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50"})]})]})]}),a.jsxs("div",{className:"rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4",children:[a.jsx("h3",{className:"theme-text-primary text-sm font-semibold text-sky-400 mb-2",children:"Starter"}),a.jsx("p",{className:"theme-text-secondary text-xs mb-3",children:"Monthly subscription"}),a.jsxs("div",{className:"space-y-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Price ($)"}),a.jsx("input",{type:"number",step:"0.01",min:"0",value:w.starter??0,onChange:e=>k(s=>({...s,starter:parseFloat(e.target.value)||0})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Locations"}),a.jsx("input",{type:"number",min:"1",value:j.starter?.locations??h.starter?.locations??3,onChange:e=>N(s=>({...s,starter:{...s.starter,locations:parseInt(e.target.value)||1}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Users"}),a.jsx("input",{type:"number",min:"1",value:j.starter?.users??h.starter?.users??10,onChange:e=>N(s=>({...s,starter:{...s.starter,users:parseInt(e.target.value)||1}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400"})]})]})]}),a.jsxs("div",{className:"rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4",children:[a.jsx("h3",{className:"theme-text-primary text-sm font-semibold text-purple-400 mb-2",children:"Professional"}),a.jsx("p",{className:"theme-text-secondary text-xs mb-3",children:"Monthly subscription"}),a.jsxs("div",{className:"space-y-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Price ($)"}),a.jsx("input",{type:"number",step:"0.01",min:"0",value:w.professional??0,onChange:e=>k(s=>({...s,professional:parseFloat(e.target.value)||0})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Locations"}),a.jsx("input",{type:"number",min:"1",value:j.professional?.locations??h.professional?.locations??5,onChange:e=>N(s=>({...s,professional:{...s.professional,locations:parseInt(e.target.value)||5}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Users"}),a.jsx("input",{type:"number",min:"1",value:j.professional?.users??h.professional?.users??15,onChange:e=>N(s=>({...s,professional:{...s.professional,users:parseInt(e.target.value)||1}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"})]})]})]}),a.jsxs("div",{className:"rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4",children:[a.jsx("h3",{className:"theme-text-primary text-sm font-semibold text-indigo-400 mb-2",children:"Enterprise"}),a.jsx("p",{className:"theme-text-secondary text-xs mb-3",children:"Monthly subscription"}),a.jsxs("div",{className:"space-y-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Price ($)"}),a.jsx("input",{type:"number",step:"0.01",min:"0",value:w.enterprise??0,onChange:e=>k(s=>({...s,enterprise:parseFloat(e.target.value)||0})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Locations (0 = unlimited)"}),a.jsx("input",{type:"number",min:"0",value:j.enterprise?.locations??h.enterprise?.locations??0,onChange:e=>N(s=>({...s,enterprise:{...s.enterprise,locations:parseInt(e.target.value)||0}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Users (0 = unlimited)"}),a.jsx("input",{type:"number",min:"0",value:j.enterprise?.users??h.enterprise?.users??0,onChange:e=>N(s=>({...s,enterprise:{...s.enterprise,users:parseInt(e.target.value)||0}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"})]})]})]}),a.jsxs("div",{className:"rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4",children:[a.jsx("h3",{className:"theme-text-primary text-sm font-semibold text-purple-400 mb-2",children:"Lifetime"}),a.jsx("p",{className:"theme-text-secondary text-xs mb-3",children:"One-time payment"}),a.jsxs("div",{className:"space-y-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Price ($)"}),a.jsx("input",{type:"number",step:"0.01",min:"0",value:w.lifetime??0,onChange:e=>k(s=>({...s,lifetime:parseFloat(e.target.value)||0})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Locations (0 = unlimited)"}),a.jsx("input",{type:"number",min:"0",value:j.lifetime?.locations??h.lifetime?.locations??0,onChange:e=>N(s=>({...s,lifetime:{...s.lifetime,locations:parseInt(e.target.value)||0}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-xs mb-1 block",children:"Users (0 = unlimited)"}),a.jsx("input",{type:"number",min:"0",value:j.lifetime?.users??h.lifetime?.users??0,onChange:e=>N(s=>({...s,lifetime:{...s.lifetime,users:parseInt(e.target.value)||0}})),className:"theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400"})]})]})]})]}):null]}),a.jsxs("section",{className:"theme-card rounded-3xl border p-6 backdrop-blur-xl",children:[a.jsxs("div",{className:"flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6",children:[a.jsxs("div",{children:[a.jsx("h2",{className:"theme-text-primary text-lg font-semibold",children:"Promo Discounts"}),a.jsx("p",{className:"theme-text-secondary mt-1 text-xs",children:"Create and manage promotional discount codes for subscription plans."})]}),a.jsx("button",{onClick:()=>{$(null),U({code:"",name:"",description:"",discountType:"percentage",discountValue:0,applicablePlans:[],minPurchaseCents:void 0,maxDiscountCents:void 0,validFrom:(new Date).toISOString().split("T")[0],validUntil:new Date(Date.now()+2592e6).toISOString().split("T")[0],usageLimit:void 0,isActive:!0}),M({minPurchase:void 0,maxDiscount:void 0,discountValue:void 0}),V(!0)},className:"rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:shadow-lg",children:"+ Create Promo"})]}),S?a.jsxs("div",{className:"text-center py-8",children:[a.jsx("div",{className:"inline-block h-6 w-6 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent"}),a.jsx("p",{className:"theme-text-secondary mt-2 text-sm",children:"Loading promo discounts..."})]}):0===C.length?a.jsx("div",{className:"text-center py-12",children:a.jsx("p",{className:"theme-text-secondary text-sm",children:"No promo discounts yet. Create one to get started."})}):a.jsx("div",{className:"overflow-x-auto",children:a.jsxs("table",{className:"min-w-full divide-y divide-white/10 text-sm",children:[a.jsx("thead",{children:a.jsxs("tr",{children:[a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",children:"Code"}),a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",children:"Name"}),a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",children:"Discount"}),a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",children:"Plans"}),a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",children:"Valid Until"}),a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",children:"Usage"}),a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",children:"Status"}),a.jsx("th",{className:"theme-text-secondary px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider",children:"Actions"})]})}),a.jsx("tbody",{className:"divide-y divide-white/5",children:C.map(e=>a.jsxs("tr",{className:"hover:bg-white/5",children:[a.jsx("td",{className:"theme-text-primary px-4 py-3 font-mono font-semibold",children:e.code}),a.jsx("td",{className:"theme-text-primary px-4 py-3",children:e.name}),a.jsx("td",{className:"theme-text-primary px-4 py-3",children:"percentage"===e.discountType?`${e.discountValue}%`:`$${(e.discountValue/100).toFixed(2)}`}),a.jsx("td",{className:"theme-text-secondary px-4 py-3",children:a.jsx("div",{className:"flex flex-wrap gap-1",children:e.applicablePlans.map(e=>a.jsx("span",{className:"theme-chip rounded-full border px-2 py-0.5 text-xs capitalize",children:e},e))})}),a.jsx("td",{className:"theme-text-secondary px-4 py-3",children:m(new Date(e.validUntil),"MMM dd, yyyy")}),a.jsxs("td",{className:"theme-text-secondary px-4 py-3",children:[e.usageCount,e.usageLimit?` / ${e.usageLimit}`:""]}),a.jsx("td",{className:"px-4 py-3",children:a.jsxs("span",{className:"inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold "+(e.isActive?"border-emerald-500/30 bg-emerald-500/10 text-emerald-400":"border-slate-500/30 bg-slate-500/10 text-slate-400"),children:[a.jsx("span",{className:"h-1.5 w-1.5 rounded-full bg-current"}),e.isActive?"Active":"Inactive"]})}),a.jsx("td",{className:"px-4 py-3 text-right",children:a.jsxs("div",{className:"flex items-center justify-end gap-2",children:[a.jsx("button",{onClick:()=>(e=>{$(e),U({code:e.code,name:e.name,description:e.description||"",discountType:e.discountType,discountValue:e.discountValue,applicablePlans:e.applicablePlans,minPurchaseCents:e.minPurchaseCents,maxDiscountCents:e.maxDiscountCents,validFrom:e.validFrom.split("T")[0],validUntil:e.validUntil.split("T")[0],usageLimit:e.usageLimit,isActive:e.isActive}),M({minPurchase:e.minPurchaseCents?e.minPurchaseCents/100:void 0,maxDiscount:e.maxDiscountCents?e.maxDiscountCents/100:void 0,discountValue:"fixed"===e.discountType?e.discountValue/100:void 0}),V(!0)})(e),className:"theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400",children:"Edit"}),a.jsx("button",{onClick:()=>z(e.id),className:"theme-chip rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 transition hover:bg-red-500/20",children:"Delete"})]})})]},e.id))})]})})]})]}),T&&a.jsx("div",{className:"fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm",children:a.jsxs("div",{className:"theme-card relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border p-6 backdrop-blur-xl",children:[a.jsx("button",{onClick:()=>V(!1),className:"absolute top-4 right-4 text-slate-400 hover:text-white transition","aria-label":"Close",children:a.jsx("span",{className:"text-2xl",children:"×"})}),a.jsx("h2",{className:"theme-text-primary text-xl font-semibold mb-4",children:A?"Edit Promo Discount":"Create Promo Discount"}),a.jsxs("form",{onSubmit:e=>{e.preventDefault(),I()},className:"space-y-4",children:[a.jsxs("div",{className:"grid gap-4 md:grid-cols-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Promo Code *"}),a.jsx("input",{type:"text",value:F.code,onChange:e=>U(s=>({...s,code:e.target.value.toUpperCase()})),placeholder:"SUMMER2024",className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm font-mono uppercase outline-none focus:ring-2 focus:ring-sky-400",required:!0})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Name *"}),a.jsx("input",{type:"text",value:F.name,onChange:e=>U(s=>({...s,name:e.target.value})),placeholder:"Summer Sale 2024",className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",required:!0})]})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Description"}),a.jsx("textarea",{value:F.description,onChange:e=>U(s=>({...s,description:e.target.value})),placeholder:"Optional description for this promo code",rows:2,className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"})]}),a.jsxs("div",{className:"grid gap-4 md:grid-cols-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Discount Type *"}),a.jsxs("select",{value:F.discountType,onChange:e=>{const s=e.target.value;U(e=>({...e,discountType:s,discountValue:0})),M("fixed"===s?e=>({...e,discountValue:0}):e=>({...e,discountValue:void 0}))},className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",required:!0,children:[a.jsx("option",{value:"percentage",children:"Percentage (%)"}),a.jsx("option",{value:"fixed",children:"Fixed Amount ($)"})]})]}),a.jsxs("div",{children:[a.jsxs("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:["Discount Value * ","percentage"===F.discountType?"(0-100%)":"($)"]}),a.jsx("input",{type:"number",value:"fixed"===F.discountType&&void 0!==L.discountValue?L.discountValue:F.discountValue,onChange:e=>{const s=parseFloat(e.target.value)||0;"fixed"===F.discountType?M(e=>({...e,discountValue:s})):U(e=>({...e,discountValue:s}))},min:0,max:"percentage"===F.discountType?100:void 0,step:"percentage"===F.discountType?1:.01,className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",required:!0})]})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-2 block",children:"Applicable Plans *"}),a.jsx("div",{className:"flex flex-wrap gap-2",children:["starter","professional","enterprise"].map(e=>a.jsx("button",{type:"button",onClick:()=>(e=>{const s=F.applicablePlans||[];s.includes(e)?U(t=>({...t,applicablePlans:s.filter(s=>s!==e)})):U(t=>({...t,applicablePlans:[...s,e]}))})(e),className:"rounded-full border px-4 py-2 text-xs font-semibold capitalize transition "+(F.applicablePlans?.includes(e)?"border-sky-500 bg-sky-500/20 text-sky-400":"border-white/20 text-slate-300 hover:border-white/40"),children:e},e))})]}),a.jsxs("div",{className:"grid gap-4 md:grid-cols-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Valid From *"}),a.jsx("input",{type:"date",value:F.validFrom,onChange:e=>U(s=>({...s,validFrom:e.target.value})),className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",required:!0})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Valid Until *"}),a.jsx("input",{type:"date",value:F.validUntil,onChange:e=>U(s=>({...s,validUntil:e.target.value})),className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",required:!0})]})]}),a.jsxs("div",{className:"grid gap-4 md:grid-cols-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Min Purchase ($, optional)"}),a.jsx("input",{type:"number",step:"0.01",min:"0",value:L.minPurchase??"",onChange:e=>M(s=>({...s,minPurchase:e.target.value?parseFloat(e.target.value):void 0})),className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"})]}),a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Max Discount ($, optional)"}),a.jsx("input",{type:"number",step:"0.01",min:"0",value:L.maxDiscount??"",onChange:e=>M(s=>({...s,maxDiscount:e.target.value?parseFloat(e.target.value):void 0})),className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"})]})]}),a.jsxs("div",{className:"grid gap-4 md:grid-cols-2",children:[a.jsxs("div",{children:[a.jsx("label",{className:"theme-text-secondary text-sm font-medium mb-1 block",children:"Usage Limit (optional)"}),a.jsx("input",{type:"number",value:F.usageLimit||"",onChange:e=>U(s=>({...s,usageLimit:e.target.value?parseInt(e.target.value):void 0})),min:1,className:"theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400"})]}),a.jsxs("div",{className:"flex items-center gap-2 pt-8",children:[a.jsx("input",{type:"checkbox",id:"isActive",checked:F.isActive,onChange:e=>U(s=>({...s,isActive:e.target.checked})),className:"h-4 w-4 rounded border-white/20"}),a.jsx("label",{htmlFor:"isActive",className:"theme-text-secondary text-sm",children:"Active"})]})]}),a.jsxs("div",{className:"flex gap-3 pt-4",children:[a.jsx("button",{type:"submit",className:"flex-1 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg",children:A?"Update Promo":"Create Promo"}),a.jsx("button",{type:"button",onClick:()=>V(!1),className:"rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-white/40",children:"Cancel"})]})]})]})})]})}export{x as BillingPage};
+import {
+  e,
+  A as s,
+  a as t,
+  r,
+  j as a,
+  N as i,
+  B as n,
+  z as l,
+} from "./index-CcrCVdax.js";
+import { T as o } from "./ThemeToggle-Cx4IMCiE.js";
+import { g as c, u as d } from "./subscriptionPricingService-Bq-3uVrO.js";
+import { f as m } from "./format-CiGwivc0.js";
+async function u(t) {
+  const { data: r } = await e.get(`${s}/api/v1/promo-discounts`, {
+    headers: { Authorization: `Bearer ${t}` },
+  });
+  return r;
+}
+function x() {
+  const { user: x, logout: p } = t((e) => ({ user: e.user, logout: e.logout })),
+    [h, f] = r.useState(null),
+    [b, g] = r.useState(!1),
+    [y, v] = r.useState(!1),
+    [j, N] = r.useState({}),
+    [w, k] = r.useState({}),
+    [C, P] = r.useState([]),
+    [S, D] = r.useState(!1),
+    [T, V] = r.useState(!1),
+    [A, $] = r.useState(null),
+    [F, U] = r.useState({
+      code: "",
+      name: "",
+      description: "",
+      discountType: "percentage",
+      discountValue: 0,
+      applicablePlans: [],
+      minPurchaseCents: void 0,
+      maxDiscountCents: void 0,
+      validFrom: new Date().toISOString().split("T")[0],
+      validUntil: new Date(Date.now() + 2592e6).toISOString().split("T")[0],
+      usageLimit: void 0,
+      isActive: !0,
+    }),
+    [L, M] = r.useState({});
+  if (
+    (r.useEffect(() => {
+      if (!x?.isPlatformAdmin) return;
+      (async () => {
+        (g(!0), D(!0));
+        try {
+          const e = await c();
+          (f(e),
+            N(e),
+            k({
+              starter: (e.starter?.priceCents ?? 0) / 100,
+              professional: (e.professional?.priceCents ?? 0) / 100,
+              enterprise: (e.enterprise?.priceCents ?? 0) / 100,
+              lifetime: (e.lifetime?.priceCents ?? 0) / 100,
+            }));
+          const { accessToken: s } = t.getState();
+          if (s) {
+            const e = await u(s);
+            P(e);
+          }
+        } catch (e) {
+          l.error(e?.response?.data?.message || "Unable to load billing data");
+        } finally {
+          (g(!1), D(!1));
+        }
+      })();
+    }, [x?.isPlatformAdmin]),
+    !x?.isPlatformAdmin)
+  )
+    return a.jsx(i, { to: "/login", replace: !0 });
+  const I = async () => {
+      const { accessToken: r } = t.getState();
+      if (r)
+        if (F.code && F.name && F.validFrom && F.validUntil)
+          if (
+            "percentage" === F.discountType &&
+            (F.discountValue < 0 || F.discountValue > 100)
+          )
+            l.error("Percentage discount must be between 0 and 100");
+          else
+            try {
+              const t = {
+                ...F,
+                discountValue:
+                  "fixed" === F.discountType && void 0 !== L.discountValue
+                    ? Math.round(100 * L.discountValue)
+                    : F.discountValue,
+                minPurchaseCents: L.minPurchase
+                  ? Math.round(100 * L.minPurchase)
+                  : void 0,
+                maxDiscountCents: L.maxDiscount
+                  ? Math.round(100 * L.maxDiscount)
+                  : void 0,
+              };
+              A
+                ? (await (async function (t, r, a) {
+                    const { data: i } = await e.put(
+                      `${s}/api/v1/promo-discounts/${t}`,
+                      r,
+                      { headers: { Authorization: `Bearer ${a}` } },
+                    );
+                    return i;
+                  })(A.id, t, r),
+                  l.success("Promo discount updated"))
+                : (await (async function (t, r) {
+                    const { data: a } = await e.post(
+                      `${s}/api/v1/promo-discounts`,
+                      t,
+                      { headers: { Authorization: `Bearer ${r}` } },
+                    );
+                    return a;
+                  })(t, r),
+                  l.success("Promo discount created"));
+              const a = await u(r);
+              (P(a), V(!1));
+            } catch (a) {
+              l.error(
+                a?.response?.data?.error || "Failed to save promo discount",
+              );
+            }
+        else l.error("Please fill in all required fields");
+      else l.error("Not authenticated");
+    },
+    z = async (r) => {
+      if (!confirm("Are you sure you want to delete this promo discount?"))
+        return;
+      const { accessToken: a } = t.getState();
+      if (a)
+        try {
+          (await (async function (t, r) {
+            await e.delete(`${s}/api/v1/promo-discounts/${t}`, {
+              headers: { Authorization: `Bearer ${r}` },
+            });
+          })(r, a),
+            l.success("Promo discount deleted"));
+          const t = await u(a);
+          P(t);
+        } catch (i) {
+          l.error(
+            i?.response?.data?.error || "Failed to delete promo discount",
+          );
+        }
+      else l.error("Not authenticated");
+    };
+  return a.jsxs("div", {
+    className: "theme-background min-h-screen w-full overflow-x-hidden",
+    children: [
+      a.jsxs("div", {
+        className:
+          "mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10",
+        children: [
+          a.jsxs("header", {
+            className:
+              "flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:justify-between",
+            children: [
+              a.jsxs("div", {
+                className: "flex items-start gap-3 sm:gap-4 min-w-0",
+                children: [
+                  a.jsx(n, {
+                    size: 40,
+                    backgroundClassName: "bg-white/90 dark:bg-white/10",
+                    className:
+                      "flex-shrink-0 sm:w-[60px] sm:h-[60px] ring-1 ring-slate-200/40 dark:ring-white/10",
+                  }),
+                  a.jsxs("div", {
+                    children: [
+                      a.jsx("p", {
+                        className:
+                          "theme-text-secondary text-xs uppercase tracking-[0.35em]",
+                        children: "Platform billing",
+                      }),
+                      a.jsx("h1", {
+                        className:
+                          "theme-text-primary mt-3 text-3xl font-semibold tracking-tight",
+                        children: "Subscription & Promo Management",
+                      }),
+                      a.jsx("p", {
+                        className:
+                          "theme-text-secondary mt-2 text-sm md:max-w-xl",
+                        children:
+                          "Configure subscription pricing tiers and manage promotional discount codes.",
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              a.jsxs("div", {
+                className: "flex items-center gap-3",
+                children: [
+                  a.jsx(o, {}),
+                  a.jsx("a", {
+                    href: "/superadmin/dashboard",
+                    className:
+                      "rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40",
+                    children: "Back to Dashboard",
+                  }),
+                  a.jsx("button", {
+                    onClick: p,
+                    className:
+                      "rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-white/40",
+                    children: "Logout",
+                  }),
+                ],
+              }),
+            ],
+          }),
+          a.jsxs("section", {
+            className: "theme-card rounded-3xl border p-6 backdrop-blur-xl",
+            children: [
+              a.jsxs("div", {
+                className:
+                  "flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6",
+                children: [
+                  a.jsxs("div", {
+                    children: [
+                      a.jsx("h2", {
+                        className: "theme-text-primary text-lg font-semibold",
+                        children: "Subscription Pricing",
+                      }),
+                      a.jsx("p", {
+                        className: "theme-text-secondary mt-1 text-xs",
+                        children:
+                          "Configure monthly prices for each subscription tier. Prices are in dollars.",
+                      }),
+                    ],
+                  }),
+                  a.jsx("button", {
+                    onClick: async () => {
+                      const { accessToken: e } = t.getState();
+                      if (e)
+                        if (h) {
+                          v(!0);
+                          try {
+                            const s = {
+                                ...h,
+                                starter: {
+                                  ...h.starter,
+                                  priceCents: Math.round(
+                                    100 * (w.starter ?? 0),
+                                  ),
+                                  locations:
+                                    j.starter?.locations ??
+                                    h.starter?.locations ??
+                                    1,
+                                  users:
+                                    j.starter?.users ?? h.starter?.users ?? 10,
+                                },
+                                professional: {
+                                  ...h.professional,
+                                  priceCents: Math.round(
+                                    100 * (w.professional ?? 0),
+                                  ),
+                                  locations:
+                                    j.professional?.locations ??
+                                    h.professional?.locations ??
+                                    5,
+                                  users:
+                                    j.professional?.users ??
+                                    h.professional?.users ??
+                                    15,
+                                },
+                                enterprise: {
+                                  ...h.enterprise,
+                                  priceCents: Math.round(
+                                    100 * (w.enterprise ?? 0),
+                                  ),
+                                  locations:
+                                    j.enterprise?.locations ??
+                                    h.enterprise?.locations ??
+                                    0,
+                                  users:
+                                    j.enterprise?.users ??
+                                    h.enterprise?.users ??
+                                    0,
+                                },
+                                lifetime: {
+                                  ...h.lifetime,
+                                  priceCents: Math.round(
+                                    100 * (w.lifetime ?? 0),
+                                  ),
+                                  locations:
+                                    j.lifetime?.locations ??
+                                    h.lifetime?.locations ??
+                                    0,
+                                  users:
+                                    j.lifetime?.users ?? h.lifetime?.users ?? 0,
+                                },
+                              },
+                              t = await d(s, e);
+                            (f(t),
+                              N(t),
+                              k({
+                                starter: (t.starter?.priceCents ?? 0) / 100,
+                                professional:
+                                  (t.professional?.priceCents ?? 0) / 100,
+                                enterprise:
+                                  (t.enterprise?.priceCents ?? 0) / 100,
+                                lifetime: (t.lifetime?.priceCents ?? 0) / 100,
+                              }),
+                              l.success("Pricing updated successfully"));
+                          } catch (s) {
+                            l.error(
+                              s?.response?.data?.message ||
+                                "Unable to update pricing",
+                            );
+                          } finally {
+                            v(!1);
+                          }
+                        } else l.error("Pricing config not loaded");
+                      else l.error("Not authenticated");
+                    },
+                    disabled: y || b,
+                    className:
+                      "rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:shadow-lg disabled:opacity-50",
+                    children: y ? "Saving..." : "Save Pricing",
+                  }),
+                ],
+              }),
+              b
+                ? a.jsxs("div", {
+                    className: "text-center py-8",
+                    children: [
+                      a.jsx("div", {
+                        className:
+                          "inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent",
+                      }),
+                      a.jsx("p", {
+                        className: "theme-text-secondary mt-2 text-sm",
+                        children: "Loading pricing...",
+                      }),
+                    ],
+                  })
+                : h
+                  ? a.jsxs("div", {
+                      className: "grid gap-4 md:grid-cols-2 lg:grid-cols-5",
+                      children: [
+                        a.jsxs("div", {
+                          className:
+                            "rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4",
+                          children: [
+                            a.jsx("h3", {
+                              className:
+                                "theme-text-primary text-sm font-semibold text-emerald-400 mb-2",
+                              children: "Free (14-day trial)",
+                            }),
+                            a.jsx("p", {
+                              className: "theme-text-secondary text-xs mb-3",
+                              children: "Auto-assigned on registration",
+                            }),
+                            a.jsxs("div", {
+                              className: "space-y-2",
+                              children: [
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Price ($)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      value: (
+                                        (h?.free?.priceCents ?? 0) / 100
+                                      ).toFixed(2),
+                                      disabled: !0,
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Locations",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      value: j.free?.locations ?? 1,
+                                      disabled: !0,
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Users",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      value: j.free?.users ?? 3,
+                                      disabled: !0,
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none opacity-50",
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        a.jsxs("div", {
+                          className:
+                            "rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4",
+                          children: [
+                            a.jsx("h3", {
+                              className:
+                                "theme-text-primary text-sm font-semibold text-sky-400 mb-2",
+                              children: "Starter",
+                            }),
+                            a.jsx("p", {
+                              className: "theme-text-secondary text-xs mb-3",
+                              children: "Monthly subscription",
+                            }),
+                            a.jsxs("div", {
+                              className: "space-y-2",
+                              children: [
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Price ($)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      step: "0.01",
+                                      min: "0",
+                                      value: w.starter ?? 0,
+                                      onChange: (e) =>
+                                        k((s) => ({
+                                          ...s,
+                                          starter:
+                                            parseFloat(e.target.value) || 0,
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Locations",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "1",
+                                      value:
+                                        j.starter?.locations ??
+                                        h.starter?.locations ??
+                                        3,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          starter: {
+                                            ...s.starter,
+                                            locations:
+                                              parseInt(e.target.value) || 1,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Users",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "1",
+                                      value:
+                                        j.starter?.users ??
+                                        h.starter?.users ??
+                                        10,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          starter: {
+                                            ...s.starter,
+                                            users:
+                                              parseInt(e.target.value) || 1,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        a.jsxs("div", {
+                          className:
+                            "rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4",
+                          children: [
+                            a.jsx("h3", {
+                              className:
+                                "theme-text-primary text-sm font-semibold text-purple-400 mb-2",
+                              children: "Professional",
+                            }),
+                            a.jsx("p", {
+                              className: "theme-text-secondary text-xs mb-3",
+                              children: "Monthly subscription",
+                            }),
+                            a.jsxs("div", {
+                              className: "space-y-2",
+                              children: [
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Price ($)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      step: "0.01",
+                                      min: "0",
+                                      value: w.professional ?? 0,
+                                      onChange: (e) =>
+                                        k((s) => ({
+                                          ...s,
+                                          professional:
+                                            parseFloat(e.target.value) || 0,
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Locations",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "1",
+                                      value:
+                                        j.professional?.locations ??
+                                        h.professional?.locations ??
+                                        5,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          professional: {
+                                            ...s.professional,
+                                            locations:
+                                              parseInt(e.target.value) || 5,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Users",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "1",
+                                      value:
+                                        j.professional?.users ??
+                                        h.professional?.users ??
+                                        15,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          professional: {
+                                            ...s.professional,
+                                            users:
+                                              parseInt(e.target.value) || 1,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400",
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        a.jsxs("div", {
+                          className:
+                            "rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4",
+                          children: [
+                            a.jsx("h3", {
+                              className:
+                                "theme-text-primary text-sm font-semibold text-indigo-400 mb-2",
+                              children: "Enterprise",
+                            }),
+                            a.jsx("p", {
+                              className: "theme-text-secondary text-xs mb-3",
+                              children: "Monthly subscription",
+                            }),
+                            a.jsxs("div", {
+                              className: "space-y-2",
+                              children: [
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Price ($)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      step: "0.01",
+                                      min: "0",
+                                      value: w.enterprise ?? 0,
+                                      onChange: (e) =>
+                                        k((s) => ({
+                                          ...s,
+                                          enterprise:
+                                            parseFloat(e.target.value) || 0,
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Locations (0 = unlimited)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "0",
+                                      value:
+                                        j.enterprise?.locations ??
+                                        h.enterprise?.locations ??
+                                        0,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          enterprise: {
+                                            ...s.enterprise,
+                                            locations:
+                                              parseInt(e.target.value) || 0,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Users (0 = unlimited)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "0",
+                                      value:
+                                        j.enterprise?.users ??
+                                        h.enterprise?.users ??
+                                        0,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          enterprise: {
+                                            ...s.enterprise,
+                                            users:
+                                              parseInt(e.target.value) || 0,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400",
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        a.jsxs("div", {
+                          className:
+                            "rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4",
+                          children: [
+                            a.jsx("h3", {
+                              className:
+                                "theme-text-primary text-sm font-semibold text-purple-400 mb-2",
+                              children: "Lifetime",
+                            }),
+                            a.jsx("p", {
+                              className: "theme-text-secondary text-xs mb-3",
+                              children: "One-time payment",
+                            }),
+                            a.jsxs("div", {
+                              className: "space-y-2",
+                              children: [
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Price ($)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      step: "0.01",
+                                      min: "0",
+                                      value: w.lifetime ?? 0,
+                                      onChange: (e) =>
+                                        k((s) => ({
+                                          ...s,
+                                          lifetime:
+                                            parseFloat(e.target.value) || 0,
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Locations (0 = unlimited)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "0",
+                                      value:
+                                        j.lifetime?.locations ??
+                                        h.lifetime?.locations ??
+                                        0,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          lifetime: {
+                                            ...s.lifetime,
+                                            locations:
+                                              parseInt(e.target.value) || 0,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400",
+                                    }),
+                                  ],
+                                }),
+                                a.jsxs("div", {
+                                  children: [
+                                    a.jsx("label", {
+                                      className:
+                                        "theme-text-secondary text-xs mb-1 block",
+                                      children: "Users (0 = unlimited)",
+                                    }),
+                                    a.jsx("input", {
+                                      type: "number",
+                                      min: "0",
+                                      value:
+                                        j.lifetime?.users ??
+                                        h.lifetime?.users ??
+                                        0,
+                                      onChange: (e) =>
+                                        N((s) => ({
+                                          ...s,
+                                          lifetime: {
+                                            ...s.lifetime,
+                                            users:
+                                              parseInt(e.target.value) || 0,
+                                          },
+                                        })),
+                                      className:
+                                        "theme-surface w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-400",
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    })
+                  : null,
+            ],
+          }),
+          a.jsxs("section", {
+            className: "theme-card rounded-3xl border p-6 backdrop-blur-xl",
+            children: [
+              a.jsxs("div", {
+                className:
+                  "flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6",
+                children: [
+                  a.jsxs("div", {
+                    children: [
+                      a.jsx("h2", {
+                        className: "theme-text-primary text-lg font-semibold",
+                        children: "Promo Discounts",
+                      }),
+                      a.jsx("p", {
+                        className: "theme-text-secondary mt-1 text-xs",
+                        children:
+                          "Create and manage promotional discount codes for subscription plans.",
+                      }),
+                    ],
+                  }),
+                  a.jsx("button", {
+                    onClick: () => {
+                      ($(null),
+                        U({
+                          code: "",
+                          name: "",
+                          description: "",
+                          discountType: "percentage",
+                          discountValue: 0,
+                          applicablePlans: [],
+                          minPurchaseCents: void 0,
+                          maxDiscountCents: void 0,
+                          validFrom: new Date().toISOString().split("T")[0],
+                          validUntil: new Date(Date.now() + 2592e6)
+                            .toISOString()
+                            .split("T")[0],
+                          usageLimit: void 0,
+                          isActive: !0,
+                        }),
+                        M({
+                          minPurchase: void 0,
+                          maxDiscount: void 0,
+                          discountValue: void 0,
+                        }),
+                        V(!0));
+                    },
+                    className:
+                      "rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:shadow-lg",
+                    children: "+ Create Promo",
+                  }),
+                ],
+              }),
+              S
+                ? a.jsxs("div", {
+                    className: "text-center py-8",
+                    children: [
+                      a.jsx("div", {
+                        className:
+                          "inline-block h-6 w-6 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent",
+                      }),
+                      a.jsx("p", {
+                        className: "theme-text-secondary mt-2 text-sm",
+                        children: "Loading promo discounts...",
+                      }),
+                    ],
+                  })
+                : 0 === C.length
+                  ? a.jsx("div", {
+                      className: "text-center py-12",
+                      children: a.jsx("p", {
+                        className: "theme-text-secondary text-sm",
+                        children:
+                          "No promo discounts yet. Create one to get started.",
+                      }),
+                    })
+                  : a.jsx("div", {
+                      className: "overflow-x-auto",
+                      children: a.jsxs("table", {
+                        className:
+                          "min-w-full divide-y divide-white/10 text-sm",
+                        children: [
+                          a.jsx("thead", {
+                            children: a.jsxs("tr", {
+                              children: [
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",
+                                  children: "Code",
+                                }),
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",
+                                  children: "Name",
+                                }),
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",
+                                  children: "Discount",
+                                }),
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",
+                                  children: "Plans",
+                                }),
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",
+                                  children: "Valid Until",
+                                }),
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",
+                                  children: "Usage",
+                                }),
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider",
+                                  children: "Status",
+                                }),
+                                a.jsx("th", {
+                                  className:
+                                    "theme-text-secondary px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider",
+                                  children: "Actions",
+                                }),
+                              ],
+                            }),
+                          }),
+                          a.jsx("tbody", {
+                            className: "divide-y divide-white/5",
+                            children: C.map((e) =>
+                              a.jsxs(
+                                "tr",
+                                {
+                                  className: "hover:bg-white/5",
+                                  children: [
+                                    a.jsx("td", {
+                                      className:
+                                        "theme-text-primary px-4 py-3 font-mono font-semibold",
+                                      children: e.code,
+                                    }),
+                                    a.jsx("td", {
+                                      className: "theme-text-primary px-4 py-3",
+                                      children: e.name,
+                                    }),
+                                    a.jsx("td", {
+                                      className: "theme-text-primary px-4 py-3",
+                                      children:
+                                        "percentage" === e.discountType
+                                          ? `${e.discountValue}%`
+                                          : `$${(e.discountValue / 100).toFixed(2)}`,
+                                    }),
+                                    a.jsx("td", {
+                                      className:
+                                        "theme-text-secondary px-4 py-3",
+                                      children: a.jsx("div", {
+                                        className: "flex flex-wrap gap-1",
+                                        children: e.applicablePlans.map((e) =>
+                                          a.jsx(
+                                            "span",
+                                            {
+                                              className:
+                                                "theme-chip rounded-full border px-2 py-0.5 text-xs capitalize",
+                                              children: e,
+                                            },
+                                            e,
+                                          ),
+                                        ),
+                                      }),
+                                    }),
+                                    a.jsx("td", {
+                                      className:
+                                        "theme-text-secondary px-4 py-3",
+                                      children: m(
+                                        new Date(e.validUntil),
+                                        "MMM dd, yyyy",
+                                      ),
+                                    }),
+                                    a.jsxs("td", {
+                                      className:
+                                        "theme-text-secondary px-4 py-3",
+                                      children: [
+                                        e.usageCount,
+                                        e.usageLimit
+                                          ? ` / ${e.usageLimit}`
+                                          : "",
+                                      ],
+                                    }),
+                                    a.jsx("td", {
+                                      className: "px-4 py-3",
+                                      children: a.jsxs("span", {
+                                        className:
+                                          "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold " +
+                                          (e.isActive
+                                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                            : "border-slate-500/30 bg-slate-500/10 text-slate-400"),
+                                        children: [
+                                          a.jsx("span", {
+                                            className:
+                                              "h-1.5 w-1.5 rounded-full bg-current",
+                                          }),
+                                          e.isActive ? "Active" : "Inactive",
+                                        ],
+                                      }),
+                                    }),
+                                    a.jsx("td", {
+                                      className: "px-4 py-3 text-right",
+                                      children: a.jsxs("div", {
+                                        className:
+                                          "flex items-center justify-end gap-2",
+                                        children: [
+                                          a.jsx("button", {
+                                            onClick: () =>
+                                              ((e) => {
+                                                ($(e),
+                                                  U({
+                                                    code: e.code,
+                                                    name: e.name,
+                                                    description:
+                                                      e.description || "",
+                                                    discountType:
+                                                      e.discountType,
+                                                    discountValue:
+                                                      e.discountValue,
+                                                    applicablePlans:
+                                                      e.applicablePlans,
+                                                    minPurchaseCents:
+                                                      e.minPurchaseCents,
+                                                    maxDiscountCents:
+                                                      e.maxDiscountCents,
+                                                    validFrom:
+                                                      e.validFrom.split("T")[0],
+                                                    validUntil:
+                                                      e.validUntil.split(
+                                                        "T",
+                                                      )[0],
+                                                    usageLimit: e.usageLimit,
+                                                    isActive: e.isActive,
+                                                  }),
+                                                  M({
+                                                    minPurchase:
+                                                      e.minPurchaseCents
+                                                        ? e.minPurchaseCents /
+                                                          100
+                                                        : void 0,
+                                                    maxDiscount:
+                                                      e.maxDiscountCents
+                                                        ? e.maxDiscountCents /
+                                                          100
+                                                        : void 0,
+                                                    discountValue:
+                                                      "fixed" === e.discountType
+                                                        ? e.discountValue / 100
+                                                        : void 0,
+                                                  }),
+                                                  V(!0));
+                                              })(e),
+                                            className:
+                                              "theme-chip rounded-full border px-3 py-1 text-xs font-semibold transition hover:border-sky-400",
+                                            children: "Edit",
+                                          }),
+                                          a.jsx("button", {
+                                            onClick: () => z(e.id),
+                                            className:
+                                              "theme-chip rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 transition hover:bg-red-500/20",
+                                            children: "Delete",
+                                          }),
+                                        ],
+                                      }),
+                                    }),
+                                  ],
+                                },
+                                e.id,
+                              ),
+                            ),
+                          }),
+                        ],
+                      }),
+                    }),
+            ],
+          }),
+        ],
+      }),
+      T &&
+        a.jsx("div", {
+          className:
+            "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm",
+          children: a.jsxs("div", {
+            className:
+              "theme-card relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border p-6 backdrop-blur-xl",
+            children: [
+              a.jsx("button", {
+                onClick: () => V(!1),
+                className:
+                  "absolute top-4 right-4 text-slate-400 hover:text-white transition",
+                "aria-label": "Close",
+                children: a.jsx("span", {
+                  className: "text-2xl",
+                  children: "×",
+                }),
+              }),
+              a.jsx("h2", {
+                className: "theme-text-primary text-xl font-semibold mb-4",
+                children: A ? "Edit Promo Discount" : "Create Promo Discount",
+              }),
+              a.jsxs("form", {
+                onSubmit: (e) => {
+                  (e.preventDefault(), I());
+                },
+                className: "space-y-4",
+                children: [
+                  a.jsxs("div", {
+                    className: "grid gap-4 md:grid-cols-2",
+                    children: [
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Promo Code *",
+                          }),
+                          a.jsx("input", {
+                            type: "text",
+                            value: F.code,
+                            onChange: (e) =>
+                              U((s) => ({
+                                ...s,
+                                code: e.target.value.toUpperCase(),
+                              })),
+                            placeholder: "SUMMER2024",
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm font-mono uppercase outline-none focus:ring-2 focus:ring-sky-400",
+                            required: !0,
+                          }),
+                        ],
+                      }),
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Name *",
+                          }),
+                          a.jsx("input", {
+                            type: "text",
+                            value: F.name,
+                            onChange: (e) =>
+                              U((s) => ({ ...s, name: e.target.value })),
+                            placeholder: "Summer Sale 2024",
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                            required: !0,
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  a.jsxs("div", {
+                    children: [
+                      a.jsx("label", {
+                        className:
+                          "theme-text-secondary text-sm font-medium mb-1 block",
+                        children: "Description",
+                      }),
+                      a.jsx("textarea", {
+                        value: F.description,
+                        onChange: (e) =>
+                          U((s) => ({ ...s, description: e.target.value })),
+                        placeholder: "Optional description for this promo code",
+                        rows: 2,
+                        className:
+                          "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                      }),
+                    ],
+                  }),
+                  a.jsxs("div", {
+                    className: "grid gap-4 md:grid-cols-2",
+                    children: [
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Discount Type *",
+                          }),
+                          a.jsxs("select", {
+                            value: F.discountType,
+                            onChange: (e) => {
+                              const s = e.target.value;
+                              (U((e) => ({
+                                ...e,
+                                discountType: s,
+                                discountValue: 0,
+                              })),
+                                M(
+                                  "fixed" === s
+                                    ? (e) => ({ ...e, discountValue: 0 })
+                                    : (e) => ({ ...e, discountValue: void 0 }),
+                                ));
+                            },
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                            required: !0,
+                            children: [
+                              a.jsx("option", {
+                                value: "percentage",
+                                children: "Percentage (%)",
+                              }),
+                              a.jsx("option", {
+                                value: "fixed",
+                                children: "Fixed Amount ($)",
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                      a.jsxs("div", {
+                        children: [
+                          a.jsxs("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: [
+                              "Discount Value * ",
+                              "percentage" === F.discountType
+                                ? "(0-100%)"
+                                : "($)",
+                            ],
+                          }),
+                          a.jsx("input", {
+                            type: "number",
+                            value:
+                              "fixed" === F.discountType &&
+                              void 0 !== L.discountValue
+                                ? L.discountValue
+                                : F.discountValue,
+                            onChange: (e) => {
+                              const s = parseFloat(e.target.value) || 0;
+                              "fixed" === F.discountType
+                                ? M((e) => ({ ...e, discountValue: s }))
+                                : U((e) => ({ ...e, discountValue: s }));
+                            },
+                            min: 0,
+                            max: "percentage" === F.discountType ? 100 : void 0,
+                            step: "percentage" === F.discountType ? 1 : 0.01,
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                            required: !0,
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  a.jsxs("div", {
+                    children: [
+                      a.jsx("label", {
+                        className:
+                          "theme-text-secondary text-sm font-medium mb-2 block",
+                        children: "Applicable Plans *",
+                      }),
+                      a.jsx("div", {
+                        className: "flex flex-wrap gap-2",
+                        children: ["starter", "professional", "enterprise"].map(
+                          (e) =>
+                            a.jsx(
+                              "button",
+                              {
+                                type: "button",
+                                onClick: () =>
+                                  ((e) => {
+                                    const s = F.applicablePlans || [];
+                                    s.includes(e)
+                                      ? U((t) => ({
+                                          ...t,
+                                          applicablePlans: s.filter(
+                                            (s) => s !== e,
+                                          ),
+                                        }))
+                                      : U((t) => ({
+                                          ...t,
+                                          applicablePlans: [...s, e],
+                                        }));
+                                  })(e),
+                                className:
+                                  "rounded-full border px-4 py-2 text-xs font-semibold capitalize transition " +
+                                  (F.applicablePlans?.includes(e)
+                                    ? "border-sky-500 bg-sky-500/20 text-sky-400"
+                                    : "border-white/20 text-slate-300 hover:border-white/40"),
+                                children: e,
+                              },
+                              e,
+                            ),
+                        ),
+                      }),
+                    ],
+                  }),
+                  a.jsxs("div", {
+                    className: "grid gap-4 md:grid-cols-2",
+                    children: [
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Valid From *",
+                          }),
+                          a.jsx("input", {
+                            type: "date",
+                            value: F.validFrom,
+                            onChange: (e) =>
+                              U((s) => ({ ...s, validFrom: e.target.value })),
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                            required: !0,
+                          }),
+                        ],
+                      }),
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Valid Until *",
+                          }),
+                          a.jsx("input", {
+                            type: "date",
+                            value: F.validUntil,
+                            onChange: (e) =>
+                              U((s) => ({ ...s, validUntil: e.target.value })),
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                            required: !0,
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  a.jsxs("div", {
+                    className: "grid gap-4 md:grid-cols-2",
+                    children: [
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Min Purchase ($, optional)",
+                          }),
+                          a.jsx("input", {
+                            type: "number",
+                            step: "0.01",
+                            min: "0",
+                            value: L.minPurchase ?? "",
+                            onChange: (e) =>
+                              M((s) => ({
+                                ...s,
+                                minPurchase: e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : void 0,
+                              })),
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                          }),
+                        ],
+                      }),
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Max Discount ($, optional)",
+                          }),
+                          a.jsx("input", {
+                            type: "number",
+                            step: "0.01",
+                            min: "0",
+                            value: L.maxDiscount ?? "",
+                            onChange: (e) =>
+                              M((s) => ({
+                                ...s,
+                                maxDiscount: e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : void 0,
+                              })),
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  a.jsxs("div", {
+                    className: "grid gap-4 md:grid-cols-2",
+                    children: [
+                      a.jsxs("div", {
+                        children: [
+                          a.jsx("label", {
+                            className:
+                              "theme-text-secondary text-sm font-medium mb-1 block",
+                            children: "Usage Limit (optional)",
+                          }),
+                          a.jsx("input", {
+                            type: "number",
+                            value: F.usageLimit || "",
+                            onChange: (e) =>
+                              U((s) => ({
+                                ...s,
+                                usageLimit: e.target.value
+                                  ? parseInt(e.target.value)
+                                  : void 0,
+                              })),
+                            min: 1,
+                            className:
+                              "theme-surface w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-400",
+                          }),
+                        ],
+                      }),
+                      a.jsxs("div", {
+                        className: "flex items-center gap-2 pt-8",
+                        children: [
+                          a.jsx("input", {
+                            type: "checkbox",
+                            id: "isActive",
+                            checked: F.isActive,
+                            onChange: (e) =>
+                              U((s) => ({ ...s, isActive: e.target.checked })),
+                            className: "h-4 w-4 rounded border-white/20",
+                          }),
+                          a.jsx("label", {
+                            htmlFor: "isActive",
+                            className: "theme-text-secondary text-sm",
+                            children: "Active",
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  a.jsxs("div", {
+                    className: "flex gap-3 pt-4",
+                    children: [
+                      a.jsx("button", {
+                        type: "submit",
+                        className:
+                          "flex-1 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg",
+                        children: A ? "Update Promo" : "Create Promo",
+                      }),
+                      a.jsx("button", {
+                        type: "button",
+                        onClick: () => V(!1),
+                        className:
+                          "rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-white/40",
+                        children: "Cancel",
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        }),
+    ],
+  });
+}
+export { x as BillingPage };

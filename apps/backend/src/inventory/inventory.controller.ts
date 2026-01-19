@@ -169,7 +169,10 @@ export class InventoryController {
   @Post('create-item')
   @ApiOperation({ summary: 'Create product and inventory in one operation' })
   @ApiResponse({ status: 201, description: 'Product and inventory created' })
-  async createInventoryItem(@Body() createDto: CreateInventoryItemDto, @Req() req: AuthenticatedRequest) {
+  async createInventoryItem(
+    @Body() createDto: CreateInventoryItemDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const tenantId = this.getTenantId(req);
     const userId = this.getUserId(req);
     let locationId = req.user?.locationId;

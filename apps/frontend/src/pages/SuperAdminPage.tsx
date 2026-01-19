@@ -821,7 +821,7 @@ export function SuperAdminPage() {
                     <input
                       type="number"
                       value={pricingForm.free?.locations ?? 1}
-                      onChange={(e) =>
+                      onChange={() =>
                         setPricingForm((prev) => ({
                           ...prev,
                           free: { ...prev.free!, locations: 1 }, // Always 1

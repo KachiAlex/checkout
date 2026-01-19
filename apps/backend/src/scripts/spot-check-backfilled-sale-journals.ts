@@ -75,9 +75,7 @@ async function main() {
       select: { id: true },
     });
 
-    const vatLines = vatAccount
-      ? entry.lines.filter((l) => l.accountId === vatAccount.id)
-      : [];
+    const vatLines = vatAccount ? entry.lines.filter((l) => l.accountId === vatAccount.id) : [];
 
     const vatCredits = vatLines.reduce((sum, l) => sum + (l.creditCents ?? 0), 0);
     const vatDebits = vatLines.reduce((sum, l) => sum + (l.debitCents ?? 0), 0);

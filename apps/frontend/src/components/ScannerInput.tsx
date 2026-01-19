@@ -92,7 +92,7 @@ export function ScannerInput({
         clearTimeout(scanTimeoutRef.current);
       }
     };
-  }, [onScan, markDeviceUsed, user?.id]);
+  }, [onScan, markDeviceUsed, user?.id, registerUSBScanner]);
 
   // Register USB scanner on first scan
   // Most USB scanners work as HID keyboards and don't need explicit registration

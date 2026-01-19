@@ -124,7 +124,9 @@ export class PaymentsService {
 
     if (order.status === OrderStatus.COMPLETED) {
       const existingPayments = await this.paymentsRepository.findByOrderId(order.id);
-      const hasCompletedPayment = existingPayments.some((payment) => payment.status === PaymentStatus.COMPLETED);
+      const hasCompletedPayment = existingPayments.some(
+        (payment) => payment.status === PaymentStatus.COMPLETED,
+      );
       if (hasCompletedPayment) {
         throw new ConflictException('Order already paid');
       }
@@ -256,7 +258,8 @@ export class PaymentsService {
     });
 
     if (updated.status === PaymentStatus.REFUNDED) {
-      const ratio = order.totalCents > 0 ? Math.min(1, Math.max(0, refundAmount / order.totalCents)) : 0;
+      const ratio =
+        order.totalCents > 0 ? Math.min(1, Math.max(0, refundAmount / order.totalCents)) : 0;
       const subtotalRefundCents = Math.round(order.subtotalCents * ratio);
       const taxRefundCents = Math.round(order.taxCents * ratio);
 

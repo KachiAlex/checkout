@@ -5,8 +5,9 @@
 The backend service at `https://pos-checkout-api.onrender.com` is **NOT running**.
 
 The "Not Found" error means:
+
 - Service is not deployed, OR
-- Service crashed, OR  
+- Service crashed, OR
 - Service is sleeping (free tier), OR
 - Service failed to start
 
@@ -40,6 +41,7 @@ The "Not Found" error means:
 **Option B: Deploy from render.yaml**
 
 If you have `render.yaml` in your repo:
+
 1. **Render Dashboard** → "New" → "Blueprint"
 2. **Connect repository**
 3. **Render will auto-detect `render.yaml`**
@@ -48,6 +50,7 @@ If you have `render.yaml` in your repo:
 ### Step 3: Wake Up Sleeping Service (Free Tier)
 
 If service shows "Sleeping":
+
 1. **Make a request** to wake it up:
    ```powershell
    Invoke-WebRequest -Uri "https://pos-checkout-api.onrender.com/api/v1/health"
@@ -99,11 +102,13 @@ If service shows "Failed":
 Once service shows "Live":
 
 1. **Test health endpoint**:
+
    ```powershell
    Invoke-WebRequest -Uri "https://pos-checkout-api.onrender.com/api/v1/health" -UseBasicParsing
    ```
 
 2. **Expected response**:
+
    ```json
    {
      "status": "ok",
@@ -121,24 +126,25 @@ Once service shows "Live":
 
 **Set these in Render Dashboard → Environment tab**:
 
-| Variable | Value | Required |
-|----------|-------|----------|
-| `NODE_ENV` | `production` | ✅ Yes |
-| `PORT` | `10000` | ✅ Yes |
-| `API_PREFIX` | `api/v1` | ✅ Yes |
-| `CORS_ORIGIN` | `https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174` | ✅ Yes |
-| `JWT_SECRET` | (your secret key) | ✅ Yes |
-| `JWT_EXPIRES_IN` | `24h` | ⚠️ Optional |
-| `REFRESH_TOKEN_EXPIRES_IN` | `7d` | ⚠️ Optional |
-| `FIREBASE_PROJECT_ID` | `checkout-77d99` | ✅ Yes |
-| `FIREBASE_CLIENT_EMAIL` | (service account email) | ✅ Yes |
-| `FIREBASE_PRIVATE_KEY` | (private key) | ✅ Yes |
+| Variable                   | Value                                                                                                               | Required    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `NODE_ENV`                 | `production`                                                                                                        | ✅ Yes      |
+| `PORT`                     | `10000`                                                                                                             | ✅ Yes      |
+| `API_PREFIX`               | `api/v1`                                                                                                            | ✅ Yes      |
+| `CORS_ORIGIN`              | `https://checkout-77d99.web.app,https://checkout-77d99.firebaseapp.com,http://localhost:5173,http://localhost:5174` | ✅ Yes      |
+| `JWT_SECRET`               | (your secret key)                                                                                                   | ✅ Yes      |
+| `JWT_EXPIRES_IN`           | `24h`                                                                                                               | ⚠️ Optional |
+| `REFRESH_TOKEN_EXPIRES_IN` | `7d`                                                                                                                | ⚠️ Optional |
+| `FIREBASE_PROJECT_ID`      | `checkout-77d99`                                                                                                    | ✅ Yes      |
+| `FIREBASE_CLIENT_EMAIL`    | (service account email)                                                                                             | ✅ Yes      |
+| `FIREBASE_PRIVATE_KEY`     | (private key)                                                                                                       | ✅ Yes      |
 
 ### Step 7: Check Service Logs
 
 **After deployment, check logs for**:
 
 ✅ **Success indicators**:
+
 ```
 🔧 Bootstrap - NODE_ENV: production, Prefix: /api/v1, Origin: ...
 🔧 CORS Configuration - Allowed Origins: [ 'https://checkout-77d99.web.app', ... ]
@@ -149,6 +155,7 @@ Once service shows "Live":
 ```
 
 ❌ **Error indicators**:
+
 - `❌ Failed to start application`
 - `❌ CORS blocked origin`
 - `Error: Missing environment variable`
@@ -171,6 +178,7 @@ $response.Headers
 ```
 
 **Expected**:
+
 - Test 1: May return 404 (normal if no root route)
 - Test 2: Should return JSON with `{"status":"ok",...}`
 - Test 3: Should show response headers
@@ -194,6 +202,7 @@ Before deploying, ensure:
 Once service shows "Live" and health endpoint works:
 
 1. **Test CORS**:
+
    ```powershell
    $headers = @{
        "Origin" = "https://checkout-77d99.web.app"
@@ -230,4 +239,3 @@ If service is deployed and still not responding:
 ---
 
 **Bottom Line**: The service must be deployed and running in Render before CORS or any other functionality will work.
-

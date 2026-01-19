@@ -15,9 +15,9 @@ export function AccountingJournalsPage() {
   const { accessToken, user } = useAuthStore();
   const isAdmin = user?.role === "admin";
 
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>(
-    [],
-  );
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
 
   const [filters, setFilters] = useState({
     locationId: user?.locationId || "",
@@ -57,7 +57,14 @@ export function AccountingJournalsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, filters.locationId, filters.source, filters.status, filters.from, filters.to]);
+  }, [
+    accessToken,
+    filters.locationId,
+    filters.source,
+    filters.status,
+    filters.from,
+    filters.to,
+  ]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -106,7 +113,9 @@ export function AccountingJournalsPage() {
                   </label>
                   <select
                     value={filters.locationId}
-                    onChange={(e) => setFilters((s) => ({ ...s, locationId: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, locationId: e.target.value }))
+                    }
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   >
                     <option value="">All locations</option>
@@ -124,7 +133,9 @@ export function AccountingJournalsPage() {
                   </label>
                   <input
                     value={filters.source}
-                    onChange={(e) => setFilters((s) => ({ ...s, source: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, source: e.target.value }))
+                    }
                     placeholder="SALE / REFUND / EXPENSE"
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
@@ -136,7 +147,9 @@ export function AccountingJournalsPage() {
                   </label>
                   <input
                     value={filters.status}
-                    onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, status: e.target.value }))
+                    }
                     placeholder="POSTED / VOIDED"
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
@@ -149,7 +162,9 @@ export function AccountingJournalsPage() {
                   <input
                     type="date"
                     value={filters.from}
-                    onChange={(e) => setFilters((s) => ({ ...s, from: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, from: e.target.value }))
+                    }
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
                 </div>
@@ -161,7 +176,9 @@ export function AccountingJournalsPage() {
                   <input
                     type="date"
                     value={filters.to}
-                    onChange={(e) => setFilters((s) => ({ ...s, to: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((s) => ({ ...s, to: e.target.value }))
+                    }
                     className="theme-surface w-full rounded-xl border px-3 py-2 text-sm theme-text-primary focus:border-sky-400 focus:outline-none"
                   />
                 </div>
@@ -188,7 +205,9 @@ export function AccountingJournalsPage() {
             {loading ? (
               <div className="text-center py-8">
                 <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-                <p className="theme-text-secondary mt-2 text-sm">Loading journals...</p>
+                <p className="theme-text-secondary mt-2 text-sm">
+                  Loading journals...
+                </p>
               </div>
             ) : journals.length === 0 ? (
               <div className="text-center py-10 theme-card rounded-2xl border">

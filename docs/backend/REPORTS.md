@@ -64,28 +64,34 @@ Designed as a reporting façade that orchestrates existing repositories/services
 ## Core logic (ReportsService highlights)
 
 ### Sales report (`getSales`)
+
 - Fetches completed orders + paid credit orders (filtered by `tenantId`, optional `locationId`, date range).
 - Deduplicates via order UUID, sorts by relevant timestamp (paidAt vs createdAt), paginates results, and enriches items with product names via `ProductsService.findByIds`.
 - Calculates total/avg order value and returns full order list for requested page.@apps/backend/src/reports/reports.service.ts#28-149
 
 ### Top sellers (`getTopSellers`)
+
 - Aggregates order items into `{quantity, revenue}` per product, sorts descending, fetches product metadata for display, and returns top N results.@apps/backend/src/reports/reports.service.ts#151-241
 
 ### Sales analytics (`getSalesAnalytics`)
+
 - Supports multiple time buckets via `groupBy` functions, builds range + comparison periods, pulls orders twice (current & previous period) for delta metrics.
 - Computes revenue, COGS (using inventory costs or product costs), gross profit, frequency stats, peak hours, best/worst days, and comparison percentages.
 - Heavy use of `InventoryRepository.listStock`, `ProductsService.findByIds`, and custom grouping structures.@apps/backend/src/reports/reports.service.ts#243-610
 
 ### Inventory analytics (`getInventoryAnalytics`)
+
 - Validates location belongs to tenant; parallel fetch of transactions + stock.
 - Groups transactions by period for net flow (received/sold/returned/adjusted) and builds inventory snapshot (quantity, cost value, low stock).@apps/backend/src/reports/reports.service.ts#612-773
 
 ### Staff performance (`getStaffPerformance`)
+
 - Parallel fetch: completed orders, inventory transactions, tenant users.
 - Aggregates per-user totals for sales (revenue, orders, items) and inventory actions (received/sold/returns/adjustments).
-- Merges metrics into a unified staff performance array with ranking potentials.@apps/backend/src/reports/reports.service.ts#775-883 (reads beyond snippet)*
+- Merges metrics into a unified staff performance array with ranking potentials.@apps/backend/src/reports/reports.service.ts#775-883 (reads beyond snippet)\*
 
 ### Alerts / fraud / expiry / shrinkage
+
 - Later sections combine outcomes from above metrics plus additional heuristics (e.g., SKU-level thresholds, suspicious discounts) to return early warning signals.
 - Implementation uses supporting repositories (Customers/Suppliers/BatchInventory) to derive domain-specific alerts.
 

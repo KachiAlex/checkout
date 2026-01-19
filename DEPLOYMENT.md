@@ -15,11 +15,13 @@ This guide explains how to deploy the POS Checkout MVP to Firebase and push chan
 ### Option 1: Using the deployment script (Recommended)
 
 **Windows (PowerShell):**
+
 ```powershell
 .\deploy.ps1
 ```
 
 **Linux/Mac:**
+
 ```bash
 chmod +x deploy.sh
 ./deploy.sh
@@ -50,6 +52,7 @@ npm run build:functions
 ```
 
 This command:
+
 - Builds shared packages
 - Builds payment adapters
 - Builds backend
@@ -59,16 +62,19 @@ This command:
 #### Step 3: Deploy to Firebase
 
 **Deploy Functions:**
+
 ```bash
 npm run deploy:functions
 ```
 
 **Deploy Hosting (Frontend):**
+
 ```bash
 npm run deploy:web
 ```
 
 Or deploy both at once:
+
 ```bash
 firebase deploy
 ```
@@ -78,14 +84,17 @@ firebase deploy
 ### Initial Setup
 
 1. **Login to Firebase:**
+
    ```bash
    firebase login
    ```
 
 2. **Initialize Firebase project:**
+
    ```bash
    firebase init
    ```
+
    - Select Functions and Hosting
    - Choose your Firebase project
    - Use default settings
@@ -119,6 +128,7 @@ firebase functions:secrets:set FIREBASE_PRIVATE_KEY
 ### Firestore Indexes
 
 Deploy Firestore indexes:
+
 ```bash
 firebase deploy --only firestore:indexes
 ```
@@ -172,6 +182,7 @@ Before deploying, ensure:
 ## CI/CD
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) automatically:
+
 - Runs tests on push/PR
 - Builds Docker images
 - Validates code quality
@@ -183,6 +194,7 @@ For automatic deployment, add a deployment workflow or use Firebase GitHub Actio
 If deployment fails:
 
 1. **Rollback Functions:**
+
    ```bash
    firebase functions:rollback
    ```
@@ -196,4 +208,3 @@ If deployment fails:
    git revert HEAD
    git push
    ```
-

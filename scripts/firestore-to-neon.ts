@@ -1,11 +1,11 @@
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { Client } from 'pg';
+import { initializeApp, cert } from "firebase-admin/app";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { Client } from "pg";
 
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
 };
 
 /**
@@ -20,190 +20,216 @@ type CollectionConfig = {
 
 const collections: CollectionConfig[] = [
   {
-    name: 'tenants',
+    name: "tenants",
     table: '"Tenant"',
     columns: [
-      'id',
-      'name',
-      'slug',
-      'plan',
-      'status',
-      'industry',
-      'featureFlags',
-      'seatLimit',
-      'contactEmail',
-      'billingCycleStart',
-      'billingCycleEnd',
-      'metadata',
+      "id",
+      "name",
+      "slug",
+      "plan",
+      "status",
+      "industry",
+      "featureFlags",
+      "seatLimit",
+      "contactEmail",
+      "billingCycleStart",
+      "billingCycleEnd",
+      "metadata",
     ],
   },
   {
-    name: 'users',
+    name: "users",
     table: '"User"',
     columns: [
-      'id',
-      'name',
-      'email',
-      'role',
-      'pinHash',
-      'tenantId',
-      'deviceId',
-      'locationId',
-      'isPlatformAdmin',
+      "id",
+      "name",
+      "email",
+      "role",
+      "pinHash",
+      "tenantId",
+      "deviceId",
+      "locationId",
+      "isPlatformAdmin",
     ],
   },
   {
-    name: 'locations',
+    name: "locations",
     table: '"Location"',
-    columns: ['id', 'tenantId', 'name', 'address', 'phone', 'isDefault', 'metadata'],
+    columns: [
+      "id",
+      "tenantId",
+      "name",
+      "address",
+      "phone",
+      "isDefault",
+      "metadata",
+    ],
   },
   {
-    name: 'devices',
+    name: "devices",
     table: '"Device"',
-    columns: ['id', 'tenantId', 'locationId', 'name', 'type', 'status', 'lastSeenAt', 'metadata'],
+    columns: [
+      "id",
+      "tenantId",
+      "locationId",
+      "name",
+      "type",
+      "status",
+      "lastSeenAt",
+      "metadata",
+    ],
   },
   {
-    name: 'brands',
+    name: "brands",
     table: '"Brand"',
-    columns: ['id', 'tenantId', 'name', 'description', 'metadata'],
+    columns: ["id", "tenantId", "name", "description", "metadata"],
   },
   {
-    name: 'categories',
+    name: "categories",
     table: '"Category"',
-    columns: ['id', 'tenantId', 'name', 'description', 'parentId', 'metadata'],
+    columns: ["id", "tenantId", "name", "description", "parentId", "metadata"],
   },
   {
-    name: 'products',
+    name: "products",
     table: '"Product"',
     columns: [
-      'id',
-      'tenantId',
-      'brandId',
-      'categoryId',
-      'sku',
-      'name',
-      'description',
-      'priceCents',
-      'taxRate',
-      'trackInventory',
-      'barcode',
-      'metadata',
+      "id",
+      "tenantId",
+      "brandId",
+      "categoryId",
+      "sku",
+      "name",
+      "description",
+      "priceCents",
+      "taxRate",
+      "trackInventory",
+      "barcode",
+      "metadata",
     ],
   },
   {
-    name: 'orders',
+    name: "orders",
     table: '"Order"',
     columns: [
-      'id',
-      'tenantId',
-      'locationId',
-      'customerId',
-      'status',
-      'subtotalCents',
-      'taxCents',
-      'totalCents',
-      'paymentStatus',
-      'items',
-      'metadata',
+      "id",
+      "tenantId",
+      "locationId",
+      "customerId",
+      "status",
+      "subtotalCents",
+      "taxCents",
+      "totalCents",
+      "paymentStatus",
+      "items",
+      "metadata",
     ],
   },
   {
-    name: 'suppliers',
+    name: "suppliers",
     table: '"Supplier"',
     columns: [
-      'id',
-      'tenantId',
-      'name',
-      'contactName',
-      'email',
-      'phone',
-      'address',
-      'taxId',
-      'paymentTerms',
-      'notes',
-      'active',
+      "id",
+      "tenantId",
+      "name",
+      "contactName",
+      "email",
+      "phone",
+      "address",
+      "taxId",
+      "paymentTerms",
+      "notes",
+      "active",
     ],
   },
   {
-    name: 'purchaseOrders',
+    name: "purchaseOrders",
     table: '"PurchaseOrder"',
     columns: [
-      'id',
-      'tenantId',
-      'locationId',
-      'supplierId',
-      'supplierName',
-      'orderNumber',
-      'status',
-      'items',
-      'subtotalCents',
-      'taxCents',
-      'totalCents',
-      'expectedDeliveryDate',
-      'notes',
-      'createdBy',
-      'approvedBy',
-      'approvedAt',
+      "id",
+      "tenantId",
+      "locationId",
+      "supplierId",
+      "supplierName",
+      "orderNumber",
+      "status",
+      "items",
+      "subtotalCents",
+      "taxCents",
+      "totalCents",
+      "expectedDeliveryDate",
+      "notes",
+      "createdBy",
+      "approvedBy",
+      "approvedAt",
     ],
   },
   {
-    name: 'grns',
+    name: "grns",
     table: '"GRN"',
     columns: [
-      'id',
-      'tenantId',
-      'locationId',
-      'purchaseOrderId',
-      'purchaseOrderNumber',
-      'supplierId',
-      'supplierName',
-      'grnNumber',
-      'status',
-      'items',
-      'subtotalCents',
-      'taxCents',
-      'totalCents',
-      'receivedBy',
-      'receivedAt',
-      'notes',
+      "id",
+      "tenantId",
+      "locationId",
+      "purchaseOrderId",
+      "purchaseOrderNumber",
+      "supplierId",
+      "supplierName",
+      "grnNumber",
+      "status",
+      "items",
+      "subtotalCents",
+      "taxCents",
+      "totalCents",
+      "receivedBy",
+      "receivedAt",
+      "notes",
     ],
   },
 ];
 
 const transformers: Record<string, Record<string, (value: any) => any>> = {
   '"Tenant"': {
-    plan: (value: string | null) => (value ? value.toUpperCase() : 'FREE'),
-    status: (value: string | null) => (value ? value.toUpperCase() : 'ACTIVE'),
+    plan: (value: string | null) => (value ? value.toUpperCase() : "FREE"),
+    status: (value: string | null) => (value ? value.toUpperCase() : "ACTIVE"),
   },
   '"User"': {
-    role: (value: string | null) => (value ? value.toUpperCase() : 'CASHIER'),
+    role: (value: string | null) => (value ? value.toUpperCase() : "CASHIER"),
     isPlatformAdmin: (value: any) => Boolean(value),
   },
   '"Device"': {
-    status: (value: string | null) => (value ? value.toUpperCase() : 'ACTIVE'),
+    status: (value: string | null) => (value ? value.toUpperCase() : "ACTIVE"),
   },
   '"Order"': {
-    status: (value: string | null) => (value ? value.toUpperCase() : 'PENDING'),
-    paymentStatus: (value: string | null) => (value ? value.toUpperCase() : 'PENDING'),
+    status: (value: string | null) => (value ? value.toUpperCase() : "PENDING"),
+    paymentStatus: (value: string | null) =>
+      value ? value.toUpperCase() : "PENDING",
   },
   '"Supplier"': {
     active: (value: any) => Boolean(value ?? true),
   },
   '"PurchaseOrder"': {
-    status: (value: string | null) => (value ? value.toUpperCase() : 'PENDING'),
+    status: (value: string | null) => (value ? value.toUpperCase() : "PENDING"),
   },
   '"GRN"': {
-    status: (value: string | null) => (value ? value.toUpperCase() : 'DRAFT'),
+    status: (value: string | null) => (value ? value.toUpperCase() : "DRAFT"),
   },
 };
 
 async function main() {
-  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-    throw new Error('FIREBASE_* env vars are missing. Make sure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set.');
+  if (
+    !serviceAccount.projectId ||
+    !serviceAccount.clientEmail ||
+    !serviceAccount.privateKey
+  ) {
+    throw new Error(
+      "FIREBASE_* env vars are missing. Make sure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set.",
+    );
   }
 
   if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL env var is missing. Set it to your Neon connection string before running this script.');
+    throw new Error(
+      "DATABASE_URL env var is missing. Set it to your Neon connection string before running this script.",
+    );
   }
 
   initializeApp({ credential: cert(serviceAccount) });
@@ -214,15 +240,17 @@ async function main() {
 
   const targetCollectionName = process.argv[2];
   const selectedCollections =
-    targetCollectionName && targetCollectionName !== 'all'
-      ? collections.filter((collection) => collection.name === targetCollectionName)
+    targetCollectionName && targetCollectionName !== "all"
+      ? collections.filter(
+          (collection) => collection.name === targetCollectionName,
+        )
       : collections;
 
   if (targetCollectionName && selectedCollections.length === 0) {
     throw new Error(
       `Unknown collection "${targetCollectionName}". Available options: ${collections
         .map((collection) => collection.name)
-        .join(', ')}`,
+        .join(", ")}`,
     );
   }
 
@@ -233,14 +261,14 @@ async function main() {
 
     for (const doc of snapshot.docs) {
       const data = columns.map((column) => {
-        const rawValue = column === 'id' ? doc.id : doc.get(column);
+        const rawValue = column === "id" ? doc.id : doc.get(column);
         let value = rawValue ?? null;
 
         if (value instanceof Timestamp) {
           value = value.toDate();
         }
 
-        if (Array.isArray(value) || typeof value === 'object') {
+        if (Array.isArray(value) || typeof value === "object") {
           value = value;
         }
 
@@ -252,12 +280,12 @@ async function main() {
         return value;
       });
 
-      const placeholders = columns.map((_, idx) => `$${idx + 1}`).join(', ');
-      const quotedColumns = columns.map((column) => `"${column}"`).join(', ');
+      const placeholders = columns.map((_, idx) => `$${idx + 1}`).join(", ");
+      const quotedColumns = columns.map((column) => `"${column}"`).join(", ");
       const updates = columns
-        .filter((column) => column !== 'id')
+        .filter((column) => column !== "id")
         .map((column) => `"${column}" = EXCLUDED."${column}"`)
-        .join(', ');
+        .join(", ");
 
       await client.query(
         `INSERT INTO ${table} (${quotedColumns})
@@ -269,10 +297,10 @@ async function main() {
   }
 
   await client.end();
-  console.log('Migration complete ✅');
+  console.log("Migration complete ✅");
 }
 
 main().catch((error) => {
-  console.error('Migration failed:', error);
+  console.error("Migration failed:", error);
   process.exit(1);
 });
