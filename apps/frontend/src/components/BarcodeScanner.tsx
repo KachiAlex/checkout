@@ -130,6 +130,52 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     [],
   );
 
+  // Register USB scanner on mount
+  const registerUSBScanner = useCallback(async () => {
+    if (usbDeviceRegisteredRef.current) return;
+
+    try {
+      let nativeDevice: NativeDeviceSummary | undefined;
+      const canUseNative =
+        typeof window !== "undefined" &&
+        Boolean(
+          window.__IS_ELECTRON__ &&
+            window.posApp &&
+            typeof window.posApp.listNativeDevices === "function",
+        );
+
+      if (canUseNative) {
+        const selected = await selectNativeDevice("usb");
+        if (!selected) {
+          return;
+        }
+        nativeDevice = selected;
+      }
+
+      const registeredDevice = await registerUSBDevice(
+        user?.locationId,
+        user?.id,
+        nativeDevice,
+      );
+      const deviceId = addDevice(registeredDevice);
+      setActiveDevice(deviceId);
+      usbDeviceRegisteredRef.current = true;
+      console.log("USB scanner registered:", registeredDevice.name);
+      await sendDeviceHeartbeat(deviceId, user?.id);
+    } catch (error) {
+      console.warn("Failed to register USB scanner:", error);
+      toast.error(
+        "Unable to register USB scanner. Scans may still work as keyboard input.",
+      );
+    }
+  }, [
+    user?.locationId,
+    user?.id,
+    addDevice,
+    setActiveDevice,
+    selectNativeDevice,
+  ]);
+
   // Handle rapid keyboard input from USB/Bluetooth scanners
   // Scanners typically send characters very quickly without Enter
   useEffect(() => {
@@ -188,52 +234,6 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       }
     };
   }, [scanMode, onScan, markDeviceUsed, user?.id, registerUSBScanner]);
-
-  // Register USB scanner on mount
-  const registerUSBScanner = useCallback(async () => {
-    if (usbDeviceRegisteredRef.current) return;
-
-    try {
-      let nativeDevice: NativeDeviceSummary | undefined;
-      const canUseNative =
-        typeof window !== "undefined" &&
-        Boolean(
-          window.__IS_ELECTRON__ &&
-            window.posApp &&
-            typeof window.posApp.listNativeDevices === "function",
-        );
-
-      if (canUseNative) {
-        const selected = await selectNativeDevice("usb");
-        if (!selected) {
-          return;
-        }
-        nativeDevice = selected;
-      }
-
-      const registeredDevice = await registerUSBDevice(
-        user?.locationId,
-        user?.id,
-        nativeDevice,
-      );
-      const deviceId = addDevice(registeredDevice);
-      setActiveDevice(deviceId);
-      usbDeviceRegisteredRef.current = true;
-      console.log("USB scanner registered:", registeredDevice.name);
-      await sendDeviceHeartbeat(deviceId, user?.id);
-    } catch (error) {
-      console.warn("Failed to register USB scanner:", error);
-      toast.error(
-        "Unable to register USB scanner. Scans may still work as keyboard input.",
-      );
-    }
-  }, [
-    user?.locationId,
-    user?.id,
-    addDevice,
-    setActiveDevice,
-    selectNativeDevice,
-  ]);
 
   // Auto-focus for keyboard scanners
   useEffect(() => {
@@ -329,6 +329,48 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       updateDevice,
     ],
   );
+
+  const stopCameraScan = useCallback(() => {
+    if (isNative) {
+      stopNativeScan().catch(() => undefined);
+      setNativeScanning(null);
+      return;
+    }
+
+    if (codeReaderRef.current && videoRef.current) {
+      codeReaderRef.current.reset();
+      codeReaderRef.current = null;
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    const activeCameraDevice = useScannerDeviceStore.getState().getActiveDevice();
+    if (activeCameraDevice && activeCameraDevice.type === "camera") {
+      useScannerDeviceStore
+        .getState()
+        .updateDevice(activeCameraDevice.id, { isActive: false });
+      sendDeviceHeartbeat(activeCameraDevice.id, user?.id, { isActive: false }).catch((err) =>
+        console.warn("Failed to send heartbeat", err),
+      );
+      setActiveDevice(null);
+    }
+
+    setScanMode("keyboard");
+    setCameraError(null);
+    setIsCapturing(false);
+    debugLog("Camera scan stopped");
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  }, [isNative, setActiveDevice, user?.id]);
 
   const startCameraScan = useCallback(async () => {
     if (isNative) {
@@ -630,53 +672,6 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     }
   }, [onScan, markDeviceUsed, user?.id, stopCameraScan]);
 
-  const stopCameraScan = useCallback(() => {
-    if (isNative) {
-      stopNativeScan().catch(() => undefined);
-      setNativeScanning(null);
-      return;
-    }
-
-    // Stop code reader
-    if (codeReaderRef.current && videoRef.current) {
-      codeReaderRef.current.reset();
-      codeReaderRef.current = null;
-    }
-
-    // Stop media stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    // Clear video source
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    // Deactivate camera device
-    const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
-    if (activeDevice && activeDevice.type === "camera") {
-      useScannerDeviceStore
-        .getState()
-        .updateDevice(activeDevice.id, { isActive: false });
-      sendDeviceHeartbeat(activeDevice.id, user?.id, { isActive: false }).catch(
-        (err) => console.warn("Failed to send heartbeat", err),
-      );
-      setActiveDevice(null);
-    }
-
-    setScanMode("keyboard");
-    setCameraError(null);
-    setIsCapturing(false);
-    debugLog("Camera scan stopped");
-
-    // Refocus keyboard input
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  }, [setActiveDevice, isNative, user?.id]);
-
   // Cleanup camera on unmount
   useEffect(() => {
     return () => {
@@ -892,6 +887,32 @@ export function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
   const isBluetoothSupported =
     typeof navigator !== "undefined" && "bluetooth" in (navigator as any);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== "Enter") return;
+      const trimmed = input.trim();
+      if (!trimmed) return;
+
+      e.preventDefault();
+
+      if (!usbDeviceRegisteredRef.current && scanMode === "keyboard") {
+        registerUSBScanner();
+      }
+
+      const activeDevice = useScannerDeviceStore.getState().getActiveDevice();
+      if (activeDevice) {
+        markDeviceUsed(activeDevice.id);
+        sendDeviceHeartbeat(activeDevice.id, user?.id).catch((err) =>
+          console.warn("Failed to send heartbeat", err),
+        );
+      }
+
+      onScan(trimmed);
+      setInput("");
+    },
+    [input, scanMode, registerUSBScanner, markDeviceUsed, onScan, user?.id],
+  );
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 shadow-lg">

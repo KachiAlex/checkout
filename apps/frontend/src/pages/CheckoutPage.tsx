@@ -123,6 +123,7 @@ export function CheckoutPage() {
     images?: string[];
   } | null>(null);
   const [quantitySelectorOpen, setQuantitySelectorOpen] = useState(false);
+  const [cashChange, setCashChange] = useState<number | null>(null);
 
   // Create a new customer
   const createCustomer = useCallback(

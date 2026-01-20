@@ -49,6 +49,10 @@ export class TenantsRepository {
     return (process.env.DB_PROVIDER || '').toLowerCase() === 'postgres';
   }
 
+  private normalizeSlug(slug: string): string {
+    return (slug ?? '').trim().toLowerCase();
+  }
+
   private toPlan(value: unknown): TenantPlan {
     const normalized = String(value || '').toLowerCase();
     return normalized as TenantPlan;
@@ -132,8 +136,17 @@ export class TenantsRepository {
   }
 
   async findBySlug(slug: string): Promise<TenantRecord | null> {
+    const normalizedSlug = this.normalizeSlug(slug);
+
     if (this.isPostgresEnabled()) {
-      const row = await this.prismaService.prisma.tenant.findUnique({ where: { slug } });
+      const row = await this.prismaService.prisma.tenant.findFirst({
+        where: {
+          slug: {
+            equals: normalizedSlug,
+            mode: 'insensitive',
+          },
+        },
+      });
       if (!row) {
         return null;
       }
@@ -156,7 +169,7 @@ export class TenantsRepository {
       return this.applyFreeTrialGuard(tenant);
     }
 
-    const snapshot = await this.collection.where('slug', '==', slug).limit(1).get();
+    const snapshot = await this.collection.where('slug', '==', normalizedSlug).limit(1).get();
     if (snapshot.empty) {
       return null;
     }
@@ -170,11 +183,13 @@ export class TenantsRepository {
       throw new BadRequestException('Tenant name and slug are required');
     }
 
+    const normalizedSlug = this.normalizeSlug(data.slug);
+
     if (this.isPostgresEnabled()) {
       const row = await this.prismaService.prisma.tenant.create({
         data: {
           name: data.name,
-          slug: data.slug,
+          slug: normalizedSlug,
           plan: this.toPrismaPlan(data.plan),
           status: this.toPrismaStatus(data.status),
           industry: data.industry,
@@ -208,7 +223,7 @@ export class TenantsRepository {
     const now = FieldValue.serverTimestamp();
     const payload: TenantDocument = {
       name: data.name,
-      slug: data.slug,
+      slug: normalizedSlug,
       plan: data.plan,
       status: data.status,
       industry: data.industry,
@@ -243,7 +258,7 @@ export class TenantsRepository {
         where: { id },
         data: {
           name: update.name,
-          slug: update.slug,
+          slug: update.slug ? this.normalizeSlug(update.slug) : undefined,
           plan: update.plan ? this.toPrismaPlan(update.plan) : undefined,
           status: update.status ? this.toPrismaStatus(update.status) : undefined,
           seatLimit: update.seatLimit,
@@ -288,7 +303,7 @@ export class TenantsRepository {
       payload.name = update.name;
     }
     if (update.slug !== undefined) {
-      payload.slug = update.slug;
+      payload.slug = this.normalizeSlug(update.slug);
     }
     if (update.plan !== undefined) {
       payload.plan = update.plan;

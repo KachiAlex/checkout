@@ -150,33 +150,6 @@ export function ProductSearch({
     setFilteredProducts(filtered);
   }, [products, searchQuery, filters]);
 
-  // Debounced search - wait 300ms after user stops typing
-  useEffect(() => {
-    if (!accessToken) return;
-
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Set new timer
-    debounceTimerRef.current = setTimeout(() => {
-      if (searchQuery.trim()) {
-        searchProducts(searchQuery);
-      } else {
-        // Load all products when search is empty
-        loadAllProducts();
-      }
-    }, 300); // 300ms debounce delay
-
-    // Cleanup
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [searchQuery, accessToken, loadAllProducts, searchProducts]);
-
   // Load stock levels for products
   const loadStockLevels = useCallback(
     async (productList: Product[]): Promise<ProductWithStock[]> => {
@@ -253,6 +226,33 @@ export function ProductSearch({
       setLoading(false);
     }
   }, [accessToken, loadStockLevels]);
+
+  // Debounced search - wait 300ms after user stops typing
+  useEffect(() => {
+    if (!accessToken) return;
+
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer
+    debounceTimerRef.current = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchProducts(searchQuery);
+      } else {
+        // Load all products when search is empty
+        loadAllProducts();
+      }
+    }, 300); // 300ms debounce delay
+
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchQuery, accessToken, loadAllProducts, searchProducts]);
 
   // Load recently scanned products from localStorage
   useEffect(() => {

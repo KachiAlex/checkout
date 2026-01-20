@@ -35,6 +35,31 @@ export function ScannerInput({
   const { user } = useAuthStore();
   const activeDevice = getActiveDevice();
 
+  // Register USB scanner on first scan
+  // Most USB scanners work as HID keyboards and don't need explicit registration
+  // They automatically type into input fields when scanning
+  const registerUSBScanner = useCallback(async () => {
+    if (usbDeviceRegisteredRef.current) return;
+
+    try {
+      // Try to register without requesting Web USB access first
+      // Most scanners work as keyboards and don't need Web USB API
+      const registeredDevice = await registerUSBDevice(
+        user?.locationId,
+        user?.id,
+        undefined,
+      );
+      const deviceId = addDevice(registeredDevice);
+      setActiveDevice(deviceId);
+      usbDeviceRegisteredRef.current = true;
+      console.log("USB scanner registered:", registeredDevice.name);
+      await sendDeviceHeartbeat(deviceId, user?.id);
+    } catch (error) {
+      // Registration failure is okay - scanner will still work as keyboard
+      console.log("USB scanner registration note:", error);
+    }
+  }, [user?.locationId, user?.id, addDevice, setActiveDevice]);
+
   // Handle rapid keyboard input from USB/Bluetooth scanners
   useEffect(() => {
     const inputEl = inputRef.current;
@@ -93,31 +118,6 @@ export function ScannerInput({
       }
     };
   }, [onScan, markDeviceUsed, user?.id, registerUSBScanner]);
-
-  // Register USB scanner on first scan
-  // Most USB scanners work as HID keyboards and don't need explicit registration
-  // They automatically type into input fields when scanning
-  const registerUSBScanner = useCallback(async () => {
-    if (usbDeviceRegisteredRef.current) return;
-
-    try {
-      // Try to register without requesting Web USB access first
-      // Most scanners work as keyboards and don't need Web USB API
-      const registeredDevice = await registerUSBDevice(
-        user?.locationId,
-        user?.id,
-        undefined,
-      );
-      const deviceId = addDevice(registeredDevice);
-      setActiveDevice(deviceId);
-      usbDeviceRegisteredRef.current = true;
-      console.log("USB scanner registered:", registeredDevice.name);
-      await sendDeviceHeartbeat(deviceId, user?.id);
-    } catch (error) {
-      // Registration failure is okay - scanner will still work as keyboard
-      console.log("USB scanner registration note:", error);
-    }
-  }, [user?.locationId, user?.id, addDevice, setActiveDevice]);
 
   // Auto-focus for keyboard scanners (only if explicitly enabled)
   useEffect(() => {

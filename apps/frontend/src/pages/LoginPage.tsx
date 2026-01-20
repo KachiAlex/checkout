@@ -254,30 +254,63 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 rounded-2xl bg-slate-50/40 p-1 dark:bg-white/5">
-                    {(
-                      [
-                        { label: "Company slug", value: "slug" },
-                        { label: "Email", value: "email" },
-                      ] as { label: string; value: TenantLoginMethod }[]
-                    ).map(({ label, value }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={`flex-1 rounded-2xl px-3 py-2 text-xs sm:text-sm font-semibold transition ${
-                          tenantLoginMethod === value
-                            ? "bg-white text-slate-900 shadow dark:bg-slate-900 dark:text-white"
-                            : "text-slate-500 dark:text-slate-300"
-                        }`}
-                        onClick={() => setTenantLoginMethod(value)}
-                        disabled={loading}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    <p className="theme-text-secondary text-xs font-semibold uppercase tracking-wide">
+                      Choose a login method
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          {
+                            label: "Company slug",
+                            helper: "Use the slug provided during onboarding.",
+                            value: "slug",
+                          },
+                          {
+                            label: "Email",
+                            helper: "Use your registered work email.",
+                            value: "email",
+                          },
+                        ] as {
+                          label: string;
+                          helper: string;
+                          value: TenantLoginMethod;
+                        }[]
+                      ).map(({ label, helper, value }) => {
+                        const isActive = tenantLoginMethod === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={`rounded-2xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                              isActive
+                                ? "border-sky-400/80 bg-white shadow-sm dark:border-sky-500/60 dark:bg-slate-900"
+                                : "border-transparent bg-slate-50/30 hover:border-slate-200/70 dark:bg-white/5 dark:hover:border-white/15"
+                            }`}
+                            onClick={() => setTenantLoginMethod(value)}
+                            disabled={loading}
+                            aria-pressed={isActive}
+                          >
+                            <span className="block text-sm font-semibold theme-text-primary">
+                              {label}
+                            </span>
+                            <span className="block text-xs theme-text-secondary">
+                              {isActive ? "Selected · " : ""}
+                              {helper}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  {tenantLoginMethod === "slug" ? (
-                    <div className="space-y-2">
+                  <div className="grid gap-3">
+                    <div
+                      className={`space-y-2 rounded-2xl border px-4 py-3 transition ${
+                        tenantLoginMethod === "slug"
+                          ? "border-sky-300/80 bg-white shadow-sm dark:border-sky-500/40 dark:bg-slate-900"
+                          : "border-slate-200/60 bg-slate-50/40 opacity-75 dark:border-white/10 dark:bg-white/5"
+                      }`}
+                    >
                       <label
                         htmlFor="tenant-slug"
                         className="theme-text-secondary text-sm font-medium"
@@ -290,15 +323,31 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
                         value={tenantSlug}
                         onChange={(e) => setTenantSlug(e.target.value)}
                         placeholder="acme-retail"
-                        className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
+                        className={`theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400 ${
+                          tenantLoginMethod !== "slug"
+                            ? "cursor-not-allowed opacity-60"
+                            : ""
+                        }`}
                         inputMode="text"
                         pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
                         title="Use lowercase letters, numbers, and hyphens only"
                         required={tenantLoginMethod === "slug"}
+                        disabled={tenantLoginMethod !== "slug"}
+                        aria-disabled={tenantLoginMethod !== "slug"}
                       />
+                      <p className="text-xs theme-text-secondary">
+                        {tenantLoginMethod === "slug"
+                          ? "This slug uniquely identifies your tenant."
+                          : "Select “Company slug” above to enable slug login."}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
+                    <div
+                      className={`space-y-2 rounded-2xl border px-4 py-3 transition ${
+                        tenantLoginMethod === "email"
+                          ? "border-sky-300/80 bg-white shadow-sm dark:border-sky-500/40 dark:bg-slate-900"
+                          : "border-slate-200/60 bg-slate-50/40 opacity-75 dark:border-white/10 dark:bg-white/5"
+                      }`}
+                    >
                       <label
                         htmlFor="tenant-email"
                         className="theme-text-secondary text-sm font-medium"
@@ -311,12 +360,23 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="cashier@acme-retail.com"
-                        className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400"
+                        className={`theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400 ${
+                          tenantLoginMethod !== "email"
+                            ? "cursor-not-allowed opacity-60"
+                            : ""
+                        }`}
                         autoComplete="username"
                         required={tenantLoginMethod === "email"}
+                        disabled={tenantLoginMethod !== "email"}
+                        aria-disabled={tenantLoginMethod !== "email"}
                       />
+                      <p className="text-xs theme-text-secondary">
+                        {tenantLoginMethod === "email"
+                          ? "Use the same email used when inviting you to the POS."
+                          : "Select “Email” above to enable email login."}
+                      </p>
                     </div>
-                  )}
+                  </div>
                   <div className="space-y-2">
                     <label
                       htmlFor="pin"
