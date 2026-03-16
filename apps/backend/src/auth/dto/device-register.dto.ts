@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 
 export class DeviceRegisterDto {
   @ApiProperty({ description: 'Tenant slug for multi-tenant context', example: 'acme-retail' })

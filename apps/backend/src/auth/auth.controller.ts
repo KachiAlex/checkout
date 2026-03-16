@@ -49,6 +49,7 @@ export class AuthController {
     return this.authService.loginSuperAdmin(loginDto);
   }
 
+  /* Temporarily disabled until backend/frontend email login flow is stabilized.
   @Post('login/email')
   @ApiOperation({ summary: 'Login with email and PIN (tenant users)' })
   @ApiResponse({ status: 200, description: 'Login successful' })
@@ -72,6 +73,7 @@ export class AuthController {
       throw error;
     }
   }
+  */
 
   @Post('verify-manager')
   @UseGuards(JwtAuthGuard)

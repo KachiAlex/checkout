@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import * as path from 'path';
+import * as fs from 'fs';
 import { AuthModule } from './auth/auth.module';
 // import { UsersModule } from './users/users.module'; // Temporarily disabled due to decorator compatibility issues
 import { LocationsModule } from './locations/locations.module';
@@ -33,12 +35,46 @@ import { ContactModule } from './contact/contact.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AuditModule } from './audit/audit.module';
+import { LicensingModule } from './licensing/licensing.module';
+import { BackupModule } from './backup/backup.module';
+
+const isDesktopMode = process.env.DESKTOP_MODE === 'true';
+
+const findEnvFile = (fileName: string): string | null => {
+  let currentDir = process.cwd();
+  const visited = new Set<string>();
+
+  while (!visited.has(currentDir)) {
+    visited.add(currentDir);
+    const candidate = path.join(currentDir, fileName);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+
+    const parent = path.dirname(currentDir);
+    if (parent === currentDir) {
+      break;
+    }
+    currentDir = parent;
+  }
+
+  return null;
+};
+
+const candidateEnvFiles = isDesktopMode ? ['.env.desktop', '.env'] : ['.env'];
+const envFiles = candidateEnvFiles
+  .map((fileName) => findEnvFile(fileName))
+  .filter((value): value is string => Boolean(value));
+
+if (envFiles.length === 0) {
+  envFiles.push(path.join(process.cwd(), '.env'));
+}
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: envFiles,
     }),
     ThrottlerModule.forRoot([
       {
@@ -46,7 +82,7 @@ import { AuditModule } from './audit/audit.module';
         limit: 200, // 200 requests per minute (increased to fix 429 errors on reports page)
       },
     ]),
-    FirestoreModule,
+    ...(isDesktopMode ? [] : [FirestoreModule]),
     DatabaseModule,
     AuthModule,
     // UsersModule, // Temporarily disabled due to decorator compatibility issues
@@ -78,6 +114,8 @@ import { AuditModule } from './audit/audit.module';
     AccountingModule,
     ExpensesModule,
     AuditModule,
+    LicensingModule,
+    BackupModule,
   ],
   providers: [],
 })
