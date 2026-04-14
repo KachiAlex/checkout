@@ -90,6 +90,12 @@ enum UserRole {
   ADMIN
 }
 
+enum ItemCategory {
+  STOCK
+  FINISHED
+  BUNDLE
+}
+
 enum OrderStatus {
   DRAFT
   PENDING
@@ -194,6 +200,8 @@ model Tenant {
   taxPeriods           TaxPeriod[]
   licenses             License[]
   backupManifests      BackupManifest[]
+  recipes              Recipe[]
+  recipeIngredients     RecipeIngredient[]
 
   @@index([createdAt])
 }
@@ -382,6 +390,8 @@ model Product {
   priceCents   Int
   costCents    Int?
   taxRate      Float    @default(0)
+  unitOfMeasure String?
+  category     ItemCategory @default(FINISHED)
   variants     Json?
   images       String[] @default([])
   active       Boolean  @default(true)
@@ -389,12 +399,14 @@ model Product {
   updatedAt    DateTime @updatedAt
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  productCategory  Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   brand            Brand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
   inventory        Inventory[]
   inventoryBatches InventoryBatch[]
   orderItems       OrderItem[]
   invoiceItems     InvoiceItem[]
+  recipes          Recipe[]
+  ingredientIn     RecipeIngredient[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -957,5 +969,42 @@ model BackupManifest {
   @@index([tenantId])
   @@index([timestamp])
   @@index([status])
+}
+
+model Recipe {
+  id          String   @id @default(uuid())
+  tenantId    String
+  productId   String
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product     Product           @relation(fields: [productId], references: [id])
+  ingredients RecipeIngredient[]
+  @@index([tenantId])
+}
+
+model RecipeIngredient {
+  id          String   @id @default(uuid())
+  tenantId    String
+  recipeId    String
+  ingredientId String
+  quantity    Float
+  unit        String
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient  Product  @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, recipeId, ingredientId])
+  @@index([tenantId])
+  @@index([recipeId])
+  @@index([ingredientId])
 }
 

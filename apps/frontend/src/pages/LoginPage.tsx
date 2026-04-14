@@ -10,7 +10,6 @@ import { generateUUID } from "../utils/uuid";
 import { SEO } from "../components/SEO";
 
 type LoginVariant = "tenant" | "superadmin";
-type TenantLoginMethod = "slug" | "email";
 
 interface LoginPageProps {
   variant?: LoginVariant;
@@ -22,11 +21,8 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [tenantLoginMethod, setTenantLoginMethod] =
-    useState<TenantLoginMethod>("slug");
-  const { login, loginWithEmail, loginSuperAdmin } = useAuthStore((state) => ({
+  const { login, loginSuperAdmin } = useAuthStore((state) => ({
     login: state.login,
-    loginWithEmail: state.loginWithEmail,
     loginSuperAdmin: state.loginSuperAdmin,
   }));
   const navigate = useNavigate();
@@ -61,41 +57,29 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
         toast.success("Welcome back");
         navigate("/superadmin/dashboard", { replace: true });
       } else {
-        const normalizedEmail = email.trim().toLowerCase();
         const normalizedSlug = tenantSlug.trim().toLowerCase();
 
         if (!pin) {
           throw new Error("PIN is required");
         }
 
-        if (tenantLoginMethod === "slug" && !normalizedSlug) {
+        if (!normalizedSlug) {
           throw new Error("Company slug is required");
         }
 
-        if (tenantLoginMethod === "email" && !normalizedEmail) {
-          throw new Error("Email is required");
-        }
-
-        attemptedTenantSlug =
-          tenantLoginMethod === "slug" ? normalizedSlug : "";
-        attemptedEmail = tenantLoginMethod === "email" ? normalizedEmail : "";
+        attemptedTenantSlug = normalizedSlug;
+        attemptedEmail = "";
 
         // Generate device ID (store in localStorage for persistence)
         const deviceId = localStorage.getItem("deviceId") ?? generateUUID();
         localStorage.setItem("deviceId", deviceId);
         attemptedDeviceId = deviceId;
 
-        if (tenantLoginMethod === "email") {
-          await loginWithEmail(normalizedEmail, pin, deviceId);
-        } else {
-          await login(normalizedSlug, pin, deviceId);
-        }
+        await login(normalizedSlug, pin, deviceId);
         const { user } = useAuthStore.getState();
         debugLog("Login success", {
           type: "tenant",
-          tenantSlug:
-            tenantLoginMethod === "slug" ? normalizedSlug : user?.tenantId,
-          email: tenantLoginMethod === "email" ? normalizedEmail : undefined,
+          tenantSlug: normalizedSlug,
           userRole: user?.role,
           locationId: user?.locationId,
         });
@@ -205,7 +189,7 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
                 <p className="theme-text-secondary text-xs sm:text-sm px-2">
                   {variant === "superadmin"
                     ? "Access the multi-tenant command center to provision and manage companies."
-                    : "Pick your login method and use your secure PIN to access the checkout console."}
+                    : "Use your tenant slug and secure PIN to access the checkout console."}
                 </p>
               </div>
             </div>
@@ -254,128 +238,32 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
                 </>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <p className="theme-text-secondary text-xs font-semibold uppercase tracking-wide">
-                      Choose a login method
+                  <div className="space-y-2 rounded-2xl border border-sky-300/80 bg-white px-4 py-3 shadow-sm transition dark:border-sky-500/40 dark:bg-slate-900">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                          Company slug
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Use lowercase letters, numbers, and hyphens.
+                        </p>
+                      </div>
+                    </div>
+                    <input
+                      id="tenantSlug"
+                      type="text"
+                      value={tenantSlug}
+                      onChange={(e) => setTenantSlug(e.target.value)}
+                      placeholder="acme-retail"
+                      className="theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400"
+                      inputMode="text"
+                      pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                      title="Use lowercase letters, numbers, and hyphens only"
+                      required
+                    />
+                    <p className="text-xs theme-text-secondary">
+                      This slug uniquely identifies your tenant.
                     </p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          {
-                            label: "Company slug",
-                            helper: "Use the slug provided during onboarding.",
-                            value: "slug",
-                          },
-                          {
-                            label: "Email",
-                            helper: "Use your registered work email.",
-                            value: "email",
-                          },
-                        ] as {
-                          label: string;
-                          helper: string;
-                          value: TenantLoginMethod;
-                        }[]
-                      ).map(({ label, helper, value }) => {
-                        const isActive = tenantLoginMethod === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            className={`rounded-2xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                              isActive
-                                ? "border-sky-400/80 bg-white shadow-sm dark:border-sky-500/60 dark:bg-slate-900"
-                                : "border-transparent bg-slate-50/30 hover:border-slate-200/70 dark:bg-white/5 dark:hover:border-white/15"
-                            }`}
-                            onClick={() => setTenantLoginMethod(value)}
-                            disabled={loading}
-                            aria-pressed={isActive}
-                          >
-                            <span className="block text-sm font-semibold theme-text-primary">
-                              {label}
-                            </span>
-                            <span className="block text-xs theme-text-secondary">
-                              {isActive ? "Selected · " : ""}
-                              {helper}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="grid gap-3">
-                    <div
-                      className={`space-y-2 rounded-2xl border px-4 py-3 transition ${
-                        tenantLoginMethod === "slug"
-                          ? "border-sky-300/80 bg-white shadow-sm dark:border-sky-500/40 dark:bg-slate-900"
-                          : "border-slate-200/60 bg-slate-50/40 opacity-75 dark:border-white/10 dark:bg-white/5"
-                      }`}
-                    >
-                      <label
-                        htmlFor="tenant-slug"
-                        className="theme-text-secondary text-sm font-medium"
-                      >
-                        Company slug
-                      </label>
-                      <input
-                        id="tenant-slug"
-                        type="text"
-                        value={tenantSlug}
-                        onChange={(e) => setTenantSlug(e.target.value)}
-                        placeholder="acme-retail"
-                        className={`theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium lowercase outline-none focus:ring-2 focus:ring-sky-400 ${
-                          tenantLoginMethod !== "slug"
-                            ? "cursor-not-allowed opacity-60"
-                            : ""
-                        }`}
-                        inputMode="text"
-                        pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
-                        title="Use lowercase letters, numbers, and hyphens only"
-                        required={tenantLoginMethod === "slug"}
-                        disabled={tenantLoginMethod !== "slug"}
-                        aria-disabled={tenantLoginMethod !== "slug"}
-                      />
-                      <p className="text-xs theme-text-secondary">
-                        {tenantLoginMethod === "slug"
-                          ? "This slug uniquely identifies your tenant."
-                          : "Select “Company slug” above to enable slug login."}
-                      </p>
-                    </div>
-                    <div
-                      className={`space-y-2 rounded-2xl border px-4 py-3 transition ${
-                        tenantLoginMethod === "email"
-                          ? "border-sky-300/80 bg-white shadow-sm dark:border-sky-500/40 dark:bg-slate-900"
-                          : "border-slate-200/60 bg-slate-50/40 opacity-75 dark:border-white/10 dark:bg-white/5"
-                      }`}
-                    >
-                      <label
-                        htmlFor="tenant-email"
-                        className="theme-text-secondary text-sm font-medium"
-                      >
-                        Email
-                      </label>
-                      <input
-                        id="tenant-email"
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        placeholder="cashier@acme-retail.com"
-                        className={`theme-surface w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-sky-400 ${
-                          tenantLoginMethod !== "email"
-                            ? "cursor-not-allowed opacity-60"
-                            : ""
-                        }`}
-                        autoComplete="username"
-                        required={tenantLoginMethod === "email"}
-                        disabled={tenantLoginMethod !== "email"}
-                        aria-disabled={tenantLoginMethod !== "email"}
-                      />
-                      <p className="text-xs theme-text-secondary">
-                        {tenantLoginMethod === "email"
-                          ? "Use the same email used when inviting you to the POS."
-                          : "Select “Email” above to enable email login."}
-                      </p>
-                    </div>
                   </div>
                   <div className="space-y-2">
                     <label
@@ -405,10 +293,7 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
                   loading ||
                   (variant === "superadmin"
                     ? !email.trim() || !password
-                    : !pin ||
-                      (tenantLoginMethod === "slug"
-                        ? !tenantSlug.trim()
-                        : !email.trim()))
+                    : !pin || !tenantSlug.trim())
                 }
                 className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-500 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base lg:text-lg font-semibold text-white shadow-[0_25px_45px_-30px_rgba(37,99,235,0.6)] transition hover:shadow-[0_30px_60px_-35px_rgba(37,99,235,0.75)] disabled:cursor-not-allowed disabled:opacity-60 touch-manipulation"
               >

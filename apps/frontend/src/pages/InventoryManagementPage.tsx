@@ -24,6 +24,8 @@ interface InventoryStock {
     barcode?: string;
     description?: string;
     priceCents: number;
+    unitOfMeasure?: string;
+    category?: 'STOCK' | 'FINISHED' | 'BUNDLE';
   };
   quantity: number;
   costCents?: number;
@@ -116,6 +118,8 @@ export function InventoryManagementPage() {
     categoryName: "",
     brandId: "",
     brandName: "",
+    category: "FINISHED" as 'STOCK' | 'FINISHED' | 'BUNDLE',
+    unitOfMeasure: "",
   });
 
   // Categories and brands
@@ -426,6 +430,8 @@ export function InventoryManagementPage() {
           categoryName: inventoryForm.categoryName || undefined,
           brandId: inventoryForm.brandId || undefined,
           brandName: inventoryForm.brandName || undefined,
+          category: inventoryForm.category,
+          unitOfMeasure: inventoryForm.unitOfMeasure || undefined,
         },
         {
           headers: {
@@ -454,6 +460,8 @@ export function InventoryManagementPage() {
           categoryName: "",
           brandId: "",
           brandName: "",
+          category: "FINISHED",
+          unitOfMeasure: "",
         });
 
         // Reload inventory (will work if user has locationId, otherwise will show warning)
@@ -629,6 +637,42 @@ export function InventoryManagementPage() {
               <div>
                 <label className="block text-sm font-medium theme-text-secondary mb-1">
                   Category
+                </label>
+                <select
+                  value={inventoryForm.category}
+                  onChange={(e) =>
+                    setInventoryForm({
+                      ...inventoryForm,
+                      category: e.target.value as 'STOCK' | 'FINISHED' | 'BUNDLE',
+                    })
+                  }
+                  className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
+                >
+                  <option value="STOCK">Stock (Ingredient)</option>
+                  <option value="FINISHED">Finished Good</option>
+                  <option value="BUNDLE">Bundle/Recipe</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium theme-text-secondary mb-1">
+                  Unit of Measure
+                </label>
+                <input
+                  type="text"
+                  value={inventoryForm.unitOfMeasure}
+                  onChange={(e) =>
+                    setInventoryForm({
+                      ...inventoryForm,
+                      unitOfMeasure: e.target.value,
+                    })
+                  }
+                  className="w-full theme-surface rounded-lg border border-white/20 bg-transparent px-4 py-3 text-base theme-text-primary focus:border-sky-400 focus:outline-none"
+                  placeholder="e.g., kg, L, pcs, box"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium theme-text-secondary mb-1">
+                  Category (Legacy)
                 </label>
                 <select
                   value={inventoryForm.categoryId}

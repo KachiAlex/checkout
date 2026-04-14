@@ -10,9 +10,12 @@ import {
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
 import { useThemeStore } from "./stores/themeStore";
+import { useDesktopMenuNavigation } from "./hooks/useDesktopMenuNavigation";
 import "./App.css";
 import { NativeDebugPanel } from "./components/NativeDebugPanel";
 import { FixedNavigation } from "./components/FixedNavigation";
+import { ComponentErrorBoundary } from "./components/ComponentErrorBoundary";
+import { DesktopLicenseGate } from "./components/DesktopLicenseGate";
 
 const LoginPage = lazy(() =>
   import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })),
@@ -168,6 +171,12 @@ function App() {
     user: state.user,
   }));
   const theme = useThemeStore((state) => state.theme);
+
+  // Log app initialization
+  console.log("[App] Initializing App component");
+  console.log("[App] isAuthenticated:", isAuthenticated);
+  console.log("[App] user:", user);
+
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
   const isCashier = user?.role === "cashier";
@@ -203,10 +212,23 @@ function App() {
     return BrowserRouter;
   }, []);
 
-  return (
-    <Router>
+  console.log("[App] Before render:");
+  console.log("[App] Router type:", Router.name);
+  console.log("[App] isAuthenticated:", isAuthenticated);
+  console.log("[App] isNativePlatform:", isNativePlatform);
+
+  const RouterContent = () => {
+    // Enable desktop menu navigation when running in Electron (must be inside Router)
+    useDesktopMenuNavigation();
+
+    return (
       <div className="app">
-        <FixedNavigation />
+        <ComponentErrorBoundary name="FixedNavigation">
+          <FixedNavigation />
+        </ComponentErrorBoundary>
+        <ComponentErrorBoundary name="NativeDebugPanel">
+          <NativeDebugPanel />
+        </ComponentErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route
@@ -581,10 +603,21 @@ function App() {
           </Routes>
         </Suspense>
         <Toaster position="top-right" />
-        <NativeDebugPanel />
       </div>
+    );
+  };
+
+  const appContent = (
+    <Router>
+      <RouterContent />
     </Router>
   );
+
+  if (isElectron) {
+    return <DesktopLicenseGate>{appContent}</DesktopLicenseGate>;
+  }
+
+  return appContent;
 }
 
 export default App;

@@ -6,13 +6,19 @@ import { useAuthStore } from "./stores/authStore";
 import axios from "axios";
 import { Capacitor, CapacitorHttp, HttpOptions } from "@capacitor/core";
 import { HelmetProvider } from "react-helmet-async";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
+console.log("[React] main.tsx loading...");
 
 const isNativePlatform =
   typeof Capacitor.isNativePlatform === "function"
     ? Capacitor.isNativePlatform()
     : Capacitor.getPlatform() !== "web";
 
+console.log("[React] isNativePlatform:", isNativePlatform);
+
 if (isNativePlatform) {
+  console.log("[React] Setting up Capacitor HTTP adapter...");
   axios.defaults.adapter = async (config) => {
     const method = (config.method ?? "get").toUpperCase();
     const url = axios.getUri(config);
@@ -44,23 +50,51 @@ if (isNativePlatform) {
       request: undefined,
     };
   };
+  console.log("[React] Capacitor HTTP adapter setup complete");
 }
 
 // Initialize auth token from localStorage on app startup
 const initializeAuth = () => {
+  console.log("[React] Initializing auth...");
   const { accessToken } = useAuthStore.getState();
   if (accessToken) {
     axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+    console.log("[React] Auth token set");
+  } else {
+    console.log("[React] No auth token found");
   }
 };
 
 // Initialize auth before rendering
 initializeAuth();
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <HelmetProvider>
-      <App />
-    </HelmetProvider>
-  </React.StrictMode>,
-);
+// Find root element
+console.log("[React] Looking for root element...");
+const rootElement = document.getElementById("root");
+console.log("[React] Root element found:", rootElement);
+
+if (!rootElement) {
+  console.error("[React] CRITICAL: root element not found!");
+  document.body.innerHTML = "<h1>ERROR: Root element not found!</h1>";
+} else {
+  console.log("[React] Creating React root...");
+  try {
+    const root = ReactDOM.createRoot(rootElement);
+    console.log("[React] React root created successfully");
+    
+    console.log("[React] Rendering App component...");
+    root.render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <HelmetProvider>
+            <App />
+          </HelmetProvider>
+        </ErrorBoundary>
+      </React.StrictMode>,
+    );
+    console.log("[React] App component rendered successfully");
+  } catch (error) {
+    console.error("[React] ERROR during root creation or render:", error);
+    rootElement.innerHTML = `<h1>ERROR: Failed to render app</h1><pre>${JSON.stringify(error)}</pre>`;
+  }
+}

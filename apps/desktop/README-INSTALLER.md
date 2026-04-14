@@ -40,6 +40,14 @@ npm run package:installer
 
 Use any installer creation tool (Inno Setup, Advanced Installer, etc.) to package the portable build.
 
+## Bundled Backend & Database Artifacts
+
+- The backend (NestJS) is built via `npm run build --workspace=apps/backend` as part of `npm run build:desktop`.
+- Prisma client + migrations ship within the backend `dist` folder so the desktop runtime can run migrations locally.
+- Before any packaging step, `npm run desktop:init-db` executes (via `prepare:desktop-db`) to create/update the SQLite file defined by `DESKTOP_SQLITE_PATH`.
+- Electron packaging copies the seeded `.db` into `resources/app.asar.unpacked/data/` (matching Prisma path) so every installer contains ready-to-use data (Demo Retail tenant + admin PIN 1234).
+- When the installer runs, the SQLite file is placed under `%ProgramData%/CheckoutApp/data/` (or configured path) and reused across app updates.
+
 ## Auto-Update Configuration
 
 The app is configured for auto-updates via GitHub Releases. To enable:

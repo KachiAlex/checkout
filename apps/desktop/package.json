@@ -12,18 +12,20 @@
     "build:frontend": "npm run build --workspace=@pos-checkout/frontend",
     "build:icon": "node scripts/convert-icon.js",
     "start": "electron .",
-    "prepackage": "npm run build:frontend && npm run build && npm run copy:frontend",
-    "prepackage:installer": "npm run build:frontend && npm run build && npm run copy:frontend && npm run build:icon",
-    "copy:frontend": "xcopy /E /I /Y ..\\frontend\\dist frontend-dist && node scripts/inject-base-tag.js",
-    "package": "electron-packager . \"Checkout POS\" --platform=win32 --arch=x64 --out=release --overwrite --asar --ignore=src --ignore=tsconfig.json --ignore=electron-builder.yml",
-    "package:installer": "electron-builder --config electron-builder.yml --win nsis"
+    "prepackage": "npm run prepare:desktop-db && npm run build:frontend && npm run build && npm run copy:frontend",
+    "prepackage:installer": "npm run prepare:desktop-db && npm run build && npm run copy:frontend",
+    "prepare:desktop-db": "cross-env DESKTOP_MODE=true DESKTOP_SQLITE_PATH=file:../data/checkout-desktop.db npm --prefix ../.. run desktop:init-db",
+    "copy:frontend": "node scripts/copy-frontend.js",
+    "package": "cross-env DESKTOP_MODE=true DESKTOP_SQLITE_PATH=file:../data/checkout-desktop.db electron-packager . \"Checkout POS\" --platform=win32 --arch=x64 --out=release --overwrite --asar --ignore=src --ignore=tsconfig.json --ignore=electron-builder.yml",
+    "package:installer": "npm run prepackage:installer && electron-builder --config electron-builder.yml --win nsis"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/node-hid": "^1.3.4",
+    "@types/react": "^18.3.27",
     "cross-env": "^7.0.3",
-    "electron": "30.0.0",
-    "electron-builder": "^24.9.1",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
     "electron-packager": "^17.1.2",
     "lodash.get": "^4.4.2",
     "png-to-ico": "^3.0.1",
@@ -31,12 +33,8 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "electron-updater": "^6.6.2",
-    "node-hid": "^2.2.0",
-    "pos-checkout-mvp": "file:../..",
-    "prebuild-install": "^7.1.3"
-  },
-  "optionalDependencies": {
-    "usb-detection": "^4.14.2"
+    "axios": "^1.13.5",
+    "electron-updater": "^6.7.3",
+    "lucide-react": "^0.563.0"
   }
 }

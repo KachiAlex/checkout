@@ -20,6 +20,7 @@ import { LocationsRepository } from '../locations/locations.repository';
 import { UsersRepository } from '../users/users.repository';
 import { ProductsService } from '../products/products.service';
 import { AccountingService } from '../accounting/accounting.service';
+import { RecipesService } from '../recipes/recipes.service';
 
 @Injectable()
 export class OrdersService {
@@ -32,6 +33,7 @@ export class OrdersService {
     private readonly usersRepository: UsersRepository,
     private readonly productsService: ProductsService,
     private readonly accountingService: AccountingService,
+    private readonly recipesService: RecipesService,
   ) {}
 
   async create(
@@ -232,31 +234,68 @@ export class OrdersService {
     isCreditOrder: boolean = false,
   ): Promise<void> {
     for (const item of dto.items) {
-      const stock = await this.inventoryService.getStockByProduct(item.productId, dto.locationId);
-
-      if (stock < item.quantity) {
-        throw new ConflictException(
-          `Insufficient stock for product ${item.productId}. Available: ${stock}, Requested: ${item.quantity}`,
-        );
+      const product = await this.productsService.findOne(item.productId, dto.tenantId ?? '');
+      if (!product) {
+        throw new NotFoundException(`Product ${item.productId} not found`);
       }
 
-      // Use CREDIT_SALE transaction type for credit orders
-      if (isCreditOrder) {
-        await this.inventoryService.decrementForCreditSale(
-          item.productId,
-          dto.locationId,
-          item.quantity,
-          dto.uuid,
-          userId,
-        );
+      // If product is BUNDLE, resolve ingredients and deduct those instead
+      if (product.category === 'BUNDLE') {
+        const recipe = await this.recipesService.findOne(item.productId, dto.tenantId ?? '');
+        if (!recipe) {
+          throw new NotFoundException(`Recipe not found for bundle product ${item.productId}`);
+        }
+        for (const ingredient of recipe.ingredients) {
+          const requiredQty = ingredient.quantity * item.quantity;
+          const stock = await this.inventoryService.getStockByProduct(ingredient.ingredientId, dto.locationId);
+          if (stock < requiredQty) {
+            throw new ConflictException(
+              `Insufficient stock for ingredient ${ingredient.ingredient.name}. Available: ${stock}, Required: ${requiredQty}`,
+            );
+          }
+          if (isCreditOrder) {
+            await this.inventoryService.decrementForCreditSale(
+              ingredient.ingredientId,
+              dto.locationId,
+              requiredQty,
+              dto.uuid,
+              userId,
+            );
+          } else {
+            await this.inventoryService.decrementForSale(
+              ingredient.ingredientId,
+              dto.locationId,
+              requiredQty,
+              dto.uuid,
+              userId,
+            );
+          }
+        }
       } else {
-        await this.inventoryService.decrementForSale(
-          item.productId,
-          dto.locationId,
-          item.quantity,
-          dto.uuid,
-          userId, // Pass userId to track who made the sale
-        );
+        // Normal finished/stock item: deduct directly
+        const stock = await this.inventoryService.getStockByProduct(item.productId, dto.locationId);
+        if (stock < item.quantity) {
+          throw new ConflictException(
+            `Insufficient stock for product ${item.productId}. Available: ${stock}, Requested: ${item.quantity}`,
+          );
+        }
+        if (isCreditOrder) {
+          await this.inventoryService.decrementForCreditSale(
+            item.productId,
+            dto.locationId,
+            item.quantity,
+            dto.uuid,
+            userId,
+          );
+        } else {
+          await this.inventoryService.decrementForSale(
+            item.productId,
+            dto.locationId,
+            item.quantity,
+            dto.uuid,
+            userId,
+          );
+        }
       }
     }
   }
@@ -395,6 +434,7 @@ export class OrdersService {
       {
         uuid: order.uuid,
         locationId: order.locationId,
+        tenantId: order.tenantId,
         items: order.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,

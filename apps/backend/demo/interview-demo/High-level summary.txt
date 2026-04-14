@@ -1,0 +1,30 @@
+High-level summary
+
+The app is multi-tenant at the data layer: every tenant-scoped model stores a tenantId, requests carry a tenantId in the JWT, and every service/repository enforces tenant scoping before accessing the DB.
+Data model (DB)
+
+Tenant column & relations: most models include a tenantId column and FK relation to Tenant (see index/foreign keys): schema.prisma:1.
+Example constraints: unique/compound keys and indexes are created with tenantId (e.g., @@unique([tenantId, sku]), @@index([tenantId])) to enforce isolation and query performance.
+Auth / tenant propagation
+
+JWT contains tenantId and role and is the primary auth/tenant source: jwt.strategy.ts:1.
+Requests are guarded with the JWT guard and role guard; RolesGuard enforces endpoint-level role restrictions: roles.guard.ts:1.
+The authenticated payload becomes req.user (includes tenantId) and is passed from controller → service.
+Service → repository enforcement
+
+Controllers and services always accept/pass tenantId to repository calls; repositories add a where: { tenantId } filter on Prisma queries so data is always scoped: see orders flow:
+Controller: orders.controller.ts:1
+Service: orders.service.ts:1
+Repository: orders.repository.ts:1
+Example verbal flow to read on camera: "Client sends JWT -> JwtStrategy validates payload and fills req.user with tenantId -> orders.controller calls orders.service.create(req.user.tenantId, dto) -> orders.repository.create({ ..., tenantId }) and Prisma persists row with that tenantId."
+Database-level safety
+
+Foreign keys reference Tenant(id) and cascade or set-null as appropriate; this prevents orphaned rows and aids safe cleanup (see migrations in prisma/migrations referenced by schema.prisma).
+Role & platform-admin exceptions
+
+Role checks via @Roles(...) + RolesGuard. Platform-admin override flags (isPlatformAdmin) are included in JWT payload and services use them to allow cross-tenant admin operations (examples in controllers such as backup.controller which calls ensurePlatformAdmin): backup.controller.ts:1.
+Async (event) flow example
+
+Ingested events are processed idempotently and tenant-scoped: sync.service receives events, checks idempotency (e.g., find by UUID) and processes by type (e.g., order.created) under the event's tenantId: sync.service.ts:1.
+Concrete flow to demo on-screen: POST /api/orders (controller) → service saves order with tenantId → API or device publishes order.created → sync.service consumes/processes and writes result back to tenant-scoped tables.
+How to demon

@@ -44,10 +44,14 @@ export class CreateOrderDto {
   @IsUUID()
   uuid: string;
 
-  @ApiProperty({ description: 'Location ID', required: false })
+  @ApiProperty({ description: 'Location ID (optional, will use user location if not provided)' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   locationId?: string;
+
+  @ApiProperty({ description: 'Tenant ID' })
+  @IsUUID()
+  tenantId: string;
 
   @ApiProperty({ description: 'Customer ID (Firestore document ID)', required: false })
   @IsOptional()

@@ -37,6 +37,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { AuditModule } from './audit/audit.module';
 import { LicensingModule } from './licensing/licensing.module';
 import { BackupModule } from './backup/backup.module';
+import { RecipesModule } from './recipes/recipes.module';
 
 const isDesktopMode = process.env.DESKTOP_MODE === 'true';
 
@@ -116,6 +117,7 @@ if (envFiles.length === 0) {
     AuditModule,
     LicensingModule,
     BackupModule,
+    RecipesModule,
   ],
   providers: [],
 })

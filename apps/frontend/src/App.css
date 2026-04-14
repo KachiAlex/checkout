@@ -1,11 +1,20 @@
 /* Custom styles for POS checkout */
 
+:root {
+  /* defaults so spacing is consistent even if env vars are missing */
+  --page-inline-padding: 1rem;
+  --sidebar-width-mobile: 4rem; /* w-16 */
+  --sidebar-width-desktop: 16rem; /* sm:w-64 */
+  --sidebar-content-gutter: 0.75rem; /* matches nav link padding (px-3) */
+  --sidebar-peek: 1.25rem; /* visible sliver when collapsed on mobile */
+}
+
 /* Padding for fixed navigation */
 .page-with-nav {
   padding-bottom: calc(
     var(--nav-height-mobile) + env(safe-area-inset-bottom, 0px) + 1rem
   );
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
   padding-left: var(--page-inline-padding);
   padding-right: var(--page-inline-padding);
 }
@@ -13,16 +22,70 @@
 @media (min-width: 640px) {
   .page-with-nav {
     padding-bottom: 0;
-    padding-top: calc(
-      var(--nav-height-desktop) + 1rem + env(safe-area-inset-top, 0px)
-    );
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+    padding-left: var(--page-inline-padding);
   }
 }
 
 @media (min-width: 1024px) {
   .page-with-nav {
-    padding-top: calc(
-      var(--nav-height-desktop) + 1.5rem + env(safe-area-inset-top, 0px)
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+    padding-left: calc(
+      var(--sidebar-width-desktop) + var(--sidebar-content-gutter)
     );
   }
+}
+
+/* Click-toggle sidebar */
+.nav-slide {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+@media (max-width: 1023px) {
+  .nav-slide.nav-closed {
+    transform: translateX(calc(-100% + var(--sidebar-peek)));
+    box-shadow: none;
+  }
+
+  .nav-slide.nav-open {
+    transform: translateX(0);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  /* When nav is open on mobile, push content so it doesn't sit under sidebar */
+  body.nav-open-mobile .page-with-nav {
+    padding-left: calc(
+      var(--sidebar-width-mobile) + var(--sidebar-content-gutter)
+    );
+  }
+}
+
+@media (min-width: 1024px) {
+  .nav-slide {
+    transform: translateX(0);
+  }
+}
+
+.nav-toggle-btn {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.5rem;
+  z-index: 120;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.nav-toggle-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
 }

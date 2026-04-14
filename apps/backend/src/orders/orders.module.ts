@@ -8,6 +8,7 @@ import { LocationsModule } from '../locations/locations.module';
 import { UsersModule } from '../users/users.module';
 import { ProductsModule } from '../products/products.module';
 import { AccountingModule } from '../accounting/accounting.module';
+import { RecipesModule } from '../recipes/recipes.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AccountingModule } from '../accounting/accounting.module';
     UsersModule,
     ProductsModule,
     AccountingModule,
+    RecipesModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService, OrdersRepository],

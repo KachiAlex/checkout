@@ -4,26 +4,39 @@ import axios from "axios";
 import { API_URL } from "../config";
 
 export function useAlertsCount() {
-  const { accessToken, user } = useAuthStore();
-  const [alertCount, setAlertCount] = useState(0);
-  const [criticalCount, setCriticalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  try {
+    const authState = useAuthStore();
+    const { accessToken, user } = authState || {};
+    const [alertCount, setAlertCount] = useState(0);
+    const [criticalCount, setCriticalCount] = useState(0);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!accessToken || !user?.locationId) {
-      setAlertCount(0);
-      setCriticalCount(0);
-      setLoading(false);
-      return;
-    }
+    console.log("[useAlertsCount] Initialized");
 
-    let mounted = true;
-    const fetchAlerts = async () => {
-      try {
-        const response = await axios.get(
-          `${API_URL}/api/v1/reports/alerts?location_id=${user.locationId}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } },
-        );
+    useEffect(() => {
+      if (!accessToken || !user?.locationId) {
+        console.log("[useAlertsCount] Skipping fetch - no token or locationId");
+        setAlertCount(0);
+        setCriticalCount(0);
+        setLoading(false);
+        return;
+      }
+
+      if (!API_URL) {
+        console.error("[useAlertsCount] API_URL is not configured!");
+        setAlertCount(0);
+        setCriticalCount(0);
+        setLoading(false);
+        return;
+      }
+
+      let mounted = true;
+      const fetchAlerts = async () => {
+        try {
+          const response = await axios.get(
+            `${API_URL}/api/v1/reports/alerts?location_id=${user.locationId}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } },
+          );
 
         if (mounted) {
           const alerts = response.data?.alerts || [];
@@ -34,7 +47,8 @@ export function useAlertsCount() {
           setCriticalCount(critical);
         }
       } catch (error) {
-        console.error("Failed to fetch alerts count:", error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error("[useAlertsCount] Failed to fetch alerts:", errorMsg);
         if (mounted) {
           setAlertCount(0);
           setCriticalCount(0);
@@ -57,5 +71,9 @@ export function useAlertsCount() {
     };
   }, [accessToken, user?.locationId]);
 
-  return { alertCount, criticalCount, loading };
+    return { alertCount: 0, criticalCount: 0, loading: false };
+  } catch (error) {
+    console.error("[useAlertsCount] Fatal error:", error);
+    return { alertCount: 0, criticalCount: 0, loading: false };
+  }
 }

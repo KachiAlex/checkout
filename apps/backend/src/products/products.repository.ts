@@ -17,6 +17,8 @@ export interface ProductRecord {
   priceCents: number;
   costCents?: number;
   taxRate: number;
+  unitOfMeasure?: string;
+  category?: 'STOCK' | 'FINISHED' | 'BUNDLE';
   variants?: Record<string, unknown>;
   images?: string[];
   active: boolean;

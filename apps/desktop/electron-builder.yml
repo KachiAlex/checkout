@@ -1,59 +1,27 @@
-appId: com.poscheckout.app
+appId: com.checkout.app
 productName: Checkout POS
-artifactName: Checkout POS Setup ${version}.${ext}
+directories:
+  output: release
 files:
-  - dist/**
-  - from: frontend-dist
-    to: frontend-dist
-    filter:
-      - '**/*'
-asar: true
-
-# Auto-update configuration
-publish:
-  provider: github
-  owner: KachiAlex
-  repo: checkout
-  # For custom server, use:
-  # provider: generic
-  # url: https://your-update-server.com/updates
-
+  - dist/**/*
+  - frontend-dist/**/*
+  - package.json
+  - node_modules/electron-updater/**/*
+  - node_modules/lucide-react/**/*
+  - node_modules/axios/**/*
+asarUnpack:
+  - frontend-dist/**/*
 win:
   target:
-    - target: nsis
-      arch:
-        - x64
-  icon: build/icon.ico
-  sign: null
-  verifyUpdateCodeSignature: false
-  publisherName: Checkout POS
-
+    - nsis
+    - portable
+  certificateFile: null
+  certificatePassword: null
 nsis:
   oneClick: false
-  perMachine: false
-  allowElevation: true
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Checkout POS
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
-  installerHeaderIcon: build/icon.ico
-  deleteAppDataOnUninstall: false
-
-mac:
-  target: dmg
-  icon: build/icon.icns
-  sign: null
-  category: public.app-category.business
-
-linux:
-  target: AppImage
-  icon: build/icon.png
-  category: Office
-
-directories:
-  output: release
-  buildResources: build
 
 

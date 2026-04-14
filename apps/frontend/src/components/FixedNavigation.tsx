@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { useAlertsCount } from "../hooks/useAlertsCount";
@@ -6,10 +6,43 @@ import { BrandMark } from "./BrandMark";
 
 export const FixedNavigation = memo(function FixedNavigation() {
   console.log("[FixedNavigation] Rendering");
-  
+
   try {
     const location = useLocation();
-    
+    const [isNavOpen, setIsNavOpen] = useState(true);
+    const [isDesktop, setIsDesktop] = useState(false);
+
+    useEffect(() => {
+      if (typeof window === "undefined") return;
+
+      const update = () => {
+        const desktop = window.innerWidth >= 1024;
+        setIsDesktop(desktop);
+        setIsNavOpen(desktop ? true : false);
+      };
+
+      update();
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }, []);
+
+    // Keep body class in sync so content shifts when nav is open on mobile
+    useEffect(() => {
+      if (typeof document === "undefined") return;
+      const body = document.body;
+      if (!isDesktop && isNavOpen) {
+        body.classList.add("nav-open-mobile");
+      } else {
+        body.classList.remove("nav-open-mobile");
+      }
+      return () => body.classList.remove("nav-open-mobile");
+    }, [isDesktop, isNavOpen]);
+
+    const toggleNav = () => {
+      if (isDesktop) return;
+      setIsNavOpen((prev) => !prev);
+    };
+
     // Safely get auth data
     let isAuthenticated = false;
     let user = null;
@@ -31,9 +64,13 @@ export const FixedNavigation = memo(function FixedNavigation() {
     } catch (e) {
       console.error("[FixedNavigation] Error accessing alerts:", e);
     }
-    
-    console.log("[FixedNavigation] State loaded:", { isAuthenticated, userRole: user?.role, alertCount });
-    
+
+    console.log("[FixedNavigation] State loaded:", {
+      isAuthenticated,
+      userRole: user?.role,
+      alertCount,
+    });
+
     const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
     const isCompanyUser = isAuthenticated && !isPlatformAdmin;
     const isAdmin = user?.role === "admin";
@@ -50,184 +87,215 @@ export const FixedNavigation = memo(function FixedNavigation() {
       return null;
     }
 
-  const isActive = (path: string) => location.pathname === path;
-  const isAccountingActive = location.pathname.startsWith("/accounting");
-  const accountingPath = isAdmin ? "/accounting" : "/accounting/reports";
+    const isActive = (path: string) => location.pathname === path;
+    const isAccountingActive = location.pathname.startsWith("/accounting");
+    const accountingPath = isAdmin ? "/accounting" : "/accounting/reports";
 
-  return (
-    <nav className="fixed left-0 top-0 bottom-0 z-[100] w-16 sm:w-64 border-r border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-lg pt-safe pb-safe overflow-y-auto">
-      <div className="flex flex-col gap-2 px-2 sm:px-3 py-3">
-        {/* Logo - links to homepage */}
-        <Link
-          to="/"
-          className="flex items-center gap-2 mb-2 group"
-          title="Go to Homepage"
+    return (
+      <>
+        {!isDesktop && (
+          <button
+            type="button"
+            className="nav-toggle-btn"
+            style={{ left: isNavOpen ? "0.65rem" : "0.5rem" }}
+            onClick={toggleNav}
+            aria-expanded={isNavOpen}
+            aria-label="Toggle navigation"
+          >
+            {isNavOpen ? "✕" : "☰"}
+          </button>
+        )}
+        <nav
+          className={`fixed left-0 top-0 bottom-0 z-[100] w-16 sm:w-64 border-r border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-lg pt-safe pb-safe overflow-y-auto nav-slide ${
+            isDesktop || isNavOpen ? "nav-open" : "nav-closed"
+          }`}
         >
-          <BrandMark
-            size={36}
-            withPadding={false}
-            shadow={false}
-            backgroundClassName="bg-white/10 group-hover:bg-white/15 transition-colors"
-            className="ring-1 ring-white/20 group-hover:ring-white/30"
-          />
-          <span className="hidden sm:inline text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">
-            Checkout
-          </span>
-        </Link>
-
-        <div className="flex flex-col gap-1">
-          {(isAdmin || isManager) && (
+          <div className="flex flex-col gap-2 px-2 sm:px-3 py-3">
+            {/* Logo - links to homepage */}
             <Link
-              to="/dashboard"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-                isActive("/dashboard")
-                  ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-              }`}
+              to="/"
+              className="flex items-center gap-2 mb-2 group"
+              title="Go to Homepage"
+              onClick={() => !isDesktop && setIsNavOpen(false)}
             >
-              <span className="text-base">📈</span>
-              <span className="hidden sm:inline">Dashboard</span>
+              <BrandMark
+                size={36}
+                withPadding={false}
+                shadow={false}
+                backgroundClassName="bg-white/10 group-hover:bg-white/15 transition-colors"
+                className="ring-1 ring-white/20 group-hover:ring-white/30"
+              />
+              <span className="hidden sm:inline text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">
+                Checkout
+              </span>
             </Link>
-          )}
 
-          {(isAdmin || isManager) && (
-            <Link
-              to={accountingPath}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-                isAccountingActive
-                  ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-              }`}
-            >
-              <span className="text-base">📒</span>
-              <span className="hidden sm:inline">Accounting</span>
-            </Link>
-          )}
-
-          <Link
-            to="/checkout"
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-              isActive("/checkout")
-                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-            }`}
-          >
-            <span className="text-base">🛒</span>
-            <span className="hidden sm:inline">Checkout</span>
-          </Link>
-
-          <Link
-            to="/help"
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-              isActive("/help")
-                ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-            }`}
-          >
-            <span className="text-base">🆘</span>
-            <span className="hidden sm:inline">Help</span>
-          </Link>
-
-          {(isAdmin || isManager) && (
-            <Link
-              to="/reports"
-              className={`relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-                isActive("/reports")
-                  ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-              } ${alertCount > 0 ? (criticalCount > 0 ? "animate-pulse" : "") : ""}`}
-            >
-              <span className="text-base">📊</span>
-              <span className="hidden sm:inline">Reports</span>
-              {alertCount > 0 && (
-                <span
-                  className={`absolute right-2 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold ${
-                    criticalCount > 0
-                      ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50"
-                      : "bg-orange-500 text-white shadow-lg shadow-orange-500/50"
+            <div className="flex flex-col gap-1">
+              {(isAdmin || isManager) && (
+                <Link
+                  to="/dashboard"
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                    isActive("/dashboard")
+                      ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
                   }`}
+                  onClick={() => !isDesktop && setIsNavOpen(false)}
                 >
-                  {alertCount > 99 ? "99+" : alertCount}
-                </span>
+                  <span className="text-base">📈</span>
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Link>
               )}
-            </Link>
-          )}
 
-          {(isAdmin || isManager) && (
-            <Link
-              to="/credit-orders"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-                isActive("/credit-orders")
-                  ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-              }`}
-            >
-              <span className="text-base">💳</span>
-              <span className="hidden sm:inline">Credit</span>
-            </Link>
-          )}
+              {(isAdmin || isManager) && (
+                <Link
+                  to={accountingPath}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                    isAccountingActive
+                      ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                  }`}
+                  onClick={() => !isDesktop && setIsNavOpen(false)}
+                >
+                  <span className="text-base">📒</span>
+                  <span className="hidden sm:inline">Accounting</span>
+                </Link>
+              )}
 
-          {(isAdmin || isManager) && (
-            <Link
-              to="/audit-logs"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-                isActive("/audit-logs")
-                  ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-              }`}
-            >
-              <span className="text-base">🕵️</span>
-              <span className="hidden sm:inline">Audit</span>
-            </Link>
-          )}
+              <Link
+                to="/checkout"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                  isActive("/checkout")
+                    ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                    : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                }`}
+                onClick={() => !isDesktop && setIsNavOpen(false)}
+              >
+                <span className="text-base">🛒</span>
+                <span className="hidden sm:inline">Checkout</span>
+              </Link>
 
-          {isAdmin && (
-            <Link
-              to="/inventory"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-                isActive("/inventory")
-                  ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-              }`}
-            >
-              <span className="text-base">📦</span>
-              <span className="hidden sm:inline">Inventory</span>
-            </Link>
-          )}
+              <Link
+                to="/help"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                  isActive("/help")
+                    ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                    : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                }`}
+                onClick={() => !isDesktop && setIsNavOpen(false)}
+              >
+                <span className="text-base">🆘</span>
+                <span className="hidden sm:inline">Help</span>
+              </Link>
 
-          {isAdmin && (
-            <Link
-              to="/settings"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
-                isActive("/settings")
-                  ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
-              }`}
-            >
-              <span className="text-base">⚙️</span>
-              <span className="hidden sm:inline">Settings</span>
-            </Link>
-          )}
-        </div>
-      </div>
-    </nav>
+              {(isAdmin || isManager) && (
+                <Link
+                  to="/reports"
+                  className={`relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                    isActive("/reports")
+                      ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                  } ${alertCount > 0 ? (criticalCount > 0 ? "animate-pulse" : "") : ""}`}
+                  onClick={() => !isDesktop && setIsNavOpen(false)}
+                >
+                  <span className="text-base">📊</span>
+                  <span className="hidden sm:inline">Reports</span>
+                  {alertCount > 0 && (
+                    <span
+                      className={`absolute right-2 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold ${
+                        criticalCount > 0
+                          ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50"
+                          : "bg-orange-500 text-white shadow-lg shadow-orange-500/50"
+                      }`}
+                    >
+                      {alertCount > 99 ? "99+" : alertCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+
+              {(isAdmin || isManager) && (
+                <Link
+                  to="/credit-orders"
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                    isActive("/credit-orders")
+                      ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                  }`}
+                  onClick={() => !isDesktop && setIsNavOpen(false)}
+                >
+                  <span className="text-base">💳</span>
+                  <span className="hidden sm:inline">Credit</span>
+                </Link>
+              )}
+
+              {(isAdmin || isManager) && (
+                <Link
+                  to="/audit-logs"
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                    isActive("/audit-logs")
+                      ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                  }`}
+                  onClick={() => !isDesktop && setIsNavOpen(false)}
+                >
+                  <span className="text-base">🕵️</span>
+                  <span className="hidden sm:inline">Audit</span>
+                </Link>
+              )}
+
+              {isAdmin && (
+                <Link
+                  to="/inventory"
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                    isActive("/inventory")
+                      ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                  }`}
+                  onClick={() => !isDesktop && setIsNavOpen(false)}
+                >
+                  <span className="text-base">📦</span>
+                  <span className="hidden sm:inline">Inventory</span>
+                </Link>
+              )}
+
+              {isAdmin && (
+                <Link
+                  to="/settings"
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all min-h-[44px] ${
+                    isActive("/settings")
+                      ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-300"
+                  }`}
+                  onClick={() => !isDesktop && setIsNavOpen(false)}
+                >
+                  <span className="text-base">⚙️</span>
+                  <span className="hidden sm:inline">Settings</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        </nav>
+      </>
     );
   } catch (error) {
     console.error("[FixedNavigation] Error rendering:", error);
     return (
-      <nav style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        top: 0,
-        backgroundColor: "#1e293b",
-        zIndex: 100,
-        padding: "20px"
-      }}>
+      <nav
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          top: 0,
+          backgroundColor: "#1e293b",
+          zIndex: 100,
+          padding: "20px",
+        }}
+      >
         <div style={{ color: "#fca5a5", fontSize: "12px" }}>
           Error rendering navigation: {error instanceof Error ? error.message : String(error)}
         </div>
       </nav>
     );
-  }});
+  }
+});

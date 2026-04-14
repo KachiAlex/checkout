@@ -22,7 +22,9 @@ export default defineConfig({
     },
     // Let Vite handle chunking automatically - it's smarter about dependencies
     chunkSizeWarningLimit: 1000,
-    sourcemap: false,
+    // Produce source maps for the production build so packaged renderer errors
+    // surface original, unminified stack traces inside DevTools.
+    sourcemap: true,
   },
   esbuild: {
     logOverride: { "this-is-undefined-in-esm": "silent" },
