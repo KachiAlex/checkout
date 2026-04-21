@@ -2,8 +2,30 @@
 // Vercel: https://checkout.vercel.app (primary - auto-deployed from GitLab)
 // Render: https://checkout-45tb.onrender.com (backup)
 // You can override this by setting VITE_API_URL in your .env file
-const DEFAULT_API_BASE =
-  import.meta.env.VITE_API_URL || "https://checkout.vercel.app";
+const PRIMARY_API_BASE = "https://checkout.vercel.app";
+const LEGACY_RENDER_BASE = "https://checkout-45tb.onrender.com";
+const DEFAULT_API_BASE = import.meta.env.VITE_API_URL || PRIMARY_API_BASE;
+const PRIMARY_FRONTEND_HOSTS = new Set([
+  "checkout.vercel.app",
+  "checkout-77d99.web.app",
+  "checkout-77d99.firebaseapp.com",
+]);
+
+const sanitizeUrl = (url?: string | null) => url?.trim().replace(/\/+$/, "");
+
+const getHostPreferredApi = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const host = window.location.hostname;
+  if (PRIMARY_FRONTEND_HOSTS.has(host)) {
+    console.log(`[config] Host ${host} forces primary backend (${PRIMARY_API_BASE})`);
+    return PRIMARY_API_BASE;
+  }
+
+  return null;
+};
 const FIREBASE_STORAGE_BUCKET = "checkout-77d99.firebasestorage.app";
 
 // Default Firebase Storage URL for desktop installer
@@ -14,12 +36,25 @@ const DEFAULT_WINDOWS_INSTALLER_URL = `https://firebasestorage.googleapis.com/v0
 // In development, use localhost backend directly or via proxy
 // In production or when VITE_API_URL is explicitly set, use that value or default to Firebase
 const getApiUrl = () => {
+  const hostPreferred = getHostPreferredApi();
   try {
-    // If explicitly set via env var, use it
+    // If explicitly set via env var, use it unless we're running on a host that
+    // must force the primary Vercel backend and the env still points to Render.
     if (import.meta.env.VITE_API_URL) {
-      const url = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
-      console.log("[config] Using explicit API_URL:", url);
-      return url;
+      const url = sanitizeUrl(import.meta.env.VITE_API_URL);
+
+      if (hostPreferred && url?.includes(LEGACY_RENDER_BASE)) {
+        const host = typeof window !== "undefined" ? window.location.hostname : "unknown";
+        console.warn(
+          `[config] Ignoring legacy Render API URL (${url}) for host ${host} and using ${PRIMARY_API_BASE} instead`,
+        );
+        return hostPreferred;
+      }
+
+      if (url) {
+        console.log("[config] Using explicit API_URL:", url);
+        return url;
+      }
     }
 
     // In development, check if we should use local backend or production fallback
@@ -35,16 +70,16 @@ const getApiUrl = () => {
       } else {
         console.log("[config] Using production backend fallback");
         // Fallback to production backend when local backend is not available
-        return DEFAULT_API_BASE;
+        return hostPreferred ?? DEFAULT_API_BASE;
       }
     }
 
     // In production, use Vercel backend (auto-deployed from GitLab)
     console.log("[config] Using Vercel backend in production");
-    return DEFAULT_API_BASE;
+    return hostPreferred ?? DEFAULT_API_BASE;
   } catch (error) {
     console.error("[config] Error getting API URL, using default:", error);
-    return DEFAULT_API_BASE;
+    return hostPreferred ?? DEFAULT_API_BASE;
   }
 };
 
