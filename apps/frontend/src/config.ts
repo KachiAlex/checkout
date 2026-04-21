@@ -1,9 +1,9 @@
-// Render backend is live and configured
-// Format: https://your-service-name.onrender.com
+// Backend configuration - supports multiple deployment options
+// Vercel: https://checkout.vercel.app (primary - auto-deployed from GitLab)
+// Render: https://checkout-45tb.onrender.com (backup)
 // You can override this by setting VITE_API_URL in your .env file
-// Default URL: https://checkout-45tb.onrender.com
 const DEFAULT_API_BASE =
-  import.meta.env.VITE_API_URL || "https://checkout-45tb.onrender.com";
+  import.meta.env.VITE_API_URL || "https://checkout.vercel.app";
 const FIREBASE_STORAGE_BUCKET = "checkout-77d99.firebasestorage.app";
 
 // Default Firebase Storage URL for desktop installer
@@ -39,8 +39,8 @@ const getApiUrl = () => {
       }
     }
 
-    // In production, use Render backend
-    console.log("[config] Using Render backend in production");
+    // In production, use Vercel backend (auto-deployed from GitLab)
+    console.log("[config] Using Vercel backend in production");
     return DEFAULT_API_BASE;
   } catch (error) {
     console.error("[config] Error getting API URL, using default:", error);
