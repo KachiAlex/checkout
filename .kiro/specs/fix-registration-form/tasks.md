@@ -7,7 +7,7 @@
   - Add comprehensive request/response logging for debugging
   - _Requirements: 2.1, 2.2, 2.4, 2.5_
 
-- [ ]\* 1.1 Write property test for CORS configuration
+- [x]\* 1.1 Write property test for CORS configuration
   - **Property 5: CORS configuration allows valid origins**
   - **Validates: Requirements 2.2**
 
@@ -23,11 +23,11 @@
   - Implement proper error logging on both frontend and backend
   - _Requirements: 1.6, 3.1, 3.2, 3.3_
 
-- [ ]\* 2.1 Write property test for error response structure
+- [x]\* 2.1 Write property test for error response structure
   - **Property 4: Error responses are structured and displayed**
   - **Validates: Requirements 1.6, 3.1, 3.2**
 
-- [ ]\* 2.2 Write property test for client-side validation
+- [x]\* 2.2 Write property test for client-side validation
   - **Property 7: Client-side validation prevents invalid submissions**
 
   - **Validates: Requirements 3.3, 4.2**
@@ -39,7 +39,7 @@
   - Ensure UI stability during network problems
   - _Requirements: 2.3, 3.4, 4.3_
 
-- [ ]\* 2.4 Write property test for network failure handling
+- [x]\* 2.4 Write property test for network failure handling
   - **Property 6: Network failures are handled gracefully**
   - **Validates: Requirements 2.3, 3.4, 4.3**
 
@@ -50,15 +50,15 @@
   - Fix routing logic for different plan types
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 4.5_
 
-- [ ]\* 3.1 Write property test for valid registration processing
+- [x]\* 3.1 Write property test for valid registration processing
   - **Property 1: Valid registration data creates tenant and user**
   - **Validates: Requirements 1.1, 1.2, 4.1**
 
-- [ ]\* 3.2 Write property test for plan-based routing
+- [x]\* 3.2 Write property test for plan-based routing
   - **Property 3: Registration form routes correctly by plan type**
   - **Validates: Requirements 1.4, 1.5, 4.4**
 
-- [ ]\* 3.3 Write property test for duplicate detection
+- [x]\* 3.3 Write property test for duplicate detection
   - **Property 8: Duplicate registration detection**
   - **Validates: Requirements 4.5**
 
@@ -69,11 +69,11 @@
   - Implement graceful fallback when email fails
   - _Requirements: 1.3, 5.1, 5.2, 5.5_
 
-- [ ]\* 4.1 Write property test for email notifications
+- [x]\* 4.1 Write property test for email notifications
   - **Property 2: Successful registration triggers email notification**
   - **Validates: Requirements 1.3, 5.1, 5.2**
 
-- [ ]\* 4.2 Write property test for email failure handling
+- [x]\* 4.2 Write property test for email failure handling
   - **Property 11: Email failure graceful handling**
   - **Validates: Requirements 5.5**
 
@@ -84,7 +84,7 @@
   - Ensure tenant slug is prominently displayed or passed as parameter
   - _Requirements: 5.3, 5.4_
 
-- [ ]\* 5.1 Write property test for post-registration guidance
+- [x]\* 5.1 Write property test for post-registration guidance
   - **Property 10: Post-registration user guidance**
   - **Validates: Requirements 5.3, 5.4**
 
@@ -95,14 +95,14 @@
   - Create structured logging format for easy troubleshooting
   - _Requirements: 2.5, 3.5_
 
-- [ ]\* 6.1 Write property test for registration logging
+- [x]\* 6.1 Write property test for registration logging
   - **Property 9: Registration logging and analytics**
   - **Validates: Requirements 2.5, 3.5**
 
 - [x] 7. Checkpoint - Ensure all tests pass and registration flow works end-to-end
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ]\* 7.1 Write integration tests for complete registration flow
+- [x]\* 7.1 Write integration tests for complete registration flow
   - Test end-to-end registration process from form submission to email delivery
   - Test various plan types and error scenarios
   - Verify CORS, error handling, and user experience flows
