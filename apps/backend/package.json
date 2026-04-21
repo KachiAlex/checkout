@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "prisma generate && node ../../node_modules/.bin/tsc --project tsconfig.build.json && node -e \"const fs=require('fs'); if(!fs.existsSync('dist/src/main.js')){ console.error('Build succeeded but dist/src/main.js not found'); process.exit(1);} console.log('Build OK: dist/src/main.js');\"",
+    "build": "prisma generate && npx --yes typescript@5.3.3 --project tsconfig.build.json && node -e \"const fs=require('fs'); if(!fs.existsSync('dist/src/main.js')){ console.error('Build succeeded but dist/src/main.js not found'); process.exit(1);} console.log('Build OK: dist/src/main.js');\"",
     "build:vercel": "npm run build && node -e \"require('fs').copyFileSync('api/index.js', 'dist/index.js')\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
