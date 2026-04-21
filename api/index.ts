@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core';
-import { AppModule } from '../apps/backend/src/app.module';
-import { configureApp } from '../apps/backend/src/app.bootstrap';
-import { AllExceptionsFilter } from '../apps/backend/src/common/filters/all-exceptions.filter';
+// Import from compiled backend dist to retain decorator metadata
+import { AppModule } from '../apps/backend/dist/src/app.module';
+import { configureApp } from '../apps/backend/dist/src/app.bootstrap';
+import { AllExceptionsFilter } from '../apps/backend/dist/src/common/filters/all-exceptions.filter';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import * as express from 'express';
 
