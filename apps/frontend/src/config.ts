@@ -12,6 +12,41 @@ const PRIMARY_FRONTEND_HOSTS = new Set([
 ]);
 
 const sanitizeUrl = (url?: string | null) => url?.trim().replace(/\/+$/, "");
+const isLocalHostname = (hostname?: string | null) => {
+  if (!hostname) {
+    return false;
+  }
+
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.endsWith(".local") ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.")
+  );
+};
+
+const finalizeApiUrl = (candidate?: string | null, opts?: { hostPreferred?: string | null }) => {
+  const sanitized = sanitizeUrl(candidate ?? undefined) || PRIMARY_API_BASE;
+
+  if (opts?.hostPreferred) {
+    return opts.hostPreferred;
+  }
+
+  const host = typeof window !== "undefined" ? window.location.hostname : undefined;
+  const shouldForcePrimary =
+    sanitized.includes(LEGACY_RENDER_BASE) &&
+    (typeof window === "undefined" || !isLocalHostname(host));
+
+  if (shouldForcePrimary) {
+    console.warn(
+      `[config] Forcing primary backend (${PRIMARY_API_BASE}) instead of legacy Render URL (${sanitized}) on host ${host ?? "unknown"}`,
+    );
+    return PRIMARY_API_BASE;
+  }
+
+  return sanitized;
+};
 
 const getHostPreferredApi = () => {
   if (typeof window === "undefined") {
@@ -53,7 +88,7 @@ const getApiUrl = () => {
 
       if (url) {
         console.log("[config] Using explicit API_URL:", url);
-        return url;
+        return finalizeApiUrl(url, { hostPreferred });
       }
     }
 
@@ -70,16 +105,16 @@ const getApiUrl = () => {
       } else {
         console.log("[config] Using production backend fallback");
         // Fallback to production backend when local backend is not available
-        return hostPreferred ?? DEFAULT_API_BASE;
+        return finalizeApiUrl(hostPreferred ?? DEFAULT_API_BASE, { hostPreferred });
       }
     }
 
     // In production, use Vercel backend (auto-deployed from GitLab)
     console.log("[config] Using Vercel backend in production");
-    return hostPreferred ?? DEFAULT_API_BASE;
+    return finalizeApiUrl(hostPreferred ?? DEFAULT_API_BASE, { hostPreferred });
   } catch (error) {
     console.error("[config] Error getting API URL, using default:", error);
-    return hostPreferred ?? DEFAULT_API_BASE;
+    return finalizeApiUrl(hostPreferred ?? DEFAULT_API_BASE, { hostPreferred });
   }
 };
 
