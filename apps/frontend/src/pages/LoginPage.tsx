@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "../stores/authStore";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { BrandMark } from "../components/BrandMark";
@@ -21,14 +21,29 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState<string | null>(null);
   const { login, loginSuperAdmin } = useAuthStore((state) => ({
     login: state.login,
     loginSuperAdmin: state.loginSuperAdmin,
   }));
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useThemeStore((state) => state.theme);
   const glowPrimary = theme === "light" ? "bg-indigo-200/40" : "bg-blue-600/40";
   const glowSecondary = theme === "light" ? "bg-cyan-200/35" : "bg-cyan-500/30";
+
+  // Handle registration redirect with tenant slug and message
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.tenantSlug) {
+      setTenantSlug(state.tenantSlug);
+    }
+    if (state?.message) {
+      setRegistrationMessage(state.message);
+      // Show toast notification
+      toast.success(state.message);
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,6 +212,16 @@ export function LoginPage({ variant = "tenant" }: LoginPageProps) {
               onSubmit={handleSubmit}
               className="mt-5 sm:mt-6 lg:mt-8 space-y-4 sm:space-y-5"
             >
+              {registrationMessage && (
+                <div className="rounded-2xl border border-emerald-300/80 bg-emerald-50 px-4 py-3 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-950/30">
+                  <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
+                    ✓ {registrationMessage}
+                  </p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+                    Your tenant slug has been pre-filled below. Enter your PIN to access your account.
+                  </p>
+                </div>
+              )}
               {variant === "superadmin" ? (
                 <>
                   <div className="space-y-2">

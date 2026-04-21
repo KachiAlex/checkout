@@ -26,6 +26,7 @@ import {
 } from './subscription-payments.repository';
 import { EmailService } from '../email/email.service';
 import { PlatformWebhookDto } from './dto/platform-webhook.dto';
+import { RegistrationException } from './exceptions/registration.exception';
 
 @Injectable()
 export class PlatformService {
@@ -56,10 +57,37 @@ export class PlatformService {
     paymentId?: string;
     checkoutUrl?: string;
   }> {
+    // Validate company slug format
+    const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    if (!slugRegex.test(dto.companySlug.toLowerCase())) {
+      throw new RegistrationException({
+        code: 'INVALID_SLUG_FORMAT',
+        message: 'Company URL must contain only lowercase letters, numbers, and hyphens',
+        field: 'companySlug',
+        details: 'Slug format: lowercase letters, numbers, and hyphens only',
+      });
+    }
+
     // Check if slug already exists
     const existing = await this.tenantsRepository.findBySlug(dto.companySlug.toLowerCase());
     if (existing) {
-      throw new BadRequestException('Company URL is already taken. Please choose a different one.');
+      throw new RegistrationException({
+        code: 'DUPLICATE_SLUG',
+        message: 'Company URL is already taken. Please choose a different one.',
+        field: 'companySlug',
+        details: 'This slug is already registered in the system',
+      });
+    }
+
+    // Check if email already exists
+    const existingEmail = await this.usersRepository.findByEmail(dto.adminEmail.toLowerCase());
+    if (existingEmail) {
+      throw new RegistrationException({
+        code: 'DUPLICATE_EMAIL',
+        message: 'Email address is already registered. Please use a different email.',
+        field: 'adminEmail',
+        details: 'This email is already associated with an existing account',
+      });
     }
 
     // Determine plan - default to FREE (trial) if not specified
@@ -180,13 +208,42 @@ export class PlatformService {
           await this.subscriptionPaymentsRepository.update(paymentId, {
             status: PaymentStatus.FAILED,
           });
-          console.error('Failed to initiate payment:', error);
-          throw new InternalServerErrorException('Failed to initiate payment. Please try again.');
+          console.error('[Platform Registration] Failed to initiate payment:', {
+            error: error.message,
+            stack: error.stack,
+            tenantId: result.tenant.id,
+            plan,
+            timestamp: new Date().toISOString(),
+          });
+          throw new RegistrationException({
+            code: 'PAYMENT_INITIATION_FAILED',
+            message: 'Failed to initiate payment. Please try again.',
+            details: error.message,
+          });
         }
       }
     }
 
     // For free plan or if payment initiation failed
+    // Send welcome email to admin user
+    try {
+      await this.sendWelcomeEmail({
+        adminName: dto.adminName,
+        adminEmail: dto.adminEmail,
+        companyName: dto.companyName,
+        tenantSlug: result.tenant.slug,
+        plan,
+      });
+    } catch (error) {
+      console.error('[Platform Registration] Failed to send welcome email:', {
+        error: error.message,
+        adminEmail: dto.adminEmail,
+        tenantSlug: result.tenant.slug,
+        timestamp: new Date().toISOString(),
+      });
+      // Don't throw - email failure shouldn't block registration
+    }
+
     return {
       success: true,
       message:
@@ -402,6 +459,127 @@ export class PlatformService {
     };
 
     return pricing[plan] || pricing[TenantPlan.FREE];
+  }
+
+  /**
+   * Send welcome email to newly registered admin user
+   */
+  private async sendWelcomeEmail(data: {
+    adminName: string;
+    adminEmail: string;
+    companyName: string;
+    tenantSlug: string;
+    plan: TenantPlan;
+  }): Promise<void> {
+    try {
+      const frontendUrl = this.getFrontendUrl();
+      const loginUrl = `${frontendUrl}/login?tenantSlug=${data.tenantSlug}`;
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 14);
+      const trialEndDateStr = trialEndDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      const subject = `Welcome to Checkout - Your ${data.plan === TenantPlan.FREE ? '14-Day Free Trial' : data.plan} Plan`;
+
+      const bodyLines = [
+        `Hello ${data.adminName},`,
+        '',
+        `Welcome to Checkout! Your ${data.plan === TenantPlan.FREE ? '14-day free trial' : data.plan} account for ${data.companyName} has been successfully created.`,
+        '',
+        'Account Details:',
+        `Company: ${data.companyName}`,
+        `Tenant URL: ${data.tenantSlug}`,
+        `Plan: ${data.plan}`,
+        data.plan === TenantPlan.FREE ? `Trial Ends: ${trialEndDateStr}` : '',
+        '',
+        'Getting Started:',
+        `1. Visit: ${loginUrl}`,
+        `2. Log in with your email: ${data.adminEmail}`,
+        '3. Set up your first products and start accepting payments',
+        '',
+        'Need Help?',
+        'Check out our documentation or reply to this email if you have any questions.',
+        '',
+        'Happy selling!',
+        '— The Checkout Team',
+      ].filter(Boolean);
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Welcome to Checkout, ${data.adminName}!</h2>
+          
+          <p>Your ${data.plan === TenantPlan.FREE ? '14-day free trial' : data.plan} account for <strong>${data.companyName}</strong> has been successfully created.</p>
+          
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #333;">Account Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px; font-weight: bold; width: 120px;">Company:</td>
+                <td style="padding: 8px;">${data.companyName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; font-weight: bold;">Tenant URL:</td>
+                <td style="padding: 8px;"><code>${data.tenantSlug}</code></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; font-weight: bold;">Plan:</td>
+                <td style="padding: 8px;">${data.plan}</td>
+              </tr>
+              ${
+                data.plan === TenantPlan.FREE
+                  ? `<tr>
+                <td style="padding: 8px; font-weight: bold;">Trial Ends:</td>
+                <td style="padding: 8px;">${trialEndDateStr}</td>
+              </tr>`
+                  : ''
+              }
+            </table>
+          </div>
+          
+          <div style="margin: 20px 0;">
+            <h3 style="color: #333;">Getting Started</h3>
+            <ol>
+              <li><a href="${loginUrl}" style="color: #0066cc;">Click here to log in</a></li>
+              <li>Use your email: <code>${data.adminEmail}</code></li>
+              <li>Set up your first products and start accepting payments</li>
+            </ol>
+          </div>
+          
+          <div style="background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Need Help?</strong> Check out our documentation or reply to this email if you have any questions.</p>
+          </div>
+          
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            Happy selling!<br>
+            — The Checkout Team
+          </p>
+        </div>
+      `;
+
+      await this.emailService.sendEmail({
+        to: data.adminEmail,
+        subject,
+        text: bodyLines.join('\n'),
+        html,
+      });
+
+      console.log('[Platform Registration] Welcome email sent successfully:', {
+        adminEmail: data.adminEmail,
+        tenantSlug: data.tenantSlug,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Platform Registration] Error sending welcome email:', {
+        error: error.message,
+        stack: error.stack,
+        adminEmail: data.adminEmail,
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
   }
 
   private async sendSubscriptionReceipt(payment: SubscriptionPaymentRecord): Promise<void> {

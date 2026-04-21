@@ -77,6 +77,7 @@ export function RegistrationForm({
   const [selectedPlan, setSelectedPlan] = useState<PlanType>("free");
   const [selectedIndustry, setSelectedIndustry] =
     useState<IndustryType>("retail");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     companyName: "",
     companySlug: "",
@@ -187,24 +188,69 @@ export function RegistrationForm({
     }
 
     try {
-      const response = await axios.post(
-        registrationUrl,
-        {
-          companyName: formData.companyName.trim(),
-          companySlug: formData.companySlug.trim().toLowerCase(),
-          adminName: formData.adminName.trim(),
-          adminEmail: formData.adminEmail.trim().toLowerCase(),
-          adminPassword: formData.adminPassword,
-          plan: selectedPlan === "free" ? undefined : selectedPlan,
-          industry: selectedIndustry,
-        },
-        {
-          timeout: 30000, // 30 second timeout
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      // Implement retry logic for network failures
+      let response;
+      let lastError: any;
+      const maxRetries = 2;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(
+            `[Registration] Attempt ${attempt}/${maxRetries} to submit registration`,
+          );
+
+          response = await axios.post(
+            registrationUrl,
+            {
+              companyName: formData.companyName.trim(),
+              companySlug: formData.companySlug.trim().toLowerCase(),
+              adminName: formData.adminName.trim(),
+              adminEmail: formData.adminEmail.trim().toLowerCase(),
+              adminPassword: formData.adminPassword,
+              plan: selectedPlan === "free" ? undefined : selectedPlan,
+              industry: selectedIndustry,
+            },
+            {
+              timeout: 30000, // 30 second timeout
+              headers: {
+                "Content-Type": "application/json",
+              },
+            },
+          );
+
+          // Success - break out of retry loop
+          break;
+        } catch (error: any) {
+          lastError = error;
+
+          // Only retry on network errors or timeouts, not on validation errors
+          const isNetworkError =
+            error.code === "ECONNABORTED" ||
+            error.code === "ERR_NETWORK" ||
+            error.code === "ENOTFOUND" ||
+            error.code === "ECONNREFUSED" ||
+            !error.response; // No response means network issue
+
+          if (isNetworkError && attempt < maxRetries) {
+            console.warn(
+              `[Registration] Network error on attempt ${attempt}, retrying...`,
+              error.code,
+            );
+            // Wait before retrying (exponential backoff: 1s, 2s)
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1000 * attempt),
+            );
+            continue;
+          }
+
+          // If it's not a network error or we've exhausted retries, throw
+          throw error;
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error("Failed to submit registration");
+      }
 
       console.log("[Registration] API Response:", response.data);
 
@@ -256,21 +302,44 @@ export function RegistrationForm({
       console.error("[Registration] Registration error:", error);
 
       let errorMessage = "Registration failed";
+      let errorField: string | undefined;
+      let errorCode: string | undefined;
 
       if (error.code === "ECONNABORTED") {
         errorMessage =
-          "Request timed out. Please check your internet connection and try again.";
-      } else if (error.code === "ERR_NETWORK") {
+          "Request timed out. The server took too long to respond. Please check your internet connection and try again.";
+        errorCode = "TIMEOUT";
+      } else if (
+        error.code === "ERR_NETWORK" ||
+        error.code === "ENOTFOUND" ||
+        error.code === "ECONNREFUSED"
+      ) {
         errorMessage =
-          "Network error. Please check your internet connection and try again.";
+          "Network connection failed. Please check your internet connection and try again.";
+        errorCode = "NETWORK_ERROR";
       } else if (error.response) {
         // Server responded with error status
         console.error(
           "[Registration] Server error response:",
           error.response.data,
         );
+
+        // Handle standardized error response format
         if (error.response.data?.error) {
-          errorMessage = error.response.data.error;
+          const errorData = error.response.data.error;
+          errorCode = errorData.code;
+          errorMessage = errorData.message || "Registration failed";
+          errorField = errorData.field;
+
+          // Log detailed error information
+          console.error("[Registration] Structured error response:", {
+            code: errorCode,
+            message: errorMessage,
+            field: errorField,
+            details: errorData.details,
+            status: error.response.status,
+            timestamp: new Date().toISOString(),
+          });
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         } else {
@@ -281,10 +350,21 @@ export function RegistrationForm({
         console.error("[Registration] No response received:", error.request);
         errorMessage =
           "No response from server. Please check your internet connection and try again.";
+        errorCode = "NO_RESPONSE";
       } else {
         // Something else happened
         errorMessage = error.message || "An unexpected error occurred";
+        errorCode = "UNKNOWN_ERROR";
       }
+
+      // Log complete error context for debugging
+      console.error("[Registration] Complete error context:", {
+        errorCode,
+        errorMessage,
+        errorField,
+        errorType: error.name,
+        timestamp: new Date().toISOString(),
+      });
 
       toast.error(errorMessage);
     } finally {

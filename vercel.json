@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build:backend",
+  "outputDirectory": "apps/backend/dist",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "api/index.ts": {
+      "memory": 1024,
+      "maxDuration": 60,
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.ts",
+      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

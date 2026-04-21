@@ -15,7 +15,10 @@ export class PlatformController {
   @ApiResponse({ status: 201, description: 'Tenant and admin registered successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request' })
   async register(@Body() dto: RegisterDto) {
+    const requestId = `reg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     console.log('[Platform Registration] Received registration request:', {
+      requestId,
       companyName: dto.companyName,
       companySlug: dto.companySlug,
       adminName: dto.adminName,
@@ -28,6 +31,7 @@ export class PlatformController {
     try {
       const result = await this.platformService.registerTenant(dto);
       console.log('[Platform Registration] Registration successful:', {
+        requestId,
         success: result.success,
         tenantId: result.tenant?.id,
         tenantSlug: result.tenant?.slug,
@@ -36,9 +40,16 @@ export class PlatformController {
       });
       return result;
     } catch (error) {
+      const errorCode = error?.response?.error?.code || 'UNKNOWN_ERROR';
+      const errorMessage = error?.response?.error?.message || error?.message || 'Registration failed';
+      
       console.error('[Platform Registration] Registration failed:', {
-        error: error.message,
-        stack: error.stack,
+        requestId,
+        errorCode,
+        errorMessage,
+        errorDetails: error?.response?.error?.details,
+        errorField: error?.response?.error?.field,
+        stack: error?.stack,
         dto: {
           companyName: dto.companyName,
           companySlug: dto.companySlug,
