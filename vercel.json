@@ -1,6 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build:backend",
+  "installCommand": "npm install",
   "outputDirectory": "apps/backend/dist",
   "env": {
     "NODE_ENV": "production"
