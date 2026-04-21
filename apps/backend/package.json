@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "prebuild": "npm run build --workspace=@pos-checkout/shared && npm run build --workspace=@pos-checkout/payment-adapters",
     "build": "prisma generate && tsc --project tsconfig.build.json && node -e \"const fs=require('fs'); if(!fs.existsSync('dist/src/main.js')){ console.error('Build succeeded but dist/src/main.js not found'); process.exit(1);} console.log('Build OK: dist/src/main.js');\"",
     "build:vercel": "npm run build && node -e \"require('fs').copyFileSync('api/index.js', 'dist/index.js')\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
