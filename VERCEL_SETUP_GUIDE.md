@@ -9,17 +9,16 @@ This guide provides step-by-step instructions for deploying the Checkout POS bac
 ```
 .
 ```
-(Root of the repository - Vercel will auto-detect monorepo structure)
+(Root of the repository - Vercel will use this as the base for all paths)
 
 ### Build Command
 ```
-npm run build:backend
+npm run build --workspace=apps/backend
 ```
 This command:
-- Builds the shared packages
-- Builds payment adapters
-- Builds the NestJS backend
-- Outputs to `apps/backend/dist`
+- Builds only the backend workspace
+- Includes shared packages and payment adapters as dependencies
+- Outputs to `dist` (relative to root)
 
 ### Install Command
 ```
@@ -29,9 +28,9 @@ Standard npm install for monorepo workspace setup
 
 ### Output Directory
 ```
-apps/backend/dist
+dist
 ```
-The compiled backend output directory
+The compiled backend output directory (relative to root)
 
 ## Step-by-Step Setup
 
@@ -49,10 +48,10 @@ Set the following values:
 
 | Setting | Value |
 |---------|-------|
-| **Root Directory** | `.` (leave empty or use root) |
-| **Build Command** | `npm run build:backend` |
+| **Root Directory** | `.` (root of repository) |
+| **Build Command** | `npm run build --workspace=apps/backend` |
 | **Install Command** | `npm install` |
-| **Output Directory** | `apps/backend/dist` |
+| **Output Directory** | `dist` |
 | **Node.js Version** | 20.x |
 
 ### 3. Environment Variables
@@ -128,9 +127,9 @@ Located at root of repository:
 ```json
 {
   "version": 2,
-  "buildCommand": "npm run build:backend",
+  "buildCommand": "npm run build --workspace=apps/backend",
   "installCommand": "npm install",
-  "outputDirectory": "apps/backend/dist",
+  "outputDirectory": "dist",
   "env": {
     "NODE_ENV": "production"
   },
@@ -157,9 +156,9 @@ Serverless function entry point that initializes NestJS app for Vercel.
 
 - [ ] Vercel project created and connected to GitLab
 - [ ] Root Directory set to `.`
-- [ ] Build Command set to `npm run build:backend`
+- [ ] Build Command set to `npm run build --workspace=apps/backend`
 - [ ] Install Command set to `npm install`
-- [ ] Output Directory set to `apps/backend/dist`
+- [ ] Output Directory set to `dist`
 - [ ] Node.js version set to 20.x
 - [ ] All environment variables configured
 - [ ] Database is accessible from Vercel

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:backend",
+  "buildCommand": "npm run build --workspace=apps/backend",
   "installCommand": "npm install",
-  "outputDirectory": "apps/backend/dist",
+  "outputDirectory": "dist",
   "env": {
     "NODE_ENV": "production"
   },
