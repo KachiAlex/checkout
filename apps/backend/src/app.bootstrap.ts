@@ -38,6 +38,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     'https://checkout-77d99.web.app',
     'https://checkout-77d99.firebaseapp.com',
     'https://checkoutpos.online',
+    'https://www.checkoutpos.online',
     // Add common development origins
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
@@ -57,7 +58,7 @@ export async function configureApp(app: INestApplication, options?: AppBootstrap
     corsOrigins = true;
   } else {
     corsOrigins = corsOriginConfig
-      .split(',')
+      .split(/[,\s]+/)
       .map((origin) => origin.trim())
       .filter(Boolean);
   }
